@@ -23,26 +23,6 @@ where `<branch-name>` is the current branch (if already on a feature branch) or 
 
 This is a statement, not a question. Do NOT use AskUserQuestion for this. **Only output this on the first invocation in a conversation — skip if already done.**
 
-## Step 0b: Session configuration
-
-Use AskUserQuestion to ask (in Italian):
-- Question with checkbox-style options:
-```
-Che livello di effort vuoi per questa sessione?
-
-[ ] low — analisi minima, piano sintetico veloce
-[ ] medium — analisi bilanciata tra velocità e qualità
-[x] high — analisi completa, ragionamento approfondito
-[ ] max — esplorazione senza limiti, ragionamento profondissimo
-```
-- Default: "high"
-
-Based on effort level:
-- **low**: quick branch/diff analysis, minimal code reading, concise plan
-- **medium**: balanced analysis, read key files to understand context
-- **high**: thorough exploration, read involved files and their dependencies, detailed plan with precise file references
-- **max**: exhaustive exploration without limits, deepest reasoning, analyze all related code paths and edge cases
-
 ## Step 1: Identify current branch and base
 
 ```bash
