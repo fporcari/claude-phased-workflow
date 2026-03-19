@@ -13,16 +13,6 @@ Initialize the work context for the current project. This command prepares the w
 
 **UI rule:** Minimize use of `AskUserQuestion`. Only use it when a structured choice is genuinely needed (e.g. selecting between multiple memory files). For open-ended input, present information and let the user respond naturally.
 
-## Step 0: Chat title
-
-As the VERY FIRST thing in your first response, include this line at the top:
-
-**→ Rinomina questa chat: `<branch-name>`**
-
-where `<branch-name>` is the current branch (if already on a feature branch) or the branch that will be created in Step 3B. If the branch is not yet known at the start, output this line as soon as the branch is determined.
-
-This is a statement, not a question. Do NOT use AskUserQuestion for this. **Only output this on the first invocation in a conversation — skip if already done.**
-
 ## Step 1: Identify context and listen
 
 ```bash

@@ -28,12 +28,6 @@ As the VERY FIRST interaction, look in the current project's memory directory (t
    ```
    - Default: the file with the most uncompleted phases
 5. Store the chosen file path — all subsequent reads/writes in this session target that file.
-6. As the VERY FIRST thing in your first response, include this line at the top:
-   **→ Rinomina questa chat: `<context-name>`**
-   where `<context-name>` is the context name from the selected plan (e.g. the value after `# Context:` in the memory file). This is a statement, not a question. Do NOT use AskUserQuestion for this.
-
-**Only ask this on the first invocation in a conversation — skip if already asked.**
-
 ## Step 1: Read the plan
 
 Read the selected memory file (chosen in Step 0). Identify the first phase marked `- [ ]` (uncompleted).

@@ -13,16 +13,6 @@ Verify the current state of the work plan from the supervisor chat.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user.
 
-## Step 0: Chat title
-
-As the VERY FIRST thing in your first response, include this line at the top:
-
-**→ Rinomina questa chat: `<context-name>`**
-
-where `<context-name>` is the context name from the first line of the selected memory file (e.g. the value after `# Context:` in MEMORY.md). If multiple plans exist and the user must choose, output this line after the selection is made.
-
-This is a statement, not a question. Do NOT use AskUserQuestion for this. **Only output this on the first invocation in a conversation — skip if already done.**
-
 ## Step 1: Select and read current state
 
 Look in the current project's memory directory for `MEMORY.md` and any `memory_*.md` files.
