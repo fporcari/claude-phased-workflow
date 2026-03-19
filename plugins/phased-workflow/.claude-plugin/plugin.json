@@ -1,0 +1,22 @@
+{
+  "name": "phased-workflow",
+  "description": "Phased development workflow for Claude Code — plan, execute, verify, finalize. Separates planning from execution using memory files as shared state between independent sessions.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Francesco Porcari"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/check-runtime-imports.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

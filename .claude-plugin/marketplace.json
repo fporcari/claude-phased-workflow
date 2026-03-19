@@ -1,0 +1,25 @@
+{
+  "name": "claude-phased-workflow",
+  "owner": {
+    "name": "Francesco Porcari",
+    "email": "fporcari@softwell.it"
+  },
+  "metadata": {
+    "description": "A phased workflow system for Claude Code: plan, execute, verify, finalize",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "phased-workflow",
+      "source": "./plugins/phased-workflow",
+      "description": "Phased development workflow with plan/execute/verify/finalize lifecycle",
+      "version": "1.0.0",
+      "author": {
+        "name": "Francesco Porcari"
+      },
+      "keywords": ["workflow", "planning", "phased", "development", "context-management"],
+      "category": "productivity",
+      "license": "MIT"
+    }
+  ]
+}

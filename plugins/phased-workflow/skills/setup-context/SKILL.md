@@ -23,95 +23,45 @@ where `<branch-name>` is the current branch (if already on a feature branch) or 
 
 This is a statement, not a question. Do NOT use AskUserQuestion for this. **Only output this on the first invocation in a conversation — skip if already done.**
 
-## Step 1: Identify current branch and base
+## Step 1: Identify context and listen
 
 ```bash
 git branch --show-current
+git rev-parse --verify origin/develop 2>/dev/null && echo "base:develop" || echo "base:main"
 ```
 
-Determine base branch:
-1. Try `origin/develop` — if it exists, propose `develop` as default
-2. Otherwise propose `origin/main`
+Auto-detect the base branch (`develop` if exists, otherwise `main`). Do NOT ask the user to confirm — just use it. If the user needs a different base, they will say so.
 
-```bash
-git rev-parse --verify origin/develop 2>/dev/null && echo "develop" || echo "main"
-```
+**Case A — Already on a feature branch (different from base):**
 
-Use AskUserQuestion:
-- Question: "Qual e' il branch di riferimento?"
-- Default: the detected base branch
+Run in parallel without asking anything:
 
-## Step 2: Determine mode
+1. `git log origin/<base>..HEAD --oneline --no-decorate`
+2. `git diff --stat origin/<base>...HEAD`
+3. `git diff origin/<base>...HEAD`
+4. If branch name starts with a number: `gh issue view <number> --json title,body,labels,state --jq '{title,body,labels: [.labels[].name],state}'`
 
-Compare current branch with reference branch:
-
-**Case A — On a feature branch different from reference:**
-Proceed with change analysis (Step 3A).
-
-**Case B — On the same branch as reference:**
-Ask the user for a subject for the new branch, create it and proceed (Step 3B).
-
-## Step 3A: Existing branch analysis (feature branch)
-
-Run in parallel:
-
-1. **Commit history**:
-   ```bash
-   git log origin/<base>..HEAD --oneline --no-decorate
-   ```
-
-2. **Changed files**:
-   ```bash
-   git diff --stat origin/<base>...HEAD
-   ```
-
-3. **Full diff**:
-   ```bash
-   git diff origin/<base>...HEAD
-   ```
-
-4. **Linked issue** (if branch name starts with a number):
-   ```bash
-   gh issue view <number> --json title,body,labels,state --jq '{title,body,labels: [.labels[].name],state}'
-   ```
-
-Analyze changes:
-- Understand the role of each modified file
-- Identify touched functions/classes
-- Note dependencies between modified files
-
-Then go to Step 4.
-
-## Step 3B: New branch
+Analyze the changes, then present a summary to the user and ask:
 
 Use AskUserQuestion:
-- Question: "Descrivi brevemente cosa vuoi fare (subject del branch)"
+- Question: "Ecco cosa ho trovato sul branch. Come vuoi procedere? Descrivimi il piano di lavoro."
 - No default
 
-Create the branch:
-```bash
-git checkout -b <branch-name-from-subject> origin/<base>
-```
-
-Branch name must be kebab-case, derived from subject (e.g. "fix login timeout" -> `fix-login-timeout`).
-If a linked issue exists, prefix with the number (e.g. `123-fix-login-timeout`).
-
-Then go to Step 4.
-
-## Step 4: Propose the work plan
+**Case B — On the base branch (main/develop):**
 
 Use AskUserQuestion:
-- Question: "Come vuoi impostare il lavoro? Descrivimi cosa vuoi fare."
+- Question: "Sei sul branch base. Descrivi cosa vuoi fare — creerò il branch e il piano di lavoro."
 - No default
 
-The user will provide a work description. Integrate this with:
-- Information from the diff (if Case A)
-- Information from the issue (if present)
-- Your understanding of the project structure
+From the user's description:
+1. Derive a kebab-case branch name (e.g. "fix login timeout" → `fix-login-timeout`). If a linked issue is mentioned, prefix with the number (e.g. `123-fix-login-timeout`).
+2. Create the branch: `git checkout -b <branch-name> origin/<base>`
+
+**In both cases:** the user's response is the primary input for the plan. Integrate it with diff analysis (Case A), issue info (if present), and your understanding of the project structure.
 
 **Present the plan to the user in Italian for review before writing MEMORY.md.** Discuss and iterate until the user approves the plan.
 
-## Step 5: Choose memory file and write plan
+## Step 2: Choose memory file and write plan
 
 Only after user approval, determine which memory file to write.
 
@@ -120,10 +70,8 @@ Only after user approval, determine which memory file to write.
 1. Read the existing `MEMORY.md` in the project's memory directory
 2. **If `MEMORY.md` does not exist or is empty** → write to `MEMORY.md`
 3. **If `MEMORY.md` already contains an active work plan** (has unchecked `- [ ]` phases):
-   - Inform the user: "MEMORY.md è già occupato dal piano: `<context name from existing MEMORY.md>`"
-   - Use AskUserQuestion:
-     - Question: "Nome per il contesto di questo piano parallelo? (verrà salvato come `memory_<nome>.md`)"
-     - Default: derive from branch name in kebab-case (e.g. branch `fix-login-timeout` → default `login-timeout`)
+   - Derive a context name from the branch name in kebab-case (e.g. branch `fix-login-timeout` → `login-timeout`)
+   - Inform the user: "MEMORY.md è già occupato. Salvo in `memory_<nome>.md`"
    - Write to `memory_<nome>.md` in the same memory directory
    - Add to the top of the file a note: `<!-- Parallel context — primary plan in MEMORY.md -->`
 4. **If `MEMORY.md` contains a plan but all phases are completed** (all `- [x]`) → overwrite `MEMORY.md`

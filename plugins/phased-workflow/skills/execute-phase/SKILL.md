@@ -34,63 +34,17 @@ As the VERY FIRST interaction, look in the current project's memory directory (t
 
 **Only ask this on the first invocation in a conversation — skip if already asked.**
 
-## Step 1: Session configuration
-
-Read the "## Suggested execution config" section from the selected memory file (if present) and find the row corresponding to the current phase.
-
-Run this command to detect the active model:
-```bash
-echo ${ANTHROPIC_MODEL:-"(not set — using default)"}
-```
-
-Display to the user (no AskUserQuestion — this is informational only):
-```
-─────────────────────────────────────
-Fase: <current phase name>
-─────────────────────────────────────
-Modello attivo : <value from $ANTHROPIC_MODEL>
-Effort attivo  : (non rilevabile — usa /model per verificare)
-Suggerimento da piano:
-  Effort  → <value from Suggested execution config, or "medium" if absent>
-  Model   → <value from Suggested execution config, or "sonnet" if absent>
-  → Se vuoi allinearti, digita /model prima di continuare.
-─────────────────────────────────────
-```
-
-Then use AskUserQuestion for the Sourcerer choice only:
-- Question: "Usare Sourcerer per questa fase?"
-- Options (checkbox):
-  ```
-  [ ] sì — consulta i repo interni prima di implementare
-  [x] no — solo contesto locale
-  ```
-- Default: the value from "Suggested execution config" for the current phase (if absent, default "no")
-
-<!-- Sourcerer: MCP vettoriale Softwell — ricerca pattern e best practice
-     sui repo interni indicizzati nel database vettoriale -->
-
-## Step 2: Read the plan
+## Step 1: Read the plan and apply config
 
 Read the selected memory file (chosen in Step 0). Identify the first phase marked `- [ ]` (uncompleted).
 
 If no phases remain, inform the user the plan is complete.
 
-## Step 3: Execute the phase
+## Step 2: Execute the phase
 
 Execute ONLY the identified phase. Do not touch other phases.
 
-Based on effort:
-- **low**: go straight to the point, minimal changes
-- **medium**: balanced approach, explore necessary context, implement carefully
-- **high**: thorough analysis, consider edge cases, test
-- **max**: exhaustive analysis without limits, deepest reasoning, explore all related code paths
-
-If Sourcerer is active, before implementing:
-- Consult the knowledge base for relevant patterns
-- Search for similar usage examples in indexed code
-- Verify best practices for the framework/library in use
-
-## Step 4: Wait for user verification
+## Step 3: Wait for user verification
 
 After completing the phase implementation, use AskUserQuestion to ask (in Italian):
 - Question: "Ho completato l'implementazione della fase. Puoi verificare e dirmi se funziona tutto?"
@@ -98,7 +52,7 @@ After completing the phase implementation, use AskUserQuestion to ask (in Italia
 
 **Do NOT proceed to update MEMORY.md until the user confirms the result of their test.** The user may report issues that need fixing before the phase can be marked as done.
 
-## Step 5: Update the memory file
+## Step 4: Update the memory file
 
 After the user confirms, update the selected memory file (chosen in Step 0):
 
