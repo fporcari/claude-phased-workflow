@@ -34,7 +34,7 @@ As the VERY FIRST interaction, look in the current project's memory directory (t
 
 **Only ask this on the first invocation in a conversation — skip if already asked.**
 
-## Step 1: Read the plan and apply config
+## Step 1: Read the plan
 
 Read the selected memory file (chosen in Step 0). Identify the first phase marked `- [ ]` (uncompleted).
 

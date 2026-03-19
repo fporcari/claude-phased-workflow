@@ -11,7 +11,7 @@ Initialize the work context for the current project. This command prepares the w
 
 **Language rule:** All written content (memory files, phase notes, plan) must be in English. Conversation with the user remains in Italian as per global settings.
 
-**UI rule:** Use `AskUserQuestion` tool for ALL questions to the user. Always provide a `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format so the user can pick easily.
+**UI rule:** Minimize use of `AskUserQuestion`. Only use it when a structured choice is genuinely needed (e.g. selecting between multiple memory files). For open-ended input, present information and let the user respond naturally.
 
 ## Step 0: Chat title
 
@@ -41,17 +41,11 @@ Run in parallel without asking anything:
 3. `git diff origin/<base>...HEAD`
 4. If branch name starts with a number: `gh issue view <number> --json title,body,labels,state --jq '{title,body,labels: [.labels[].name],state}'`
 
-Analyze the changes, then present a summary to the user and ask:
-
-Use AskUserQuestion:
-- Question: "Ecco cosa ho trovato sul branch. Come vuoi procedere? Descrivimi il piano di lavoro."
-- No default
+Present a concise summary of what you found on the branch, then **wait for the user to describe the plan**. Do NOT use AskUserQuestion — the user will respond naturally.
 
 **Case B — On the base branch (main/develop):**
 
-Use AskUserQuestion:
-- Question: "Sei sul branch base. Descrivi cosa vuoi fare — creerò il branch e il piano di lavoro."
-- No default
+Inform the user they are on the base branch, then **wait for the user to describe what they want to do**. Do NOT use AskUserQuestion — the user will respond naturally.
 
 From the user's description:
 1. Derive a kebab-case branch name (e.g. "fix login timeout" → `fix-login-timeout`). If a linked issue is mentioned, prefix with the number (e.g. `123-fix-login-timeout`).
@@ -59,7 +53,7 @@ From the user's description:
 
 **In both cases:** the user's response is the primary input for the plan. Integrate it with diff analysis (Case A), issue info (if present), and your understanding of the project structure.
 
-**Present the plan to the user in Italian for review before writing MEMORY.md.** Discuss and iterate until the user approves the plan.
+**Present the plan to the user in Italian for review before writing MEMORY.md.** Discuss and iterate until the user approves the plan. Do not use AskUserQuestion for plan approval — the user will confirm or request changes in their own words.
 
 ## Step 2: Choose memory file and write plan
 
