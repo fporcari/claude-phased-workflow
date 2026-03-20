@@ -5,12 +5,10 @@
 - Commit messages must contain only the descriptive message of the changes
 
 ## Sourcerer
-- Sourcerer is the knowledge base for GenroPy patterns, conventions, and team practices.
-  When working on GenroPy code, check Sourcerer before implementing patterns from memory
-  — the documented solution may be more accurate or up-to-date than what you recall.
-- When new patterns, conventions, or non-trivial solutions emerge during work
-  → proactively propose saving them as a Sourcerer skill
-- When corrected by the user on a pattern → propose updating the relevant skill
+- Before implementing GenroPy patterns → check Sourcerer skills
+- Before debugging GenroPy issues → check Sourcerer skills
+- Before committing → check if new patterns emerged worth saving as skills
+- When corrected by the user → propose updating the relevant skill
 
 ## Logging
 - Use the package logger: `from gnr.app import pkglog as logger`
