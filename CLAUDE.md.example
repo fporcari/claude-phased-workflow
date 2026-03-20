@@ -1,0 +1,35 @@
+# Global rules — Francesco Porcari
+
+## Git Commits
+- NEVER add "Co-Authored-By" or any Claude/Anthropic mentions in commits
+- Commit messages must contain only the descriptive message of the changes
+
+## Sourcerer
+- Do not query Sourcerer unless explicitly requested
+- When new patterns, conventions, or non-trivial solutions emerge during work
+  → proactively propose saving them as a Sourcerer skill
+- When corrected by the user on a pattern → propose updating the relevant skill
+
+## Logging
+- Use the package logger: `from gnr.app import pkglog as logger`
+- In core modules: `logger = logging.getLogger("gnr.<module>")`
+- `print()` is acceptable during development, but NEVER commit it
+- NEVER commit `logging.basicConfig()` or custom handlers
+
+## Imports
+- NEVER import inside functions or methods
+- All imports at module level (top of file)
+- Enforced by the PostToolUse hook
+
+## Language
+- Follow the language convention of the existing codebase
+- Do not mix languages within the same module
+
+## Code
+- NEVER invent GenroPy APIs — always verify against the actual source
+- Prefer existing codebase patterns over new solutions
+
+## Debugging
+- Before proposing a fix, explicitly identify the root cause
+- If the root cause is unclear, investigate first — do not patch symptoms
+- If a fix feels like a workaround, say so and propose the proper solution too
