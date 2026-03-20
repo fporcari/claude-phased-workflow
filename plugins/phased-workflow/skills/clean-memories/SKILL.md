@@ -21,7 +21,7 @@ Run `pwd` to get the current path, then build the memory directory path.
 
 ### Step 2: List memory files
 
-Find all `*.md` files in the memory directory **excluding MEMORY.md**.
+Find all `*.md` files in the memory directory **including MEMORY.md**.
 
 For each file, read the YAML frontmatter (lines between the two `---`) and extract:
 - `name`
