@@ -1,7 +1,8 @@
-
 # Close Context
 
-Close the current worktree context. Must be run from inside a worktree.
+Close the current worktree context: remove the worktree directory, close VS Code, return to the main repo. The git branch is NOT deleted — it stays available for PRs, merges, or future work.
+
+Must be run from inside a worktree.
 
 ## Step 1: Verify we are in a worktree
 
@@ -47,18 +48,18 @@ Stato del contesto "<branch-name>":
 Piano: 4/4 fasi completate (oppure: 2/4 — incompleto)
 Modifiche non committate: 3 file (oppure: nessuna)
 Commit non pushati: 2 (oppure: nessuno)
-Merged in <parent>: si/no
+Merged in <parent>: sì/no
 Spazio occupato: 45MB
 
 Come vuoi procedere?
 
-[ ] Chiudi e rimuovi — elimina worktree e branch (consigliato se merged)
+[ ] Chiudi e rimuovi — elimina worktree, chiudi VS Code (consigliato)
 [ ] Chiudi e mantieni — torna al repo principale, worktree resta su disco
 [ ] Annulla — resta nel contesto
 ```
 
 Default:
-- "Chiudi e rimuovi" se merged e nessun cambio pendente
+- "Chiudi e rimuovi" se nessun cambio pendente
 - "Chiudi e mantieni" altrimenti
 
 ## Step 4: Execute
@@ -73,19 +74,25 @@ If unpushed commits exist, warn:
 - If yes: `git push -u origin <branch>`, then proceed
 - If no: require explicit confirmation that commits will be lost
 
-Remove:
+**Close VS Code window** for this worktree (if open):
+```bash
+# Get the worktree absolute path
+WORKTREE_PATH=$(git rev-parse --show-toplevel)
+# Close VS Code window for this folder
+command -v code >/dev/null 2>&1 && code --folder-uri "file://$WORKTREE_PATH" --command "workbench.action.closeWindow" 2>/dev/null
+```
+If the command fails, skip silently — the user can close VS Code manually.
+
+**Remove the worktree** (NOT the branch):
 ```bash
 MAIN_REPO=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
 cd "$MAIN_REPO"
 git worktree remove .claude/worktrees/<name> --force
 ```
 
-Delete branch:
-- If merged: `git branch -d <branch>`
-- If not merged but user confirmed: `git branch -D <branch>`
-- If pushed, also: `git push origin --delete <branch>`
+**The branch is NOT deleted.** Closing a context removes only the worktree directory and the VS Code workspace. The branch remains available for PRs, merges, or future work. Branch cleanup happens separately (after merge/PR, or via `/clean-contexts`).
 
-Inform: *"Contesto rimosso. Sei tornato su `$MAIN_REPO`."*
+Inform: *"Worktree rimosso. Il branch `<branch>` resta disponibile. Sei tornato su `$MAIN_REPO`."*
 
 ### Chiudi e mantieni
 
@@ -102,4 +109,5 @@ Do nothing.
 - NEVER remove without user confirmation
 - Always warn about data loss (uncommitted changes, unpushed commits)
 - Offer to push before removing if there are unpushed commits
+- Closing a context does NOT delete the git branch — only the worktree and VS Code workspace
 - After removal, the user's terminal will still be in the deleted directory — remind them to `cd` elsewhere
