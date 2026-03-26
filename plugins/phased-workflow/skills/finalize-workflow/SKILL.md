@@ -5,7 +5,7 @@ Verify the entire work plan is complete and prepare the final state for commit/P
 
 **IMPORTANT: This command is for FINALIZATION ONLY. Do NOT edit source code. If issues are found, report them to the user for delegation.**
 
-**Language rule:** All written content must be in English. Conversation with the user remains in Italian.
+**Language rule:** All written artifacts (MEMORY.md, commit messages, PR body) must be in English. Conversation with the user follows the language they initiated the conversation in.
 
 **UI rule:** Use `AskUserQuestion` for all questions. Provide `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format.
 

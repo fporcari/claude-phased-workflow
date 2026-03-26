@@ -3,7 +3,7 @@
 
 Execute the next uncompleted phase from the work plan (`MEMORY.md`). Supports both worktree-based and traditional workflows.
 
-**Language rule:** All written content (MEMORY.md updates, phase notes) must be in English. Conversation with the user remains in Italian as per global settings.
+**Language rule:** All written artifacts (MEMORY.md updates, phase notes) must be in English. Conversation with the user follows the language they initiated the conversation in.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user. Always provide a `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format.
 
@@ -57,7 +57,7 @@ Execute ONLY the identified phase. Do not touch other phases.
 
 ## Step 3: Wait for user verification
 
-After completing the phase implementation, use AskUserQuestion to ask (in Italian):
+After completing the phase implementation, use AskUserQuestion to ask:
 - Question: "Ho completato l'implementazione della fase. Puoi verificare e dirmi se funziona tutto?"
 - No default
 

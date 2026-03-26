@@ -137,10 +137,10 @@ Add PDF export capability for invoices...
   - Files: src/api/invoices.py
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | high | opus | yes |
-| Phase 2 | medium | sonnet | no |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | high | opus |
+| Phase 2 | medium | sonnet |
 ```
 
 The `Parent:` field is critical — it tells `/finalize-workflow` where to merge or create a PR.
@@ -253,9 +253,9 @@ Parent: <parent-branch> | Issue: #<number>
 [Constraints, dependencies, attention points]
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | medium | sonnet | no |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | medium | sonnet |
 ```
 
 ### Phase States
@@ -360,10 +360,7 @@ cd .claude/worktrees/fix-login-timeout && claude
 | Command | Purpose |
 |---------|---------|
 | `/issue <number>` | Load a GitHub issue and create operational context |
-| `/new-issue` | Create a new GitHub issue from templates |
 | `/clean-memories` | List and delete old memory files |
-| `/push-context-memory` | Sync the plan to Sourcerer (shared knowledge base) |
-| `/update-skills` | Update local skills from Sourcerer KB |
 
 ---
 

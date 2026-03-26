@@ -6,7 +6,7 @@ allowed-tools: Bash(gh:*)
 
 # GitHub Issue #$1
 
-**Language rule:** All written content must be in English. Conversation with the user remains in Italian as per global settings.
+**Language rule:** All written artifacts (issue title, body, labels) must be in English. Conversation with the user follows the language they initiated the conversation in.
 
 ## Issue Details
 

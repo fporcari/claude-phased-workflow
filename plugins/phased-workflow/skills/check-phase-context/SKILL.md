@@ -5,7 +5,7 @@ Verify the current state of the work plan from the supervisor chat.
 
 **IMPORTANT: This command is for SUPERVISION ONLY. Do NOT edit any source code.**
 
-**Language rule:** All written content must be in English. Conversation with the user remains in Italian.
+**Language rule:** All written artifacts (MEMORY.md, commit messages, PR body) must be in English. Conversation with the user follows the language they initiated the conversation in.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user.
 
@@ -85,7 +85,7 @@ When an oversized phase is detected:
 
 ## Step 5: Present status report
 
-Present to the user (in Italian) a clear summary:
+Present to the user a clear summary:
 
 1. **Stato del piano**: list each phase with its status from the selected memory file (`[x]`, `[ ]`, `[!]`, `[~]`)
 2. **Modifiche non committate**: list changed files grouped by the phase they belong to

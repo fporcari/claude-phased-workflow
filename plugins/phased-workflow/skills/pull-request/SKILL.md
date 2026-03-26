@@ -1,7 +1,7 @@
 
 # Pull Request Review & Creation
 
-**Language rule:** All written content (PR title, body, review reports) must be in English. Conversation with the user remains in Italian as per global settings.
+**Language rule:** All written artifacts (PR title, body, review reports) must be in English. Conversation with the user follows the language they initiated the conversation in.
 
 ## Parameters
 
@@ -110,7 +110,7 @@ If there's a linked issue:
 
 ### 4.3 Comments in English
 - ALL code comments MUST be in English
-- Flag any comments in Italian or other languages
+- Flag any comments not in English
 
 ### 4.4 Possible Regressions
 - Identify code that could break existing functionality
