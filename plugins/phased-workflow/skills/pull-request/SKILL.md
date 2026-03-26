@@ -1,8 +1,3 @@
----
-description: Create a Pull Request after thorough review as a meticulous maintainer
-argument-hint: [issue-number]
-allowed-tools: Bash(gh:*), Bash(git:*), Read, Grep, Glob, TodoWrite, AskUserQuestion
----
 
 # Pull Request Review & Creation
 
@@ -82,25 +77,6 @@ git merge origin/<BASE_BRANCH>
 ```
 
 If there are conflicts, STOP and report to the user how to resolve them.
-
-## Step 2B: Squash Commits (if needed)
-
-Check the number of commits relative to base branch:
-
-```bash
-git log origin/<BASE_BRANCH>..HEAD --oneline
-```
-
-If there are **more than 1 commit**:
-
-1. Analyze all commits to generate a single descriptive commit message summarizing all changes
-2. Execute squash:
-   ```bash
-   git reset --soft origin/<BASE_BRANCH>
-   git commit -m "<single descriptive message>"
-   ```
-
-If there's only one commit, proceed without squash.
 
 ## Step 3: Change Analysis
 
@@ -184,7 +160,7 @@ Proceed with PR creation.
    git push -u origin HEAD
    ```
 
-2. Generate summary by analyzing the commit (after squash if applicable):
+2. Generate summary by analyzing the commits:
    ```bash
    git log origin/<BASE_BRANCH>..HEAD --oneline
    ```

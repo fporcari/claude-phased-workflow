@@ -1,131 +1,140 @@
 # Claude Code Phased Workflow
 
-Un sistema di slash command per Claude Code che struttura il lavoro di sviluppo in fasi pianificate, eseguibili in sessioni indipendenti, con stato condiviso su file system.
+A slash command system for Claude Code that structures development work into planned phases, executable in independent sessions, with shared state on the file system.
 
-## Il pattern: Plan-Execute-Verify
-
-Questo workflow implementa un pattern noto nella letteratura sugli agenti AI: la **separazione tra pianificazione ed esecuzione**, con un ciclo di verifica tra le fasi.
+## The Pattern: Converse, Plan, Execute, Verify, Finalize
 
 ```mermaid
 flowchart TD
-    START((Idea / Issue)) --> SC["/setup-context\n📋 Pianificazione"]
-    SC --> |"Piano scritto\nin MEMORY.md"| EP["/execute-phase\n⚙️ Esecuzione fase"]
-    EP --> |"Fase completata\n+ commit"| CHECK{Altre fasi?}
-    CHECK --> |Sì| CPC["/check-phase-context\n🔍 Verifica stato"]
-    CPC --> |"Piano aggiornato"| EP
-    CHECK --> |No| FW["/finalize-workflow\n✅ Finalizzazione"]
-    FW --> PR["/pull-request\n🚀 Code review + PR"]
-    PR --> DONE((PR Creata))
+    START((Idea / Issue)) --> CC["/create-context topic\n🏗️ Create workspace"]
+    CC --> |"Branch + worktree\n+ VS Code"| CONV["Free conversation\n💬 Discuss with Claude"]
+    CONV --> WW["/write-workflow\n📋 Write the plan"]
+    WW --> |"MEMORY.md\nwith phases"| EP["/execute-phase\n⚙️ Execute phase"]
+    EP --> CHECK{More phases?}
+    CHECK --> |Yes| CPC["/check-phase-context\n🔍 Verify state"]
+    CPC --> EP
+    CHECK --> |No| FW["/finalize-workflow\n✅ Commit + merge/PR"]
+    FW --> DONE((Done))
 
-    style SC fill:#4a90d9,color:#fff
+    style CC fill:#4a90d9,color:#fff
+    style CONV fill:#9b59b6,color:#fff
+    style WW fill:#f39c12,color:#fff
     style EP fill:#e8943a,color:#fff
     style CPC fill:#7b68ee,color:#fff
     style FW fill:#50c878,color:#fff
-    style PR fill:#dc143c,color:#fff
     style START fill:#333,color:#fff
     style DONE fill:#333,color:#fff
 ```
 
-[Apri in Mermaid Live Editor](https://l.mermaid.ai/nAuTZb)
+---
+
+## Why This Approach?
+
+### The Problem: Context Window Limits
+
+Claude Code operates within a finite context window. Long sessions lead to:
+
+- Lost decisions from earlier in the conversation
+- Repeated analysis of the same code
+- Progressive quality degradation
+
+### The Solution: File-Based State, Disposable Sessions
+
+1. **Discuss freely** with Claude — no special format required
+2. **Crystallize the plan** into `MEMORY.md` with `/write-workflow`
+3. **Execute each phase in a dedicated chat** — fresh, full context every time
+4. **Finalize** with a single clean commit, then PR or merge
+
+`MEMORY.md` is the coordination point between sessions.
 
 ---
 
-## Perché questo approccio?
+## Commands
 
-### Il problema: la finestra di contesto
-
-Claude Code lavora in una finestra di contesto limitata. Quando una sessione diventa troppo lunga, il sistema compatta i messaggi precedenti, perdendo dettagli. Questo porta a:
-
-- Codice che "dimentica" decisioni prese a inizio sessione
-- Ripetizioni di analisi già fatte
-- Degradazione progressiva della qualità
-
-### La soluzione: stato su file, sessioni usa-e-getta
-
-Invece di cercare di fare tutto in una sessione lunghissima, il workflow:
-
-1. **Scrive il piano su file** (`MEMORY.md`) — sopravvive a qualsiasi sessione
-2. **Ogni fase viene eseguita in una chat dedicata** — contesto fresco e completo
-3. **Ogni fase termina con un commit** — checkpoint stabile e reversibile
-4. **Una chat supervisore** verifica il progresso e può correggere il piano
-
-Il file `MEMORY.md` è il punto di coordinamento: chi pianifica scrive, chi esegue legge e aggiorna, chi verifica controlla.
+| Command | When to use | What it does |
+|---------|------------|--------------|
+| `/create-context <topic>` | Starting new work | Creates branch + worktree + VS Code from any branch |
+| `/write-workflow` | After discussing the plan | Writes MEMORY.md from the conversation |
+| `/execute-phase` | Executing a phase | Runs the next phase from the plan |
+| `/check-phase-context` | Checking progress | Read-only analysis of plan vs git state |
+| `/finalize-workflow` | All phases done | Single clean commit + offers PR or merge |
+| `/pull-request` | Creating a PR | Rigorous code review + PR creation |
 
 ---
 
-## È un pattern conosciuto?
+## Typical Flow
 
-Sì. Questo workflow combina diversi pattern documentati nella letteratura sugli agenti AI e nell'ingegneria del software:
+```bash
+# 1. Create a workspace (from any branch)
+/create-context add PDF export for invoices
 
-| Pattern | Dove è documentato | Come lo usiamo |
-|---------|-------------------|----------------|
-| **Plan-and-Execute** | LangChain, LlamaIndex, letteratura accademica sugli agenti | Separazione netta tra `/setup-context` (pianifica) e `/execute-phase` (esegue) |
-| **Orchestrator-Worker** | Multi-agent systems (AutoGen, CrewAI) | La chat supervisore orchestra, le chat worker eseguono |
-| **Checkpoint & Resume** | Pipeline CI/CD, workflow engine (Airflow, Temporal) | Ogni fase completata = commit. Si può riprendere da qualsiasi punto |
-| **Shared State via Artifact** | Blackboard architecture (AI classica) | `MEMORY.md` è la "lavagna" condivisa tra sessioni |
-| **Context Window Management** | Pratica comune con LLM — documentata da Anthropic, OpenAI | Sessioni corte e focalizzate invece di conversazioni infinite |
+# 2. Enter the worktree and start a Claude session
+cd .claude/worktrees/feat-add-pdf-export && claude
 
-La novità specifica di questo workflow è che **rende esplicito e controllabile dall'utente** quello che altri strumenti (Devin, Cursor Agent, Windsurf) fanno internamente in modo opaco. Lo sviluppatore mantiene il controllo su ogni fase, può verificare, correggere il piano, scegliere il modello e l'effort per ogni fase.
+# 3. Discuss the work freely with Claude
+#    Explore code, ask questions, decide the approach...
 
----
+# 4. When the plan is clear, crystallize it
+/write-workflow
 
-## I comandi
+# 5. Execute phases (new chat for each — fresh context)
+/execute-phase    # Phase 1
+/execute-phase    # Phase 2
+# ... repeat for each phase
 
-### `/setup-context` — Pianificazione
-
-Il punto di partenza. Analizza il contesto e produce un piano strutturato in fasi.
-
-**Due modalità di ingresso:**
-
-```mermaid
-flowchart TD
-    CMD["/setup-context"] --> BRANCH{"Su quale\nbranch sei?"}
-
-    BRANCH --> |"Feature branch\n(es. 42-fix-login)"| CASEA["Caso A: Branch esistente"]
-    BRANCH --> |"main / develop"| CASEB["Caso B: Nuovo branch"]
-
-    CASEA --> ANALYZE["Analisi automatica:\n• git log dei commit\n• diff rispetto a base\n• issue GitHub linkata"]
-
-    CASEB --> SUBJECT["Utente descrive\nil lavoro da fare"]
-    SUBJECT --> NEWBR["Creazione branch\n(es. fix-login-timeout)"]
-    NEWBR --> PLAN
-
-    ANALYZE --> PLAN["Discussione e\napprovazione piano"]
-    PLAN --> MEMORY["Scrittura MEMORY.md\ncon fasi + config esecuzione"]
-
-    style CMD fill:#4a90d9,color:#fff
-    style CASEA fill:#50c878,color:#fff
-    style CASEB fill:#e8943a,color:#fff
-    style MEMORY fill:#7b68ee,color:#fff
+# 6. Finalize
+/finalize-workflow
 ```
 
-[Apri in Mermaid Live Editor](https://l.mermaid.ai/pbJBHl)
+---
 
-**Caso A — Sei su un feature branch:**
-Hai già iniziato a lavorare (o c'è un branch da una issue). Il comando analizza automaticamente i commit, il diff, e l'eventuale issue linkata. Poi discute con te il piano basandosi su quello che c'è già.
+## How Each Command Works
 
-**Caso B — Sei su main/develop:**
-Parti da zero. Descrivi cosa vuoi fare, il comando crea un branch e struttura il piano.
+### `/create-context <topic>` — Create Workspace
 
-**Output:** un file `MEMORY.md` con questo formato:
+The entry point. Creates the infrastructure for a new work stream:
+
+- Works from **any branch** — the current branch becomes the "parent"
+- Creates a **new branch** from the topic (e.g., "fix login timeout" → `fix-login-timeout`)
+- Creates an isolated **worktree** in `.claude/worktrees/<name>/`
+- Opens **VS Code** on the worktree directory (with a unique title bar color)
+- Saves the parent branch in `.claude/parent-branch`
+
+**No planning happens here.** After creating the workspace, enter the worktree and talk to Claude.
+
+### Free Conversation — Natural Planning
+
+After `/create-context`, open a terminal in the worktree:
+```bash
+cd .claude/worktrees/feat-add-pdf-export && claude
+```
+
+Talk to Claude naturally: describe what you want, explore the code together, discuss approaches. No required format, no special commands — just a normal chat.
+
+### `/write-workflow` — Crystallize the Plan
+
+When the discussion is mature, run this command. Claude:
+
+1. Synthesizes the conversation into **objective + concrete phases**
+2. Presents the plan for approval
+3. Writes `MEMORY.md` with phases, involved files, and execution config
+
+**Output:** a `MEMORY.md` file:
 
 ```markdown
-# Context: fix-login-timeout
-Base: develop | Issue: #42
+# Context: feat-add-pdf-export
+Parent: develop | Issue: #42
 
 ## Objective
-Fix the login timeout that occurs when...
+Add PDF export capability for invoices...
 
 ## Work Plan
-- [ ] **Phase 1**: Analyze timeout root cause
+- [ ] **Phase 1**: Create PDF generator service
   - Details: ...
-  - Files: src/auth/login.py, tests/test_auth.py
-- [ ] **Phase 2**: Implement fix
+  - Files: src/services/pdf.py
+- [ ] **Phase 2**: Add export endpoint
   - Details: ...
-  - Files: src/auth/login.py
-
-## Notes
-The timeout only happens with SSO users.
+  - Files: src/api/invoices.py
 
 ## Suggested execution config
 | Phase | Effort | Model | Sourcerer |
@@ -134,249 +143,244 @@ The timeout only happens with SSO users.
 | Phase 2 | medium | sonnet | no |
 ```
 
-La sezione **Suggested execution config** è una novità importante: cattura in fase di pianificazione il "peso" di ogni fase, così chi esegue sa subito quale modello e configurazione usare.
+The `Parent:` field is critical — it tells `/finalize-workflow` where to merge or create a PR.
 
-**Regola fondamentale:** questo comando non tocca MAI il codice sorgente. È solo pianificazione.
+### `/execute-phase` — Execute One Phase
+
+Runs **one phase** per chat session.
+
+Key behaviors:
+- **One phase per chat** — always-fresh context
+- **Never commits** (except WIP safety commit when context runs low)
+- **Human verification** — waits for the user to confirm before marking done
+- **Records modified files** in the `> Files:` line — source of truth for finalize
+
+### `/check-phase-context` — Supervision
+
+Read-only analysis of the plan vs actual code state. Detects drift, oversized phases, and proposes re-phasing. Does not touch source code.
+
+### `/finalize-workflow` — Finalize
+
+When all phases are complete:
+
+1. Verifies all phases are `[x]`
+2. Builds the workflow file list
+3. In a worktree: `git add -A` (everything belongs to this workflow)
+4. Creates a single clean commit
+5. **Offers three options:**
+   - **Pull request** — push and create PR toward the parent branch
+   - **Merge on parent** — direct merge on the parent branch, then optionally remove the worktree
+   - **Just commit** — leave as-is
+
+The merge option is designed for the **long feature with parallel sub-tasks** pattern.
+
+### `/pull-request` — Code Review + PR
+
+Acts as a meticulous maintainer: checks issue coherence, code quality, comments in English, security. Blocks the PR with a detailed report if problems are found.
 
 ---
 
-### `/execute-phase` — Esecuzione
+## Parallel Sub-Tasks
 
-Esegue UNA fase per volta, in una chat dedicata.
+The most powerful pattern: a large feature that requires parallel work streams.
 
 ```mermaid
 flowchart TD
-    START["/execute-phase"] --> SELECT["Seleziona piano attivo\nda MEMORY.md"]
-    SELECT --> CONFIG["Mostra configurazione:\n- Modello attivo\n- Effort suggerito\n- Scelta Sourcerer"]
-    CONFIG --> READ["Legge prima fase\nnon completata"]
-    READ --> EXEC["Esegue la fase"]
-    EXEC --> CTX{"Contesto\npieno?"}
-    CTX --> |Si| SAVE["Commit parziale\n+ nota in MEMORY.md"]
-    SAVE --> NEWCHAT["Suggerisce nuova chat\nper continuare"]
-    CTX --> |No| VERIFY["Chiede verifica\nall utente"]
-    VERIFY --> OK{"Test\npassato?"}
-    OK --> |No| FIX["Corregge i problemi"]
-    FIX --> VERIFY
-    OK --> |Si| UPDATE["Aggiorna MEMORY.md\ncon stato fatto"]
-    UPDATE --> COMMIT["Commit obbligatorio"]
+    DEV[develop] --> FEAT["feat-auth-refactor\n(long-running feature)"]
+    FEAT --> |"/create-context"| WTA["worktree A\nrefactor-login"]
+    FEAT --> |"/create-context"| WTB["worktree B\nrefactor-sessions"]
+    FEAT --> |"/create-context"| WTC["worktree C\nrefactor-tokens"]
+    WTA --> |"finalize → merge"| FEAT
+    WTB --> |"finalize → merge"| FEAT
+    WTC --> |"finalize → merge"| FEAT
+    FEAT --> |"PR"| DEV
 
-    style START fill:#e8943a,color:#fff
-    style COMMIT fill:#50c878,color:#fff
-    style NEWCHAT fill:#dc143c,color:#fff
+    style DEV fill:#333,color:#fff
+    style FEAT fill:#4a90d9,color:#fff
+    style WTA fill:#e8943a,color:#fff
+    style WTB fill:#50c878,color:#fff
+    style WTC fill:#7b68ee,color:#fff
 ```
 
-[Apri in Mermaid Live Editor](https://l.mermaid.ai/JXdGQS)
+Each worktree:
+1. Has its own isolated `MEMORY.md`
+2. Has its own VS Code window (different title bar color)
+3. Can be worked on independently
+4. Merges back to the parent feature branch when done
 
-All'avvio mostra la configurazione suggerita dal piano:
-
-```
-─────────────────────────────────────
-Fase: Analyze timeout root cause
-─────────────────────────────────────
-Modello attivo : claude-sonnet-4-6
-Effort attivo  : (non rilevabile — usa /model per verificare)
-Suggerimento da piano:
-  Effort  → high
-  Model   → opus
-  → Se vuoi allinearti, digita /model prima di continuare.
-─────────────────────────────────────
-```
-
-Questo permette allo sviluppatore di decidere se cambiare modello/effort prima di partire.
-
-**Punti chiave:**
-- **Una fase per chat** — contesto sempre fresco
-- **Commit obbligatorio** a fine fase — ogni fase è un checkpoint stabile
-- **Gestione proattiva del contesto** — se la chat si allunga troppo, suggerisce di salvare e continuare in una nuova sessione
-- **Verifica umana** — non procede finché l'utente non conferma che il test è passato
+Conflicts between sub-tasks emerge at merge time — exactly like in a human team, but with full visibility.
 
 ---
 
-### `/check-phase-context` — Supervisione
+## Key Design Decisions
 
-Verifica lo stato del piano rispetto al codice reale. È il comando che usi dalla chat supervisore per capire a che punto sei.
+### Why worktrees?
 
-Cosa fa:
-- Legge `MEMORY.md` e lo stato git (diff, commit, file non committati)
-- Incrocia le modifiche con le fasi del piano
-- Rileva **drift** (modifiche che non corrispondono a nessuna fase)
-- Rileva **fasi sovradimensionate** (troppe modifiche per una singola fase)
-- Propone **re-phasing**: split di fasi troppo grandi in sotto-fasi
+Git worktrees create isolated working directories on separate branches. Each worktree has its own file tree, so parallel workflows don't interfere. `git add -A` in a worktree is safe — everything there belongs to that workflow.
 
-Questo comando non tocca il codice — solo il file del piano, e solo se approvi un re-phasing.
+### Why no commit during phases?
 
----
+`/execute-phase` never commits (except a WIP safety commit when context runs low). This gives `/finalize-workflow` full control over the final commit — one clean commit per workflow, with a proper message.
 
-### `/finalize-workflow` — Finalizzazione
+### Why a separate `/write-workflow` command?
 
-Quando tutte le fasi sono completate:
-- Verifica che ogni fase sia `[x]`
-- Analizza lo stato git
-- Propone strategia di commit (squash o keep)
-- Genera il messaggio di commit
-- Pulisce `MEMORY.md`
+Planning is a natural conversation. Forcing it into a structured command felt rigid. Now you just talk to Claude, then `/write-workflow` captures the result. The plan comes from the discussion, not from a template.
+
+### Why merge instead of cherry-pick?
+
+When finalizing a sub-task worktree, merging the feature branch into the parent is cleaner than cherry-picking. It preserves history, avoids duplicate commits, and makes the merge visible in `git log`.
 
 ---
 
-### `/pull-request` — Code Review e PR
+## MEMORY.md Format
 
-Agisce come un maintainer esigente:
-- Verifica coerenza con la issue linkata
-- Controlla qualità del codice, commenti in inglese, security
-- Se trova problemi **blocca** la PR e produce un report
-- Se tutto ok, crea la PR su GitHub con template strutturato
+```markdown
+# Context: <branch-name>
+Parent: <parent-branch> | Issue: #<number>
 
----
+## Objective
+[2-3 sentences describing the goal]
 
-## Il pattern Supervisore-Worker
+## Work Plan
+- [ ] **Phase 1**: <title>
+  - Details: <what to do>
+  - Files: <involved files>
+- [x] **Phase 2**: <title>
+  > Done: what was accomplished
+  > Files: path/to/file1.py, path/to/file2.py
 
-L'aspetto più distintivo di questo workflow è la separazione tra **chi pianifica/supervisiona** e **chi esegue**.
+## Notes
+[Constraints, dependencies, attention points]
 
-```mermaid
-sequenceDiagram
-    participant U as 👤 Sviluppatore
-    participant S as 📋 Chat Supervisore
-    participant M as 📁 MEMORY.md
-    participant W as ⚙️ Chat Worker
-
-    U->>S: /setup-context
-    S->>M: Scrive piano con fasi
-    S-->>U: Piano pronto, lancia /execute-phase
-
-    U->>W: /execute-phase (nuova chat)
-    W->>M: Legge fase corrente
-    W->>W: Implementa fase
-    W->>M: Aggiorna stato [x] + commit
-    W-->>U: Fase completata
-
-    U->>S: /check-phase-context
-    S->>M: Legge stato aggiornato
-    S-->>U: Report: 2/5 fasi complete
-
-    U->>W: /execute-phase (nuova chat)
-    W->>M: Legge prossima fase
-    W->>W: Implementa fase
-    W->>M: Aggiorna stato [x] + commit
-    W-->>U: Fase completata
-
-    Note over U,W: Ripeti fino a completamento
-
-    U->>S: /finalize-workflow
-    S->>M: Verifica tutte [x]
-    S-->>U: Pronto per PR
-
-    U->>S: /pull-request
-    S-->>U: PR creata ✅
+## Suggested execution config
+| Phase | Effort | Model | Sourcerer |
+|-------|--------|-------|-----------|
+| Phase 1 | medium | sonnet | no |
 ```
 
-[Apri in Mermaid Live Editor](https://l.mermaid.ai/FR3trm)
+### Phase States
 
-In pratica lavori con **due tipi di chat** aperti in Claude Code:
-
-| | Chat Supervisore | Chat Worker |
-|---|---|---|
-| **Comandi** | `/setup-context`, `/check-phase-context`, `/finalize-workflow`, `/pull-request` | `/execute-phase` |
-| **Scopo** | Pianifica, verifica, finalizza | Implementa una singola fase |
-| **Tocca il codice?** | Mai | Sì |
-| **Durata** | Tutta la vita del task | Una per fase (usa-e-getta) |
-| **Modello tipico** | opus (ragionamento) | Varia per fase (config nel piano) |
+- `[ ]` — to do
+- `[x]` — completed (must have `> Files:` line)
+- `[!]` — completed with issues
+- `[~]` — blocked
 
 ---
 
-## Punti di forza
+## Strengths
 
-### 1. Contesto sempre fresco
-Ogni fase parte con una chat nuova. Niente degradazione, niente compaction, niente "ha dimenticato cosa doveva fare". Il piano su file è la memoria duratura.
+### 1. Always-Fresh Context
+Each phase starts with a new chat. No degradation, no compaction, no "forgot what it was doing." The plan on file is the durable memory.
 
-### 2. Checkpoint con git
-Ogni fase completata = un commit. Puoi:
-- Fare `git log` per ricostruire cosa è successo
-- Fare rollback di una singola fase
-- Riprendere il lavoro da qualsiasi punto, anche giorni dopo
+### 2. Git Checkpoints
+Each finalized workflow = a clean commit. You can `git log` to reconstruct what happened, rollback, or resume from any point.
 
-### 3. Flessibilità nel modello
-La tabella `Suggested execution config` nel piano permette di usare il modello giusto per il task giusto:
-- **haiku** per task meccanici (rinominare, spostare file)
-- **sonnet** per sviluppo standard
-- **opus** per fasi architetturali o di analisi complessa
+### 3. Model Flexibility
+The `Suggested execution config` table lets you choose the right model per phase:
+- **haiku** for mechanical tasks (rename, move files)
+- **sonnet** for standard development
+- **opus** for architectural analysis or complex multi-file phases
 
-Questo ottimizza costi e velocità senza sacrificare qualità dove serve.
+### 4. Developer Stays in Control
+This is not an autonomous agent. The developer:
+- Discusses the plan before execution
+- Verifies each phase before marking it done
+- Can correct the plan mid-stream (re-phasing)
+- Chooses model and effort per phase
 
-### 4. Lo sviluppatore resta in controllo
-Non è un agente autonomo che parte e torna con un risultato. Lo sviluppatore:
-- Approva il piano prima dell'esecuzione
-- Verifica ogni fase prima che venga marcata come completata
-- Può correggere il piano in corso d'opera (re-phasing)
-- Sceglie modello e effort per ogni fase
+### 5. Parallel Workflows
+Multiple worktrees = multiple independent workflows. Each has its own MEMORY.md, its own VS Code window, its own branch. Switch between them by changing directories.
 
-### 5. Piani paralleli
-Se stai lavorando su due cose contemporaneamente, il workflow supporta più piani con file separati (`MEMORY.md` + `memory_<context>.md`). Ogni `/execute-phase` chiede quale piano seguire.
-
-### 6. Tracciabilità
-Tutto è tracciabile:
-- Il piano è in un file versionabile
-- Ogni fase ha un commit
-- La PR finale ha un template strutturato
-- `/check-phase-context` può ricostruire lo stato in qualsiasi momento
+### 6. Full Traceability
+Everything is traceable: plan in a versionable file, single clean commit per workflow, structured PR template, `/check-phase-context` reconstructs state at any time.
 
 ---
 
-## Come iniziare
+## Getting Started
 
-### Prerequisiti
-- [Claude Code](https://claude.com/claude-code) installato
-- Repository git con remote configurato
-- GitHub CLI (`gh`) installato e autenticato
+### Prerequisites
+- [Claude Code](https://claude.com/claude-code) installed
+- Git repository with remote configured
+- GitHub CLI (`gh`) installed and authenticated
+- (Optional) VS Code with `code` in PATH
 
-### Setup
-1. Copia la cartella `.claude/commands/` nella root del tuo progetto (o nella tua home `~/.claude/commands/` per averla disponibile globalmente)
-2. I comandi saranno disponibili come slash command in Claude Code
+### Installation
 
-### Primo utilizzo
+**Option A — Clone and install as plugin:**
+```bash
+git clone https://github.com/fporcari/claude-phased-workflow.git
+# The plugin structure under plugins/phased-workflow/ is ready to use
 ```
-# Apri Claude Code nella directory del progetto
+
+**Option B — Copy commands manually:**
+```bash
+cp -r plugins/phased-workflow/skills/* ~/.claude/commands/
+```
+
+### First Use
+
+```bash
 claude
-
-# Parti dalla pianificazione
-> /setup-context
-
-# Segui i passaggi interattivi...
-# Quando il piano è pronto, apri una NUOVA chat:
+> /create-context fix login timeout
+cd .claude/worktrees/fix-login-timeout && claude
+# Discuss, then:
+> /write-workflow
+# Execute phases:
 > /execute-phase
-
-# Dalla chat supervisore, verifica il progresso:
-> /check-phase-context
-
-# Quando tutte le fasi sono completate:
+# Finalize:
 > /finalize-workflow
-> /pull-request
 ```
 
 ---
 
-## Comandi ausiliari
+## Auxiliary Commands
 
-| Comando | Uso |
-|---------|-----|
-| `/issue <numero>` | Carica una issue GitHub e crea contesto operativo |
-| `/push-context-memory` | Sincronizza il piano su Sourcerer (knowledge base condivisa) |
-| `/new_issue` | Crea una nuova issue GitHub |
+| Command | Purpose |
+|---------|---------|
+| `/issue <number>` | Load a GitHub issue and create operational context |
+| `/new-issue` | Create a new GitHub issue from templates |
+| `/clean-memories` | List and delete old memory files |
+| `/push-context-memory` | Sync the plan to Sourcerer (shared knowledge base) |
+| `/update-skills` | Update local skills from Sourcerer KB |
 
 ---
 
 ## FAQ
 
-**D: Posso usare `/execute-phase` senza aver fatto `/setup-context`?**
-No. Il comando cerca un `MEMORY.md` con fasi da eseguire. Se non esiste, ti dice di lanciare `/setup-context` prima.
+**Q: Can I use `/execute-phase` without `/write-workflow`?**
+No. The command looks for a `MEMORY.md` with phases to execute.
 
-**D: Cosa succede se la sessione di `/execute-phase` si allunga troppo?**
-Il comando monitora proattivamente il contesto. Quando si avvicina al limite, propone di committare il lavoro parziale, aggiornare `MEMORY.md` con una nota di progresso, e continuare in una nuova chat.
+**Q: What if the session gets too long?**
+`/execute-phase` monitors context proactively. It proposes a WIP safety commit and suggests a new chat.
 
-**D: Posso saltare delle fasi o cambiare l'ordine?**
-Il piano è un file Markdown — puoi modificarlo manualmente. `/check-phase-context` ti aiuta a capire se le modifiche fatte corrispondono ancora al piano.
+**Q: Can I skip or reorder phases?**
+Yes. The plan is Markdown — edit it. `/check-phase-context` verifies consistency.
 
-**D: Come funziona con branch che partono da una issue GitHub?**
-Se il branch inizia con un numero (es. `42-fix-login`), `/setup-context` carica automaticamente la issue #42 da GitHub e la usa come contesto per il piano.
+**Q: Does `/create-context` only work from develop?**
+No — any branch. The current branch becomes the parent. This enables parallel sub-tasks.
 
-**D: Posso lavorare su più task contemporaneamente?**
-Sì. Se `MEMORY.md` è già occupato da un piano attivo, `/setup-context` propone di creare un piano parallelo in `memory_<nome>.md`. Ogni `/execute-phase` chiede quale piano seguire.
+**Q: Is VS Code required?**
+No. The worktree is created regardless. Use any editor.
+
+**Q: Can I work without worktrees?**
+Yes. Run `/write-workflow` directly on a feature branch. The workflow uses selective file staging. Fully supported as "legacy mode."
+
+---
+
+## Known Patterns
+
+| Pattern | Origin | How We Use It |
+|---------|--------|---------------|
+| **Plan-and-Execute** | LangChain, LlamaIndex | Conversation → `/write-workflow` → `/execute-phase` |
+| **Checkpoint & Resume** | CI/CD pipelines | Each workflow = clean commit. Resume from any point |
+| **Shared State via Artifact** | Blackboard architecture | `MEMORY.md` as shared state between sessions |
+| **Context Window Management** | LLM best practices | Short, focused sessions instead of infinite conversations |
+| **Worktree Isolation** | Git best practices | Each workflow in its own worktree |
+
+The key innovation: making **explicit and user-controllable** what other tools (Devin, Cursor Agent, Windsurf) do internally and opaquely.
+
+---
+
+## License
+
+MIT

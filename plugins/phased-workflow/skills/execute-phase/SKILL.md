@@ -1,38 +1,55 @@
----
-description: Execute the next phase from the work plan (MEMORY.md or parallel context)
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
----
 
 # Execute Phase
 
-Execute the next uncompleted phase from the work plan. Supports both `MEMORY.md` and parallel context files (`memory_<name>.md`).
+Execute the next uncompleted phase from the work plan (`MEMORY.md`). Supports both worktree-based and traditional workflows.
 
 **Language rule:** All written content (MEMORY.md updates, phase notes) must be in English. Conversation with the user remains in Italian as per global settings.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user. Always provide a `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format.
 
-## Step 0: Select the workflow
+## Step 0: Detect environment and select the workflow
 
-As the VERY FIRST interaction, look in the current project's memory directory (the path indicated by the system as "persistent auto memory directory").
+As the VERY FIRST interaction, detect whether we are running inside a worktree or in the main repository.
 
-1. Check for `MEMORY.md` and any `memory_*.md` files that contain active uncompleted phases (`- [ ]`)
-2. **If no memory files have active phases** → inform the user there are no active plans
-3. **If only one memory file has active phases** → use it directly, no question needed, inform the user which plan was selected
-4. **If multiple memory files have active uncompleted phases** → use AskUserQuestion with checkbox-style options listing each active plan:
+### Worktree detection
+
+```bash
+# Check if current directory is inside a worktree
+git rev-parse --show-toplevel
+git worktree list --porcelain
+```
+
+Compare the current working directory with the worktree list:
+- **If inside a worktree** → look for `MEMORY.md` in the local `.claude/` directory. If found with active phases, use it directly — no further selection needed. Inform the user: "Esecuzione nel worktree `<name>`, piano trovato."
+- **If in the main repo** → proceed with standard memory file selection below.
+
+### Standard memory file selection (main repo)
+
+Look in the current project's memory directory for `MEMORY.md`. Also scan `.claude/worktrees/*/` for `MEMORY.md` files with active phases.
+
+1. Check local `MEMORY.md` and worktree MEMORY.md files for active uncompleted phases (`- [ ]`)
+2. **If no active plans found** → inform the user there are no active plans
+3. **If only one plan has active phases** → use it directly, inform the user which plan was selected
+4. **If multiple plans have active phases** (local + worktrees) → use AskUserQuestion:
    ```
    Quale workflow vuoi eseguire?
 
    [ ] MEMORY.md — <context name from first line>
-   [ ] memory_<name>.md — <context name from first line>
+   [ ] worktree: <name> — <context from worktree MEMORY.md>
    ...
    ```
-   - Default: the file with the most uncompleted phases
+   - If a worktree plan is selected, inform the user: "Questo workflow è in un worktree. Apri una sessione da: `cd .claude/worktrees/<name> && claude`"
 5. Store the chosen file path — all subsequent reads/writes in this session target that file.
 ## Step 1: Read the plan
 
-Read the selected memory file (chosen in Step 0). Identify the first phase marked `- [ ]` (uncompleted).
+Read the selected memory file (chosen in Step 0). Extract:
+- Branch name and parent branch (from `Parent:` line)
+- Issue number (if any)
+- All phases and their status
 
-If no phases remain, inform the user the plan is complete.
+Identify the first phase marked `- [ ]` (uncompleted).
+
+If no phases remain, inform the user the plan is complete and suggest running `/finalize-workflow`.
 
 ## Step 2: Execute the phase
 
@@ -53,20 +70,26 @@ After the user confirms, update the selected memory file (chosen in Step 0):
 **If completed successfully**:
 ```
 - [x] **Phase N**: title
-  > Done: brief description of what was done / modified files
+  > Done: brief description of what was done
+  > Files: path/to/file1.py, path/to/file2.py, ...
 ```
+**IMPORTANT:** Always list ALL modified/created/deleted files in the `> Files:` line. This is the source of truth used by `/finalize-workflow` to determine which files belong to this workflow when parallel workflows exist.
 
 **If completed with issues or doubts**:
 ```
 - [!] **Phase N**: title
   > Issue: description of the problem and what was partially done
+  > Files: path/to/file1.py, path/to/file2.py, ...
 ```
 
 **If unable to complete**:
 ```
 - [~] **Phase N**: title
   > Blocked: reason for the block and what is needed to unblock
+  > Files: path/to/file1.py, path/to/file2.py, ... (if any were modified)
 ```
+
+**IMPORTANT: Do NOT commit after completing a phase.** Commits are handled exclusively by `/finalize-workflow`, which has full visibility on the workflow state and produces a single clean commit.
 
 ## Context window management (CRITICAL)
 
@@ -86,20 +109,26 @@ Use AskUserQuestion:
 ```
 ⚠️ Il contesto si sta riempiendo. Ti consiglio di aprire una nuova chat e lanciare di nuovo /execute-phase per continuare con qualità ottimale.
 
-Vuoi che prima faccia commit del lavoro fatto finora?
+Vuoi che faccia un commit WIP di salvataggio prima di chiudere?
 ```
 - Default: "si"
 
-### Before switching: save progress
+### Before switching: save progress (WIP commit)
 
 If the phase is partially done when context gets tight:
-1. **Commit** any working changes (ask confirmation)
+1. **WIP commit** of working changes (ask confirmation):
+   ```bash
+   git add <modified files>
+   git commit -m "WIP: <phase title> — partial progress"
+   ```
+   This is the ONLY case where execute-phase is allowed to commit — as a safety net to avoid losing work across chat sessions.
 2. **Update the memory file** with a progress note on the current phase:
    ```
    - [ ] **Phase N**: title
-     > In progress: description of what was done so far and what remains
+     > In progress: description of what was done so far and what remains. WIP commit present.
    ```
 3. This way the next chat can pick up exactly where this one left off.
+4. `/finalize-workflow` will incorporate WIP commits into the final clean commit.
 
 ## Rules
 
@@ -107,4 +136,5 @@ If the phase is partially done when context gets tight:
 - Do not modify other phases in the plan
 - Do not refactor or improve outside of scope
 - If the phase requires non-obvious architectural decisions, ask the user
-- Al termine di ogni fase completata con successo ([x]), esegui sempre un commit. Chiedi conferma del messaggio di commit, ma il commit è obbligatorio — non opzionale. Questo garantisce che check-phase-context e finalize-workflow possano sempre usare git log per ricostruire lo stato stabile del lavoro.
+- Do NOT commit after completing a phase — commits are handled by `/finalize-workflow`
+- The only exception is the WIP safety commit when context is running out (see above)

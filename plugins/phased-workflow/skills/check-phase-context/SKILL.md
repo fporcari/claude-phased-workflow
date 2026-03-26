@@ -1,7 +1,3 @@
----
-description: Check the current status of the work plan phases
-allowed-tools: Bash(git:*), Read, Edit, Grep, Glob, AskUserQuestion
----
 
 # Check Phase Context
 
@@ -13,19 +9,33 @@ Verify the current state of the work plan from the supervisor chat.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user.
 
-## Step 1: Select and read current state
+## Step 1: Detect environment and select plan
 
-Look in the current project's memory directory for `MEMORY.md` and any `memory_*.md` files.
+### Worktree detection
 
-1. **If only one memory file has active phases (`- [ ]`)** → use it directly
-2. **If multiple memory files have active phases** → use AskUserQuestion with checkbox-style options:
+```bash
+git rev-parse --show-toplevel
+git worktree list --porcelain
+```
+
+Compare the current working directory with the worktree list:
+- **If inside a worktree** → look for `MEMORY.md` in the local `.claude/` directory. Use it directly.
+- **If in the main repo** → proceed with plan selection below.
+
+### Plan selection (main repo)
+
+Look in the project's memory directory for `MEMORY.md`. Also scan `.claude/worktrees/*/` for `MEMORY.md` files with active phases.
+
+1. **If only one plan has active phases (`- [ ]`)** → use it directly
+2. **If multiple plans have active phases** → use AskUserQuestion:
    ```
    Ci sono più piani attivi. Quale vuoi verificare?
 
    [ ] MEMORY.md — <context name from first line>
-   [ ] memory_<name>.md — <context name from first line>
+   [ ] worktree: <name> — <context from worktree MEMORY.md>
    ```
    - Default: `MEMORY.md`
+   - If a worktree plan is selected, read the MEMORY.md from that worktree path and run git commands from there
 3. Store the chosen file path — all reads/writes in this session target that file.
 
 Read the selected memory file.
