@@ -306,16 +306,38 @@ Everything is traceable: plan in a versionable file, single clean commit per wor
 
 ### Installation
 
-**Option A — Clone and install as plugin:**
+**Option A — Install from marketplace (recommended):**
+
+Add the marketplace and install the plugin directly from Claude Code:
 ```bash
-git clone https://github.com/fporcari/claude-phased-workflow.git
-# The plugin structure under plugins/phased-workflow/ is ready to use
+claude plugin marketplace add fporcari/claude-phased-workflow
+claude plugin install phased-workflow@fporcari/claude-phased-workflow
 ```
 
-**Option B — Copy commands manually:**
-```bash
-cp -r plugins/phased-workflow/skills/* ~/.claude/commands/
+Or from inside a Claude Code session:
 ```
+/plugin marketplace add fporcari/claude-phased-workflow
+/plugin install phased-workflow
+```
+
+**Option B — Install for a specific project:**
+
+Add to your project's `.claude/settings.json`:
+```json
+{
+  "plugins": {
+    "marketplaces": ["fporcari/claude-phased-workflow"],
+    "installed": ["phased-workflow@fporcari/claude-phased-workflow"]
+  }
+}
+```
+
+**Option C — Copy commands manually:**
+```bash
+git clone https://github.com/fporcari/claude-phased-workflow.git
+cp -r claude-phased-workflow/plugins/phased-workflow/skills/*/SKILL.md ~/.claude/commands/
+```
+Note: when copying manually, rename each `SKILL.md` to `<command-name>.md` (e.g., `create-context.md`).
 
 ### First Use
 
