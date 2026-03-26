@@ -189,6 +189,8 @@ When all phases are complete:
 
 The merge option is designed for the **long feature with parallel sub-tasks** pattern.
 
+**After finalizing:** run `/close-context` to clean up the worktree, or do it after creating the PR with `/pull-request`. Either way, the worktree stays on disk until you explicitly remove it.
+
 ### `/pull-request` — Code Review + PR
 
 Acts as a meticulous maintainer: checks issue coherence, code quality, comments in English, security. Blocks the PR with a detailed report if problems are found.
