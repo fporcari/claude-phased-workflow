@@ -3,7 +3,7 @@
 
 Execute the next uncompleted phase from the work plan (`MEMORY.md`). Supports both worktree-based and traditional workflows.
 
-**Language rule:** All written artifacts (MEMORY.md updates, phase notes) must be in English. Conversation with the user follows the language they initiated the conversation in.
+**Language rule:** All written artifacts (MEMORY.md updates, phase notes) must be in English.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user. Always provide a `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format.
 
@@ -107,7 +107,7 @@ Suggest opening a new chat to continue when ANY of these conditions apply:
 
 Use AskUserQuestion:
 ```
-⚠️ Il contesto si sta riempiendo. Ti consiglio di aprire una nuova chat e lanciare di nuovo /execute-phase per continuare con qualità ottimale.
+Il contesto si sta riempiendo. Ti consiglio di aprire una nuova chat e lanciare di nuovo /execute-phase per continuare con qualita' ottimale.
 
 Vuoi che faccia un commit WIP di salvataggio prima di chiudere?
 ```

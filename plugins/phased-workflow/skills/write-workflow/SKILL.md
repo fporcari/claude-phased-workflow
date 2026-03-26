@@ -5,7 +5,7 @@ Crystallize the current conversation into a phased work plan in MEMORY.md.
 
 **This command assumes you already discussed the work with the user.** Use the conversation context to build the plan — do not start from scratch.
 
-**Language rule:** All written artifacts (MEMORY.md, phase notes) must be in English. Conversation with the user follows the language they initiated the conversation in.
+**Language rule:** All written artifacts (MEMORY.md, phase notes) must be in English.
 
 ## Step 1: Detect environment
 
@@ -63,16 +63,16 @@ Parent: <parent-branch> | Issue: #<number> (if present)
 [Any attention points, dependencies, breaking changes]
 
 ## Suggested execution config
-| Phase | Effort | Model |
-|-------|--------|-------|
-| Phase 1 | ... | ... |
-| Phase 2 | ... | ... |
+| Phase | Effort | Model | Sourcerer |
+|-------|--------|-------|-----------|
+| Phase 1 | ... | ... | ... |
+| Phase 2 | ... | ... | ... |
 ```
 
 Rules for "Suggested execution config":
 - **Effort**: `low` for mechanical/repetitive, `medium` for standard, `high` for architecture/complex, `max` for unbounded analysis
 - **Model**: `haiku` for simple, `sonnet` for standard, `opus` for deep reasoning
-
+- **Sourcerer**: `yes` if touches architectural patterns or framework conventions; `no` otherwise
 
 Principles for phases:
 - Each phase must be **self-contained and independently testable**

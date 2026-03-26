@@ -5,7 +5,7 @@ Verify the current state of the work plan from the supervisor chat.
 
 **IMPORTANT: This command is for SUPERVISION ONLY. Do NOT edit any source code.**
 
-**Language rule:** All written artifacts (MEMORY.md, commit messages, PR body) must be in English. Conversation with the user follows the language they initiated the conversation in.
+**Language rule:** All written artifacts must be in English.
 
 **UI rule:** Use `AskUserQuestion` tool for ALL questions to the user.
 
@@ -29,7 +29,7 @@ Look in the project's memory directory for `MEMORY.md`. Also scan `.claude/workt
 1. **If only one plan has active phases (`- [ ]`)** → use it directly
 2. **If multiple plans have active phases** → use AskUserQuestion:
    ```
-   Ci sono più piani attivi. Quale vuoi verificare?
+   Ci sono piu' piani attivi. Quale vuoi verificare?
 
    [ ] MEMORY.md — <context name from first line>
    [ ] worktree: <name> — <context from worktree MEMORY.md>
@@ -87,15 +87,15 @@ When an oversized phase is detected:
 
 Present to the user a clear summary:
 
-1. **Stato del piano**: list each phase with its status from the selected memory file (`[x]`, `[ ]`, `[!]`, `[~]`)
-2. **Modifiche non committate**: list changed files grouped by the phase they belong to
-3. **Copertura fasi**: for each `[ ]` or `[!]` phase, indicate if uncommitted changes already address it (fully/partially/not at all)
+1. **Plan status**: list each phase with its status from the selected memory file (`[x]`, `[ ]`, `[!]`, `[~]`)
+2. **Uncommitted changes**: list changed files grouped by the phase they belong to
+3. **Phase coverage**: for each `[ ]` or `[!]` phase, indicate if uncommitted changes already address it (fully/partially/not at all)
 4. **Drift**: any uncommitted changes that don't match any planned phase
-5. **Fasi sovradimensionate**: if any phase is oversized, present the re-phasing proposal with:
+5. **Oversized phases**: if any phase is oversized, present the re-phasing proposal with:
    - Which changes to commit now
    - Proposed new sub-phases
    - Ask the user (via `AskUserQuestion`) if they want to apply the re-phasing
-6. **Prossimo passo**: suggest whether to commit, continue working, re-phase, or update the plan
+6. **Next step**: suggest whether to commit, continue working, re-phase, or update the plan
 
 ## Step 6: Apply re-phasing (if approved)
 

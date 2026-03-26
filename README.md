@@ -6,15 +6,20 @@ A slash command system for Claude Code that structures development work into pla
 
 ```mermaid
 flowchart TD
-    START((Idea / Issue)) --> CC["/create-context topic\n🏗️ Create workspace"]
-    CC --> |"Branch + worktree\n+ VS Code"| CONV["Free conversation\n💬 Discuss with Claude"]
-    CONV --> WW["/write-workflow\n📋 Write the plan"]
-    WW --> |"MEMORY.md\nwith phases"| EP["/execute-phase\n⚙️ Execute phase"]
+    START((Idea / Issue)) --> CC["/create-context topic\nCreate workspace"]
+    CC --> |"Branch + worktree\n+ VS Code"| CONV["Free conversation\nDiscuss with Claude"]
+    CONV --> WW["/write-workflow\nWrite the plan"]
+    WW --> |"MEMORY.md\nwith phases"| EP["/execute-phase\nExecute phase"]
     EP --> CHECK{More phases?}
-    CHECK --> |Yes| CPC["/check-phase-context\n🔍 Verify state"]
+    CHECK --> |Yes| CPC["/check-phase-context\nVerify state"]
     CPC --> EP
-    CHECK --> |No| FW["/finalize-workflow\n✅ Commit + merge/PR"]
-    FW --> DONE((Done))
+    CHECK --> |No| FW["/finalize-workflow\nCommit + merge/PR"]
+    FW --> PR{Delivery}
+    PR --> |PR| PULL["/pull-request\nReview + create PR"]
+    PR --> |Merge| DONE((Done))
+    PULL --> DONE
+    FW --> CLOSE["/close-context\nRemove worktree"]
+    CLOSE --> DONE
 
     style CC fill:#4a90d9,color:#fff
     style CONV fill:#9b59b6,color:#fff
@@ -22,8 +27,11 @@ flowchart TD
     style EP fill:#e8943a,color:#fff
     style CPC fill:#7b68ee,color:#fff
     style FW fill:#50c878,color:#fff
+    style PULL fill:#2ecc71,color:#fff
+    style CLOSE fill:#e74c3c,color:#fff
     style START fill:#333,color:#fff
     style DONE fill:#333,color:#fff
+    style PR fill:#555,color:#fff
 ```
 
 ---
@@ -59,6 +67,10 @@ Claude Code operates within a finite context window. Long sessions lead to:
 | `/check-phase-context` | Checking progress | Read-only analysis of plan vs git state |
 | `/finalize-workflow` | All phases done | Single clean commit + offers PR or merge |
 | `/pull-request` | Creating a PR | Rigorous code review + PR creation |
+| `/close-context` | Closing a worktree | Close and optionally remove a worktree context |
+| `/clean-contexts` | Housekeeping | List and remove stale worktree contexts |
+| `/issue <number>` | Investigating an issue | Load a GitHub issue and analyze codebase |
+| `/clean-memories` | Housekeeping | List and delete old memory files |
 
 ---
 
@@ -84,6 +96,9 @@ cd .claude/worktrees/feat-add-pdf-export && claude
 
 # 6. Finalize
 /finalize-workflow
+
+# 7. Close the worktree when done
+/close-context
 ```
 
 ---
@@ -177,6 +192,20 @@ The merge option is designed for the **long feature with parallel sub-tasks** pa
 ### `/pull-request` — Code Review + PR
 
 Acts as a meticulous maintainer: checks issue coherence, code quality, comments in English, security. Blocks the PR with a detailed report if problems are found.
+
+### `/close-context` — Close Worktree
+
+Close the current worktree context. Must be run from inside a worktree. Checks for uncommitted changes and unpushed commits before offering options:
+
+- **Close and remove** — delete worktree and branch (recommended if merged)
+- **Close and keep** — return to the main repo, worktree stays on disk
+- **Cancel** — stay in the context
+
+Always warns about potential data loss before removing.
+
+### `/clean-contexts` — Housekeeping
+
+List all worktree contexts with their status (merged, completed, orphaned) and let the user select which ones to remove. Detects orphaned directories and shows disk space freed after cleanup.
 
 ---
 
@@ -351,16 +380,9 @@ cd .claude/worktrees/fix-login-timeout && claude
 > /execute-phase
 # Finalize:
 > /finalize-workflow
+# Close when done:
+> /close-context
 ```
-
----
-
-## Auxiliary Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/issue <number>` | Load a GitHub issue and create operational context |
-| `/clean-memories` | List and delete old memory files |
 
 ---
 
@@ -383,6 +405,9 @@ No. The worktree is created regardless. Use any editor.
 
 **Q: Can I work without worktrees?**
 Yes. Run `/write-workflow` directly on a feature branch. The workflow uses selective file staging. Fully supported as "legacy mode."
+
+**Q: How do I clean up old worktrees?**
+Use `/clean-contexts` from the main repo. It lists all worktrees with their status and lets you select which to remove. Or use `/close-context` from inside a specific worktree.
 
 ---
 

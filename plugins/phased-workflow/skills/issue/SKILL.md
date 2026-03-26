@@ -1,46 +1,32 @@
----
-description: Load a GitHub issue and create an operational context to solve it
-argument-hint: <issue-number>
-allowed-tools: Bash(gh:*)
----
 
 # GitHub Issue #$1
 
-**Language rule:** All written artifacts (issue title, body, labels) must be in English. Conversation with the user follows the language they initiated the conversation in.
+**Language rule:** All written artifacts must be in English.
 
-## Issue Details
+**IMPORTANT: This command is for ANALYSIS ONLY. Do NOT edit source code or implement anything. Use `/setup-context` to create the work plan.**
 
-Fetch issue details using GitHub CLI:
+## Step 1: Fetch issue
 
 ```
-gh issue view $1
+gh issue view $1 --json title,body,labels,state,comments --jq '{title,body,labels: [.labels[].name],state,comments: [.comments[].body]}'
 ```
 
-## Instructions
+## Step 2: Analyze
 
-After reading the issue:
+1. **Understand the issue**: problem, expected behavior, reproduction steps
+2. **Explore the codebase** to identify relevant files, components, and existing tests
+3. **Assess scope**: is this a quick fix or a multi-phase task?
 
-1. **Analyze the issue**: Understand the described problem, any reported errors, and expected behavior
+## Step 3: Present and hand off
 
-2. **Explore the codebase**: Find relevant files by searching for:
-   - Code mentioned in the issue
-   - Files related to the affected component/feature
-   - Existing related tests
+Present to the user a summary of:
+- What the issue is about
+- Which files/components are involved
+- Estimated complexity
 
-3. **Create a work plan**: Use TodoWrite to create a task list with:
-   - Files to modify
-   - Required changes
-   - Tests to add or update
+Then suggest: *"Vuoi che proceda con `/setup-context` per creare il piano di lavoro?"*
 
-4. **Implement the solution**:
-   - Follow project conventions
-   - Keep changes minimal and focused
-   - Add tests if needed
-
-5. **Prepare the commit**: When requested, create a commit with message:
-   ```
-   Fix #$1: [brief fix description]
-   ```
+If the user confirms, inform them to run `/setup-context` in this or a new session — this command does not create the plan itself.
 
 ## Additional Context
 

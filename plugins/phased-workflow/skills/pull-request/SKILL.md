@@ -1,7 +1,7 @@
 
 # Pull Request Review & Creation
 
-**Language rule:** All written artifacts (PR title, body, review reports) must be in English. Conversation with the user follows the language they initiated the conversation in.
+**Language rule:** All written artifacts (PR title, body, review reports) must be in English.
 
 ## Parameters
 

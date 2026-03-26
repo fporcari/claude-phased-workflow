@@ -5,7 +5,7 @@ Verify the entire work plan is complete and prepare the final state for commit/P
 
 **IMPORTANT: This command is for FINALIZATION ONLY. Do NOT edit source code. If issues are found, report them to the user for delegation.**
 
-**Language rule:** All written artifacts (MEMORY.md, commit messages, PR body) must be in English. Conversation with the user follows the language they initiated the conversation in.
+**Language rule:** All written artifacts (MEMORY.md, commit messages, PR body) must be in English.
 
 **UI rule:** Use `AskUserQuestion` for all questions. Provide `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format.
 
@@ -30,14 +30,14 @@ Set `IN_WORKTREE=true/false` for use in subsequent steps.
 1. **If only one memory file has active phases** → use it directly
 2. **If multiple memory files have active phases** → use AskUserQuestion with checkbox-style options:
    ```
-   Ci sono più piani attivi. Quale vuoi finalizzare?
+   Ci sono piu' piani attivi. Quale vuoi finalizzare?
 
    [ ] MEMORY.md — <context name from first line>
    [ ] memory_<name>.md — <context name from first line>
    [ ] worktree: <name> — <context from worktree MEMORY.md>
    ```
    - Default: `MEMORY.md`
-   - If a worktree plan is selected from the main repo, inform the user: "Questo workflow è in un worktree. Esegui `/finalize-workflow` da: `cd .claude/worktrees/<name> && claude`"
+   - If a worktree plan is selected from the main repo, inform the user: "Questo workflow e' in un worktree. Esegui `/finalize-workflow` da: `cd .claude/worktrees/<name> && claude`"
 3. Store the chosen file path — all reads/writes in this session target that file.
 
 Read the selected memory file and extract:
@@ -183,7 +183,7 @@ Workflow completato e committato. Come vuoi procedere?
 
 [ ] Pull request — push branch e crea PR verso <parent-branch> (consigliato)
 [ ] Merge sul parent — merge diretto su <parent-branch> e push
-[ ] Solo commit — lascia tutto com'è, decido dopo
+[ ] Solo commit — lascia tutto com'e', decido dopo
 ```
 Default: "Pull request"
 
@@ -224,6 +224,10 @@ Inform the user the work is committed locally and they can decide later.
 
 ### Memory cleanup
 After any option, leave MEMORY.md as-is — all phases are `[x]`. If the worktree is removed, the MEMORY.md goes with it.
+
+### Suggest cleanup
+After completing any option, if IN_WORKTREE=true, inform the user:
+*"Per rimuovere questo e altri worktree vecchi, lancia `/clean-contexts` dal repo principale."*
 
 ## Rules
 
