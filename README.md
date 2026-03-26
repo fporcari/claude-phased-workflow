@@ -197,13 +197,15 @@ Acts as a meticulous maintainer: checks issue coherence, code quality, comments 
 
 ### `/close-context` — Close Worktree
 
-Close the current worktree context. Must be run from inside a worktree. Checks for uncommitted changes and unpushed commits before offering options:
+Close the current worktree context. Must be run from inside a worktree. Removes the worktree directory and closes the VS Code window. **The git branch is NOT deleted** — it stays available for PRs, merges, or future work.
 
-- **Close and remove** — delete worktree and branch (recommended if merged)
+Options:
+
+- **Close and remove** — remove worktree + close VS Code (recommended)
 - **Close and keep** — return to the main repo, worktree stays on disk
 - **Cancel** — stay in the context
 
-Always warns about potential data loss before removing.
+Always warns about uncommitted changes and unpushed commits before removing. Branch cleanup happens separately via `/clean-contexts` after merging.
 
 ### `/clean-contexts` — Housekeeping
 
