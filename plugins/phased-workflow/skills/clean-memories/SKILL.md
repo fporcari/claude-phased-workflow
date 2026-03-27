@@ -1,3 +1,7 @@
+---
+description: List all memory files for the current project and let the user select which ones to delete
+allowed-tools: Bash(find:*), Bash(ls:*), Bash(cat:*), Bash(rm:*), Bash(wc:*), Read, Glob, Grep, Write, Edit, AskUserQuestion
+---
 
 # Clean Memories
 

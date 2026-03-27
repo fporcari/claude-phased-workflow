@@ -1,3 +1,7 @@
+---
+description: List and clean up old worktree contexts
+allowed-tools: Bash(git:*), Bash(du:*), Bash(rm:*), Bash(ls:*), AskUserQuestion
+---
 
 # Clean Contexts
 
@@ -34,7 +38,7 @@ Worktree contexts trovati:
 
 1. feat-export-pdf
    Branch: feat-export-pdf | Ultimo commit: 3 giorni fa
-   Stato piano: completato (5/5 fasi) | Merged: si | Size: 45MB
+   Stato piano: completato (5/5 fasi) | Merged: sì | Size: 45MB
 
 2. fix-login-timeout
    Branch: fix-login-timeout | Ultimo commit: 2 settimane fa
@@ -79,7 +83,7 @@ For each selected worktree:
 
 4. **Remove branch** (only if merged or user confirms):
    - If merged: `git branch -d <branch>`
-   - If not merged, ask: "Il branch <name> non e' merged. Vuoi eliminarlo comunque?"
+   - If not merged, ask: "Il branch <name> non è merged. Vuoi eliminarlo comunque?"
    - If yes: `git branch -D <branch>`
    - Also remove remote branch if pushed: `git push origin --delete <branch>`
 

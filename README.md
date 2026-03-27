@@ -6,8 +6,7 @@ A slash command system for Claude Code that structures development work into pla
 
 ```mermaid
 flowchart TD
-    START((Idea / Issue)) --> CC["/create-context topic\nCreate workspace"]
-    CC --> |"Branch + worktree\n+ VS Code"| CONV["Free conversation\nDiscuss with Claude"]
+    START((Idea / Issue)) --> CONV["Free conversation\nDiscuss with Claude"]
     CONV --> WW["/write-workflow\nWrite the plan"]
     WW --> |"MEMORY.md\nwith phases"| EP["/execute-phase\nExecute phase"]
     EP --> CHECK{More phases?}
@@ -18,21 +17,19 @@ flowchart TD
     PR --> |PR| PULL["/pull-request\nReview + create PR"]
     PR --> |Merge| DONE((Done))
     PULL --> DONE
-    FW --> CLOSE["/close-context\nRemove worktree"]
-    CLOSE --> DONE
 
-    style CC fill:#4a90d9,color:#fff
     style CONV fill:#9b59b6,color:#fff
     style WW fill:#f39c12,color:#fff
     style EP fill:#e8943a,color:#fff
     style CPC fill:#7b68ee,color:#fff
     style FW fill:#50c878,color:#fff
     style PULL fill:#2ecc71,color:#fff
-    style CLOSE fill:#e74c3c,color:#fff
     style START fill:#333,color:#fff
     style DONE fill:#333,color:#fff
     style PR fill:#555,color:#fff
 ```
+
+> **Note:** `/create-context` is **not required** to use the workflow. It creates an isolated worktree, which is useful when you need to **parallelize** multiple tasks on the same repo. For a single task, just work directly on your branch.
 
 ---
 
@@ -59,16 +56,28 @@ Claude Code operates within a finite context window. Long sessions lead to:
 
 ## Commands
 
+### Core workflow (works anywhere)
+
 | Command | When to use | What it does |
 |---------|------------|--------------|
-| `/create-context <topic>` | Starting new work | Creates branch + worktree + VS Code from any branch |
 | `/write-workflow` | After discussing the plan | Writes MEMORY.md from the conversation |
 | `/execute-phase` | Executing a phase | Runs the next phase from the plan |
 | `/check-phase-context` | Checking progress | Read-only analysis of plan vs git state |
 | `/finalize-workflow` | All phases done | Single clean commit + offers PR or merge |
 | `/pull-request` | Creating a PR | Rigorous code review + PR creation |
-| `/close-context` | Closing a worktree | Close and optionally remove a worktree context |
+
+### Context management (optional — for parallelization)
+
+| Command | When to use | What it does |
+|---------|------------|--------------|
+| `/create-context <topic>` | Need isolated workspace | Creates branch + worktree + VS Code from any branch |
+| `/close-context` | Done with a worktree | Close and optionally remove a worktree context |
 | `/clean-contexts` | Housekeeping | List and remove stale worktree contexts |
+
+### Auxiliary
+
+| Command | When to use | What it does |
+|---------|------------|--------------|
 | `/issue <number>` | Investigating an issue | Load a GitHub issue and analyze codebase |
 | `/clean-memories` | Housekeeping | List and delete old memory files |
 
@@ -76,38 +85,54 @@ Claude Code operates within a finite context window. Long sessions lead to:
 
 ## Typical Flow
 
+### Simple (no worktree)
+
+Work directly on your branch — ideal for a single task at a time.
+
+```bash
+claude
+# Discuss the work freely with Claude...
+# When the plan is clear:
+> /write-workflow
+
+# Execute phases (new chat for each — fresh context)
+> /execute-phase    # Phase 1
+> /execute-phase    # Phase 2
+
+# Finalize
+> /finalize-workflow
+> /pull-request
+```
+
+### Isolated (with worktree)
+
+Use when you need to **parallelize** multiple tasks on the same repo. Each worktree has its own branch, files, and MEMORY.md.
+
 ```bash
 # 1. Create a workspace (from any branch)
-/create-context add PDF export for invoices
+> /create-context add PDF export for invoices
 
 # 2. Enter the worktree and start a Claude session
 cd .claude/worktrees/feat-add-pdf-export && claude
 
-# 3. Discuss the work freely with Claude
-#    Explore code, ask questions, decide the approach...
+# 3. Discuss, then crystallize the plan
+> /write-workflow
 
-# 4. When the plan is clear, crystallize it
-/write-workflow
+# 4. Execute phases (new chat for each)
+> /execute-phase
 
-# 5. Execute phases (new chat for each — fresh context)
-/execute-phase    # Phase 1
-/execute-phase    # Phase 2
-# ... repeat for each phase
-
-# 6. Finalize
-/finalize-workflow
-
-# 7. Close the worktree when done
-/close-context
+# 5. Finalize and close
+> /finalize-workflow
+> /close-context
 ```
 
 ---
 
 ## How Each Command Works
 
-### `/create-context <topic>` — Create Workspace
+### `/create-context <topic>` — Create Workspace (optional)
 
-The entry point. Creates the infrastructure for a new work stream:
+Creates the infrastructure for an isolated work stream. **Not required** — use it when you need to parallelize multiple tasks on the same repo.
 
 - Works from **any branch** — the current branch becomes the "parent"
 - Creates a **new branch** from the topic (e.g., "fix login timeout" → `fix-login-timeout`)
@@ -322,7 +347,9 @@ This is not an autonomous agent. The developer:
 - Chooses model and effort per phase
 
 ### 5. Parallel Workflows
-Multiple worktrees = multiple independent workflows. Each has its own MEMORY.md, its own VS Code window, its own branch. Switch between them by changing directories.
+Two approaches:
+- **With worktrees** (recommended for parallelization): `/create-context` for each task. Each worktree has its own MEMORY.md, VS Code window, and branch.
+- **Without worktrees**: if `MEMORY.md` is already occupied, `/write-workflow` creates a parallel plan in `memory_<name>.md`.
 
 ### 6. Full Traceability
 Everything is traceable: plan in a versionable file, single clean commit per workflow, structured PR template, `/check-phase-context` reconstructs state at any time.
@@ -376,16 +403,12 @@ Note: when copying manually, rename each `SKILL.md` to `<command-name>.md` (e.g.
 
 ```bash
 claude
-> /create-context fix login timeout
-cd .claude/worktrees/fix-login-timeout && claude
-# Discuss, then:
+# Discuss your task with Claude, then:
 > /write-workflow
-# Execute phases:
+# New chat for each phase:
 > /execute-phase
-# Finalize:
+# When all phases are done:
 > /finalize-workflow
-# Close when done:
-> /close-context
 ```
 
 ---
@@ -407,8 +430,8 @@ No — any branch. The current branch becomes the parent. This enables parallel 
 **Q: Is VS Code required?**
 No. The worktree is created regardless. Use any editor.
 
-**Q: Can I work without worktrees?**
-Yes. Run `/write-workflow` directly on a feature branch. The workflow uses selective file staging. Fully supported as "legacy mode."
+**Q: Do I need `/create-context` to use the workflow?**
+No. `/create-context` is optional — it creates an isolated worktree, which is useful for parallelizing multiple tasks. For a single task, just work directly on your branch. The entire workflow (`/write-workflow` → `/execute-phase` → `/finalize-workflow`) works without worktrees.
 
 **Q: How do I clean up old worktrees?**
 Use `/clean-contexts` from the main repo. It lists all worktrees with their status and lets you select which to remove. Or use `/close-context` from inside a specific worktree.

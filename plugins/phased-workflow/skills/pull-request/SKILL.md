@@ -1,7 +1,12 @@
+---
+description: Create a Pull Request after thorough review as a meticulous maintainer
+argument-hint: [issue-number]
+allowed-tools: Bash(gh:*), Bash(git:*), Read, Grep, Glob, TodoWrite, AskUserQuestion
+---
 
 # Pull Request Review & Creation
 
-**Language rule:** All written artifacts (PR title, body, review reports) must be in English.
+**Language rule:** All written content (PR title, body, review reports) must be in English. Conversation with the user remains in Italian as per global settings.
 
 ## Parameters
 
@@ -110,7 +115,7 @@ If there's a linked issue:
 
 ### 4.3 Comments in English
 - ALL code comments MUST be in English
-- Flag any comments not in English
+- Flag any comments in Italian or other languages
 
 ### 4.4 Possible Regressions
 - Identify code that could break existing functionality

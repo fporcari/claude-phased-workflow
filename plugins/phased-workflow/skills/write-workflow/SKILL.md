@@ -1,11 +1,18 @@
+---
+description: Write a phased work plan (MEMORY.md) from the current conversation
+allowed-tools: Bash(git:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion
+---
 
 # Write Workflow
 
-Crystallize the current conversation into a phased work plan in MEMORY.md.
+Plan a work session and write the phased plan to a memory file. This is the **only** deliverable of this command.
 
-**This command assumes you already discussed the work with the user.** Use the conversation context to build the plan — do not start from scratch.
+**CRITICAL CONSTRAINTS:**
+1. **NEVER edit source code.** You may read any file to understand structure and patterns, but you must not modify anything outside the memory directory.
+2. **The only output is the plan written to a memory file.** No code changes, no refactoring, no branch creation.
+3. **Do not proceed to implementation.** The user will delegate execution via `/execute-phase`.
 
-**Language rule:** All written artifacts (MEMORY.md, phase notes) must be in English.
+**Language rule:** All written content (memory files, phase notes) must be in English. Conversation with the user remains in Italian.
 
 ## Step 1: Detect environment
 
@@ -19,29 +26,58 @@ Detect parent branch:
 cat .claude/parent-branch 2>/dev/null || echo "unknown"
 ```
 
-If `.claude/parent-branch` does not exist (not in a worktree created by `/create-context`), use the base branch as parent:
+If `.claude/parent-branch` does not exist (not in a worktree created by `/create-context`), auto-detect the base branch:
 ```bash
 git rev-parse --verify origin/develop 2>/dev/null && echo "develop" || echo "main"
 ```
 
-If a linked issue exists (branch name starts with a number), fetch it:
-```bash
-gh issue view <number> --json title,body,labels,state --jq '{title,body,labels: [.labels[].name],state}'
-```
+**Case A — On a feature branch (different from base):**
 
-## Step 2: Synthesize the plan from conversation
+Run in parallel:
+1. `git log origin/<base>..HEAD --oneline --no-decorate`
+2. `git diff --stat origin/<base>...HEAD`
+3. `git diff origin/<base>...HEAD`
+4. If branch name starts with a number: `gh issue view <number> --json title,body,labels,state --jq '{title,body,labels: [.labels[].name],state}'`
 
-Using the full conversation context, extract:
+Present a concise summary, then ask: *"Cosa vuoi pianificare su questo branch?"* — wait for the user's response.
+
+**Case B — On base branch (main/develop/master):**
+
+Do NOT explore, do NOT run extra commands. Immediately ask: *"Sei su `<branch>`. Cosa vuoi fare?"* — wait for the user's response.
+
+**In both cases:** the user's response is the primary input for the plan. You may read code to understand structure and dependencies, but always in service of building the plan — not as open-ended exploration.
+
+## Step 2: Discuss and refine the plan
+
+From the conversation context (prior discussion + user's response from Step 1), extract:
 - **Objective**: what the user wants to achieve (2-3 sentences)
 - **Phases**: concrete, self-contained steps to implement
-- **Files**: which files are likely involved per phase (if discussed)
+- **Files**: which files are likely involved per phase (if known)
 - **Notes**: constraints, dependencies, attention points
 
-**Present the plan to the user** for review. Discuss and iterate until explicit approval.
+You may:
+- **Read code** to understand structure, patterns, or dependencies relevant to the plan
+- **Read issues** if the user references them
+- **Ask clarifying questions** in natural conversation
 
-## Step 3: Write MEMORY.md
+**Present the plan to the user in Italian** for review. Discuss and iterate until explicit approval.
 
-Only after user approval, write `.claude/MEMORY.md`:
+## Step 3: Choose memory file and write plan
+
+Only after user approval, determine which memory file to write.
+
+### Memory file selection
+
+1. Read the existing `.claude/MEMORY.md`
+2. **If MEMORY.md does not exist or is empty** → write to `.claude/MEMORY.md`
+3. **If MEMORY.md already contains an active work plan** (has unchecked `- [ ]` phases):
+   - Derive a context name from the branch name in kebab-case
+   - Inform the user: *"MEMORY.md è già occupato. Salvo in `memory_<nome>.md`"*
+   - Write to `.claude/memory_<nome>.md`
+   - Add to the top: `<!-- Parallel context — primary plan in MEMORY.md -->`
+4. **If MEMORY.md contains a plan but all phases are completed** (all `- [x]`) → overwrite `.claude/MEMORY.md`
+
+### Plan format
 
 ```
 # Context: <branch-name>
@@ -83,12 +119,12 @@ Principles for phases:
 ## Step 4: Inform and end
 
 ```
-Piano scritto in MEMORY.md (<N> fasi).
+Piano scritto in <file> (<N> fasi).
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
 ```
 
 ## Rules
 
 - **NO source code editing** — this is a planning command
-- The plan must come from the conversation, not from scratch exploration
 - If the conversation lacks enough detail, ask the user to clarify before writing
+- Reading code is encouraged to inform the plan, but never as open-ended exploration
