@@ -10,6 +10,8 @@ Before launching the loop, this skill performs a **pre-flight review of MEMORY.m
 
 **Model tip:** invoke `/run-all-phases` itself from a chat on the strongest model available (fable if you have credits). The bash loop consumes no model — but the pre-flight review is pure judgment work, and a mistake there wastes an entire autonomous run.
 
+**/goal guard (Claude Code ≥ 2.1.139):** each phase and repair session is launched as `claude -p "/goal <contract>"` instead of a bare skill prompt. The native goal loop adds an independent per-turn evaluator: completion is decided by a fresh small model reading the transcript, not by the session that did the work. This turns the skill's bounded-loop instructions into harness-enforced behavior — premature "I'm done" exits and silent give-ups get sent back to work. A 25-turn clause in the contract bounds the loop. Older CLIs fall back automatically to the plain skill prompt.
+
 **Usage:** `/run-all-phases`
 
 **Budget control:** The `--max-budget-usd` flag is a runaway-loop safety net, NOT a real spend cap when on a subscription plan (Pro / Max / Team). On subscription plans, you don't pay per token — quota is the 5-hour rolling message window, not dollars. The flag computes a notional cost as if API-priced and stops the session if exceeded; that protects against bugged loops, but with values too low it triggers spuriously on legitimate large phases.
@@ -78,6 +80,20 @@ if [ ! -f "$MEMORY" ]; then
   exit 1
 fi
 
+# /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
+# goal loop — an independent evaluator (small fast model) re-checks the exit
+# condition after every turn, so a session cannot declare itself done before
+# MEMORY.md shows the outcome. Older CLIs fall back to the plain skill prompt.
+CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
+if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
+  PHASE_PROMPT='/goal Use the auto-phase skill to execute exactly ONE phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or no pending phase exists. No other phase may change state. Stop after 25 turns.'
+  REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of .claude/MEMORY.md. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
+else
+  echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
+  PHASE_PROMPT='/auto-phase'
+  REPAIR_PROMPT='/repair-phase'
+fi
+
 # NOTE: grep -c prints 0 itself on no match (exit 1) — do NOT add "|| echo 0", it would double the output
 REMAINING=$(grep -c '^\- \[ \]' "$MEMORY" 2>/dev/null || true)
 REMAINING=${REMAINING:-0}   # unreadable file → empty var → treat as 0
@@ -142,21 +158,22 @@ for i in $(seq 1 $REMAINING); do
     BUDGET=$((BUDGET * 2))
   fi
 
-  echo "========================================="
-  if [ -n "$RUN_ALL_PHASES_NO_BUDGET" ]; then
-    echo "Phase $NEXT_PHASE — model: $MODEL, cap: none (RUN_ALL_PHASES_NO_BUDGET=1)"
-    echo "========================================="
-    claude -p '/auto-phase' \
-      --model "$MODEL" \
-      --permission-mode auto
+  # Budget flag assembled once; empty array = no cap (raw subscription mode)
+  BUDGET_ARGS=()
+  if [ -z "$RUN_ALL_PHASES_NO_BUDGET" ]; then
+    BUDGET_ARGS=(--max-budget-usd "$BUDGET")
+    CAP_LABEL="runaway-cap: \$$BUDGET"
   else
-    echo "Phase $NEXT_PHASE — model: $MODEL, runaway-cap: \$$BUDGET"
-    echo "========================================="
-    claude -p '/auto-phase' \
-      --model "$MODEL" \
-      --permission-mode auto \
-      --max-budget-usd "$BUDGET"
+    CAP_LABEL="cap: none (RUN_ALL_PHASES_NO_BUDGET=1)"
   fi
+
+  echo "========================================="
+  echo "Phase $NEXT_PHASE — model: $MODEL, $CAP_LABEL"
+  echo "========================================="
+  claude -p "$PHASE_PROMPT" \
+    --model "$MODEL" \
+    --permission-mode auto \
+    "${BUDGET_ARGS[@]}"
 
   CLAUDE_EXIT=$?
   if [ "$CLAUDE_EXIT" -ne 0 ]; then
@@ -181,30 +198,22 @@ for i in $(seq 1 $REMAINING); do
     # without touching MEMORY.md).
     echo ""
     echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
-    if [ -n "$RUN_ALL_PHASES_NO_BUDGET" ]; then
-      claude -p '/repair-phase' \
-        --model fable \
-        --permission-mode auto
-    else
-      claude -p '/repair-phase' \
-        --model fable \
-        --permission-mode auto \
-        --max-budget-usd 300
-    fi
+    REPAIR_BUDGET_ARGS=()
+    [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
+    claude -p "$REPAIR_PROMPT" \
+      --model fable \
+      --permission-mode auto \
+      "${REPAIR_BUDGET_ARGS[@]}"
     REPAIR_EXIT=$?
 
     if [ "$REPAIR_EXIT" -ne 0 ] && ! grep -A6 '^\- \[!\]' "$MEMORY" 2>/dev/null | grep -q 'Repair attempted:'; then
       echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
-      if [ -n "$RUN_ALL_PHASES_NO_BUDGET" ]; then
-        claude -p '/repair-phase' \
-          --model opus \
-          --permission-mode auto
-      else
-        claude -p '/repair-phase' \
-          --model opus \
-          --permission-mode auto \
-          --max-budget-usd 200
-      fi
+      REPAIR_BUDGET_ARGS=()
+      [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+      claude -p "$REPAIR_PROMPT" \
+        --model opus \
+        --permission-mode auto \
+        "${REPAIR_BUDGET_ARGS[@]}"
     fi
 
     if grep -q '^\- \[!\]' "$MEMORY" 2>/dev/null; then
@@ -257,8 +266,8 @@ For each phase:
 
 1. Reads MEMORY.md to find the next `[ ]` phase
 2. Looks up the model: opus by default, sonnet or fable only if the execution config table explicitly says so for that phase
-3. Launches `claude -p '/auto-phase' --model <model> --permission-mode auto` — auto mode's classifier handles per-action permission decisions
-4. That session: explores, implements, then iterates its internal convergence loop (up to 3 fix attempts against tests + lint, no-progress detector, independent review, Done-criterion gate), updates MEMORY.md, exits
+3. Launches `claude -p "/goal <phase contract>" --model <model> --permission-mode auto` — the goal directive tells the session to run the auto-phase skill; auto mode's classifier handles per-action permission decisions. On CLIs older than 2.1.139 it falls back to `claude -p '/auto-phase'`.
+4. That session: explores, implements, then iterates its internal convergence loop (up to 3 fix attempts against tests + lint, no-progress detector, independent review, Done-criterion gate), updates MEMORY.md, exits. Under the `/goal` guard, a **separate evaluator model** re-checks the exit condition after every turn — the session cannot end "convinced it's done" until MEMORY.md actually shows the outcome (or the 25-turn bound trips).
 5. If the phase exits `[!]`, ONE fresh-eyes repair session (`/repair-phase`, fable — opus fallback if the fable session cannot start) is launched; the run continues only if the repair turns the phase `[x]`
 6. Loop continues to next phase
 

@@ -10,6 +10,8 @@ Execute the next uncompleted phase from the work plan autonomously. This is a wr
 
 **Language rule:** All written content (MEMORY.md, code comments) in English.
 
+**Goal guard:** when launched by `/run-all-phases`, this session runs under a native `/goal` condition — an independent evaluator re-checks after every turn that MEMORY.md shows the phase outcome (`[x]` with demonstrated Done, or `[!]` with Issue+Attempted notes). Recording the outcome in MEMORY.md is therefore not just bookkeeping: it is the session's exit condition. Never end a turn "done" without it.
+
 ## Autonomous mode overrides
 
 These rules REPLACE the corresponding steps in the standard execute-phase workflow:
@@ -109,14 +111,14 @@ Run the signal, then loop:
 
 ### Step 5.5: Independent verification
 
-Once green, launch ONE read-only reviewer subagent (Agent tool) with:
+Once green, launch ONE **`phase-verifier`** subagent (Agent tool, subagent type `phase-verifier` — a native read-only agent defined in `~/.claude/agents/phase-verifier.md`; if the type is unavailable, fall back to a general-purpose subagent instructed to be read-only). The verifier runs in its own context window, so the review costs this session almost nothing. Pass it:
 - the phase objective and its `Done:` criterion
 - the `Pattern:`/`Pattern reference:` example
 - the list of files touched by THIS phase only (never the whole working tree — earlier phases' uncommitted changes are not up for re-review)
 
-Ask it to report findings, each classified as:
-- **Mechanical (high confidence)** — real bug, wrong API usage, unused import, clear divergence from the pattern reference with an obvious fix → apply the fix and re-run the Step 5 signal. These fixes share the same 3-attempt budget.
-- **Judgment-level** — design trade-off, missing edge case needing a human decision → do NOT fix. Record as a `> Review:` note on the phase (Step 6). Judgment findings never block `[x]`.
+It returns findings classified as:
+- **MECHANICAL** — real bug, wrong API usage, unused import, clear divergence from the pattern reference with an obvious fix → apply the fix and re-run the Step 5 signal. These fixes share the same 3-attempt budget.
+- **JUDGMENT** — design trade-off, missing edge case needing a human decision → do NOT fix. Record as a `> Review:` note on the phase (Step 6). Judgment findings never block `[x]`.
 
 ### Step 5.8: Done-criterion gate
 

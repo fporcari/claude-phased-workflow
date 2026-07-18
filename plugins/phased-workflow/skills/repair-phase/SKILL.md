@@ -8,6 +8,8 @@ Repair deserves the strongest model available: it is by definition the case wher
 
 **Language rule:** all persisted content (MEMORY.md notes, code, comments) in English.
 
+**Goal guard:** when launched by `/run-all-phases`, this session runs under a native `/goal` condition — an independent evaluator re-checks after every turn that MEMORY.md shows the repair outcome (`[x]` + `> Repaired:`, or `[!]` + `> Repair attempted:`). Recording the outcome is the session's exit condition.
+
 ## Execution flow
 
 ### Step 1: Locate the failed phase
@@ -43,7 +45,7 @@ Start from scratch, not from the previous session's conclusion:
 Apply the same convergence rules as `/auto-phase` Steps 5–5.8:
 - Green signal = project test suite + linter scoped to the touched files.
 - Up to **3 fix attempts**, with the no-progress detector (same failure signature twice in a row → stop early).
-- After green: independent verification — one read-only reviewer subagent scoped to this phase's touched files; mechanical findings fixed within the same budget, judgment-level findings recorded as `> Review:`.
+- After green: independent verification — one `phase-verifier` subagent (fallback: general-purpose read-only) scoped to this phase's touched files; MECHANICAL findings fixed within the same budget, JUDGMENT findings recorded as `> Review:`.
 - Done-criterion gate: literally re-check every item in the phase's `Done:` field before declaring success.
 
 ### Step 5: Update MEMORY.md

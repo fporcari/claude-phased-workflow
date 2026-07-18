@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "$1" = "--version" ]; then
+  echo "${MOCK_CLAUDE_VERSION:-2.1.211} (Claude Code)"
+  exit 0
+fi
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 export MEM="$REPO_ROOT/.claude/MEMORY.md"
 echo "CALL: $*" >> "$REPO_ROOT/.claude/invocations.log"
