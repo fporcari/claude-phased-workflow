@@ -1,13 +1,12 @@
-
 # Finalize Workflow
 
 Verify the entire work plan is complete and prepare the final state for commit/PR.
 
 **IMPORTANT: This command is for FINALIZATION ONLY. Do NOT edit source code. If issues are found, report them to the user for delegation.**
 
-**Language rule:** All written artifacts (MEMORY.md, commit messages, PR body) must be in English.
+**Model tip:** run this command from a chat on the strongest model available (fable if credits allow). It runs once per workflow, and Step 5.5 is the last quality gate before the commit — the one place where skimping on judgment is most expensive.
 
-**UI rule:** Use `AskUserQuestion` for all questions. Provide `default_answer` when a sensible default exists. For multiple-choice questions, list each option on its own line with a checkbox-style format.
+**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, MEMORY.md path resolution.
 
 ## Step 1: Detect environment and select the plan
 
@@ -23,21 +22,23 @@ Set `IN_WORKTREE=true/false` for use in subsequent steps.
 
 ### Memory file selection
 
-**If in a worktree** → look for `MEMORY.md` in the local `.claude/` directory. Use it directly.
+**If in a worktree** → read the work plan from `<repo_root>/.claude/MEMORY.md` (where `<repo_root>` is `$(git rev-parse --show-toplevel)`). Use it directly.
 
-**If in the main repo** → look in the project's memory directory for `MEMORY.md` and any `memory_*.md` files. Also scan `.claude/worktrees/*/` for active plans.
+**If in the main repo:**
+
+Also check for `<repo_root>/.claude/memory_*.md` files and scan `<repo_root>/.claude/worktrees/*/` for active plans.
 
 1. **If only one memory file has active phases** → use it directly
 2. **If multiple memory files have active phases** → use AskUserQuestion with checkbox-style options:
    ```
-   Ci sono piu' piani attivi. Quale vuoi finalizzare?
+   Ci sono più piani attivi. Quale vuoi finalizzare?
 
    [ ] MEMORY.md — <context name from first line>
    [ ] memory_<name>.md — <context name from first line>
    [ ] worktree: <name> — <context from worktree MEMORY.md>
    ```
    - Default: `MEMORY.md`
-   - If a worktree plan is selected from the main repo, inform the user: "Questo workflow e' in un worktree. Esegui `/finalize-workflow` da: `cd .claude/worktrees/<name> && claude`"
+   - If a worktree plan is selected from the main repo, inform the user: "Questo workflow è in un worktree. Esegui `/finalize-workflow` da: `cd .claude/worktrees/<name> && claude`"
 3. Store the chosen file path — all reads/writes in this session target that file.
 
 Read the selected memory file and extract:
@@ -47,12 +48,17 @@ Read the selected memory file and extract:
 
 Also read `.claude/parent-branch` file if it exists (written by `/create-context`).
 
+**Resolve the base ref.** Check `git rev-parse --verify origin/<parent>`: if it exists, the base ref is `origin/<parent>`; otherwise the parent is a local-only branch and the base ref is the local `<parent>`. Use this resolved ref wherever the steps below mention `origin/<base>`.
+
 ## Step 2: Verify phase completion
 
 Check that ALL phases are marked as completed (`[x]`).
 
-If any phases are `[ ]`, `[!]`, or `[~]`:
+Also collect any `> Verify:` lines on `[x]` phases (manual UI checks recorded by `/execute-phase`). If present, ask the user: *"Queste fasi hanno verifiche manuali UI in sospeso: <list>. Le hai verificate?"* — if not, suggest verifying before committing.
+
+If any phases are `[ ]`, `[>]`, `[!]`, or `[~]`:
 - Report the incomplete/problematic phases to the user
+- For `[>]` phases specifically, warn: "La fase N risulta ancora in esecuzione da un'altra chat. Potrebbe essere una sessione terminata."
 - Use AskUserQuestion: "Ci sono fasi non completate. Vuoi procedere comunque con la finalizzazione?" (default: "no")
 - If "no", stop and suggest running `/execute-phase` or `/check-phase-context`
 
@@ -112,8 +118,13 @@ git add -A
 ```
 
 **Case B — WIP commits exist:**
+
+First inspect `git log origin/<base>..HEAD --oneline`:
+- If ALL commits in the range are WIP commits → `git reset --soft origin/<base>`
+- If there are also non-WIP commits (manual commits, previously finalized work not yet pushed), do NOT reset past them: soft-reset only to the parent of the oldest commit in the contiguous WIP streak at HEAD (`git reset --soft <oldest-wip>^`). If WIP and non-WIP commits are interleaved, STOP and ask the user how to consolidate.
+
+Then:
 ```bash
-git reset --soft origin/<base>
 git add -A
 ```
 Inform the user that N WIP commits will be consolidated into a single clean commit.
@@ -132,9 +143,10 @@ Using the confirmed workflow file set from Step 3:
   ```
 
 **Case B — WIP commits from execute-phase exist:**
+- Same guard as the worktree case: inspect `git log origin/<base>..HEAD --oneline` first. Reset to `origin/<base>` only if ALL commits in the range are WIP; otherwise soft-reset to the parent of the oldest contiguous WIP commit at HEAD, or STOP and ask the user if WIP and real commits are interleaved.
 - Reset WIP commits to unstage them, then selectively re-stage only workflow files:
   ```bash
-  git reset --soft origin/<base>
+  git reset --soft <reset-target>
   git reset HEAD .
   git add <file1> <file2> ...
   ```
@@ -143,6 +155,23 @@ Using the confirmed workflow file set from Step 3:
 
 **Case C — No changes for this workflow:**
 - All workflow files are already clean — inform the user there is nothing to commit
+
+## Step 5.5: Pre-commit review
+
+With the workflow files staged, run the built-in `code-review` skill (Skill tool) on the staged diff. Do NOT use `--fix` — this command never edits source.
+
+**Effort is dynamic:**
+- `high` — when the plan is autonomous (`Mode: autonomous` in the memory file) or any phase carries a `> Review:` note. No human looked at those phases while they ran: this is the first deep pass with the whole diff in one context.
+- `medium` — otherwise (interactive plans, phases already seen by the user).
+
+**Feed the review the phase-level context.** Collect every `> Review:` note from the memory file (judgment-level findings flagged by the per-phase verification) and pass them to the review as explicit focus points. Each note must come out either confirmed (a real finding to present) or explicitly dismissed — never silently dropped.
+
+**Cross-phase coherence focus.** Each phase ran in a fresh session and was verified in isolation; no phase-level check ever saw the whole diff at once. Instruct the review to look specifically for cross-phase issues: one phase breaking an assumption another relies on, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
+
+- No findings → proceed to Step 6.
+- Findings → present them (in Italian) and ask via AskUserQuestion: "La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?" (recommended: fix first). Fixing is not this command's job — delegate (a quick fix session or a new phase via `/write-workflow`), then re-run `/finalize-workflow`.
+
+Role split with `/pull-request`: this step = whole-diff coherence + phase `> Review:` notes; `/pull-request` Step 4 = maintainer-grade review. The PR path gets both; the "Merge sul parent" / "Solo commit" paths get only this one — another reason not to skimp here.
 
 ## Step 6: Prepare commit message
 
@@ -183,7 +212,7 @@ Workflow completato e committato. Come vuoi procedere?
 
 [ ] Pull request — push branch e crea PR verso <parent-branch> (consigliato)
 [ ] Merge sul parent — merge diretto su <parent-branch> e push
-[ ] Solo commit — lascia tutto com'e', decido dopo
+[ ] Solo commit — lascia tutto com'è, decido dopo
 ```
 Default: "Pull request"
 

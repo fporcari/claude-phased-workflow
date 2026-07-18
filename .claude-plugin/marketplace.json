@@ -6,18 +6,26 @@
   },
   "metadata": {
     "description": "A phased workflow system for Claude Code: create context, converse, plan, execute, finalize. Supports parallel workflows via git worktrees.",
-    "version": "2.0.0"
+    "version": "2.2.0"
   },
   "plugins": [
     {
       "name": "phased-workflow",
       "source": "./plugins/phased-workflow",
-      "description": "Phased development workflow with worktree isolation, natural conversation planning, and parallel sub-task support",
-      "version": "2.0.0",
+      "description": "Phased development workflow with worktree isolation, natural conversation planning, parallel sub-task support, and a self-correcting autonomous chain (convergence loops + fresh-eyes repair)",
+      "version": "2.2.0",
       "author": {
         "name": "Francesco Porcari"
       },
-      "keywords": ["workflow", "planning", "phased", "development", "context-management", "worktree", "parallel"],
+      "keywords": [
+        "workflow",
+        "planning",
+        "phased",
+        "development",
+        "context-management",
+        "worktree",
+        "parallel"
+      ],
       "category": "productivity",
       "license": "MIT"
     }

@@ -1,4 +1,3 @@
-
 # Clean Contexts
 
 List all worktree contexts and let the user remove stale ones.
@@ -20,7 +19,7 @@ For each worktree found, collect:
 
 1. **Branch name**: from worktree list
 2. **Last commit date**: `git -C <path> log -1 --format='%ar'`
-3. **Merged status**: `git branch --merged origin/develop | grep <branch>` (or main)
+3. **Merged status**: read the worktree's parent (`cat <path>/.claude/parent-branch`; fallback: `develop` if `origin/develop` exists, else `main`), then `git branch --merged origin/<parent> | grep <branch>`
 4. **Disk usage**: `du -sh <path>`
 5. **MEMORY.md status**: check if `.claude/MEMORY.md` exists and if all phases are `[x]`
 6. **Remote branch**: `git ls-remote --heads origin <branch>` (pushed or local only)
@@ -34,7 +33,7 @@ Worktree contexts trovati:
 
 1. feat-export-pdf
    Branch: feat-export-pdf | Ultimo commit: 3 giorni fa
-   Stato piano: completato (5/5 fasi) | Merged: si | Size: 45MB
+   Stato piano: completato (5/5 fasi) | Merged: sì | Size: 45MB
 
 2. fix-login-timeout
    Branch: fix-login-timeout | Ultimo commit: 2 settimane fa
@@ -79,11 +78,12 @@ For each selected worktree:
 
 4. **Remove branch** (only if merged or user confirms):
    - If merged: `git branch -d <branch>`
-   - If not merged, ask: "Il branch <name> non e' merged. Vuoi eliminarlo comunque?"
+   - If not merged, ask: "Il branch <name> non è merged. Vuoi eliminarlo comunque?"
    - If yes: `git branch -D <branch>`
-   - Also remove remote branch if pushed: `git push origin --delete <branch>`
 
-5. **Orphaned directories** (not registered as worktree):
+5. **Remote branch** — deleting a remote branch is irreversible for the whole team, so it requires its OWN explicit confirmation. If the branch is pushed, ask: "Vuoi eliminare anche il branch remoto `origin/<branch>`?" (default: no). Only on explicit yes: `git push origin --delete <branch>`
+
+6. **Orphaned directories** (not registered as worktree):
    ```bash
    rm -rf .claude/worktrees/<name>
    ```

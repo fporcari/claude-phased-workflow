@@ -74,14 +74,7 @@ If unpushed commits exist, warn:
 - If yes: `git push -u origin <branch>`, then proceed
 - If no: require explicit confirmation that commits will be lost
 
-**Close VS Code window** for this worktree (if open):
-```bash
-# Get the worktree absolute path
-WORKTREE_PATH=$(git rev-parse --show-toplevel)
-# Close VS Code window for this folder
-command -v code >/dev/null 2>&1 && code --folder-uri "file://$WORKTREE_PATH" --command "workbench.action.closeWindow" 2>/dev/null
-```
-If the command fails, skip silently — the user can close VS Code manually.
+**VS Code window**: the `code` CLI cannot close an open window programmatically — remind the user to close the worktree's VS Code window manually.
 
 **Remove the worktree** (NOT the branch):
 ```bash

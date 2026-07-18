@@ -1,4 +1,3 @@
-
 # Create Context
 
 Create a branch and worktree for a new work stream. No planning — just infrastructure.
@@ -30,17 +29,14 @@ git ls-remote --heads origin <branch-name>
 ```
 If exists, inform user and stop.
 
-Create:
-```bash
-git switch -c <branch-name> HEAD
-```
-
-## Step 3: Create worktree
+## Step 3: Create branch + worktree (one step)
 
 ```bash
-git worktree add .claude/worktrees/<name> <branch-name>
+git worktree add .claude/worktrees/<name> -b <branch-name> HEAD
 ```
 Where `<name>` = branch name.
+
+This creates the branch AND its worktree in a single command, while the main repo stays on the parent branch. Do NOT `git switch -c` in the main repo first: a branch checked out in the main repo cannot be added as a worktree (`fatal: '<branch>' is already checked out`), and the main repo must remain on the parent.
 
 If the worktree path already exists, inform user and stop.
 
@@ -52,27 +48,35 @@ mkdir -p .claude/worktrees/<name>/.vscode
 
 ## Step 4: VS Code workspace identity
 
-Write `.vscode/settings.json` in the worktree with a distinctive title bar color:
-
-```json
-{
-  "workbench.colorCustomizations": {
-    "titleBar.activeBackground": "<color>",
-    "titleBar.activeForeground": "#ffffff"
-  }
-}
-```
+Write `.vscode/settings.json` in the worktree with a distinctive title bar color.
 
 Generate the color deterministically: hash the branch name to a hue value (0-360), then use HSL with saturation 65% and lightness 35% for a dark, readable background. Convert to hex.
 
-Ensure `.vscode/` is gitignored in the worktree:
+**Preserve existing settings.** If `.vscode/settings.json` already exists in the worktree (it usually does — `.vscode/settings.json` is tracked in this repo via a `!.vscode/settings.json` exception, so worktrees inherit shared pytest/flake8 config), merge the `workbench.colorCustomizations` key into the existing JSON instead of overwriting the file. If the file doesn't exist, create it with just the color customization.
+
+Use python to do the merge safely (avoids quoting headaches and preserves the rest of the JSON):
+
 ```bash
-git -C .claude/worktrees/<name> check-ignore -q .vscode 2>/dev/null
+python3 - <<'PY'
+import json, pathlib
+p = pathlib.Path(".claude/worktrees/<name>/.vscode/settings.json")
+p.parent.mkdir(parents=True, exist_ok=True)
+data = json.loads(p.read_text()) if p.exists() else {}
+data["workbench.colorCustomizations"] = {
+    "titleBar.activeBackground": "<color>",
+    "titleBar.activeForeground": "#ffffff",
+}
+p.write_text(json.dumps(data, indent=4) + "\n")
+PY
 ```
-If NOT ignored, append `.vscode/` to the worktree's `.gitignore`:
+
+**Hide the local color override from git.** The repo's root `.gitignore` has `!.vscode/settings.json`, so the file is tracked and any local edit would show up as a modification in `git status`. Mark it `assume-unchanged` in the worktree so git ignores the per-context color customization:
+
 ```bash
-echo '.vscode/' >> .claude/worktrees/<name>/.gitignore
+git -C .claude/worktrees/<name> update-index --assume-unchanged .vscode/settings.json
 ```
+
+This is reversible with `--no-assume-unchanged` if you ever need to pick up upstream changes to that file.
 
 ## Step 5: Save parent branch info
 
@@ -81,7 +85,20 @@ Write a minimal `.claude/parent-branch` file in the worktree so other commands k
 echo "<parent-branch>" > .claude/worktrees/<name>/.claude/parent-branch
 ```
 
-## Step 6: Open VS Code (optional)
+## Step 6: Inherit local permissions
+
+If the parent repo has a `.claude/settings.local.json`, copy it into the worktree so
+Claude Code starts with the same permissions baseline (auto-accept toggles, pre-approved
+Bash commands, etc.):
+
+```bash
+[ -f .claude/settings.local.json ] && cp .claude/settings.local.json .claude/worktrees/<name>/.claude/settings.local.json
+```
+
+If the source file does not exist, skip silently — the worktree will start with
+default permissions, which is fine.
+
+## Step 7: Open VS Code (optional)
 
 ```bash
 command -v code >/dev/null 2>&1 && code .claude/worktrees/<name>
@@ -89,7 +106,7 @@ command -v code >/dev/null 2>&1 && code .claude/worktrees/<name>
 
 If `code` is not available, skip silently.
 
-## Step 7: Inform and end
+## Step 8: Inform and end
 
 ```
 Contesto "<branch-name>" creato.

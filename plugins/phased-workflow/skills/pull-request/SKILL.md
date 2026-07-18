@@ -1,7 +1,6 @@
-
 # Pull Request Review & Creation
 
-**Language rule:** All written artifacts (PR title, body, review reports) must be in English.
+**Language rule:** All written content (PR title, body, review reports) must be in English. Conversation with the user remains in Italian as per global settings.
 
 ## Parameters
 
@@ -9,12 +8,13 @@
 
 ## Step 0: Base Branch Selection
 
-Ask the user which branch to use as PR base, proposing `develop` as default:
+Determine the default base branch:
+1. If `.claude/parent-branch` exists (written by `/create-context`), use its content as the default
+2. Otherwise auto-detect: `git rev-parse --verify origin/develop` → `develop` if it exists, else `main`
 
-> Su quale branch base vuoi creare la PR? (default: `develop`)
+Ask the user via AskUserQuestion which branch to use as PR base, with the detected default as the FIRST option marked "(Recommended)".
 
-- If the user provides a branch name, use it as `BASE_BRANCH` for all subsequent steps
-- If the user confirms default (empty response, "ok", "yes", "develop"), use `develop`
+- Use the chosen branch as `BASE_BRANCH` for all subsequent steps
 - Verify the branch exists on remote: `git ls-remote --heads origin <BASE_BRANCH>`
 - If the branch doesn't exist, report error and ask again
 
@@ -60,11 +60,11 @@ When starting from `<BASE_BRANCH>` with local changes not yet on a feature branc
    - Use kebab-case, max 50 characters total
    - Name should describe WHAT the changes do, not the files touched
 
-4. Create new branch and commit:
+4. Present the proposed branch name and commit message to the user and wait for approval. Then:
    ```bash
    git checkout -b <generated-branch-name>
    git add -A
-   git commit -m "<descriptive change message>"
+   git commit -m "<approved message>"
    ```
 
 5. Proceed from Step 3 (Change Analysis)
@@ -73,6 +73,12 @@ When starting from `<BASE_BRANCH>` with local changes not yet on a feature branc
 
 ```bash
 git fetch origin <BASE_BRANCH>
+git log HEAD..origin/<BASE_BRANCH> --oneline
+```
+
+If the base branch has new commits, ask the user via AskUserQuestion before merging: *"Il base branch ha N commit nuovi. Faccio il merge di `origin/<BASE_BRANCH>` nel branch?"* (recommended: yes). Only after approval:
+
+```bash
 git merge origin/<BASE_BRANCH>
 ```
 
@@ -94,33 +100,41 @@ If there are conflicts, STOP and report to the user how to resolve them.
 
 ## Step 4: Meticulous Maintainer Review
 
-Act as a demanding maintainer who must approve this PR. Check ALL these aspects:
+Two passes: the heavy machinery first, then the checks only this workflow knows about.
 
-### 4.1 Issue Coherence
-If there's a linked issue:
+### 4.1 Correctness & quality pass (delegated)
+
+Run the built-in `code-review` skill (Skill tool) on the branch diff, effort `medium` — raise to `high` for large or risky diffs. It hunts correctness bugs, regressions and reuse/simplification/efficiency cleanups, with adversarial verification of findings. Its confirmed findings feed Step 5 like any other problem.
+
+### 4.2 Maintainer checks (this workflow's own)
+
+Act as a demanding maintainer who must approve this PR:
+
+**Issue coherence** — if there's a linked issue:
 - Verify ALL changes are relevant to the issue
 - Identify any unrelated "drive-by" changes
 - Flag any feature creep or scope creep
 
-### 4.2 Code Quality
-- Verify code follows project conventions
-- Check for code smells (overly long functions, duplications, excessive complexity)
+**Project conventions & over-engineering:**
+- Verify the code follows project conventions (GenroPy APIs verified against source, style of the surrounding code)
+- Hunt residual over-engineering, one line per finding — `file:line — tag — what to cut, what replaces it`:
+  - `delete:` dead code, unused flexibility, speculative features
+  - `stdlib:` hand-rolled code the standard library already ships
+  - `native:` code or dependency doing what GenroPy / the platform already does
+  - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller
+  - `shrink:` same logic, fewer lines — show the shorter form
 - Verify no TODO/FIXME left in code
 - Check for `console.log`, `print`, `debugger` or other debug code
 
-### 4.3 Comments in English
-- ALL code comments MUST be in English
-- Flag any comments not in English
+**Comments in English:**
+- ALL code comments **added or modified by this PR** MUST be in English
+- Flag any new/modified comments in Italian or other languages
+- Pre-existing non-English comments on untouched lines are NOT a blocker — do not demand their translation
 
-### 4.4 Possible Regressions
-- Identify code that could break existing functionality
-- Verify changes to existing functions/methods don't unexpectedly alter behavior
-- Check if there are tests that could fail
-
-### 4.5 Security and Best Practices
+**Security basics:**
 - Verify no hardcoded credentials
-- Check correct error handling
-- Verify input validation where needed
+- Check error handling and input validation where the diff touches trust boundaries
+- If the diff touches auth, permissions or input parsing, recommend a dedicated `/security-review` before merging
 
 ## Step 5: Decision
 
@@ -191,6 +205,6 @@ EOF
 ## Important Notes
 
 - Be VERY rigorous in review — better to block a problematic PR than to let subpar code through
-- Code comments MUST be in English, no exceptions
+- Comments added or modified by the PR MUST be in English (pre-existing comments on untouched lines are exempt)
 - If the issue is unclear or lacks context, flag it as a problem
-- Default base branch for PRs is `develop`, but user can choose a different branch at Step 0
+- Default base branch comes from `.claude/parent-branch` (or auto-detected develop/main); the user can choose a different branch at Step 0
