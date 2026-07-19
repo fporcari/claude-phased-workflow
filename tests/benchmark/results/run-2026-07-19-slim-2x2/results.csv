@@ -1,0 +1,7 @@
+config,run,outcome,turns,cost_usd,duration_s
+sonnet-slim,1,success,20,0.5151417,102
+sonnet-slim,2,success,16,0.41351910000000003,89
+sonnet-slim,3,success,18,0.39859439999999996,93
+sonnet-slimgoal,1,success,17,0.40395614999999996,80
+sonnet-slimgoal,2,success,15,0.4142799,87
+sonnet-slimgoal,3,success,20,0.47597540000000005,89

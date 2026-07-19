@@ -5,7 +5,11 @@
 # Metrics from --output-format json: num_turns, total_cost_usd, duration_ms.
 #
 # Usage: bench.sh [runs_per_config] [config ...]
-#   config format: label|model|mode      mode: plain | goal
+#   config format: label|model|mode      mode: plain | goal | slim | slimgoal
+#     plain    = full auto-phase skill, no guard
+#     goal     = full auto-phase skill under the /goal guard
+#     slim     = minimal prompt, NO skill discipline, no guard
+#     slimgoal = minimal prompt, discipline carried ONLY by the /goal contract
 #   default: 1 run each of sonnet-plain|sonnet|plain and sonnet-goal|sonnet|goal
 set -u
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
@@ -17,6 +21,12 @@ fi
 
 GOAL_CONTRACT='Use the auto-phase skill to execute exactly ONE phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or no pending phase exists. No other phase may change state. Stop after 25 turns.'
 
+# Slim arms: no skill at all. The plain-slim prompt carries only the task;
+# the slim-goal contract carries the discipline the skill would otherwise
+# provide (~450 chars vs the ~9.5KB skill body).
+SLIM_PROMPT='Execute the next pending [ ] phase in .claude/MEMORY.md: implement what it describes, then update MEMORY.md marking that phase [x] with > Done: and > Files: notes (or [!] with an > Issue: note if you cannot complete it). Do not commit anything.'
+SLIM_GOAL_CONTRACT='Execute the next pending phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run and green), or one phase marked [!] with an Issue note, or no pending phase exists. No other phase may change state. Do not commit. Stop after 25 turns.'
+
 WORK="$(mktemp -d)"
 CSV="$WORK/results.csv"
 echo "config,run,outcome,turns,cost_usd,duration_s" > "$CSV"
@@ -27,7 +37,12 @@ for CFG in "${CONFIGS[@]}"; do
     DIR="$WORK/$LABEL-$i"
     mkdir -p "$DIR"; cp -R "$FIXTURE"/. "$DIR"
     ( cd "$DIR" && git init -q && git add -A && git commit -qm init ) || exit 1
-    if [ "$MODE" = "goal" ]; then PROMPT="/goal $GOAL_CONTRACT"; else PROMPT='/auto-phase'; fi
+    case "$MODE" in
+      goal)     PROMPT="/goal $GOAL_CONTRACT" ;;
+      slim)     PROMPT="$SLIM_PROMPT" ;;
+      slimgoal) PROMPT="/goal $SLIM_GOAL_CONTRACT" ;;
+      *)        PROMPT='/auto-phase' ;;
+    esac
 
     echo "=== $LABEL run $i (model=$MODEL, mode=$MODE) ==="
     START=$(date +%s)
