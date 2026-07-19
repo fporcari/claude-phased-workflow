@@ -12,6 +12,8 @@ Before launching the loop, this skill performs a **pre-flight review of MEMORY.m
 
 **/goal guard (Claude Code ≥ 2.1.139):** each phase and repair session is launched as `claude -p "/goal <contract>"` instead of a bare skill prompt. The native goal loop adds an independent per-turn evaluator: completion is decided by a fresh small model reading the transcript, not by the session that did the work. This turns the skill's bounded-loop instructions into harness-enforced behavior — premature "I'm done" exits and silent give-ups get sent back to work. A 25-turn clause in the contract bounds the loop. Older CLIs fall back automatically to the plain skill prompt.
 
+**Light mode (Effort=low phases):** phases the pre-flight marked `low` run WITHOUT the auto-phase skill — a slim `/goal` contract carries all the chain invariants itself (Done demonstrated with tests+lint green, `> Done:`/`> Files:` notes recorded, `[!]` with notes on failure, no commits). Measured on the seeded benchmark fixture: same external outcomes as the full ritual, ~40% cheaper, half the wall time. The full skill remains the default for `medium`/`high`/`max` phases and, always, on CLIs without the goal guard.
+
 **Usage:** `/run-all-phases`
 
 **Budget control:** The `--max-budget-usd` flag is a runaway-loop safety net, NOT a real spend cap when on a subscription plan (Pro / Max / Team). On subscription plans, you don't pay per token — quota is the 5-hour rolling message window, not dollars. The flag computes a notional cost as if API-priced and stops the session if exceeded; that protects against bugged loops, but with values too low it triggers spuriously on legitimate large phases.
@@ -88,10 +90,17 @@ CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
 if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
   PHASE_PROMPT='/goal Use the auto-phase skill to execute exactly ONE phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or no pending phase exists. No other phase may change state. Stop after 25 turns.'
   REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of .claude/MEMORY.md. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
+  # Light mode for Effort=low phases: no skill ritual — the goal contract
+  # carries every chain invariant itself (bookkeeping notes included: what
+  # the contract omits, the session silently drops). Measured on the seeded
+  # fixture: same external outcomes as the full skill, ~40% cheaper, half
+  # the wall time. Hard phases keep the full ritual.
+  LIGHT_PROMPT='/goal Execute the next pending [ ] phase of .claude/MEMORY.md exactly as its Details describe. Condition: MEMORY.md shows that phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or no pending phase exists. No other phase may change state. Never commit. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
   PHASE_PROMPT='/auto-phase'
   REPAIR_PROMPT='/repair-phase'
+  LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
 
 # NOTE: grep -c prints 0 itself on no match (exit 1) — do NOT add "|| echo 0", it would double the output
@@ -158,6 +167,14 @@ for i in $(seq 1 $REMAINING); do
     BUDGET=$((BUDGET * 2))
   fi
 
+  # Effort=low + goal guard available → light mode (slim contract, no skill)
+  RUN_PROMPT="$PHASE_PROMPT"
+  MODE_LABEL="full"
+  if [ -n "$LIGHT_PROMPT" ] && echo "$MODEL_LINE" | grep -qiE '\|[[:space:]]*low[[:space:]]*\|'; then
+    RUN_PROMPT="$LIGHT_PROMPT"
+    MODE_LABEL="light"
+  fi
+
   # Budget flag assembled once; empty array = no cap (raw subscription mode)
   BUDGET_ARGS=()
   if [ -z "$RUN_ALL_PHASES_NO_BUDGET" ]; then
@@ -168,9 +185,9 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   echo "========================================="
-  echo "Phase $NEXT_PHASE — model: $MODEL, $CAP_LABEL"
+  echo "Phase $NEXT_PHASE — model: $MODEL, mode: $MODE_LABEL, $CAP_LABEL"
   echo "========================================="
-  claude -p "$PHASE_PROMPT" \
+  claude -p "$RUN_PROMPT" \
     --model "$MODEL" \
     --permission-mode auto \
     "${BUDGET_ARGS[@]}"
@@ -265,7 +282,7 @@ git diff --stat HEAD | tail -15
 For each phase:
 
 1. Reads MEMORY.md to find the next `[ ]` phase
-2. Looks up the model: opus by default, sonnet or fable only if the execution config table explicitly says so for that phase
+2. Looks up model and mode from the execution config table: opus by default, sonnet or fable only if explicitly marked; `low` effort selects **light mode** (slim contract, no skill), anything else the full auto-phase ritual
 3. Launches `claude -p "/goal <phase contract>" --model <model> --permission-mode auto` — the goal directive tells the session to run the auto-phase skill; auto mode's classifier handles per-action permission decisions. On CLIs older than 2.1.139 it falls back to `claude -p '/auto-phase'`.
 4. That session: explores, implements, then iterates its internal convergence loop (up to 3 fix attempts against tests + lint, no-progress detector, independent review, Done-criterion gate), updates MEMORY.md, exits. Under the `/goal` guard, a **separate evaluator model** re-checks the exit condition after every turn — the session cannot end "convinced it's done" until MEMORY.md actually shows the outcome (or the 25-turn bound trips).
 5. If the phase exits `[!]`, ONE fresh-eyes repair session (`/repair-phase`, fable — opus fallback if the fable session cannot start) is launched; the run continues only if the repair turns the phase `[x]`

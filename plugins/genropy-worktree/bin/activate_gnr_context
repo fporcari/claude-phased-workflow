@@ -1,0 +1,55 @@
+#!/bin/bash
+# Activate GenroPy environment for the current worktree.
+# Detects worktree from pwd, generates .gnr/ if needed, sets env vars.
+#
+# Usage: source activate_gnr
+#
+# Works for both genropy worktrees (PYTHONPATH + GENRO_GNRFOLDER)
+# and client project worktrees (GENRO_GNRFOLDER only).
+
+WORKTREE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$WORKTREE_ROOT" ]; then
+    echo "Error: not inside a git repository." >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+MAIN_REPO="$(git worktree list --porcelain | head -1 | sed 's/worktree //')"
+if [ "$WORKTREE_ROOT" = "$MAIN_REPO" ]; then
+    echo "Error: you are in the main repo, not a worktree." >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+# Generate .gnr/ if not present
+if [ ! -f "$WORKTREE_ROOT/.gnr/environment.xml" ]; then
+    GNR_CONFIG_SRC="$HOME/.gnr/environment.xml"
+    if [ ! -f "$GNR_CONFIG_SRC" ]; then
+        echo "Error: $GNR_CONFIG_SRC not found." >&2
+        return 1 2>/dev/null || exit 1
+    fi
+    mkdir -p "$WORKTREE_ROOT/.gnr"
+    sed -E "s|$MAIN_REPO/|$WORKTREE_ROOT/|g; s|$MAIN_REPO\"|$WORKTREE_ROOT\"|g" \
+        "$GNR_CONFIG_SRC" > "$WORKTREE_ROOT/.gnr/environment.xml"
+    for subdir in instanceconfig siteconfig; do
+        if [ -d "$HOME/.gnr/$subdir" ] && [ ! -e "$WORKTREE_ROOT/.gnr/$subdir" ]; then
+            ln -s "$HOME/.gnr/$subdir" "$WORKTREE_ROOT/.gnr/$subdir"
+        fi
+    done
+    for entry in ".gnr/"; do
+        git -C "$WORKTREE_ROOT" check-ignore -q "$entry" 2>/dev/null || echo "$entry" >> "$WORKTREE_ROOT/.gitignore"
+    done
+fi
+
+# Save original values for deactivate_gnr
+export _GNR_OLD_PYTHONPATH="${PYTHONPATH:-}"
+export _GNR_OLD_GENRO_GNRFOLDER="${GENRO_GNRFOLDER:-}"
+export GENRO_GNRFOLDER="$WORKTREE_ROOT/.gnr"
+
+if [ -d "$WORKTREE_ROOT/gnrpy" ]; then
+    export PYTHONPATH="$WORKTREE_ROOT/gnrpy${PYTHONPATH:+:$PYTHONPATH}"
+    echo "GenroPy activated: $WORKTREE_ROOT"
+    echo "  PYTHONPATH:      $WORKTREE_ROOT/gnrpy"
+    echo "  GENRO_GNRFOLDER: $WORKTREE_ROOT/.gnr"
+else
+    echo "GenroPy activated (project): $WORKTREE_ROOT"
+    echo "  GENRO_GNRFOLDER: $WORKTREE_ROOT/.gnr"
+fi

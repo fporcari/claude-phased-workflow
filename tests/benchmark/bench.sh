@@ -25,7 +25,7 @@ GOAL_CONTRACT='Use the auto-phase skill to execute exactly ONE phase of .claude/
 # the slim-goal contract carries the discipline the skill would otherwise
 # provide (~450 chars vs the ~9.5KB skill body).
 SLIM_PROMPT='Execute the next pending [ ] phase in .claude/MEMORY.md: implement what it describes, then update MEMORY.md marking that phase [x] with > Done: and > Files: notes (or [!] with an > Issue: note if you cannot complete it). Do not commit anything.'
-SLIM_GOAL_CONTRACT='Execute the next pending phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run and green), or one phase marked [!] with an Issue note, or no pending phase exists. No other phase may change state. Do not commit. Stop after 25 turns.'
+SLIM_GOAL_CONTRACT='Execute the next pending [ ] phase of .claude/MEMORY.md exactly as its Details describe. Condition: MEMORY.md shows that phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or no pending phase exists. No other phase may change state. Never commit. Stop after 25 turns.'
 
 WORK="$(mktemp -d)"
 CSV="$WORK/results.csv"

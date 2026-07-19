@@ -73,6 +73,13 @@ fails). Inside, the machine self-corrects.
   and a failed phase escalates to a fable repair. Economics: a sonnet phase
   that fails costs a fable repair, so mark sonnet only where first-pass success
   is likely; the net caps the damage, it doesn't make failures free.
+- **Light mode for simple phases.** `Effort=low` phases run without the skill
+  ritual: a slim `/goal` contract (~450 chars vs the ~9.5KB skill body) carries
+  every chain invariant itself — including the `> Done:`/`> Files:` bookkeeping
+  notes that the 2x2 experiment showed get silently dropped when the contract
+  omits them ("the spec is sovereign"). Measured on the seeded fixture: same
+  external outcomes, ~40% cheaper, half the wall time. The full ritual remains
+  the default for `medium`/`high`/`max` phases and on CLIs without the guard.
 - **Structured failure notes.** `> Issue:` / `> Attempted:` /
   `> Repair attempted:` / `> Repaired:` / `> Review:` — every state transition
   leaves machine-readable evidence.
@@ -146,6 +153,17 @@ Four test tiers cover the chain (2026-07):
    5 turns ($0.34, sonnet). A plain `claude -p` session gets exactly ONE turn,
    so reaching 3 is direct proof that the independent evaluator sends the
    session back to work until the condition holds — the guard's distinctive
-   mechanism, which happy-path benchmarks cannot show. What remains unmeasured:
-   the guard's benefit on failure-prone phases (premature "done", silent
-   give-ups) — needs failure-seeded fixtures and more runs.
+   mechanism, which happy-path benchmarks cannot show.
+5. **Seeded-failure 2x2** (`results/run-2026-07-19-seeded-ab/`,
+   `results/run-2026-07-19-slim-2x2/`): full-skill vs 300-char slim prompt,
+   plain vs /goal, on a fixture whose plan omits that adding a module breaks a
+   registry test. 12/12 external successes across all four arms — no outcome
+   difference; slim arms cost ~40% less and finished in half the time. The one
+   quality gap: the slim-goal arm recorded zero `> Done:`/`> Files:` notes
+   (0/3) because its contract never asked for them, while arms whose active
+   spec asked got them 6/6 and 3/3 — discipline is movable between skill
+   prompt and goal contract, but whatever the spec omits is silently lost.
+   The production light contract includes the notes clause and was
+   re-validated live (notes present, success, $0.48/100s).
+   What remains unmeasured: the guard's outcome benefit at realistic lapse
+   rates (needs tens of runs) and the full ritual's value on hard phases.

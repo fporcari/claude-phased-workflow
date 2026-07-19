@@ -88,13 +88,13 @@ assert() {
   else FAIL=$((FAIL+1)); echo "  FAIL: $1"; fi
 }
 
-echo "== S1: happy path, /goal guard + model/cap selection =="
+echo "== S1: happy path — light mode for low effort, full for the rest =="
 setup S1; fixture3
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "3 phase calls" '[ "$(grep -c "auto-phase skill" .claude/invocations.log)" = 3 ]'
-assert "phase prompts use /goal" '[ "$(grep -c -- "-p /goal Use the auto-phase skill" .claude/invocations.log)" = 3 ]'
-assert "phase1 sonnet cap 50"  'grep -q -- "--model sonnet --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
+assert "phase1 (low) uses LIGHT contract" 'grep -q -- "-p /goal Execute the next pending.*--model sonnet --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
+assert "light contract demands bookkeeping notes" 'grep -q -- "> Done: and > Files: notes recorded" .claude/invocations.log'
+assert "phases 2-3 use FULL skill contract" '[ "$(grep -c -- "-p /goal Use the auto-phase skill" .claude/invocations.log)" = 2 ]'
 assert "phase2 opus cap 100"   'grep -q -- "--model opus --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .claude/MEMORY.md)" = 3 ]'
@@ -106,7 +106,7 @@ printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_ok; exit 0' 
 finish_setup; run
 assert "repair via /goal on fable cap 300" 'grep -q -- "-p /goal Use the repair-phase skill.*--model fable --permission-mode auto --max-budget-usd 300" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
-assert "loop continued to phase 2" '[ "$(grep -c "auto-phase skill" .claude/invocations.log)" = 2 ]'
+assert "loop continued to phase 2 (both low -> light)" '[ "$(grep -c -- "-p /goal Execute the next pending" .claude/invocations.log)" = 2 ]'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .claude/MEMORY.md)" = 2 ]'
 assert "Repaired note present" 'grep -q "> Repaired:" .claude/MEMORY.md'
 
