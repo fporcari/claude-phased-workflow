@@ -9,7 +9,7 @@
 #   default: 1 run each of sonnet-plain|sonnet|plain and sonnet-goal|sonnet|goal
 set -u
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
-FIXTURE="$TESTDIR/fixture"
+FIXTURE="${BENCH_FIXTURE:-$TESTDIR/fixture}"
 RUNS="${1:-1}"; shift 2>/dev/null || true
 if [ "$#" -gt 0 ]; then CONFIGS=("$@"); else
   CONFIGS=("sonnet-plain|sonnet|plain" "sonnet-goal|sonnet|goal")
@@ -19,7 +19,7 @@ GOAL_CONTRACT='Use the auto-phase skill to execute exactly ONE phase of .claude/
 
 WORK="$(mktemp -d)"
 CSV="$WORK/results.csv"
-echo "config,run,success,turns,cost_usd,duration_s" > "$CSV"
+echo "config,run,outcome,turns,cost_usd,duration_s" > "$CSV"
 
 for CFG in "${CONFIGS[@]}"; do
   LABEL="${CFG%%|*}"; REST="${CFG#*|}"; MODEL="${REST%%|*}"; MODE="${REST#*|}"
@@ -45,14 +45,21 @@ except Exception:
     print("?", "?")')
 
     # External verification — never trust the session self-report
-    OK=yes
-    ( cd "$DIR" && python3 -m pytest tests/ -q >/dev/null 2>&1 ) || OK=no
-    ( cd "$DIR" && python3 -m flake8 textutils/truncate.py tests/test_truncate.py >/dev/null 2>&1 ) || OK=no
-    grep -q '^- \[x\]' "$DIR/.claude/MEMORY.md" || OK=no
+    GREEN=yes
+    ( cd "$DIR" && python3 -m pytest tests/ -q >/dev/null 2>&1 ) || GREEN=no
+    ( cd "$DIR" && python3 -m flake8 textutils/ tests/ >/dev/null 2>&1 ) || GREEN=no
+    MARKED_X=no; grep -q '^- \[x\]' "$DIR/.claude/MEMORY.md" && MARKED_X=yes
+    # Classify: success = [x] and externally green; false_done = [x] but red
+    # (the failure mode the /goal guard targets); honest_fail = anything else
+    # (e.g. an honest [!], or no outcome at all).
+    if [ "$MARKED_X" = yes ] && [ "$GREEN" = yes ]; then OUTCOME=success
+    elif [ "$MARKED_X" = yes ]; then OUTCOME=false_done
+    else OUTCOME=honest_fail
+    fi
 
     DUR=$((END - START))
-    echo "$LABEL,$i,$OK,$TURNS,$COST,$DUR" >> "$CSV"
-    echo "    success=$OK turns=$TURNS cost=\$$COST duration=${DUR}s"
+    echo "$LABEL,$i,$OUTCOME,$TURNS,$COST,$DUR" >> "$CSV"
+    echo "    outcome=$OUTCOME turns=$TURNS cost=\$$COST duration=${DUR}s"
   done
 done
 

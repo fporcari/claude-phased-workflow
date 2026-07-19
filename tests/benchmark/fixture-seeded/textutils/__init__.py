@@ -1,0 +1,3 @@
+"""textutils package."""
+
+REGISTRY = ["slugify"]

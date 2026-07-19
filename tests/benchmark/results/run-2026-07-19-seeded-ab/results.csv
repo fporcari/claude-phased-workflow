@@ -1,0 +1,7 @@
+config,run,outcome,turns,cost_usd,duration_s
+sonnet-plain,1,success,23,0.6822328500000001,154
+sonnet-plain,2,success,3,0.7756600499999999,233
+sonnet-plain,3,success,22,0.6506975999999999,160
+sonnet-goal,1,success,21,0.73600765,187
+sonnet-goal,2,success,28,0.83092075,208
+sonnet-goal,3,success,22,0.7221520999999999,176
