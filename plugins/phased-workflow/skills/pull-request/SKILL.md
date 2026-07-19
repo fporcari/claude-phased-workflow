@@ -1,3 +1,9 @@
+---
+description: Create a Pull Request after thorough review as a meticulous maintainer
+argument-hint: [issue-number]
+allowed-tools: Bash(gh:*), Bash(git:*), Read, Grep, Glob, TodoWrite, AskUserQuestion
+---
+
 # Pull Request Review & Creation
 
 **Language rule:** All written content (PR title, body, review reports) must be in English. Conversation with the user remains in Italian as per global settings.

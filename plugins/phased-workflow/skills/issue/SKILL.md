@@ -1,3 +1,9 @@
+---
+description: Load a GitHub issue and create an operational context to solve it
+argument-hint: <issue-number>
+allowed-tools: Bash(gh:*), Read, Grep, Glob
+---
+
 # GitHub Issue #$1
 
 **Language rule:** All written content must be in English. Conversation with the user remains in Italian as per global settings.

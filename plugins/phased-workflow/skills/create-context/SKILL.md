@@ -1,3 +1,9 @@
+---
+description: Create a new work context — branch + worktree + VS Code
+argument-hint: <tema del lavoro>
+allowed-tools: Bash(git:*), Bash(command:*), Bash(mkdir:*), Bash(echo:*), Write
+---
+
 # Create Context
 
 Create a branch and worktree for a new work stream. No planning — just infrastructure.

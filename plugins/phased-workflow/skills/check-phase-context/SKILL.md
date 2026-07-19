@@ -1,3 +1,8 @@
+---
+description: Check the current status of the work plan phases
+allowed-tools: Bash(git:*), Read, Edit, Grep, Glob, AskUserQuestion
+---
+
 # Check Phase Context
 
 Verify the current state of the work plan from the supervisor chat.

@@ -1,3 +1,8 @@
+---
+description: Write a phased work plan (MEMORY.md) from the current conversation
+allowed-tools: Bash(git:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion
+---
+
 # Write Workflow
 
 Plan a work session and write the phased plan to a memory file. This is the **only** deliverable of this command.

@@ -1,3 +1,8 @@
+---
+description: Finalize the workflow - verify all phases, prepare final commit
+allowed-tools: Bash(git:*), Bash(gh:*), Read, Grep, Glob, Write, AskUserQuestion
+---
+
 # Finalize Workflow
 
 Verify the entire work plan is complete and prepare the final state for commit/PR.

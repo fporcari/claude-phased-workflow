@@ -1,3 +1,8 @@
+---
+description: Close the current worktree context and return to the main repo
+allowed-tools: Bash(git:*), Bash(cd:*), Bash(du:*), Bash(command:*), AskUserQuestion
+---
+
 # Close Context
 
 Close the current worktree context: remove the worktree directory, close VS Code, return to the main repo. The git branch is NOT deleted — it stays available for PRs, merges, or future work.

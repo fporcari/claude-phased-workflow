@@ -1,3 +1,8 @@
+---
+description: List and clean up old worktree contexts
+allowed-tools: Bash(git:*), Bash(du:*), Bash(rm:*), Bash(ls:*), AskUserQuestion
+---
+
 # Clean Contexts
 
 List all worktree contexts and let the user remove stale ones.

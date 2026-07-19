@@ -1,3 +1,8 @@
+---
+description: Execute the next phase from the work plan (MEMORY.md or parallel context)
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
+---
+
 # Execute Phase
 
 Execute the next uncompleted phase from the work plan. **Semi-autonomous**: ONE approval gate up front (plan + batched questions), then run to completion without interruptions, auto-verify with tests, notify the user when done.
