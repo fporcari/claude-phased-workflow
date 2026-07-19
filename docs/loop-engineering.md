@@ -112,7 +112,7 @@ mediocrity.
 
 ## Validation
 
-Three test tiers cover the chain (2026-07):
+Four test tiers cover the chain (2026-07):
 
 1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`):
    the run-all-phases bash script, extracted from its own SKILL.md, exercised
@@ -136,6 +136,16 @@ Three test tiers cover the chain (2026-07):
    | sonnet, /goal guard | yes | 21 | $0.71 | 169s |
 
    On a happy-path phase the /goal guard costs ~4 extra turns and ~4% notional
-   cost — the evaluator overhead. Its value is on the failure modes (premature
-   "done", silent give-ups), which a happy-path benchmark cannot show; measuring
-   that requires failure-prone fixture phases and more runs.
+   cost — the evaluator overhead. The goal run's transcript confirms both new
+   primitives were active: its final report cites the phase-verifier's outcome
+   and argues the goal condition explicitly ("no other phase exists, so the
+   goal condition is satisfied").
+4. **Goal-evaluator mechanism test**: a /goal contract that by construction
+   needs multiple turns — create `counter.txt` at 0, increment by at most 1
+   per turn, condition met at exactly 3 — completed with `counter.txt = 3` in
+   5 turns ($0.34, sonnet). A plain `claude -p` session gets exactly ONE turn,
+   so reaching 3 is direct proof that the independent evaluator sends the
+   session back to work until the condition holds — the guard's distinctive
+   mechanism, which happy-path benchmarks cannot show. What remains unmeasured:
+   the guard's benefit on failure-prone phases (premature "done", silent
+   give-ups) — needs failure-seeded fixtures and more runs.
