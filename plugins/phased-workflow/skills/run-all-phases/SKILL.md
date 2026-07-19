@@ -43,6 +43,8 @@ Before launching the bash loop, the agent executing this skill MUST:
    - There is a **measurable done criterion**: a test passes, a specific output appears, a check returns true, a file matches a shape. "Looks good" or "is clean" are not measurable.
    - **External decisions are pre-made**: no choices that require human judgment mid-flight (library selection, API design, naming conventions, tradeoffs).
    - **Pattern reference for non-trivial code**: if the phase asks the agent to write or modify code that follows an established pattern in the repo (new endpoint, new model, new component, new service, new view — anything where "we usually do it like X here"), the phase should cite **1–2 existing examples to copy-adapt from**, with file paths. If the pattern is genuinely standard/library-level (e.g. "add a unit test using pytest"), no reference is needed.
+
+   **Macro-split check**: if the plan has more than ~10 phases, or a phase fails these checks *because its shape depends on an earlier phase's outcome* (not on human judgment), do NOT refine blindly — propose splitting into macro-phases per the autonomous addendum ("Macro-phases"): detail only the first macro as the Work Plan, move the rest to a `## Roadmap` section (plain bullets, inert for this script). One `/run-all-phases` + `/finalize-workflow` per macro; the next `/write-workflow` details the next Roadmap entry with hindsight.
 3. If **any** phase fails the check, **stop the script** and refine interactively:
    - Ask the user **one targeted question at a time** (not a wall of questions).
    - Each question should turn one specific vague element into something concrete.
@@ -275,6 +277,14 @@ grep '^\- \[' "$MEMORY" | head -20
 echo ""
 echo "Working tree changes (uncommitted — consolidate via /finalize-workflow):"
 git diff --stat HEAD | tail -15
+
+# Rolling-wave reminder: Roadmap entries are inert bullets, not phases —
+# the next macro gets detailed by a fresh /write-workflow after finalize.
+if grep -q '^## Roadmap' "$MEMORY" 2>/dev/null; then
+  echo ""
+  echo "Roadmap (pending macro-phases — after /finalize-workflow, detail the next one with /write-workflow):"
+  awk '/^## Roadmap/{f=1;next} /^## /{f=0} f && /^- /' "$MEMORY" | head -10
+fi
 ```
 
 ## What happens

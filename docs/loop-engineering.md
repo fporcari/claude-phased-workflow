@@ -19,9 +19,16 @@ The chain keeps the right skeleton for long-running autonomous work:
 - **One fresh session per phase** — no polluted context, every iteration restarts clean
 - **Measurable `Done:` criteria** — the convergence condition, written at planning time
 
-## The three nested loops
+## The nested loops (three machine, one human)
 
 ```
+macro-loop (rolling wave — ambitious plans only; the human at EVERY boundary):
+    while the ## Roadmap has macro-phases left:
+        /write-workflow        # detail ONLY the next macro (5-8 phases), with hindsight
+        run-all-phases ...     # the machine loops below
+        /finalize-workflow     # commit this macro — bounded diff, review-sized
+        human checkpoint       # verify direction, adjust the roadmap
+
 run-all-phases (outer loop — bash, consumes no model):
     pre-flight review of the plan          # human in the loop HERE
     while [ ] phases remain:
@@ -80,6 +87,15 @@ fails). Inside, the machine self-corrects.
   omits them ("the spec is sovereign"). Measured on the seeded fixture: same
   external outcomes, ~40% cheaper, half the wall time. The full ritual remains
   the default for `medium`/`high`/`max` phases and on CLIs without the guard.
+- **Rolling-wave macro-phases for ambitious plans.** Beyond ~8-10 phases — or
+  when a phase's shape depends on an earlier phase's *outcome* — the plan
+  splits into macro-phases: only the first is detailed, the rest live as inert
+  `## Roadmap` bullets. Each macro gets its own run-all-phases + finalize
+  (bounded uncommitted surface, review-sized diffs), and the next
+  /write-workflow re-plans with hindsight. This widens the robottinizzabile
+  class: "phase 19 depends on phase 12" stops being a rejection reason. The
+  macro loop is deliberately manual — its boundary is where human judgment
+  pays most, before errors compound.
 - **Structured failure notes.** `> Issue:` / `> Attempted:` /
   `> Repair attempted:` / `> Repaired:` / `> Review:` — every state transition
   leaves machine-readable evidence.

@@ -157,6 +157,22 @@ assert "plain /auto-phase prompt used" 'grep -q -- "-p /auto-phase --model" .cla
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .claude/MEMORY.md)" = 2 ]'
 
+echo "== S8: Roadmap section is inert and triggers the rolling-wave reminder =="
+setup S8; fixture2
+cat >> .claude/MEMORY.md <<'ROADEOF'
+
+## Roadmap
+- Macro 1 (current): base layer — detailed above as Phases 1..2
+- Macro 2: API endpoints on top of the base layer
+- Macro 3: UI wiring
+ROADEOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "only the 2 real phases executed" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 2 ]'
+assert "roadmap reminder printed" 'grep -q "Roadmap (pending macro-phases" out.log'
+assert "roadmap entries listed" 'grep -q "Macro 2: API endpoints" out.log'
+assert "all phases [x]" '[ "$(grep -c "^- \\[x\\]" .claude/MEMORY.md)" = 2 ]'
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

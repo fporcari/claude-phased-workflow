@@ -1,8 +1,3 @@
----
-description: Finalize the workflow - verify all phases, prepare final commit
-allowed-tools: Bash(git:*), Bash(gh:*), Read, Grep, Glob, Write, AskUserQuestion
----
-
 # Finalize Workflow
 
 Verify the entire work plan is complete and prepare the final state for commit/PR.
@@ -258,6 +253,8 @@ Inform the user the work is committed locally and they can decide later.
 
 ### Memory cleanup
 After any option, leave MEMORY.md as-is — all phases are `[x]`. If the worktree is removed, the MEMORY.md goes with it.
+
+**Roadmap check (rolling wave):** if MEMORY.md contains a `## Roadmap` section with macro-phases beyond the one just completed, remind the user (in Italian): *"La roadmap ha altre macrofasi. Prossimo passo: nuova chat e `/write-workflow` per dettagliare la prossima — col senno di poi di quella appena committata."*
 
 ### Suggest cleanup
 After completing any option, if IN_WORKTREE=true, inform the user:

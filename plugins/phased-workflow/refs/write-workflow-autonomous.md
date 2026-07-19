@@ -43,6 +43,8 @@ Red flags that a plan is not robottinizzabile:
 - Tests that require non-trivial human setup the agent can't reproduce.
 - Phases where success is "the user will recognize it when they see it".
 
+**Special case — NOT a rejection:** if phases are unspecifiable only because they depend on the outcomes of EARLIER phases of the same plan (not on human judgment), the plan is not un-robottinizzabile — it is too ambitious for one wave. Split it into macro-phases (next section) instead of rejecting it.
+
 When you hit these, stop the autonomous refinement and tell the user plainly, in Italian:
 
 > *"Aspetta — su questo piano sento attrito a renderlo robottinizzabile. Motivo: <reason concreto, e.g. 'la Phase 2 richiede di scegliere fra due approcci e la scelta dipende da come si comporta il primo prototipo'>. Probabilmente uno dei due:*
@@ -51,6 +53,30 @@ When you hit these, stop the autonomous refinement and tell the user plainly, in
 > *Cosa succede?"*
 
 Wait for the user's call. Do not silently downgrade the plan to a vaguer autonomous shape just to fit the robottino mold — that defeats the whole point and the pre-flight check of `/run-all-phases` will catch it anyway, just later and more wastefully.
+
+## Macro-phases (rolling wave) for ambitious plans
+
+Split the plan into macro-phases when ANY of these hold:
+- more than **~8-10 phases** would be needed;
+- any phase's `Details:`/`Done:` can only be written concretely **after an earlier phase lands** (its shape depends on outcomes, not on human judgment);
+- the combined diff of all phases would be too large for one finalize review.
+
+**How it works:** detail ONLY the first macro-phase as a normal Work Plan (5-8 phases, full format below). The rest of the work lives in a `## Roadmap` section as plain bullets — deliberately NOT executable phase lines, so `/run-all-phases` ignores them:
+
+```
+## Roadmap
+- Macro 1 (current): <title> — detailed above as Phases 1..N
+- Macro 2: <one-line scope — what it delivers, what it needs from Macro 1>
+- Macro 3: <one-line scope>
+```
+
+**The cycle (one wave per macro-phase):**
+1. `/run-all-phases` executes the current Work Plan (Roadmap entries are inert).
+2. `/finalize-workflow` commits the macro — bounded diff, review-sized.
+3. **Human checkpoint**: verify the direction, adjust the Roadmap if reality disagrees with it.
+4. New chat, `/write-workflow`: read the Roadmap, detail the NEXT macro into a fresh Work Plan with the hindsight of what actually landed (MEMORY.md is overwritable — all phases are `[x]`). Carry the Roadmap forward, marking the completed macro.
+
+The macro loop is deliberately **manual**: its boundary is exactly where human judgment pays most — before errors compound. Do not script it. Independent macro-phases can optionally run in separate worktrees (`/create-context`) with separate PRs.
 
 ## Autonomous plan format
 
