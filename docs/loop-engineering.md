@@ -85,7 +85,9 @@ fails). Inside, the machine self-corrects.
   every chain invariant itself — including the `> Done:`/`> Files:` bookkeeping
   notes that the 2x2 experiment showed get silently dropped when the contract
   omits them ("the spec is sovereign"). Measured on the seeded fixture: same
-  external outcomes, ~40% cheaper, half the wall time. The full ritual remains
+  external outcomes, ~37% cheaper and ~60% of the wall time (`slim` control vs
+  `plain`, the two arms whose provenance is intact — see
+  `tests/benchmark/results/README.md`). The full ritual remains
   the default for `medium`/`high`/`max` phases and on CLIs without the guard.
 - **Rolling-wave macro-phases for ambitious plans.** Beyond ~8-10 phases — or
   when a phase's shape depends on an earlier phase's *outcome* — the plan
@@ -185,7 +187,19 @@ Five test tiers cover the chain (2026-07):
    `[x]` phase drops the done-count without tripping the progress guard),
    attribution Case B (`[~]` stops the run), fable→opus fallback on session
    crash, no-progress guard, inert `## Roadmap`, and the pre-2.1.139
-   plain-prompt fallback. **48/48 assertions.**
+   plain-prompt fallback — plus three static checks on what the repo ships:
+   no frozen copy of a shipped contract anywhere in the harness (S14), every
+   skill inside its own `allowed-tools` (S15), every skill on the KB sync list
+   (S16). **62/62 assertions.**
+
+   S15 and S16 exist because both gaps are silent by construction. A skill can
+   instruct a command its allowlist forbids — `write-workflow` called
+   `gh issue view` and Sourcerer without permission for either, `close-context`
+   piped git through `grep|head|sed`, `pull-request` invoked the `code-review`
+   skill without the `Skill` tool — and nothing fails until the step runs. A
+   skill can be added to the repo and forgotten in `tools/kb-sync.py`, which
+   means `/update-skills` never delivers it to anyone else; that is how
+   `pull-request`, `issue` and `clean-memories` went missing from the KB topic.
 
    **The suite runs the script under both bash and zsh** (S9). This is not
    redundancy: the production invocation path is the user's shell — zsh on
@@ -215,6 +229,12 @@ Five test tiers cover the chain (2026-07):
    primitives were active: its final report cites the phase-verifier's outcome
    and argues the goal condition explicitly ("no other phase exists, so the
    goal condition is satisfied").
+
+   **Provenance:** the guarded arm ran the pre-2.5.0 contract, because until
+   `84f68df` the harness held a frozen copy of it. The overhead figure is
+   therefore indicative, not current; the shipped contract is longer and admits
+   two more outcomes. `tests/benchmark/results/README.md` records what every
+   archived run actually executed, and which conclusions survive it.
 4. **Goal-evaluator mechanism test**: a /goal contract that by construction
    needs multiple turns — create `counter.txt` at 0, increment by at most 1
    per turn, condition met at exactly 3 — completed with `counter.txt = 3` in
@@ -226,12 +246,14 @@ Five test tiers cover the chain (2026-07):
    `results/run-2026-07-19-slim-2x2/`): full-skill vs 300-char slim prompt,
    plain vs /goal, on a fixture whose plan omits that adding a module breaks a
    registry test. 12/12 external successes across all four arms — no outcome
-   difference; slim arms cost ~40% less and finished in half the time. The one
-   quality gap: the slim-goal arm recorded zero `> Done:`/`> Files:` notes
-   (0/3) because its contract never asked for them, while arms whose active
-   spec asked got them 6/6 and 3/3 — discipline is movable between skill
-   prompt and goal contract, but whatever the spec omits is silently lost.
-   The production light contract includes the notes clause and was
-   re-validated live (notes present, success, $0.48/100s).
+   difference; the slim arms cost ~37% less and finished in ~60% of the wall
+   time. The one quality gap: the slim-goal arm recorded zero
+   `> Done:`/`> Files:` notes (0/3) because its contract never asked for them,
+   while arms whose active spec asked got them 6/6 and 3/3 — discipline is
+   movable between skill prompt and goal contract, but whatever the spec omits
+   is silently lost. The production light contract includes the notes clause and
+   was re-validated live (notes present, success, $0.48/100s).
    What remains unmeasured: the guard's outcome benefit at realistic lapse
-   rates (needs tens of runs) and the full ritual's value on hard phases.
+   rates (needs tens of runs), the full ritual's value on hard phases, and
+   baseline attribution — no paid run has ever executed a contract containing
+   it, so Case A and Case B rest on S11/S12 alone.
