@@ -324,6 +324,14 @@ def main():
         if base_cmp == new_cmp:
             print(f'  {title:<52} unchanged (frontmatter only)')
             continue
+        if new_cmp.rstrip('\n') in kb_text:
+            # Several KB entries are "repo body + a KB-only preamble or tail"
+            # (an Installation: block, a cross-reference map). Once the KB holds
+            # the current body verbatim there is nothing to merge — and merging
+            # anyway conflicts on every edit that lands next to the KB-only
+            # part, permanently, which is what a manual resolution runs into.
+            print(f'  {title:<52} unchanged (KB already carries the current body)')
+            continue
         merged, bad = merge(kb_text, base_cmp, new_cmp)
         kb_only = kb_text != base_cmp
         note = 'CONFLICT' if bad else 'clean'
