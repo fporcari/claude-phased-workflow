@@ -37,8 +37,9 @@ From the phase notes, read:
 Start from scratch, not from the previous session's conclusion:
 1. Re-read the phase's objective, `Details:`, `Done:` and its `Pattern:`/`Pattern reference:` example.
 2. Reproduce the failure yourself (run the failing test/check) — confirm the error signature is still the one recorded.
-3. Root-cause first: grep the callers of the touched functions, compare the implementation against the pattern reference, and ask whether the previous fixes were aimed at a symptom.
-4. Apply the phase's execution config (Effort/Sourcerer) from MEMORY.md, as in `/auto-phase` Step 0.5.
+3. **Establish whose failure it is.** `/auto-phase` leaves a `WIP: baseline before Phase N` commit marking the tree as it was before the phase began. Diff against it (`git diff <that commit> -- <the phase's Files:>`) to see exactly what this phase changed, and re-run the green signal at that commit if you need to: a failure that reproduces on the baseline is **pre-existing**, not this phase's. In that case do not patch it here — record it and keep the phase `[!]` with a `> Repair attempted:` note naming the real culprit, so the human fixes the right thing. If no baseline commit exists the tree was clean when the phase started, so `HEAD` serves the same purpose.
+4. Root-cause first: grep the callers of the touched functions, compare the implementation against the pattern reference, and ask whether the previous fixes were aimed at a symptom.
+5. Apply the phase's execution config (Effort/Sourcerer) from MEMORY.md, as in `/auto-phase` Step 1.5.
 
 ### Step 4: Fix and converge
 

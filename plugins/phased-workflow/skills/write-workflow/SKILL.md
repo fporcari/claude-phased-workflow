@@ -1,11 +1,18 @@
 ---
 description: Write a phased work plan (MEMORY.md) from the current conversation
-allowed-tools: Bash(git:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion, mcp__sourcerer__kb_*, mcp__sourcerer__sem_*, mcp__sourcerer__code_*
 ---
 
 # Write Workflow
 
 Plan a work session and write the phased plan to a memory file. This is the **only** deliverable of this command.
+
+**Model tip:** the plan is the input of every downstream `/execute-phase`, so its quality multiplies. Pick by the nature of the work, not by habit:
+
+- **Introspective or inventive work** — ambiguous scope, architecture to invent, unknown surface, no obvious decomposition: discuss it first, then run this command in the same chat on **fable**. Its strength is exactly navigating that ambiguity, and here the plan *is* the hard problem.
+- **Everything else** — the shape is already clear and this command mostly has to formalise it: **opus at `xhigh` effort**. Precise, literal, cheaper, and it fills this format's fields without drift.
+
+**If you are running on fable:** treat the steps below as a *contract on what the plan must contain* (the fields, their semantics, the sizing ladder, the quality bar), not as a procedure to execute literally. Reach the output format your own way. Following a dense step-by-step to the letter is what degrades fable's output; the format itself is not the problem.
 
 **CRITICAL CONSTRAINTS:**
 1. **NEVER edit source code.** You may read any file to understand structure and patterns, but you must not modify anything outside the memory directory.

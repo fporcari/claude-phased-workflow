@@ -99,6 +99,33 @@ fails). Inside, the machine self-corrects.
 - **Structured failure notes.** `> Issue:` / `> Attempted:` /
   `> Repair attempted:` / `> Repaired:` / `> Review:` — every state transition
   leaves machine-readable evidence.
+- **Never start an iteration on a red baseline.** Every phase session runs the
+  green signal *before* its first edit. A phase that inherits someone else's
+  breakage otherwise attributes it to itself and spends its whole fix budget —
+  plus a repair session — on a bug it did not cause. Each machine mechanism is
+  deliberately scoped to the current phase (`never the whole working tree`), so
+  none of them has authority over a failure that predates it.
+- **Attribute the red baseline, don't just stop.** The failure is matched
+  against the `> Files:` notes of the completed phases. *Case A* — a phase
+  `[x]` owns those files: it regressed and was closed wrongly, so it is
+  **reopened `[x] → [!]`** and the ordinary repair path handles it; the run
+  continues. *Case B* — nobody owns it: it pre-dates the run, the chain has no
+  mandate over it, and the pending phase goes `[~]` for the human. Ambiguity
+  resolves to Case B, because a wrong reopen spends a phase's only repair on
+  the wrong bug. Self-repair is preferred over interrupting the human whenever
+  the regression has an owner; the one-repair-per-phase guard keeps it bounded.
+  Consequence the launcher must absorb: a reopen makes the `[x]` count *drop*,
+  so the progress guard has to know a repair landed or it reads real work as
+  "stuck".
+- **The loop learns across runs, not just within one.** Iterating without ever
+  improving the system is a loop-engineering anti-pattern: the same wrong
+  pattern reference gets chosen again next time. `/finalize-workflow` closes
+  that gap at the only moment where the whole run is visible and the memory
+  file still exists — it harvests `> Repaired:` notes (a root cause plus why
+  earlier attempts missed it), `new-pattern` phases that landed, and pattern
+  references that proved wrong, and proposes them to Sourcerer. Silent by
+  default: the bar is "would this have saved a future session real work, in a
+  way the repo and the git history don't already say?"
 - **The cross-phase blind spot lives at finalize.** Each phase is verified in
   isolation; no phase-level check ever sees the whole diff.
   `/finalize-workflow` runs the whole-diff review (effort high for autonomous
@@ -120,30 +147,55 @@ well-specified phase runs autonomously even on sonnet.
 ## Model-tier map
 
 Strong models go **where judgment happens**; the medium tier executes with an
-automatic verifier behind it.
+automatic verifier behind it. This is guidance, not a constraint — the skills'
+own model tips carry the same advice, and either can be overridden per run.
+
+"Strongest available" turned out to be too blunt a rule. The sharper question is
+**what kind of work the moment actually contains**: fable earns its premium on
+introspective and inventive work — ambiguous scope, architecture to invent, an
+unknown surface, no obvious decomposition — and on unattended work where nobody
+is watching. Where the shape is already clear and the job is to formalise it
+precisely, opus at `xhigh` is more literal, cheaper, and better at filling a
+dense template without drift. A prescriptive step-by-step prompt actively
+degrades fable's output, and most of these skills are exactly that.
 
 | Moment | Model | Why |
 |--------|-------|-----|
-| `/write-workflow` (planning) | strongest available | The plan is the loop's contract: errors propagate to every phase |
-| `/run-all-phases` pre-flight | strongest available | Pure judgment work; a mistake wastes an entire run |
+| Discussion *before* `/write-workflow` | fable, when the plan itself is the hard problem | Ambiguity and novel design are its strength; here there is no template fighting it |
+| `/write-workflow` (planning) | fable if the work is introspective/inventive, else opus `xhigh` | The plan is the loop's contract, so quality multiplies — but this skill is a dense template, so on fable read its steps as a contract on the output, not a procedure |
+| `/run-all-phases` pre-flight | opus `xhigh` | Judgment work, but it ends in an explicit human confirmation, so a misjudgement is caught before the loop starts |
 | Autonomous phases | opus default; sonnet when well-specified + solid pattern reference + testable logic; fable for genuinely hard phases | Decided per phase by the pre-flight |
-| `/repair-phase` | fable (opus fallback) | By definition, the phase's own model already failed once |
-| `/finalize-workflow` | strongest available | Last gate before the commit, once per workflow |
+| `/repair-phase` | fable at `--effort max` (opus fallback) | By definition the phase's own model already failed once, and nobody is watching |
+| `/finalize-workflow` | opus `xhigh` | Most of it is git plumbing; the judgment is concentrated in the whole-diff review, where opus is high-precision *and* high-recall. On a large autonomous diff a reviewer panel beats upgrading the single pass |
+| `phase-verifier` subagent | opus (pinned, not inherited) | On a `sonnet` phase an inherited verifier is as weak as the executor it is meant to check — that defeats the independence |
 
 Avoid the fourth quadrant: weak model + judgment-heavy phase = babysitting
 mediocrity.
 
 ## Validation
 
-Four test tiers cover the chain (2026-07):
+Five test tiers cover the chain (2026-07):
 
 1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`):
-   the run-all-phases bash script, extracted from its own SKILL.md, exercised
-   with a mock `claude` over seven scenarios — /goal call shape, model/cap
-   selection (fable cap doubled), repair success resuming the loop, repair
-   failure stopping it, the idempotent `Repair attempted:` marker, fable→opus
-   fallback on session crash, no-progress guard, and the pre-2.1.139 plain-prompt
-   fallback. 27/27 assertions.
+   the run-all-phases script, extracted from its own SKILL.md, exercised with a
+   mock `claude` over thirteen scenarios — /goal call shape, model/effort/cap
+   selection (fable cap doubled, `xhigh` → 250), repair success resuming the
+   loop, repair failure stopping it, the idempotent `Repair attempted:` marker,
+   relaunch on a `[!]` *without* that marker, attribution Case A (a reopened
+   `[x]` phase drops the done-count without tripping the progress guard),
+   attribution Case B (`[~]` stops the run), fable→opus fallback on session
+   crash, no-progress guard, inert `## Roadmap`, and the pre-2.1.139
+   plain-prompt fallback. **48/48 assertions.**
+
+   **The suite runs the script under both bash and zsh** (S9). This is not
+   redundancy: the production invocation path is the user's shell — zsh on
+   macOS — and constructs that are valid bash can abort there. An unbraced
+   `$NEXT_PHASE[^0-9]` inside a grep pattern parses as an array subscript in
+   zsh and aborts the command, which silently emptied the config-table lookup
+   and defaulted *every* phase's model, effort and cap. A bash-only harness
+   cannot see it, and `zsh -n` does not either — only a real zsh run does.
+   S9 fails on that bug while S1–S8 stay green, which is exactly the shape of
+   the blind spot it closes.
 2. **Real end-to-end run**: a sonnet session executed a well-patterned fixture
    phase, converged first pass (9 tests green, flake8 zero, Done re-verified
    externally), and the independent verification flagged two genuine coverage

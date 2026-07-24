@@ -136,17 +136,19 @@ Mode: autonomous
 | Phase 1 | ... | ... | ... |
 | Phase 2 | ... | ... | ... |
 | ... | ... | ... | ... |
-| Phase N+1 (review) | high | opus | yes |
+| Phase N+1 (review) | xhigh | opus | yes |
 ```
 
+Keep the column order exactly as above — `/run-all-phases` reads Effort and Model **by column position**, not by keyword.
+
 Rules for "Suggested execution config":
-- **Effort**: `low` for mechanical/repetitive, `medium` for standard, `high` for architecture/complex, `max` for unbounded analysis. Note: under `/run-all-phases`, `low` phases run in **light mode** — a slim `/goal` contract instead of the full auto-phase ritual — so their `Details:` and `Done:` must be fully self-contained (they always should be; light mode just removes the safety margin for vagueness)
+- **Effort**: `low` for mechanical/repetitive, `medium` for standard, `high` for architecture/complex (the default when a row is missing), `xhigh` for coding/agentic work that needs the extra depth, `max` for unbounded analysis. `/run-all-phases` passes this to the sub-session as `--effort`, and also derives the runaway cap from it. Note: `low` phases run in **light mode** — a slim `/goal` contract instead of the full auto-phase ritual — so their `Details:` and `Done:` must be fully self-contained (they always should be; light mode just removes the safety margin for vagueness)
 - **Model**: three tiers, and `/run-all-phases` supports exactly these values:
   - `sonnet` when the phase is **well-specified + has a solid pattern reference (or is library-standard) + its logic is testable** — the convergence loop and the fable repair make the cheaper executor safe there; not limited to trivial/mechanical work. The plan carries the intelligence, the loop carries the safety. A sonnet phase that fails costs a fable repair, so mark sonnet only where first-pass success is likely.
   - `opus` for everything else (when in doubt, opus) — the default: design judgment left inside the phase, weak pattern reference, poorly testable output
   - `fable` for the genuinely hard phases — architectural change, hairy debugging, multi-file consistency, novel design with no clean pattern reference — the exception at the top, subject to the user having credits (confirm during planning if unsure)
 - **Sourcerer**: `yes` if touches architectural patterns or framework conventions; `no` otherwise
-- The review phase in autonomous mode is **`opus` at minimum, `fable` if credits allow** — it requires judgment to distinguish minchiate-da-fixare from cose-da-segnalare
+- The review phase in autonomous mode is **`opus` at `xhigh`** — it requires judgment to distinguish minchiate-da-fixare from cose-da-segnalare, and opus is high-precision *and* high-recall on exactly this. Reserve `fable` for implementation phases that are genuinely hard
 
 ## Closing message (Step 4)
 

@@ -90,7 +90,7 @@ Blocker policy: if something emerges that the plan doesn't cover AND a wrong def
 ## Step 5: Auto-verify
 
 - Testable logic → write/update tests following the repo's existing test patterns, run the project's test suite
-- Failures → fix and re-run. ONE retry; still failing → the phase is `[!]`
+- Failures → before fixing, check the failure is **yours**: if it does not touch this phase's `Files:` and looks pre-existing, verify against the tree as it was before you started (`git stash` is not needed — `git diff` against the last WIP commit, or just read the failing test) and tell the user rather than absorbing it. Then fix and re-run. ONE retry; still failing → the phase is `[!]`
 - Purely UI/declarative phases → skip tests; **the user is the verifier**: record the manual checks as a `> Verify:` line in the memory file (Step 6) and surface them in the notification and closing summary
 - `group:N`, non-last phase → no test here (closed in Step 4 with `> Grouped:`). The **last** phase of the group writes the single end-to-end test for the whole group; if it fails, only that last phase is `[!]` — earlier members stay `[x]` (their code exists; the integration failed)
 - `vast` phase → after the edit, optionally re-run a read-only Explore fan-out to confirm no site was missed / conventions held, then write the asserting test as usual

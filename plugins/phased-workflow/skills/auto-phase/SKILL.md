@@ -2,7 +2,7 @@
 
 Execute the next uncompleted phase from the work plan autonomously. This is a wrapper around the `/execute-phase` workflow with all confirmation steps removed.
 
-**Designed for unattended execution**: implement, test, update MEMORY.md, exit. No commits — use `/finalize-workflow` at the end.
+**Designed for unattended execution**: implement, test, update MEMORY.md, exit. No commits of your own work — the only commit allowed is the baseline WIP restore point of Step 0.4; `/finalize-workflow` consolidates it at the end.
 
 **Usage:**
 - Single phase: `claude -p '/auto-phase'`
@@ -17,7 +17,7 @@ Execute the next uncompleted phase from the work plan autonomously. This is a wr
 These rules REPLACE the corresponding steps in the standard execute-phase workflow:
 
 1. **NO user confirmations** — do NOT use AskUserQuestion at any point. Do not ask for plan approval, do not wait for verification. Just implement.
-2. **NO commits** — do not commit anything. All changes stay uncommitted in the working tree. The user will run `/finalize-workflow` at the end to commit everything cleanly.
+2. **NO commits of your own work** — the phase's changes stay uncommitted in the working tree. The single exception is the Step 0.4 baseline WIP commit, which snapshots what was *already* there before this phase began. The user runs `/finalize-workflow` at the end, which soft-resets the WIP streak and commits everything cleanly.
 3. **AUTO-TEST with convergence loop** — write pytest tests for the phase, then iterate the Step 5 loop: up to 3 fix attempts against tests + lint, with a no-progress detector. If it doesn't converge, mark the phase `[!]` with structured notes and exit.
 4. **EXIT when done** — after completing one phase (or determining no phases remain), exit cleanly.
 
@@ -33,20 +33,49 @@ Read `$REPO_ROOT/.claude/MEMORY.md`. Extract branch, parent, phases.
 
 If no `[ ]` phases remain → print "All phases completed. Run /finalize-workflow." and exit.
 
-### Step 0.5: Read execution config for this phase
+### Step 0.2: Baseline check (before touching anything)
 
-Look for the "Suggested execution config" table in MEMORY.md. For the selected phase, extract:
-- **Effort** (low/medium/high) — governs how much exploration to do before implementing
-- **Sourcerer** (yes/no) — whether to search Sourcerer KB for GenroPy patterns before coding
+A previous phase may have left the tree broken — a session that died without a WIP note, or an `[x]` phase whose breakage only shows now. Starting on a red baseline makes this phase attribute someone else's failure to itself, and burn its whole fix budget (and a repair session) on a bug it did not cause.
 
-Apply these settings:
-- **Effort=low**: Read only the files directly listed in the phase. Minimal exploration.
-- **Effort=medium**: Read listed files + their immediate references. Use 1 Explore agent if patterns are unclear.
-- **Effort=high**: Thorough exploration. Use up to 2 Explore agents. Read all related files in the same package. Check existing patterns in other packages for consistency.
-- **Sourcerer=yes**: Before implementing, search Sourcerer skills for relevant GenroPy patterns:
-  - Use `kb_find_skills` for the main pattern involved (e.g., "GenroPy package creation", "TH handler with buttons", "formulaColumn")
-  - Use `sem_ask_codebase` if the pattern spans multiple files
-  - Apply findings to the implementation — do NOT invent GenroPy APIs
+Run the project's green signal **before** any edit: the test suite plus the linter (for pytest/flake8 projects: `python -m pytest tests/ -q` and `flake8` on the tree). Then:
+
+- **Green** → proceed.
+- **Red** → the failure is **not yours**. Do NOT fix it inline and do NOT start the phase. Attribute it first, then take one of the two exits below.
+- **Signal unavailable** (no test suite, no linter configured) → note it and proceed; there is nothing to compare against.
+
+**Attribution.** Compare the failing test/check against the `> Files:` notes of the phases already marked `[x]` in this plan.
+
+*Case A — an earlier phase owns it.* The failure touches files a completed phase claimed: that phase introduced a regression and was closed `[x]` wrongly (its `Done:` criterion was too weak, or its tests passed while it broke something outside its own scope). Do not stop the run for a human — this is exactly what the repair path is for. **Reopen the culprit** and exit without touching the phase you were going to take:
+
+```
+- [!] **Phase M**: title
+  > Issue: regression detected at the baseline check of Phase N: <failure signature>. Closed [x] but broke <file>, which its own Done criterion did not cover.
+  > Attempted: (none — reopened by a later phase's baseline check, not by a failed fix loop)
+  > Files: <the culprit phase's original Files: list, preserved>
+```
+
+Keep its `> Done:`/`> Repaired:` history in place — the repair session needs to know what was already claimed. `/run-all-phases` sees the `[!]`, launches ONE fresh-eyes `/repair-phase` on it, and continues if the repair lands. The one-repair-per-phase guard (`> Repair attempted:`) still applies, so this cannot loop.
+
+*Case B — nobody owns it.* The failure touches nothing any phase claimed: it pre-dates the run (base branch, an unrelated local edit, the repo itself). The chain has no mandate to fix code no phase in the plan touched. Mark the phase you were about to take and exit:
+
+```
+- [~] **Phase N**: title
+  > Blocked: pre-existing failure on the baseline, attributable to no phase in this plan: <failure signature>
+```
+
+*If attribution is genuinely ambiguous* — the failing area is shared, or `> Files:` notes are missing — prefer Case B. A wrong reopen sends a repair session after the wrong bug and burns that phase's only repair.
+
+Record the signature of a green baseline briefly — you will compare against it in Step 5, so you can tell your own regressions from noise.
+
+### Step 0.4: Baseline restore point
+
+If the working tree is dirty (earlier phases of this run left uncommitted changes), create ONE baseline commit so the convergence loop has somewhere to return to:
+
+```bash
+git add -A && git commit -q -m "WIP: baseline before Phase N"
+```
+
+This is the same WIP-commit mechanism `/execute-phase` uses and `/finalize-workflow` consolidates (its soft-reset collapses the whole WIP streak into the final clean commit), so it costs nothing in history. If the tree is already clean, skip it — `HEAD` is already the restore point.
 
 ### Step 1: Select next phase
 
@@ -67,13 +96,31 @@ If the script is unavailable or errors, apply the selection semantics manually f
 
 Mark selected phase as `[>]` in MEMORY.md immediately.
 
+### Step 1.5: Read execution config for the selected phase
+
+Now that the phase is known, look up its row in the "Suggested execution config" table in MEMORY.md and extract:
+- **Effort** (`low` / `medium` / `high` / `xhigh` / `max`) — governs how much exploration to do before implementing
+- **Sourcerer** (yes/no) — whether to search Sourcerer KB for GenroPy patterns before coding
+
+`/run-all-phases` also passes this Effort to the session as `--effort`, so the model's own reasoning depth is already set when you start; the scale below is the *exploration* budget on top of it. If the table has no row for this phase, or no table exists, treat Effort as `high` and Sourcerer as `yes` for non-trivial code.
+
+Apply these settings:
+- **Effort=low**: Read only the files directly listed in the phase. Minimal exploration. (Under `/run-all-phases`, `low` phases normally run in light mode without this skill — if you are reading this at `low`, you were launched directly.)
+- **Effort=medium**: Read listed files + their immediate references. Use 1 Explore agent if patterns are unclear.
+- **Effort=high**: Thorough exploration. Use up to 2 Explore agents. Read all related files in the same package. Check existing patterns in other packages for consistency.
+- **Effort=xhigh / max**: As `high`, plus up to 3 Explore agents and a cross-package consistency pass — reserved for architectural or multi-file-consistency phases.
+- **Sourcerer=yes**: Before implementing, search Sourcerer skills for relevant GenroPy patterns:
+  - Use `kb_find_skills` for the main pattern involved (e.g., "GenroPy package creation", "TH handler with buttons", "formulaColumn")
+  - Use `sem_ask_codebase` if the pattern spans multiple files
+  - Apply findings to the implementation — do NOT invent GenroPy APIs
+
 ### Step 2: Explore and understand
 
 Before writing any code:
 1. Read ALL files listed in the phase's "Files:" section (if they exist)
 2. Read the phase's `Pattern:` / `Pattern reference:` example first — it is the model to copy-adapt — then any other reference files mentioned in the details
-3. Scale exploration depth based on **Effort** level (see Step 0.5)
-4. Search Sourcerer if **Sourcerer=yes** (see Step 0.5)
+3. Scale exploration depth based on **Effort** level (see Step 1.5)
+4. Search Sourcerer if **Sourcerer=yes** (see Step 1.5)
 
 This step is critical — understand before implementing.
 
@@ -107,7 +154,8 @@ Run the signal, then loop:
 - **Green** → proceed to Step 5.5.
 - **Failure** → up to **3 fix attempts**. Each attempt: read the failure, identify the ROOT CAUSE before patching (grep the callers of the touched function — one fix in the shared function beats a patch in the one failing path), fix, re-run the signal.
 - **No-progress detector**: if the failure signature (same failing test + same exception) is identical two runs in a row, STOP the loop early — you are hitting a wall; more attempts only burn budget.
-- **Budget exhausted or no progress** → mark the phase `[!]` with the structured notes of Step 6. Fill `> Attempted:` with every attempt and its error signature — the repair session (`/repair-phase`) depends on it.
+- **Revert instead of stacking** — if an attempt leaves the signal *worse* than before it (new failures, or a different and larger failure set), undo that attempt rather than patching on top of it: `git checkout -- <the files that attempt touched>` returns them to the Step 0.4 restore point. Then re-diagnose from the known state. Patch-on-patch is how a recoverable phase becomes an unrecoverable one, and it also poisons the input `/repair-phase` gets.
+- **Budget exhausted or no progress** → mark the phase `[!]` with the structured notes of Step 6. Fill `> Attempted:` with every attempt and its error signature — the repair session (`/repair-phase`) depends on it. Leave the last attempt's code **in place** (do not revert before exiting): repair needs to see the failing state. Reverting is for mid-loop course correction, not for cleaning up on the way out.
 
 ### Step 5.5: Independent verification
 
@@ -175,7 +223,8 @@ Since each invocation handles ONE phase in a fresh context, compaction should no
 ## Rules
 
 - ONE phase per invocation, always
-- NEVER commit — changes stay in the working tree
+- NEVER commit your own work — only the Step 0.4 baseline WIP commit, and only when the tree was already dirty
+- NEVER start on a red baseline (Step 0.2): a pre-existing failure is `[~]`, not yours to fix
 - NEVER ask questions — make reasonable decisions and document them in MEMORY.md
 - ALWAYS write tests when there is testable logic
 - The convergence loop is BOUNDED: 3 fix attempts max, early stop on no progress — never iterate blindly against the same error

@@ -4,7 +4,7 @@ Verify the entire work plan is complete and prepare the final state for commit/P
 
 **IMPORTANT: This command is for FINALIZATION ONLY. Do NOT edit source code. If issues are found, report them to the user for delegation.**
 
-**Model tip:** run this command from a chat on the strongest model available (fable if credits allow). It runs once per workflow, and Step 5.5 is the last quality gate before the commit — the one place where skimping on judgment is most expensive.
+**Model tip:** run this from a chat on **opus at `xhigh` effort**. Most of this command is git plumbing (worktree detection, staging, soft-reset, commit message) where a premium model buys nothing; the judgment is concentrated in Step 5.5, and opus is high-precision *and* high-recall on diff review. Reach for fable only in the one case where the premium actually pays: an autonomous plan (`Mode: autonomous`) with a large diff no human has read. Better than either, when the diff is big: the reviewer panel described in Step 5.5.
 
 **Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, MEMORY.md path resolution.
 
@@ -168,6 +168,8 @@ With the workflow files staged, run the built-in `code-review` skill (Skill tool
 
 **Cross-phase coherence focus.** Each phase ran in a fresh session and was verified in isolation; no phase-level check ever saw the whole diff at once. Instruct the review to look specifically for cross-phase issues: one phase breaking an assumption another relies on, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
 
+**Reviewer panel (optional — large autonomous diffs).** When the plan is `Mode: autonomous` AND the diff spans many phases, a single review pass is the weak link: it is one perspective on code no human has read. If the user opts in, run the review as a fan-out instead — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) reviewed in parallel, then each surviving finding verified by 3 independent skeptics prompted to *refute* it, keeping only findings that survive a majority. Findings arrive with the reasoning that justifies them, which is what you need to triage them here. This is worth more than upgrading the single pass to fable, and it is read-only like the rest of Step 5.5. Keep the agent count under ~15 (verify findings, not dimensions) and never let the panel edit source.
+
 - No findings → proceed to Step 6.
 - Findings → present them (in Italian) and ask via AskUserQuestion: "La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?" (recommended: fix first). Fixing is not this command's job — delegate (a quick fix session or a new phase via `/write-workflow`), then re-run `/finalize-workflow`.
 
@@ -201,6 +203,23 @@ After user approval:
 ```bash
 git commit -m "<approved message>"
 ```
+
+## Step 7.5: Capture durable lessons (Sourcerer)
+
+This is the only moment where the whole run is visible at once and the memory file still exists — after cleanup it is gone with the worktree. Without this step the loop learns nothing across runs: the same wrong pattern reference gets chosen again next time.
+
+Scan the memory file for the few things worth outliving this workflow:
+
+- `> Repaired:` notes — a root cause plus *why the earlier attempts missed it*. The highest-value kind: it encodes a trap.
+- Phases whose `Pattern:` was `new-pattern` and that landed cleanly — now there IS a reference for next time.
+- `> Review:` findings that turned out to reveal a convention rather than a one-off bug.
+- A pattern reference that proved **wrong** — worth recording as much as a right one.
+
+Judge each against one bar: **would this have saved a future session real work, in a way the repo and the git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" conventions → yes. Bugs specific to this diff, anything a reader would find by opening the file → no.
+
+If nothing clears the bar, say so in one line and move on — this step is silent by default.
+
+If something does, propose it via AskUserQuestion with the draft skill title and a two-line summary, then on approval write it with `kb_add_skill` (or `kb_update_skill` when it corrects an existing one — check with `kb_find_skills` first, an updated skill beats a near-duplicate). Never push without approval.
 
 ## Step 8: Clean up
 
