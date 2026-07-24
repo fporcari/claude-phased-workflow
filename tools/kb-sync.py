@@ -37,6 +37,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -62,10 +63,32 @@ MAPPING = {
     'plugins/phased-workflow/skills/close-context/SKILL.md': 'close-context',
     'plugins/phased-workflow/skills/clean-contexts/SKILL.md': 'clean-contexts',
     'plugins/phased-workflow/skills/pull-request/SKILL.md': 'pull-request',
+    'plugins/phased-workflow/skills/issue/SKILL.md': 'issue',
+    'plugins/phased-workflow/skills/clean-memories/SKILL.md': 'clean-memories',
     'plugins/phased-workflow/refs/common.md': 'Phased Workflow — shared conventions (common.md)',
     'plugins/phased-workflow/refs/write-workflow-autonomous.md': 'write-workflow — autonomous (robottino) addendum',
     'plugins/phased-workflow/agents/phase-verifier.md': 'phase-verifier subagent',
     'docs/loop-engineering.md': 'Loop engineering — self-correcting autonomous chain',
+}
+
+# Repo files the KB embeds inside a fenced block rather than holding verbatim.
+# A three-way text merge of a .py against a markdown page is nonsense, so these
+# are synced by replacing the fence body and nothing else.
+EMBEDDED = {
+    'plugins/phased-workflow/scripts/next-phase.py':
+        ('next-phase.py — deterministic phase selection script', 'python'),
+}
+
+# KB entries with no counterpart in this repo, on purpose. Listed so `--audit`
+# reports them as known rather than as a gap — an unexplained KB-only entry is
+# how drift starts.
+KB_ONLY = {
+    'Guida ai comandi — Phased Workflow': 'KB-authored command guide (Italian)',
+    'Install Phased Workflow Plugin': 'KB-authored install instructions',
+    'open-context': 'command not shipped by the plugin',
+    'push-context-memory': 'Sourcerer-specific, internal machines only',
+    'ui-test': 'GenroPy-specific, internal machines only',
+    'Worktree GenroPy runtime isolation': 'genropy-worktree plugin note',
 }
 
 
@@ -125,6 +148,10 @@ class KB:
     def put(self, skill_id, content):
         return self.call('kb.update_skill', {'skill_id': skill_id, 'content': content})
 
+    def add(self, title, content, description):
+        return self.call('kb.add_skill', {'title': title, 'topic': TOPIC,
+                                          'content': content, 'description': description})
+
 
 # --------------------------------------------------------------------------
 def git(*args):
@@ -163,13 +190,105 @@ def merge(kb_text, base_text, new_text):
         return r.stdout, r.returncode != 0
 
 
+def create_missing(kb, apply):
+    """Create the mapped skills the KB topic does not have yet.
+
+    Hand-copying a 7KB skill body into the KB is the transcription risk this
+    tool exists to remove, so the creation path belongs here too. The KB holds
+    body only — `/update-skills` preserves the local frontmatter — and the
+    frontmatter's own `description:` becomes the KB description."""
+    index = kb.index()
+    made = 0
+    for rel, title in MAPPING.items():
+        if title in index:
+            continue
+        text = (REPO / rel).read_text(encoding='utf-8')
+        body = strip_frontmatter(text)
+        desc = re.search(r'^description:\s*(.+)$', text[:text.find('\n---\n', 3) + 1], re.M) \
+            if text.startswith('---\n') else None
+        desc = desc.group(1).strip() if desc else title
+        print(f'  {title:<52} create from {rel} ({len(body)} bytes)')
+        if apply:
+            kb.add(title, body, desc)
+            made += 1
+    print(f'\n{made} created.' if apply else '\ndry run: re-run with --apply to create them.')
+    return 0
+
+
+def audit(kb):
+    """Coverage in both directions: repo files nobody syncs, KB entries nobody
+    owns. Either one is invisible until someone notices a colleague missing a
+    command, which is exactly what happened with `pull-request`."""
+    index = kb.index()
+    managed = set(MAPPING.values()) | {t for t, _ in EMBEDDED.values()}
+    problems = []
+
+    print('repo -> KB')
+    for d in sorted((REPO / 'plugins/phased-workflow/skills').glob('*/SKILL.md')):
+        title = MAPPING.get(str(d.relative_to(REPO)))
+        if not title:
+            problems.append(f'  {d.parent.name:<24} NOT MAPPED — add it to MAPPING')
+        elif title not in index:
+            problems.append(f'  {d.parent.name:<24} mapped to "{title}", absent from the KB topic')
+    for rel, title in list(MAPPING.items()) + [(r, t) for r, (t, _) in EMBEDDED.items()]:
+        if not (REPO / rel).exists():
+            problems.append(f'  {rel:<24} MAPPED BUT MISSING in the repo')
+    print('\n'.join(problems) if problems else '  all mapped and present')
+
+    print('\nKB -> repo')
+    unowned = []
+    for title in sorted(index):
+        if title in managed:
+            continue
+        why = KB_ONLY.get(title)
+        if why:
+            print(f'  {title:<52} KB-only ({why})')
+        else:
+            unowned.append(f'  {title:<52} UNOWNED — map it or list it in KB_ONLY')
+    print('\n'.join(unowned), end='\n' if unowned else '')
+    problems += unowned
+
+    print(f'\n{len(problems)} problem(s).')
+    return 1 if problems else 0
+
+
+def sync_embedded(kb, index, changed):
+    """Replace the fenced body of a KB page with the repo file it embeds."""
+    for rel, (title, lang) in EMBEDDED.items():
+        skill_id = index.get(title)
+        if not skill_id:
+            print(f'  {title:<52} NOT IN KB — create it first')
+            continue
+        kb_text = kb.get(skill_id)
+        m = re.search(rf'```{lang}\n(.*?)```', kb_text, re.S)
+        if not m:
+            print(f'  {title:<52} no ```{lang} block to sync into')
+            continue
+        file_text = (REPO / rel).read_text(encoding='utf-8')
+        if m.group(1) == file_text:
+            print(f'  {title:<52} unchanged (embedded)')
+            continue
+        merged = kb_text[:m.start(1)] + file_text + kb_text[m.end(1):]
+        print(f'  {title:<52} embedded body differs — {len(m.group(1))} -> {len(file_text)} bytes')
+        changed.append((skill_id, title, merged))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--apply', action='store_true', help='write to the KB (default: dry run)')
     ap.add_argument('--base', help='repo ref the KB currently reflects (default: recorded state)')
     ap.add_argument('--only', nargs='*', metavar='NAME', help='limit to these skill titles or paths')
+    ap.add_argument('--audit', action='store_true',
+                    help='report coverage gaps in both directions and exit')
+    ap.add_argument('--create', action='store_true',
+                    help='create mapped skills that the KB topic is missing, then exit')
     args = ap.parse_args()
+
+    if args.audit:
+        return audit(KB())
+    if args.create:
+        return create_missing(KB(), args.apply)
 
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
     base = args.base or state.get('base')
@@ -214,6 +333,9 @@ def main():
             conflicts.append(title)
             continue
         changed.append((skill_id, title, merged))
+
+    if not args.only:
+        sync_embedded(kb, index, changed)
 
     if conflicts:
         print(f'\n{len(conflicts)} conflict(s): {", ".join(conflicts)}')
