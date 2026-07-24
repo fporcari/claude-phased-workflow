@@ -1,6 +1,6 @@
 ---
 description: Close the current worktree context and return to the main repo
-allowed-tools: Bash(git:*), Bash(cd:*), Bash(du:*), Bash(command:*), AskUserQuestion
+allowed-tools: Bash(git:*), Bash(cd:*), Bash(du:*), Bash(command:*), Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(sed:*), AskUserQuestion
 ---
 
 # Close Context

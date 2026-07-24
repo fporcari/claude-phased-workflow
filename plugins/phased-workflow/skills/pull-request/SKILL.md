@@ -1,7 +1,7 @@
 ---
 description: Create a Pull Request after thorough review as a meticulous maintainer
 argument-hint: [issue-number]
-allowed-tools: Bash(gh:*), Bash(git:*), Read, Grep, Glob, TodoWrite, AskUserQuestion
+allowed-tools: Bash(gh:*), Bash(git:*), Bash(cat:*), Read, Grep, Glob, AskUserQuestion, Skill
 ---
 
 # Pull Request Review & Creation

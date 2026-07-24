@@ -1,9 +1,12 @@
 #!/bin/bash
-# Orchestration regression tests for the run-all-phases script.
-# Runs the real bash script (extracted from the SKILL.md) against a mock
-# `claude` binary over seven scenarios: model/cap selection under the /goal
-# guard, repair success, repair failure, idempotent repair marker,
-# fable->opus fallback, progress guard, and the pre-2.1.139 prompt fallback.
+# Regression tests for the phased-workflow chain.
+# S1-S13 run the real run-all-phases script (extracted from its own SKILL.md)
+# against a mock `claude` binary: model/effort/cap selection under the /goal
+# guard, repair success and failure, the idempotent repair marker, fable->opus
+# fallback, progress guard, baseline attribution (reopen / [~]), inert Roadmap,
+# and the pre-2.1.139 prompt fallback. S14-S16 are static checks on what the
+# repo ships: no frozen copies of the shipped contracts (S14), every skill
+# inside its own allowed-tools (S15), every skill on the KB sync list (S16).
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL="$TESTDIR/../../plugins/phased-workflow/skills/run-all-phases/SKILL.md"
 WORK="$(mktemp -d)"
@@ -267,6 +270,40 @@ assert "phase contract admits the Case B [~] outcome" 'printf "%s" "$XP" | grep 
 assert "bench.sh holds NO frozen copy of a shipped contract" '! grep -qE "^(GOAL_CONTRACT|SLIM_GOAL_CONTRACT)=" "$BENCH"'
 assert "bench.sh extracts the contracts live" 'grep -q "extract_contract PHASE_PROMPT" "$BENCH" && grep -q "extract_contract LIGHT_PROMPT" "$BENCH"'
 assert "bench.sh passes --effort" 'grep -q -- "--effort" "$BENCH"'
+
+echo "== S15: every skill stays inside its own allowed-tools =="
+# Free tier, no session. A skill body is instructions; allowed-tools decides
+# which of them can run. The gap is silent at authoring time and fatal at
+# runtime, and it produced three real defects (write-workflow's gh/Sourcerer
+# calls, close-context's grep|head|sed pipes, pull-request's code-review skill).
+SKILLS_DIR="$TESTDIR/../../plugins/phased-workflow/skills"
+CHECKER="$TESTDIR/check_allowlists.py"
+ALLOW_OUT="$(python3 "$CHECKER" "$SKILLS_DIR" 2>&1)"; ALLOW_RC=$?
+[ "$ALLOW_RC" = 0 ] || echo "$ALLOW_OUT"
+assert "no skill exceeds its allowed-tools" '[ "$ALLOW_RC" = 0 ]'
+assert "all 13 skills declare frontmatter with allowed-tools" \
+  '[ "$(grep -l "^allowed-tools:" "$SKILLS_DIR"/*/SKILL.md | wc -l | tr -d " ")" = "$(ls -d "$SKILLS_DIR"/*/ | wc -l | tr -d " ")" ]'
+# The checker is only worth having if it fails on the defect it describes.
+MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$MUT/"
+python3 - "$MUT/close-context/SKILL.md" <<'PYM'
+import sys
+p = sys.argv[1]
+open(p, 'w').write(open(p).read().replace(', Bash(sed:*)', '', 1))
+PYM
+python3 "$CHECKER" "$MUT" >/dev/null 2>&1; MUT_RC=$?
+rm -rf "$MUT"
+assert "checker fails when an allowlist entry is removed" '[ "$MUT_RC" != 0 ]'
+
+echo "== S16: every repo skill is on the KB sync list =="
+# `/update-skills` delivers what the KB holds. A skill added to the repo and
+# forgotten in tools/kb-sync.py MAPPING never reaches another machine — that is
+# how `pull-request`, `issue` and `clean-memories` went missing from the topic.
+KBSYNC="$TESTDIR/../../tools/kb-sync.py"
+UNMAPPED="$(for d in "$SKILLS_DIR"/*/; do n="$(basename "$d")"; \
+  grep -q "skills/$n/SKILL.md" "$KBSYNC" || echo "$n"; done)"
+[ -z "$UNMAPPED" ] || echo "  unmapped: $(echo "$UNMAPPED" | tr '\n' ' ')"
+assert "no repo skill is absent from kb-sync MAPPING" '[ -z "$UNMAPPED" ]'
+assert "kb-sync exposes an audit mode for KB-only entries" 'grep -q -- "--audit" "$KBSYNC"'
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

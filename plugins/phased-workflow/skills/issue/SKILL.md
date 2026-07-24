@@ -1,5 +1,5 @@
 ---
-description: Load a GitHub issue and create an operational context to solve it
+description: Load and analyze a GitHub issue — analysis only, the work plan is created via /write-workflow
 argument-hint: <issue-number>
 allowed-tools: Bash(gh:*), Read, Grep, Glob
 ---

@@ -1,7 +1,7 @@
 ---
 description: Create a new work context — branch + worktree + VS Code
 argument-hint: <tema del lavoro>
-allowed-tools: Bash(git:*), Bash(command:*), Bash(mkdir:*), Bash(echo:*), Write
+allowed-tools: Bash(git:*), Bash(command:*), Bash(mkdir:*), Bash(echo:*), Bash(cp:*), Bash(code:*), Bash(python3:*), Write
 ---
 
 # Create Context

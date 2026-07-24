@@ -1,4 +1,5 @@
-import sys, os
+import os
+import sys
 mem = os.environ['MEM']
 s = open(mem).read()
 op = sys.argv[1]

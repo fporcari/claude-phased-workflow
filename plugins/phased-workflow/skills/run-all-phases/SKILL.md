@@ -1,3 +1,8 @@
+---
+description: Run all remaining phases autonomously — launches a new claude session per phase with correct model
+allowed-tools: Bash, Read
+---
+
 # Run All Phases
 
 Launches `/auto-phase` in a loop, one new Claude session per phase. Each session gets:

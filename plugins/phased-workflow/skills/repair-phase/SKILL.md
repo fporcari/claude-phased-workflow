@@ -1,3 +1,8 @@
+---
+description: Repair the first failed [!] phase with fresh eyes — autonomous, no commit
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, mcp__sourcerer__kb_*, mcp__sourcerer__sem_*, mcp__sourcerer__code_*
+---
+
 # Repair Phase
 
 Fresh-eyes repair session for a phase that `/auto-phase` left as `[!]`. It runs in a new context on purpose: the previous session's diagnosis may itself be the problem — question it, don't continue it.
