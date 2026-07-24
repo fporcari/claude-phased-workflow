@@ -132,6 +132,24 @@ def git(*args):
                           capture_output=True, text=True, check=True).stdout
 
 
+def strip_frontmatter(text):
+    if not text.startswith('---\n'):
+        return text
+    end = text.find('\n---\n', 3)
+    return text[end + 5:].lstrip('\n') if end != -1 else text
+
+
+def align_frontmatter(kb_text, base_text, new_text):
+    """KB entries carry no YAML frontmatter — `/update-skills` preserves the
+    local one, so the KB deliberately holds body only. Merging a repo file that
+    *does* have frontmatter against a KB body therefore conflicts on every
+    frontmatter change, forever, for no reason. Drop it from the repo sides so
+    the merge compares like with like."""
+    if kb_text.startswith('---\n'):
+        return base_text, new_text          # KB keeps frontmatter for this one
+    return strip_frontmatter(base_text), strip_frontmatter(new_text)
+
+
 def merge(kb_text, base_text, new_text):
     """Apply base->new onto kb_text. Returns (merged, conflicted)."""
     with tempfile.TemporaryDirectory() as d:
@@ -183,8 +201,12 @@ def main():
             print(f'  {title:<52} unchanged')
             continue
         kb_text = kb.get(skill_id)
-        merged, bad = merge(kb_text, base_text, new_text)
-        kb_only = kb_text != base_text
+        base_cmp, new_cmp = align_frontmatter(kb_text, base_text, new_text)
+        if base_cmp == new_cmp:
+            print(f'  {title:<52} unchanged (frontmatter only)')
+            continue
+        merged, bad = merge(kb_text, base_cmp, new_cmp)
+        kb_only = kb_text != base_cmp
         note = 'CONFLICT' if bad else 'clean'
         print(f'  {title:<52} {note:<9} {len(kb_text)} -> {len(merged)} bytes'
               f'{"  (has KB-only edits)" if kb_only else ""}')
