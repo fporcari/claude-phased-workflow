@@ -159,22 +159,67 @@ def git(*args):
                           capture_output=True, text=True, check=True).stdout
 
 
-def strip_frontmatter(text):
+SECTION_HEADING = '## Frontmatter for the command file'
+FRONTMATTER_SECTION = """
+---
+
+{heading}
+
+Write this block at the top of `~/.claude/commands/{name}.md`. It is part of the
+skill, not machine-local configuration: `allowed-tools` is what decides whether
+the steps above can execute at all, and it is checked against this body by
+`tests/orchestration/check_allowlists.py` in the repo.
+
+```yaml
+---
+{frontmatter}
+---
+```
+"""
+
+
+def split_frontmatter(text):
+    """(frontmatter, body), or (None, text) when the file has none."""
     if not text.startswith('---\n'):
-        return text
+        return None, text
     end = text.find('\n---\n', 3)
-    return text[end + 5:].lstrip('\n') if end != -1 else text
+    if end == -1:
+        return None, text
+    return text[4:end].strip(), text[end + 5:].lstrip('\n')
 
 
-def align_frontmatter(kb_text, base_text, new_text):
-    """KB entries carry no YAML frontmatter — `/update-skills` preserves the
-    local one, so the KB deliberately holds body only. Merging a repo file that
-    *does* have frontmatter against a KB body therefore conflicts on every
-    frontmatter change, forever, for no reason. Drop it from the repo sides so
-    the merge compares like with like."""
-    if kb_text.startswith('---\n'):
-        return base_text, new_text          # KB keeps frontmatter for this one
-    return strip_frontmatter(base_text), strip_frontmatter(new_text)
+def strip_frontmatter(text):
+    return split_frontmatter(text)[1]
+
+
+def with_frontmatter_section(kb_text, repo_text, name, is_command):
+    """Publish the command's frontmatter as an install block at the end.
+
+    A KB entry must not *start* with frontmatter: `/update-skills` reads the
+    entry as a body and keeps the local block, so an entry beginning with `---`
+    would land duplicated in the installed file. But dropping the frontmatter
+    entirely is how the KB came to publish commands with no `allowed-tools` at
+    all — the same defect as a repo skill shipping without one, a channel
+    further out. So the body stays first and the frontmatter follows explicitly.
+
+    Idempotent, and applied to the merge *result* rather than its inputs: a
+    three-way merge only propagates differences, so it can never introduce a
+    section that neither side has. It also replaces a hand-written frontmatter
+    section under any heading — `repair-phase` carried one whose allowlist had
+    since gone stale, which is the drift this closes."""
+    frontmatter = split_frontmatter(repo_text)[0]
+    if not is_command or frontmatter is None:
+        return kb_text
+    section = FRONTMATTER_SECTION.format(heading=SECTION_HEADING, name=name,
+                                         frontmatter=frontmatter)
+    m = re.search(r'^#{2,3} .*[Ff]rontmatter.*$', kb_text, re.M)
+    if not m:
+        return kb_text.rstrip('\n') + '\n' + section
+    cut = m.start()
+    rule = kb_text.rfind('\n---\n', 0, cut)             # the section's own rule, if any
+    if rule != -1 and kb_text[rule:cut].strip() == '---':
+        cut = rule
+    return kb_text[:cut].rstrip('\n') + '\n' + section
 
 
 def merge(kb_text, base_text, new_text):
@@ -316,27 +361,29 @@ def main():
             print(f'  {title:<52} not at base {base[:12]} — skipped')
             continue
         new_text = (REPO / rel).read_text(encoding='utf-8')
-        if base_text == new_text:
+        # Compare against what the KB actually holds, not against the recorded
+        # base: a wrong base would then hide drift instead of causing it. The
+        # base is only what the three-way merge needs.
+        kb_text = kb.get(skill_id)
+        name = rel.split('/skills/')[1].split('/')[0] if '/skills/' in rel else title
+        base_body, new_body = strip_frontmatter(base_text), strip_frontmatter(new_text)
+        bad = False
+        if new_body == base_body or new_body.rstrip('\n') in kb_text:
+            # Nothing to propagate: either the body did not move, or the KB
+            # already carries it verbatim (several entries are "repo body plus a
+            # KB-only preamble or tail" — an Installation: block, a
+            # cross-reference map — and merging those conflicts on every edit
+            # landing next to the KB-only part, permanently).
+            merged = kb_text
+        else:
+            merged, bad = merge(kb_text, base_body, new_body)
+        merged = with_frontmatter_section(merged, new_text, name, '/skills/' in rel)
+        if merged == kb_text:
             print(f'  {title:<52} unchanged')
             continue
-        kb_text = kb.get(skill_id)
-        base_cmp, new_cmp = align_frontmatter(kb_text, base_text, new_text)
-        if base_cmp == new_cmp:
-            print(f'  {title:<52} unchanged (frontmatter only)')
-            continue
-        if new_cmp.rstrip('\n') in kb_text:
-            # Several KB entries are "repo body + a KB-only preamble or tail"
-            # (an Installation: block, a cross-reference map). Once the KB holds
-            # the current body verbatim there is nothing to merge — and merging
-            # anyway conflicts on every edit that lands next to the KB-only
-            # part, permanently, which is what a manual resolution runs into.
-            print(f'  {title:<52} unchanged (KB already carries the current body)')
-            continue
-        merged, bad = merge(kb_text, base_cmp, new_cmp)
-        kb_only = kb_text != base_cmp
         note = 'CONFLICT' if bad else 'clean'
         print(f'  {title:<52} {note:<9} {len(kb_text)} -> {len(merged)} bytes'
-              f'{"  (has KB-only edits)" if kb_only else ""}')
+              f'{"  (has KB-only edits)" if kb_text != base_body else ""}')
         if bad:
             conflicts.append(title)
             continue
