@@ -192,11 +192,15 @@ Five test tiers cover the chain (2026-07):
    skill inside its own `allowed-tools` (S15), every skill on the KB sync list
    (S16). **62/62 assertions.**
 
-   S15 and S16 exist because both gaps are silent by construction. A skill can
-   instruct a command its allowlist forbids — `write-workflow` called
+   S15 and S16 exist because both gaps are quiet by construction. A skill can
+   instruct a command its allowlist never pre-approves — `write-workflow` called
    `gh issue view` and Sourcerer without permission for either, `close-context`
    piped git through `grep|head|sed`, `pull-request` invoked the `code-review`
-   skill without the `Skill` tool — and nothing fails until the step runs. A
+   skill without the `Skill` tool. Nothing fails loudly: the step stops to ask
+   for a permission the author meant to grant, and where nobody can answer it
+   does not run. Autonomous sessions are gated by `--permission-mode auto`
+   rather than by the command's allowlist, so this is a defect of the
+   interactive path, which is where all four of those commands live. A
    skill can be added to the repo and forgotten in `tools/kb-sync.py`, which
    means `/update-skills` never delivers it to anyone else; that is how
    `pull-request`, `issue` and `clean-memories` went missing from the KB topic.

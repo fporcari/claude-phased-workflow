@@ -166,9 +166,9 @@ FRONTMATTER_SECTION = """
 {heading}
 
 Write this block at the top of `~/.claude/commands/{name}.md`. It is part of the
-skill, not machine-local configuration: `allowed-tools` is what decides whether
-the steps above can execute at all, and it is checked against this body by
-`tests/orchestration/check_allowlists.py` in the repo.
+skill, not machine-local configuration: `allowed-tools` pre-approves the steps
+above, so an incomplete list makes a documented step stop and ask. It is checked
+against this body by `tests/orchestration/check_allowlists.py` in the repo.
 
 ```yaml
 ---

@@ -3,10 +3,11 @@
 
 Why this exists
 ---------------
-A skill body is a set of instructions; `allowed-tools` decides which of them can
-actually execute. Nothing tied the two together, and the gap is silent — the
-skill reads fine, then a documented step is blocked at runtime. Three real
-defects were found this way in one pass:
+A skill body is a set of instructions; `allowed-tools` is what pre-approves them.
+Nothing tied the two together, and the gap is quiet rather than loud: the skill
+reads fine, then a documented step stops to ask for a permission the author
+meant to grant — and in a non-interactive session, where nobody can answer, it
+does not run at all. Three real defects were found this way in one pass:
 
   * `write-workflow` instructed `gh issue view` and Sourcerer lookups while its
     allowlist permitted neither
