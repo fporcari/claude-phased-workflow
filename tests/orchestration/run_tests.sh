@@ -245,6 +245,29 @@ finish_setup; run
 assert "xhigh cap 250 and effort passed" 'grep -q -- "--model opus --effort xhigh --permission-mode auto --max-budget-usd 250" .claude/invocations.log'
 assert "xhigh uses the FULL skill contract" 'grep -q -- "-p /goal Use the auto-phase skill" .claude/invocations.log'
 
+echo "== S14: shipped contracts are the ones measured (no frozen copies) =="
+# Free tier, no session: guards the invalidator that silently makes a paid
+# benchmark night measure a previous version of the chain.
+SKILL_RAP="$TESTDIR/../../plugins/phased-workflow/skills/run-all-phases/SKILL.md"
+BENCH="$TESTDIR/../benchmark/bench.sh"
+extract() { python3 - "$SKILL_RAP" "$1" <<'PYX'
+import re, sys
+t = open(sys.argv[1], encoding='utf-8').read()
+v = re.findall(rf"^\s*{re.escape(sys.argv[2])}='([^']*)'\s*$", t, re.M)
+sys.stdout.write(max(v, key=len) if v else '')
+PYX
+}
+XP="$(extract PHASE_PROMPT)"; XL="$(extract LIGHT_PROMPT)"
+assert "PHASE_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XP" ]'
+assert "LIGHT_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XL" ]'
+assert "light contract carries the baseline check" 'printf "%s" "$XL" | grep -q "run the tests and the linter"'
+assert "light contract carries the attribution/reopen clause" 'printf "%s" "$XL" | grep -q "reopen THAT phase"'
+assert "phase contract admits the Case A reopen outcome" 'printf "%s" "$XP" | grep -q "reopened from \[x\] to \[!\]"'
+assert "phase contract admits the Case B [~] outcome" 'printf "%s" "$XP" | grep -q "marked \[~\]"'
+assert "bench.sh holds NO frozen copy of a shipped contract" '! grep -qE "^(GOAL_CONTRACT|SLIM_GOAL_CONTRACT)=" "$BENCH"'
+assert "bench.sh extracts the contracts live" 'grep -q "extract_contract PHASE_PROMPT" "$BENCH" && grep -q "extract_contract LIGHT_PROMPT" "$BENCH"'
+assert "bench.sh passes --effort" 'grep -q -- "--effort" "$BENCH"'
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

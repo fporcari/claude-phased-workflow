@@ -1,6 +1,6 @@
 ---
 description: Write a phased work plan (MEMORY.md) from the current conversation
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion, mcp__sourcerer__kb_*, mcp__sourcerer__sem_*, mcp__sourcerer__code_*
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__sourcerer__kb_*, mcp__sourcerer__sem_*, mcp__sourcerer__code_*
 ---
 
 # Write Workflow
@@ -77,9 +77,13 @@ You may:
 
 Each `/execute-phase` runs in a fresh chat: anything not written in the plan gets re-discovered there, phase after phase. While planning — when the code is already in front of you — locate 1–2 existing examples to copy-adapt for every phase that implements non-trivial code (new endpoint, new model, new component, new service, new view — anything where "we usually do it like X here"). Use Grep/Glob/Read or Sourcerer, and record concrete paths in the phase's `Pattern:` field. Mark library-standard work (e.g. a plain pytest test) as `library-standard`; if no comparable example exists, write `new-pattern`.
 
+**Fan out when there are several to find.** Pattern hunting across N phases is N independent searches, and doing them serially in the chat that also has to converse with the user is the slowest possible arrangement. From ~3 non-trivial phases up, dispatch one read-only `Explore` subagent per phase (Agent tool), each asked for 1–2 concrete `path:symbol` candidates plus a one-line reason, then reason over the returned candidates rather than the raw files. Keep it read-only — this informs the plan, it never writes. For a refactor whose *surface* is unknown (you cannot yet name the phases), the same fan-out works as a multi-modal sweep: one agent per search angle (by directory, by symbol, by caller, by test), each blind to what the others find. Below ~3 phases the dispatch overhead is not worth it — just grep.
+
 ### Decisions up front (the questions happen HERE)
 
 `/execute-phase` runs semi-autonomously: one approval gate at phase start, then no interruptions until done. So every choice that needs the user's judgment — naming, signatures, library, API shape, approach trade-offs — must be settled during planning. Batch these questions (AskUserQuestion, not a one-by-one drip) and record the answers in each phase's `Decisions:` field. A phase containing "decide later" or "evaluate options" is not ready.
+
+**When a decision is a real architectural fork** — two or three defensible designs with different consequences, not a naming preference — offering the user your single pick is weaker than showing them a judged comparison. If they have opted into multi-agent orchestration for this turn, that fork is worth a judge panel: N independent designs from different angles, scored in parallel by distinct lenses, synthesised from the winner while grafting the good ideas from the runners-up. **You cannot start one unilaterally** — orchestration requires the user's explicit opt-in per turn — so the move is to name the fork, say plainly that it is the kind of choice a panel decides better than you do, and let them ask for one. Without the opt-in, do the ordinary thing: give a recommendation with its trade-off, not a survey.
 
 ### Parallel group detection (conservative — treat as a bonus)
 

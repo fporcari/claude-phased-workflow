@@ -5,11 +5,14 @@
 # Metrics from --output-format json: num_turns, total_cost_usd, duration_ms.
 #
 # Usage: bench.sh [runs_per_config] [config ...]
-#   config format: label|model|mode      mode: plain | goal | slim | slimgoal
+#   config format: label|model|mode[|effort]   mode: plain | goal | slim | slimgoal
 #     plain    = full auto-phase skill, no guard
-#     goal     = full auto-phase skill under the /goal guard
-#     slim     = minimal prompt, NO skill discipline, no guard
-#     slimgoal = minimal prompt, discipline carried ONLY by the /goal contract
+#     goal     = full auto-phase skill under the /goal guard   (shipped PHASE_PROMPT)
+#     slim     = minimal prompt, NO skill discipline, no guard  (hardcoded control)
+#     slimgoal = discipline carried ONLY by the goal contract   (shipped LIGHT_PROMPT)
+#   effort defaults to the fixture's own declared Effort for Phase 1, else high.
+#   The goal/slimgoal contracts are EXTRACTED LIVE from the run-all-phases
+#   SKILL.md, so the benchmark cannot silently measure a stale version.
 #   default: 1 run each of sonnet-plain|sonnet|plain and sonnet-goal|sonnet|goal
 set -u
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
@@ -19,34 +22,69 @@ if [ "$#" -gt 0 ]; then CONFIGS=("$@"); else
   CONFIGS=("sonnet-plain|sonnet|plain" "sonnet-goal|sonnet|goal")
 fi
 
-GOAL_CONTRACT='Use the auto-phase skill to execute exactly ONE phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or no pending phase exists. No other phase may change state. Stop after 25 turns.'
+# The guarded arms must run the contracts the launcher SHIPS, not a copy of
+# them. Frozen copies silently rot: before this was extracted, bench.sh carried
+# the pre-2.5.0 text, so the guarded and slim-goal arms measured the previous
+# version while the harness reported the current one. Extract live instead —
+# there is then no copy that can drift.
+SKILL_RAP="$TESTDIR/../../plugins/phased-workflow/skills/run-all-phases/SKILL.md"
+extract_contract() {  # $1 = variable name as assigned in the SKILL.md bash block
+  python3 - "$SKILL_RAP" "$1" <<'PYEOF'
+import re, sys
+text = open(sys.argv[1], encoding='utf-8').read()
+# single-quoted one-line assignments; take the longest (LIGHT_PROMPT is also
+# assigned '' in the pre-2.1.139 fallback branch)
+vals = re.findall(rf"^\s*{re.escape(sys.argv[2])}='([^']*)'\s*$", text, re.M)
+if not vals:
+    sys.exit(f'bench.sh: cannot extract {sys.argv[2]} from {sys.argv[1]}')
+best = max(vals, key=len)
+if not best.strip():
+    sys.exit(f'bench.sh: {sys.argv[2]} extracted empty')
+sys.stdout.write(best)
+PYEOF
+}
 
-# Slim arms: no skill at all. The plain-slim prompt carries only the task;
-# the slim-goal contract carries the discipline the skill would otherwise
-# provide (~450 chars vs the ~9.5KB skill body).
+# Shipped contracts already carry their own leading "/goal " token.
+GOAL_PROMPT="$(extract_contract PHASE_PROMPT)" || exit 1
+LIGHT_GOAL_PROMPT="$(extract_contract LIGHT_PROMPT)" || exit 1
+
+# The plain-slim arm is NOT a shipped contract: it is a deliberate no-discipline
+# control, so it stays hardcoded here on purpose.
 SLIM_PROMPT='Execute the next pending [ ] phase in .claude/MEMORY.md: implement what it describes, then update MEMORY.md marking that phase [x] with > Done: and > Files: notes (or [!] with an > Issue: note if you cannot complete it). Do not commit anything.'
-SLIM_GOAL_CONTRACT='Execute the next pending [ ] phase of .claude/MEMORY.md exactly as its Details describe. Condition: MEMORY.md shows that phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or no pending phase exists. No other phase may change state. Never commit. Stop after 25 turns.'
+
+sha() { printf '%s' "$1" | shasum -a 256 | cut -c1-12; }
+echo "contracts: PHASE_PROMPT=$(sha "$GOAL_PROMPT")  LIGHT_PROMPT=$(sha "$LIGHT_GOAL_PROMPT")  (extracted from $SKILL_RAP)"
 
 WORK="$(mktemp -d)"
 CSV="$WORK/results.csv"
-echo "config,run,outcome,turns,cost_usd,duration_s" > "$CSV"
+echo "config,run,outcome,turns,cost_usd,duration_s,effort,contract_sha" > "$CSV"
 
 for CFG in "${CONFIGS[@]}"; do
-  LABEL="${CFG%%|*}"; REST="${CFG#*|}"; MODEL="${REST%%|*}"; MODE="${REST#*|}"
+  IFS='|' read -r LABEL MODEL MODE EFFORT <<< "$CFG"
+  # No arm ever passed --effort before, so every archived run sits at the CLI
+  # default while the fixture's config table declares Effort=low. Default to
+  # the fixture's own declared effort when the config omits it.
+  if [ -z "${EFFORT:-}" ]; then
+    EFFORT=$(awk -F'|' '/^\|[[:space:]]*Phase 1[^0-9]/{gsub(/^[ \t]+|[ \t]+$/,"",$3); print tolower($3); exit}' \
+             "$FIXTURE/.claude/MEMORY.md" 2>/dev/null)
+    case "$EFFORT" in low|medium|high|xhigh|max) ;; *) EFFORT=high ;; esac
+  fi
   for i in $(seq 1 "$RUNS"); do
     DIR="$WORK/$LABEL-$i"
     mkdir -p "$DIR"; cp -R "$FIXTURE"/. "$DIR"
     ( cd "$DIR" && git init -q && git add -A && git commit -qm init ) || exit 1
     case "$MODE" in
-      goal)     PROMPT="/goal $GOAL_CONTRACT" ;;
+      goal)     PROMPT="$GOAL_PROMPT" ;;
       slim)     PROMPT="$SLIM_PROMPT" ;;
-      slimgoal) PROMPT="/goal $SLIM_GOAL_CONTRACT" ;;
+      slimgoal) PROMPT="$LIGHT_GOAL_PROMPT" ;;
       *)        PROMPT='/auto-phase' ;;
     esac
+    CONTRACT_SHA=$(sha "$PROMPT")
 
-    echo "=== $LABEL run $i (model=$MODEL, mode=$MODE) ==="
+    echo "=== $LABEL run $i (model=$MODEL, mode=$MODE, effort=$EFFORT) ==="
     START=$(date +%s)
-    JSON=$(cd "$DIR" && claude -p "$PROMPT" --model "$MODEL" --permission-mode auto \
+    JSON=$(cd "$DIR" && claude -p "$PROMPT" --model "$MODEL" --effort "$EFFORT" \
+           --permission-mode auto \
            --max-budget-usd 50 --output-format json 2>"$DIR/stderr.log")
     END=$(date +%s)
     printf '%s' "$JSON" > "$DIR/result.json"
@@ -73,8 +111,8 @@ except Exception:
     fi
 
     DUR=$((END - START))
-    echo "$LABEL,$i,$OUTCOME,$TURNS,$COST,$DUR" >> "$CSV"
-    echo "    outcome=$OUTCOME turns=$TURNS cost=\$$COST duration=${DUR}s"
+    echo "$LABEL,$i,$OUTCOME,$TURNS,$COST,$DUR,$EFFORT,$CONTRACT_SHA" >> "$CSV"
+    echo "    outcome=$OUTCOME turns=$TURNS cost=\$$COST duration=${DUR}s effort=$EFFORT"
   done
 done
 
