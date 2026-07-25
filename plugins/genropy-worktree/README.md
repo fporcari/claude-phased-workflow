@@ -50,13 +50,24 @@ Each worktree gets its own HTTP port (`8080 + offset`) and its own gnrdaemon
 port (`40404 + offset`), so two worktrees of the same project can be served
 together: four terminals, daemon + server for each.
 
-**Use two different browsers** (or two profiles): the GenroPy connection cookie
-is named after the site, and cookies are not isolated by port — two tabs of the
-same browser on `:8083` and `:8091` would overwrite each other's session.
+The GenroPy connection cookie is named after the site, and cookies are scoped by
+host, not by host:port — so two tabs of the same browser on
+`localhost:8083` and `localhost:8091` overwrite each other's `connection_id`
+and each reload mints a new connection. Verified, not theoretical.
+
+Two ways out, both fine:
+
+- **One browser, two hosts.** `localhost` and `127.0.0.1` are distinct cookie
+  jars: open one worktree as `http://localhost:8083` and the other as
+  `http://127.0.0.1:8091` and the two sessions stay put. Works for two
+  worktrees; a third needs an `/etc/hosts` alias.
+- **Two different browsers** (or two profiles).
 
 A separate gnrdaemon per worktree is not optional: the daemon indexes its site
 register by site name, so two worktrees of the same site sharing one daemon
-would share one register.
+would share one register. Note the daemon reads its listening port from
+`environment.xml` while the site reads it from siteconfig — the script writes
+both, so `gnr web daemon` and `gnr web serve` agree.
 
 ## Per-worktree database (opt-in)
 
@@ -79,6 +90,19 @@ gnr db setup <instance>                     # applies the branch delta to the cl
 
 The main database is untouched and realigns at merge time, when `gnr db setup`
 runs against it with the merged model.
+
+The DSN scheme is `postgres`, not `postgresql`: GenroPy turns the scheme into
+the implementation name (`gnrapp.dsn_to_config`) and the adapter module is
+`gnrpostgres`.
+
+## Verified on
+
+Two worktrees of `genropy_projects/sandbox`, instance `sandboxpg`, served
+together (`:8123` and `:8101`, daemons on `:40447` and `:40425`) alongside an
+unrelated instance already running on `:8080`. Each server resolved the webpages
+from its own worktree, each `gnr db setup` applied its own branch column
+(`fatt.cliente.ddt_note` vs `royalty_perc`) to its own clone, and the shared
+`sandboxpg` came out untouched.
 
 ## How It Works
 

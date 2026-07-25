@@ -85,6 +85,27 @@ tree.write(os.environ['GNR_WT_DST'], encoding='unicode', xml_declaration=True)
 PY
 fi
 
+# The daemon reads its own listening port from environment.xml, not from
+# siteconfig (handler.py getFullOptions), so both files must agree or
+# `gnr web daemon` binds 40404 while the site looks elsewhere.
+GNR_WT_ENV="$WORKTREE_ROOT/.gnr/environment.xml" \
+GNR_WT_DAEMON_PORT="$_gnr_daemon_port" \
+python3 - <<'PY'
+import os
+import xml.etree.ElementTree as ET
+
+path = os.environ['GNR_WT_ENV']
+tree = ET.parse(path)
+root = tree.getroot()
+daemon = root.find('gnrdaemon')
+if daemon is None:
+    daemon = ET.SubElement(root, 'gnrdaemon')
+    daemon.set('host', 'localhost')
+if daemon.get('port') != os.environ['GNR_WT_DAEMON_PORT']:
+    daemon.set('port', os.environ['GNR_WT_DAEMON_PORT'])
+    tree.write(path, encoding='unicode', xml_declaration=True)
+PY
+
 # Save original values for deactivate_gnr_context
 export _GNR_OLD_PYTHONPATH="${PYTHONPATH:-}"
 export _GNR_OLD_GENRO_GNRFOLDER="${GENRO_GNRFOLDER:-}"
@@ -92,9 +113,16 @@ export _GNR_OLD_GNR_LOCAL_PROJECTS="${GNR_LOCAL_PROJECTS:-}"
 export _GNR_OLD_GNR_DB_DSN="${GNR_DB_DSN:-}"
 export GENRO_GNRFOLDER="$WORKTREE_ROOT/.gnr"
 
-# Safety net for worktrees created outside the project tree listed in
-# environment.xml: GNR_LOCAL_PROJECTS is searched before it.
-export GNR_LOCAL_PROJECTS="$(dirname "$WORKTREE_ROOT")"
+# Project resolution: GNR_LOCAL_PROJECTS is searched before the paths in
+# environment.xml (pathresolver.py:61). It must point at a directory holding
+# exactly one project, otherwise the glob `*/instances/<name>` matches sibling
+# worktrees too and picks one at random — so give it a private directory with
+# a single symlink back to this worktree.
+mkdir -p "$WORKTREE_ROOT/.gnr/projects"
+if [ ! -L "$WORKTREE_ROOT/.gnr/projects/$(basename "$MAIN_REPO")" ]; then
+    ln -sfn "$WORKTREE_ROOT" "$WORKTREE_ROOT/.gnr/projects/$(basename "$MAIN_REPO")"
+fi
+export GNR_LOCAL_PROJECTS="$WORKTREE_ROOT/.gnr/projects"
 
 # Per-worktree database, opt-in. GNR_WT_DB carries the base db name, because
 # the real one lives in the instance's own instanceconfig.xml and is not
@@ -120,7 +148,9 @@ user = quote(attrs.get('user') or 'postgres')
 password = quote(attrs.get('password') or '')
 host = attrs.get('host') or 'localhost'
 port = attrs.get('port') or '5432'
-print(f"postgresql://{user}:{password}@{host}:{port}/{os.environ['GNR_WT_DBNAME']}")
+# The DSN scheme becomes the GenroPy implementation name (gnrapp.dsn_to_config),
+# so it is `postgres`, not `postgresql`: the adapter module is gnrpostgres.
+print(f"postgres://{user}:{password}@{host}:{port}/{os.environ['GNR_WT_DBNAME']}")
 PY
     export GNR_DB_DSN="$(cat /tmp/gnr_wt_dsn.$$)"
     rm -f /tmp/gnr_wt_dsn.$$
@@ -136,6 +166,7 @@ else
 fi
 echo "  GENRO_GNRFOLDER: $WORKTREE_ROOT/.gnr"
 echo "  HTTP:            http://localhost:$_gnr_http_port"
+echo "                   http://127.0.0.1:$_gnr_http_port  (same server, different cookie jar)"
 echo "  gnrdaemon:       localhost:$_gnr_daemon_port"
 echo "  DB:              $_gnr_db_line"
 if [ -n "${GNR_WT_DB:-}" ]; then
