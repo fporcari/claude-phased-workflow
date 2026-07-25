@@ -39,6 +39,28 @@ gnr web serve sandboxpg --debug
 The activation prints the URL to open — the port is derived from the worktree
 name, so it stays the same every time and a bookmark keeps working.
 
+## Claude Code sessions inside the worktree
+
+Every Bash call from Claude Code starts a fresh shell, so a `source` never
+carries over to the next command. Activation therefore also writes an `env`
+block into the worktree's `.claude/settings.local.json` (merged, existing keys
+preserved):
+
+```json
+{
+  "env": {
+    "GENRO_GNRFOLDER": "…/worktree/.gnr",
+    "GNR_LOCAL_PROJECTS": "…/worktree/.gnr/projects",
+    "GNR_DB_DSN": "postgres://…"
+  }
+}
+```
+
+Claude Code applies that block to every Bash invocation, so a session started in
+the worktree runs `gnr` against the right code and database with nothing to
+remember. Run the activation once per worktree before starting the session —
+settings are read at session start.
+
 **Deactivate** (or just close the terminal):
 ```bash
 source deactivate_gnr_context
@@ -113,8 +135,9 @@ from its own worktree, each `gnr db setup` applied its own branch column
 3. On first run, generates `.gnr/environment.xml` by copying `~/.gnr/environment.xml` and replacing main repo paths with worktree paths
 4. Symlinks `instanceconfig/` from `~/.gnr/`, and writes a **copy** of `siteconfig/default.xml` carrying the worktree's HTTP and gnrdaemon ports
 5. Sets `PYTHONPATH` to the worktree's `gnrpy/` (GenroPy worktrees only)
-6. Sets `GENRO_GNRFOLDER` to the worktree's `.gnr/`, and `GNR_LOCAL_PROJECTS` to its parent directory (safety net for worktrees created outside the project tree listed in `environment.xml`)
+6. Sets `GENRO_GNRFOLDER` to the worktree's `.gnr/`, and `GNR_LOCAL_PROJECTS` to a private directory holding a single symlink back to this worktree (a shared parent directory would let the resolver glob pick a sibling worktree at random)
 7. With `GNR_WT_DB` set, composes `GNR_DB_DSN` for the per-branch database
+8. Mirrors those variables into the worktree's `.claude/settings.local.json` `env` block for Claude Code sessions
 
 ### GenroPy vs Client Project Worktrees
 

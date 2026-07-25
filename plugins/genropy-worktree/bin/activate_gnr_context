@@ -157,6 +157,38 @@ PY
     _gnr_db_line="$_gnr_wt_dbname"
 fi
 
+# Hand the same environment to Claude Code sessions opened in this worktree.
+# Its `env` block in .claude/settings.local.json is applied to every Bash call,
+# which a `source` cannot be: each call starts a fresh shell.
+GNR_WT_SETTINGS="$WORKTREE_ROOT/.claude/settings.local.json" \
+GNR_WT_GNRFOLDER="$GENRO_GNRFOLDER" \
+GNR_WT_PROJECTS="$GNR_LOCAL_PROJECTS" \
+GNR_WT_DSN="${GNR_DB_DSN:-}" \
+GNR_WT_PYPATH="$([ -d "$WORKTREE_ROOT/gnrpy" ] && echo "$WORKTREE_ROOT/gnrpy" || echo '')" \
+python3 - <<'PY'
+import json
+import os
+import pathlib
+
+p = pathlib.Path(os.environ['GNR_WT_SETTINGS'])
+p.parent.mkdir(parents=True, exist_ok=True)
+try:
+    data = json.loads(p.read_text())
+except (OSError, ValueError):
+    data = {}
+
+env = data.setdefault('env', {})
+env['GENRO_GNRFOLDER'] = os.environ['GNR_WT_GNRFOLDER']
+env['GNR_LOCAL_PROJECTS'] = os.environ['GNR_WT_PROJECTS']
+for key, var in (('GNR_DB_DSN', 'GNR_WT_DSN'), ('PYTHONPATH', 'GNR_WT_PYPATH')):
+    if os.environ[var]:
+        env[key] = os.environ[var]
+    else:
+        env.pop(key, None)
+
+p.write_text(json.dumps(data, indent=2) + '\n')
+PY
+
 if [ -d "$WORKTREE_ROOT/gnrpy" ]; then
     export PYTHONPATH="$WORKTREE_ROOT/gnrpy${PYTHONPATH:+:$PYTHONPATH}"
     echo "GenroPy activated: $WORKTREE_ROOT"
@@ -169,6 +201,7 @@ echo "  HTTP:            http://localhost:$_gnr_http_port"
 echo "                   http://127.0.0.1:$_gnr_http_port  (same server, different cookie jar)"
 echo "  gnrdaemon:       localhost:$_gnr_daemon_port"
 echo "  DB:              $_gnr_db_line"
+echo "  Claude Code:     env written to .claude/settings.local.json"
 if [ -n "${GNR_WT_DB:-}" ]; then
     echo
     echo "  Create it once (main server stopped), then align the schema:"
