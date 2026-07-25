@@ -1,8 +1,9 @@
 #!/bin/bash
 # Deactivate GenroPy worktree environment.
-# Restores PYTHONPATH and GENRO_GNRFOLDER to their previous values.
+# Restores PYTHONPATH, GENRO_GNRFOLDER, GNR_LOCAL_PROJECTS and GNR_DB_DSN
+# to their previous values.
 #
-# Usage: source deactivate_gnr
+# Usage: source deactivate_gnr_context
 
 if [ -z "${_GNR_OLD_GENRO_GNRFOLDER+x}" ]; then
     echo "Not active."
@@ -24,4 +25,19 @@ else
     unset GENRO_GNRFOLDER
 fi
 unset _GNR_OLD_GENRO_GNRFOLDER
+
+if [ -n "${_GNR_OLD_GNR_LOCAL_PROJECTS:-}" ]; then
+    export GNR_LOCAL_PROJECTS="$_GNR_OLD_GNR_LOCAL_PROJECTS"
+else
+    unset GNR_LOCAL_PROJECTS
+fi
+unset _GNR_OLD_GNR_LOCAL_PROJECTS
+
+if [ -n "${_GNR_OLD_GNR_DB_DSN:-}" ]; then
+    export GNR_DB_DSN="$_GNR_OLD_GNR_DB_DSN"
+else
+    unset GNR_DB_DSN
+fi
+unset _GNR_OLD_GNR_DB_DSN
+
 echo "GenroPy deactivated."

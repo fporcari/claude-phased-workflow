@@ -2,10 +2,15 @@
 # Activate GenroPy environment for the current worktree.
 # Detects worktree from pwd, generates .gnr/ if needed, sets env vars.
 #
-# Usage: source activate_gnr
+# Usage: source activate_gnr_context
+#        GNR_WT_DB=<base-dbname> source activate_gnr_context
 #
 # Works for both genropy worktrees (PYTHONPATH + GENRO_GNRFOLDER)
 # and client project worktrees (GENRO_GNRFOLDER only).
+#
+# Each worktree gets its own HTTP port and its own gnrdaemon port, derived
+# from the worktree name, so two worktrees of the same project can be served
+# at the same time and browsed side by side.
 
 WORKTREE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [ -z "$WORKTREE_ROOT" ]; then
@@ -19,6 +24,13 @@ if [ "$WORKTREE_ROOT" = "$MAIN_REPO" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
+# Port offset: deterministic from the worktree name, so reopening a terminal
+# on the same worktree always gives back the same URL. 1..49, never 0: the
+# main repo keeps the standard 8080/40404.
+_gnr_offset=$(( $(printf '%s' "$(basename "$WORKTREE_ROOT")" | cksum | cut -d' ' -f1) % 49 + 1 ))
+_gnr_http_port=$(( 8080 + _gnr_offset ))
+_gnr_daemon_port=$(( 40404 + _gnr_offset ))
+
 # Generate .gnr/ if not present
 if [ ! -f "$WORKTREE_ROOT/.gnr/environment.xml" ]; then
     GNR_CONFIG_SRC="$HOME/.gnr/environment.xml"
@@ -29,27 +41,108 @@ if [ ! -f "$WORKTREE_ROOT/.gnr/environment.xml" ]; then
     mkdir -p "$WORKTREE_ROOT/.gnr"
     sed -E "s|$MAIN_REPO/|$WORKTREE_ROOT/|g; s|$MAIN_REPO\"|$WORKTREE_ROOT\"|g" \
         "$GNR_CONFIG_SRC" > "$WORKTREE_ROOT/.gnr/environment.xml"
-    for subdir in instanceconfig siteconfig; do
-        if [ -d "$HOME/.gnr/$subdir" ] && [ ! -e "$WORKTREE_ROOT/.gnr/$subdir" ]; then
-            ln -s "$HOME/.gnr/$subdir" "$WORKTREE_ROOT/.gnr/$subdir"
-        fi
-    done
+    if [ -d "$HOME/.gnr/instanceconfig" ] && [ ! -e "$WORKTREE_ROOT/.gnr/instanceconfig" ]; then
+        ln -s "$HOME/.gnr/instanceconfig" "$WORKTREE_ROOT/.gnr/instanceconfig"
+    fi
     for entry in ".gnr/"; do
         git -C "$WORKTREE_ROOT" check-ignore -q "$entry" 2>/dev/null || echo "$entry" >> "$WORKTREE_ROOT/.gitignore"
     done
 fi
 
-# Save original values for deactivate_gnr
+# siteconfig is a real copy, not a symlink: it carries the per-worktree ports.
+# Older activations symlinked it — replace those.
+if [ -L "$WORKTREE_ROOT/.gnr/siteconfig" ]; then
+    rm "$WORKTREE_ROOT/.gnr/siteconfig"
+fi
+if [ ! -f "$WORKTREE_ROOT/.gnr/siteconfig/default.xml" ]; then
+    if [ ! -f "$HOME/.gnr/siteconfig/default.xml" ]; then
+        echo "Error: $HOME/.gnr/siteconfig/default.xml not found." >&2
+        return 1 2>/dev/null || exit 1
+    fi
+    mkdir -p "$WORKTREE_ROOT/.gnr/siteconfig"
+    GNR_WT_SRC="$HOME/.gnr/siteconfig/default.xml" \
+    GNR_WT_DST="$WORKTREE_ROOT/.gnr/siteconfig/default.xml" \
+    GNR_WT_HTTP_PORT="$_gnr_http_port" \
+    GNR_WT_DAEMON_PORT="$_gnr_daemon_port" \
+    python3 - <<'PY'
+import os
+import xml.etree.ElementTree as ET
+
+tree = ET.parse(os.environ['GNR_WT_SRC'])
+root = tree.getroot()
+
+def child(tag):
+    node = root.find(tag)
+    if node is None:
+        node = ET.SubElement(root, tag)
+    return node
+
+child('wsgi').set('port', os.environ['GNR_WT_HTTP_PORT'])
+daemon = child('gnrdaemon')
+daemon.set('host', daemon.get('host') or 'localhost')
+daemon.set('port', os.environ['GNR_WT_DAEMON_PORT'])
+tree.write(os.environ['GNR_WT_DST'], encoding='unicode', xml_declaration=True)
+PY
+fi
+
+# Save original values for deactivate_gnr_context
 export _GNR_OLD_PYTHONPATH="${PYTHONPATH:-}"
 export _GNR_OLD_GENRO_GNRFOLDER="${GENRO_GNRFOLDER:-}"
+export _GNR_OLD_GNR_LOCAL_PROJECTS="${GNR_LOCAL_PROJECTS:-}"
+export _GNR_OLD_GNR_DB_DSN="${GNR_DB_DSN:-}"
 export GENRO_GNRFOLDER="$WORKTREE_ROOT/.gnr"
+
+# Safety net for worktrees created outside the project tree listed in
+# environment.xml: GNR_LOCAL_PROJECTS is searched before it.
+export GNR_LOCAL_PROJECTS="$(dirname "$WORKTREE_ROOT")"
+
+# Per-worktree database, opt-in. GNR_WT_DB carries the base db name, because
+# the real one lives in the instance's own instanceconfig.xml and is not
+# knowable here.
+_gnr_db_line="shared (GNR_WT_DB=<dbname> to split it)"
+if [ -n "${GNR_WT_DB:-}" ]; then
+    if [ "$GNR_WT_DB" = "1" ] || [ "$GNR_WT_DB" = "true" ]; then
+        echo "Error: GNR_WT_DB must be the base db name, e.g. GNR_WT_DB=clientepippo" >&2
+        return 1 2>/dev/null || exit 1
+    fi
+    _gnr_branch_slug="$(git -C "$WORKTREE_ROOT" rev-parse --abbrev-ref HEAD |
+        tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+|_+$//g' | cut -c1-30)"
+    _gnr_wt_dbname="${GNR_WT_DB}_${_gnr_branch_slug}"
+    GNR_WT_DBNAME="$_gnr_wt_dbname" python3 - <<'PY' > /tmp/gnr_wt_dsn.$$
+import os
+import xml.etree.ElementTree as ET
+from urllib.parse import quote
+
+path = os.path.expanduser('~/.gnr/instanceconfig/default.xml')
+db = ET.parse(path).getroot().find('db')
+attrs = db.attrib if db is not None else {}
+user = quote(attrs.get('user') or 'postgres')
+password = quote(attrs.get('password') or '')
+host = attrs.get('host') or 'localhost'
+port = attrs.get('port') or '5432'
+print(f"postgresql://{user}:{password}@{host}:{port}/{os.environ['GNR_WT_DBNAME']}")
+PY
+    export GNR_DB_DSN="$(cat /tmp/gnr_wt_dsn.$$)"
+    rm -f /tmp/gnr_wt_dsn.$$
+    _gnr_db_line="$_gnr_wt_dbname"
+fi
 
 if [ -d "$WORKTREE_ROOT/gnrpy" ]; then
     export PYTHONPATH="$WORKTREE_ROOT/gnrpy${PYTHONPATH:+:$PYTHONPATH}"
     echo "GenroPy activated: $WORKTREE_ROOT"
     echo "  PYTHONPATH:      $WORKTREE_ROOT/gnrpy"
-    echo "  GENRO_GNRFOLDER: $WORKTREE_ROOT/.gnr"
 else
     echo "GenroPy activated (project): $WORKTREE_ROOT"
-    echo "  GENRO_GNRFOLDER: $WORKTREE_ROOT/.gnr"
 fi
+echo "  GENRO_GNRFOLDER: $WORKTREE_ROOT/.gnr"
+echo "  HTTP:            http://localhost:$_gnr_http_port"
+echo "  gnrdaemon:       localhost:$_gnr_daemon_port"
+echo "  DB:              $_gnr_db_line"
+if [ -n "${GNR_WT_DB:-}" ]; then
+    echo
+    echo "  Create it once (main server stopped), then align the schema:"
+    echo "    createdb -T $GNR_WT_DB $_gnr_wt_dbname"
+    echo "    gnr db setup <instance>"
+fi
+
+unset _gnr_offset _gnr_http_port _gnr_daemon_port _gnr_db_line _gnr_branch_slug _gnr_wt_dbname
