@@ -1,7 +1,7 @@
 ---
 description: Create a Pull Request after thorough review as a meticulous maintainer
 argument-hint: [issue-number]
-allowed-tools: Bash(gh:*), Bash(git:*), Bash(cat:*), Read, Grep, Glob, AskUserQuestion, Skill
+allowed-tools: Bash(gh:*), Bash(git:*), Bash(cat:*), Bash(python3:*), Read, Grep, Glob, AskUserQuestion, Skill
 ---
 
 # Pull Request Review & Creation
@@ -10,7 +10,7 @@ Review the branch as the maintainer who has to approve it, then open the PR — 
 
 ## Step 1: Base branch and issue
 
-Default base: `.claude/parent-branch` if it exists, else `develop` when `git rev-parse --verify origin/develop` succeeds, else `main`. Ask the user via AskUserQuestion with that default first and "(Recommended)", verify the chosen branch exists (`git ls-remote --heads origin <base>`), and use it as `<base>` throughout.
+Default base: the `Parent:` line of the active plan if there is one (`python3 ~/.claude/scripts/next-phase.py --resolve`), else `develop` when `git rev-parse --verify origin/develop` succeeds, else `main`. Ask the user via AskUserQuestion with that default first and "(Recommended)", verify the chosen branch exists (`git ls-remote --heads origin <base>`), and use it as `<base>` throughout.
 
 Issue number: `$1` if given, otherwise the leading number of the branch name (`123-fix-login` → 123); none → proceed without one.
 

@@ -15,7 +15,7 @@ A vague phase fails autonomously on the best model in the world; a well-specifie
 flowchart TD
     START((Idea / Issue)) --> CONV["Free conversation\nDiscuss with Claude"]
     CONV --> WW["/write-workflow\nWrite the plan"]
-    WW --> |"MEMORY.md\nwith phases"| EP["/execute-phase\nExecute phase"]
+    WW --> |"wf/ branch\n+ plan committed"| EP["/execute-phase\nExecute phase"]
     EP --> CHECK{More phases?}
     CHECK --> |Yes| CPC["/check-phase-context\nVerify state"]
     CPC --> EP
@@ -36,7 +36,7 @@ flowchart TD
     style PR fill:#555,color:#fff
 ```
 
-> **Note:** `/create-context` is **not required** to use the workflow. It creates an isolated worktree, which is useful when you need to **parallelize** multiple tasks on the same repo. For a single task, just work directly on your branch.
+> **Note:** `/write-workflow` opens the workflow branch and commits the plan as its first commit. A worktree is created only for autonomous plans, where the run needs to grind somewhere other than your main checkout.
 
 The autonomous path replaces the middle of that diagram with a loop that runs unattended:
 
@@ -78,11 +78,11 @@ Claude Code operates within a finite context window. Long sessions lead to:
 ### The Solution: File-Based State, Disposable Sessions
 
 1. **Discuss freely** with Claude — no special format required
-2. **Crystallize the plan** into `MEMORY.md` with `/write-workflow`
+2. **Crystallize the plan** into `.phased/active/<slug>/plan.md` with `/write-workflow`
 3. **Execute each phase in a dedicated chat** — fresh, full context every time
 4. **Finalize** with a single clean commit, then PR or merge
 
-`MEMORY.md` is the coordination point between sessions.
+The plan is the coordination point between sessions, and it is committed on the workflow branch — so the branch, not a scratch file, is what holds the run together.
 
 ---
 
@@ -92,7 +92,8 @@ Claude Code operates within a finite context window. Long sessions lead to:
 
 | Command | When to use | What it does |
 |---------|------------|--------------|
-| `/write-workflow` | After discussing the plan | Writes MEMORY.md from the conversation — pattern references and pre-made decisions per phase |
+| `/write-workflow` | After discussing the plan | Opens the workflow branch and writes the plan from the conversation — pattern references and pre-made decisions per phase |
+| `/import-workflow` | You already have a plan or a handoff | Adapts an existing plan (including pre-4.0 `MEMORY.md`) into a workflow, preserving phase states and reporting the gaps |
 | `/execute-phase` | Executing a phase | Runs the next phase from the plan: one approval gate up front, then no interruptions |
 | `/check-phase-context` | Checking progress | Read-only analysis of plan vs git state |
 | `/finalize-workflow` | All phases done | Whole-diff pre-commit review + single clean commit + offers PR or merge |
@@ -110,7 +111,6 @@ Claude Code operates within a finite context window. Long sessions lead to:
 
 | Command | When to use | What it does |
 |---------|------------|--------------|
-| `/create-context <topic>` | Need isolated workspace | Creates branch + worktree + VS Code from any branch |
 | `/close-context` | Done with a worktree | Close and optionally remove a worktree context |
 | `/clean-contexts` | Housekeeping | List and remove stale worktree contexts |
 
@@ -119,7 +119,6 @@ Claude Code operates within a finite context window. Long sessions lead to:
 | Command | When to use | What it does |
 |---------|------------|--------------|
 | `/issue <number>` | Starting from a GitHub issue | Loads and analyzes it — analysis only, the plan comes from `/write-workflow` |
-| `/clean-memories` | Housekeeping | List and delete old memory files |
 
 Every command declares its own `allowed-tools`, and the test suite fails if a skill instructs a command its allowlist does not permit — see [Tests](#tests).
 
@@ -148,22 +147,20 @@ claude
 
 ### Isolated (with worktree)
 
-Use when you need to **parallelize** multiple tasks on the same repo. Each worktree has its own branch, files, and MEMORY.md.
+Use when you need to **parallelize** multiple tasks on the same repo. Each worktree has its own branch, files, and plan.
 
 ```bash
-# 1. Create a workspace (from any branch)
-> /create-context add PDF export for invoices
+claude
+# 1. Discuss the work, then crystallize the plan
+> /write-workflow          # ask for a worktree when it offers the branch line
 
-# 2. Enter the worktree and start a Claude session
-cd .claude/worktrees/feat-add-pdf-export && claude
+# 2. Move into the worktree it created
+cd .claude/worktrees/add-pdf-export && claude
 
-# 3. Discuss, then crystallize the plan
-> /write-workflow
-
-# 4. Execute phases (new chat for each)
+# 3. Execute phases (new chat for each)
 > /execute-phase
 
-# 5. Finalize and close
+# 4. Finalize and close
 > /finalize-workflow
 > /close-context
 ```
@@ -186,29 +183,17 @@ claude
 #   a phase left [~]       -> a red baseline nobody owns: fix it, then relaunch
 ```
 
-For plans beyond ~8-10 phases, or when a phase's shape depends on an earlier phase's *outcome*, `/write-workflow` splits the work into macro-phases: only the first is detailed, the rest stay as inert `## Roadmap` bullets. Each macro gets its own `/run-all-phases` + `/finalize-workflow`, and the next `/write-workflow` re-plans with hindsight. The macro loop is deliberately manual — its boundary is where human judgment pays most, before errors compound.
+For plans beyond ~8-10 phases, or when a phase's shape depends on an earlier phase's *outcome*, `/write-workflow` splits the work into macro-phases: only the first is detailed, the rest stay as inert bullets in `.phased/roadmap.md`. Each macro gets its own `/run-all-phases` + `/finalize-workflow`, and the next `/write-workflow` re-plans with hindsight. The macro loop is deliberately manual — its boundary is where human judgment pays most, before errors compound.
 
 ---
 
 ## How Each Command Works
 
-### `/create-context <topic>` — Create Workspace (optional)
-
-Creates the infrastructure for an isolated work stream. **Not required** — use it when you need to parallelize multiple tasks on the same repo.
-
-- Works from **any branch** — the current branch becomes the "parent"
-- Creates a **new branch** from the topic (e.g., "fix login timeout" → `fix-login-timeout`)
-- Creates an isolated **worktree** in `.claude/worktrees/<name>/`
-- Opens **VS Code** on the worktree directory (with a unique title bar color)
-- Saves the parent branch in `.claude/parent-branch`
-
-**No planning happens here.** After creating the workspace, enter the worktree and talk to Claude.
-
 ### Free Conversation — Natural Planning
 
-After `/create-context`, open a terminal in the worktree:
+Start a session in the repo:
 ```bash
-cd .claude/worktrees/feat-add-pdf-export && claude
+claude
 ```
 
 Talk to Claude naturally: describe what you want, explore the code together, discuss approaches. No required format, no special commands — just a normal chat.
@@ -219,9 +204,9 @@ When the discussion is mature, run this command. Claude:
 
 1. Synthesizes the conversation into **objective + concrete phases**
 2. Presents the plan for approval
-3. Writes `MEMORY.md` with phases, involved files, and execution config
+3. Opens `wf/<slug>`, writes the plan with phases, involved files and execution config, and commits it
 
-**Output:** a `MEMORY.md` file:
+**Output:** a `.phased/active/<slug>/plan.md` file:
 
 ```markdown
 # Context: feat-add-pdf-export
@@ -326,9 +311,9 @@ The most powerful pattern: a large feature that requires parallel work streams.
 ```mermaid
 flowchart TD
     DEV[develop] --> FEAT["feat-auth-refactor\n(long-running feature)"]
-    FEAT --> |"/create-context"| WTA["worktree A\nrefactor-login"]
-    FEAT --> |"/create-context"| WTB["worktree B\nrefactor-sessions"]
-    FEAT --> |"/create-context"| WTC["worktree C\nrefactor-tokens"]
+    FEAT --> |"/write-workflow"| WTA["worktree A\nrefactor-login"]
+    FEAT --> |"/write-workflow"| WTB["worktree B\nrefactor-sessions"]
+    FEAT --> |"/write-workflow"| WTC["worktree C\nrefactor-tokens"]
     WTA --> |"finalize → merge"| FEAT
     WTB --> |"finalize → merge"| FEAT
     WTC --> |"finalize → merge"| FEAT
@@ -342,7 +327,7 @@ flowchart TD
 ```
 
 Each worktree:
-1. Has its own isolated `MEMORY.md`
+1. Has its own isolated plan under `.phased/`
 2. Has its own VS Code window (different title bar color)
 3. Can be worked on independently
 4. Merges back to the parent feature branch when done
@@ -371,7 +356,21 @@ When finalizing a sub-task worktree, merging the feature branch into the parent 
 
 ---
 
-## MEMORY.md Format
+## Plan Format
+
+The plan lives in `.phased/`, at the repository root, and is committed on the workflow branch:
+
+```
+.phased/
+  roadmap.md                  # megaplans only — spans macro-phases
+  active/<slug>/              # exactly one at a time
+    plan.md                   # the work plan
+    notes.md                  # free-form annotations
+    log/phase-N.txt           # stdout of each /run-all-phases sub-session
+  done/<slug>/                # moved here by /finalize-workflow
+```
+
+One branch, one plan: resolution is `.phased/active/*/plan.md` and needs no discovery. `.phased/` never reaches the parent branch — the squash at finalize drops it, so the parent only ever receives clean code commits.
 
 ```markdown
 # Context: <branch-name>
@@ -457,8 +456,8 @@ Inside those edges the machine self-corrects. Outside them nothing is committed 
 
 ### 5. Parallel Workflows
 Two approaches:
-- **With worktrees** (recommended for parallelization): `/create-context` for each task. Each worktree has its own MEMORY.md, VS Code window, and branch.
-- **Without worktrees**: if `MEMORY.md` is already occupied, `/write-workflow` creates a parallel plan in `memory_<name>.md`.
+- **With worktrees** (recommended for parallelization): ask `/write-workflow` for a worktree on each task. Each gets its own branch, plan, and VS Code window.
+- **Without worktrees**: one plan per branch — switch branches to switch workflow.
 
 ### 6. Full Traceability
 Everything is traceable: plan in a versionable file, single clean commit per workflow, structured PR template, `/check-phase-context` reconstructs state at any time.
@@ -552,7 +551,7 @@ claude
 ## FAQ
 
 **Q: Can I use `/execute-phase` without `/write-workflow`?**
-No. The command looks for a `MEMORY.md` with phases to execute.
+No. The command looks for an active plan under `.phased/active/` with phases to execute.
 
 **Q: What if the session gets too long?**
 `/execute-phase` monitors context proactively. It proposes a WIP safety commit and suggests a new chat.
@@ -560,14 +559,17 @@ No. The command looks for a `MEMORY.md` with phases to execute.
 **Q: Can I skip or reorder phases?**
 Yes. The plan is Markdown — edit it. `/check-phase-context` verifies consistency.
 
-**Q: Does `/create-context` only work from develop?**
-No — any branch. The current branch becomes the parent. This enables parallel sub-tasks.
+**Q: Can I plan from any branch?**
+Yes. From a base branch `/write-workflow` opens `wf/<slug>`. From a feature branch it adopts the one you are on by default, and the commits already there stay outside the workflow — the run's base is the plan commit, not the branch point.
 
 **Q: Is VS Code required?**
 No. The worktree is created regardless. Use any editor.
 
-**Q: Do I need `/create-context` to use the workflow?**
-No. `/create-context` is optional — it creates an isolated worktree, which is useful for parallelizing multiple tasks. For a single task, just work directly on your branch. The entire workflow (`/write-workflow` → `/execute-phase` → `/finalize-workflow`) works without worktrees.
+**Q: Do I have to use a worktree?**
+No. It is offered only for autonomous plans, where the run occupies a checkout for a long time. Interactive plans stay on the branch in your current session.
+
+**Q: I have plans from 3.x under `.claude/MEMORY.md`. What now?**
+Run `/import-workflow`. It maps the old plan onto the new layout, preserving phase states and notes, and reports which phases fall short of the autonomous-ready bar instead of quietly filling the gaps. A plan with phases already `[x]` is imported in place, on the branch you are on, with no history rewritten.
 
 **Q: Does the repair run by itself, or do I launch it?**
 By itself, inside `/run-all-phases`: a phase that exits `[!]` gets one repair session automatically, and the loop continues if it succeeds. You launch `/repair-phase` by hand only when the run already stopped (the automatic repair failed), when you are using `/auto-phase` on its own without the launcher, or when you want a different model or effort than the launcher would pick.
@@ -599,7 +601,7 @@ S14–S16 are static checks on what the repo ships:
 - **S15** — every skill stays inside its own `allowed-tools`, checked by reading its bash blocks and its prose ([check_allowlists.py](tests/orchestration/check_allowlists.py)). A skill can instruct a command its allowlist never pre-approves; nothing fails loudly, the step just stops to ask for a permission the author meant to grant — and where nobody can answer, it does not run.
 - **S16** — every skill is on the KB sync list, so a new command cannot be added here and silently never reach anyone else.
 
-There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and MEMORY state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it.
+There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it.
 
 ---
 
@@ -609,7 +611,7 @@ There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real se
 |---------|--------|---------------|
 | **Plan-and-Execute** | LangChain, LlamaIndex | Conversation → `/write-workflow` → `/execute-phase` |
 | **Checkpoint & Resume** | CI/CD pipelines | Each workflow = clean commit. Resume from any point |
-| **Shared State via Artifact** | Blackboard architecture | `MEMORY.md` as shared state between sessions |
+| **Shared State via Artifact** | Blackboard architecture | the committed plan as shared state between sessions |
 | **Context Window Management** | LLM best practices | Short, focused sessions instead of infinite conversations |
 | **Worktree Isolation** | Git best practices | Each workflow in its own worktree |
 
@@ -621,7 +623,7 @@ The key innovation: making **explicit and user-controllable** what other tools (
 
 ### GenroPy Worktree Support
 
-If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` plugin lets you run `gnr web serve`, `gnr db migrate`, and all GenroPy CLI commands from worktrees created by `/create-context`.
+If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` plugin lets you run `gnr web serve`, `gnr db migrate`, and all GenroPy CLI commands from workflow worktrees.
 
 ```bash
 bash plugins/genropy-worktree/install.sh

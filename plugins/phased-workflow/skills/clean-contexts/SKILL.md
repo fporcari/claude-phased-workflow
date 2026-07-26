@@ -16,7 +16,7 @@ ls -d .claude/worktrees/*/ 2>/dev/null
 
 The second command catches **orphans** — directories left behind after a worktree was deregistered.
 
-For each entry collect: branch name, last commit date (`git -C <path> log -1 --format='%ar'`), merged status (parent from `cat <path>/.claude/parent-branch`, fallback `develop` if `origin/develop` exists else `main`, then `git branch --merged origin/<parent>`), disk usage (`du -sh`), plan state from `.claude/MEMORY.md`, and whether the branch is pushed (`git ls-remote --heads origin <branch>`).
+For each entry collect: branch name, last commit date (`git -C <path> log -1 --format='%ar'`), merged status (parent from the `Parent:` line of the worktree's plan, fallback `develop` if `origin/develop` exists else `main`, then `git branch --merged origin/<parent>`), disk usage (`du -sh`), plan state from `<path>/.phased/active/*/plan.md`, and whether the branch is pushed (`git ls-remote --heads origin <branch>`).
 
 ## Step 2: Report and choose
 

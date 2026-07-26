@@ -1,14 +1,15 @@
 # Shared conventions — phased-workflow skills
 
 Single source of truth for the blocks that used to be repeated in every
-phased-workflow command (`/write-workflow`, `/execute-phase`, `/auto-phase`,
-`/run-all-phases`, `/finalize-workflow`, `/check-phase-context`,
-`/push-context-memory`). Skills point here instead of restating them.
+phased-workflow command (`/write-workflow`, `/import-workflow`,
+`/execute-phase`, `/auto-phase`, `/run-all-phases`, `/finalize-workflow`,
+`/check-phase-context`, `/push-context-memory`). Skills point here instead
+of restating them.
 
 ## Language
 
-All written content (memory files, phase notes, code, comments, commits,
-PRs, issues) in English. Conversation with the user in Italian.
+All written content (plans, phase notes, code, comments, commits, PRs,
+issues) in English. Conversation with the user in Italian.
 
 ## AskUserQuestion style
 
@@ -17,21 +18,84 @@ default exists, put the recommended option FIRST and append
 "(Recommended)" to its label (the tool has no default-answer parameter).
 For multiple-choice lists, one option per line, checkbox style.
 
-## MEMORY.md path resolution
+## Plan directory
 
-The work plan file is always `$(git rev-parse --show-toplevel)/.claude/MEMORY.md`
-— the `.claude/` directory inside the git repository root. Do NOT confuse
-it with Claude Code's auto-memory directory (`~/.claude/projects/.../memory/`).
-Parallel plans live next to it as `memory_<name>.md`; each worktree has its
-own plan at `<worktree_root>/.claude/MEMORY.md`.
+Every workflow keeps its plan and its working notes in `.phased/`, at the
+git repository root:
+
+```
+.phased/
+  roadmap.md              # megaplans only — spans macro-phases
+  active/<slug>/          # exactly one at a time
+    plan.md               # the work plan
+    notes.md              # free-form annotations
+    log/phase-N.txt       # stdout of each /run-all-phases sub-session (.txt,
+                          #   not .log: `*.log` sits in most global gitignores
+                          #   and these are meant to be committed)
+  done/<slug>/            # moved here by /finalize-workflow
+```
+
+The active plan is `<git root>/.phased/active/*/plan.md`, resolved by:
+
+```bash
+python3 ~/.claude/scripts/next-phase.py --resolve
+```
+
+`active/` holds exactly ONE plan directory — one branch, one plan, no
+discovery. No match means there is no workflow in this repository: run
+`/write-workflow`, or `/import-workflow` on an older plan. Several matches
+are an anomaly to report to the user, never to guess at.
+
+`.phased/` is committed on the workflow branch and never reaches the parent:
+`/finalize-workflow` drops it from the squashed commit.
+
+## Workflow branch
+
+Every plan gets a branch, so that everything belonging to the run is
+identifiable without heuristics.
+
+- `/write-workflow` either creates `wf/<slug>` or adopts the branch you are
+  already on (its own rules decide); either way `Parent:` in the plan records
+  where the work goes back to.
+- The plan is committed first, as `wf: plan for <slug>`.
+- Each completed phase is ONE commit, `wf(phase N): <title>`, including the
+  plan's own status update. A phase closing `[!]` commits too, as
+  `wf(phase N): FAILED — <title>`: repair needs to see the failing code, and
+  it needs to start from a clean tree.
+
+**The base of the workflow is the commit that added the plan**, not the
+branch point:
+
+```bash
+git log -1 --diff-filter=A --format=%H -- .phased/active/<slug>/plan.md
+```
+
+On a dedicated `wf/` branch the two coincide. On an adopted branch that
+already carried commits, only this marker separates the workflow from the
+work that preceded it — `/finalize-workflow` consolidates from here, and
+without it the interleaving ambiguity comes straight back.
+
+**The plan is a tracked file**, so any skill that edits it dirties the tree.
+Edits made outside a phase — a `/check-phase-context` re-phasing, a
+`/repair-phase` note, hand annotations in `notes.md` — get their own
+`wf: <what changed>` commit. Otherwise the "clean tree at phase start"
+invariant that `/auto-phase` relies on is false.
+
+**Concurrency caveat.** Phases sharing a `parallel:N` run from separate
+chats and now commit to the same branch: expect the occasional `index.lock`
+collision and retry. Running parallel phases in separate worktrees is the
+actual fix.
 
 ## Phase selection
 
 The next eligible phase is computed deterministically by:
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py <memory-file>
+python3 ~/.claude/scripts/next-phase.py
 ```
+
+Called with no argument it resolves the active plan itself; pass a path to
+point it at a specific one.
 
 It prints a status table for all phases plus one `recommendation:` line
 (`next: N` / `next: N unit: N,M` / `resume-candidate: N` / `attention: ...`

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Phase loop for /run-all-phases: one fresh `claude` session per phase.
 #
-# Reads .claude/MEMORY.md, asks next-phase.py which phase is next, looks up its
-# model/effort/cap in the execution config table, launches the session, and
-# handles repair, blocked and no-progress outcomes. The skill runs this file;
-# it is never read into the model's context.
+# Resolves the active plan under .phased/, asks next-phase.py which phase is
+# next, looks up its model/effort/cap in the execution config table, launches
+# the session, and handles repair, blocked and no-progress outcomes. The skill
+# runs this file; it is never read into the model's context.
 #
 # The PHASE_PROMPT / LIGHT_PROMPT / REPAIR_PROMPT assignments below are the
 # shipped goal contracts: tests/orchestration/run_tests.sh and
@@ -12,27 +12,42 @@
 # single-quoted one-line assignments.
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-MEMORY="$REPO_ROOT/.claude/MEMORY.md"
 
-if [ ! -f "$MEMORY" ]; then
-  echo "No MEMORY.md found at $MEMORY"
+# Resolve the active plan: exactly one .phased/active/<slug>/plan.md.
+# Done with `find` rather than a glob on purpose — an unmatched glob is left
+# literal by bash but ABORTS the script under zsh, which is the production
+# shell on macOS.
+PLAN_LIST=$(find "$REPO_ROOT/.phased/active" -mindepth 2 -maxdepth 2 -name plan.md 2>/dev/null)
+PLAN_COUNT=$(printf '%s' "$PLAN_LIST" | grep -c .)
+
+if [ "$PLAN_COUNT" -eq 0 ]; then
+  echo "No active plan under $REPO_ROOT/.phased/active/ — run /write-workflow, or /import-workflow on an older plan."
   exit 1
 fi
+if [ "$PLAN_COUNT" -gt 1 ]; then
+  echo "Several active plans under $REPO_ROOT/.phased/active/ — exactly one is expected:"
+  printf '%s\n' "$PLAN_LIST"
+  exit 1
+fi
+
+PLAN="$PLAN_LIST"
+PLAN_DIR=$(dirname "$PLAN")
+mkdir -p "$PLAN_DIR/log"
 
 # /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
 # goal loop — an independent evaluator (small fast model) re-checks the exit
 # condition after every turn, so a session cannot declare itself done before
-# MEMORY.md shows the outcome. Older CLIs fall back to the plain skill prompt.
+# the plan shows the outcome. Older CLIs fall back to the plain skill prompt.
 CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
 if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
-  PHASE_PROMPT='/goal Use the auto-phase skill to execute exactly ONE phase of .claude/MEMORY.md. Condition: MEMORY.md gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
-  REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of .claude/MEMORY.md. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
+  PHASE_PROMPT='/goal Use the auto-phase skill to execute exactly ONE phase of the active plan under .phased/active/. Condition: the plan gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
+  REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
   # Light mode for Effort=low phases: no skill ritual — the goal contract
   # carries every chain invariant itself (bookkeeping notes included: what
   # the contract omits, the session silently drops). Measured on the seeded
   # fixture: same external outcomes as the full skill, ~40% cheaper, half
   # the wall time. Hard phases keep the full ritual.
-  LIGHT_PROMPT='/goal Execute the next pending [ ] phase of .claude/MEMORY.md exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: MEMORY.md shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. Never commit. Stop after 25 turns.'
+  LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. Never commit. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
   PHASE_PROMPT='/auto-phase'
@@ -51,12 +66,12 @@ first_bang_block() {
     /^## /  { if (seen) exit }
     /^- \[!\]/ { seen = 1 }
     seen { print }
-  ' "$MEMORY" 2>/dev/null
+  ' "$PLAN" 2>/dev/null
 }
 
 # Count only real phase lines: a stray "- [ ]" checkbox in Notes is not a phase.
 # NOTE: grep -c prints 0 itself on no match (exit 1) — do NOT add "|| echo 0", it would double the output
-REMAINING=$(grep -c '^\- \[ \] \*\*Phase' "$MEMORY" 2>/dev/null || true)
+REMAINING=$(grep -c '^\- \[ \] \*\*Phase' "$PLAN" 2>/dev/null || true)
 REMAINING=${REMAINING:-0}   # unreadable file → empty var → treat as 0
 
 if [ "$REMAINING" -eq 0 ]; then
@@ -68,8 +83,8 @@ echo "Found $REMAINING phases to execute."
 echo ""
 
 for i in $(seq 1 $REMAINING); do
-  # Re-read MEMORY to get current state
-  if ! grep -q '^\- \[ \] \*\*Phase' "$MEMORY" 2>/dev/null; then
+  # Re-read the plan to get current state
+  if ! grep -q '^\- \[ \] \*\*Phase' "$PLAN" 2>/dev/null; then
     echo ""
     echo "All phases completed!"
     break
@@ -84,7 +99,7 @@ for i in $(seq 1 $REMAINING); do
   # uses (it honours parallel:N barriers, group:N units and [>] resumes). Using
   # plain file order here would pick a different phase than the one that
   # actually runs, and apply the wrong row's model/effort/cap to it.
-  REC=$(python3 "$HOME/.claude/scripts/next-phase.py" "$MEMORY" 2>/dev/null \
+  REC=$(python3 "$HOME/.claude/scripts/next-phase.py" "$PLAN" 2>/dev/null \
         | sed -n 's/^recommendation: //p')
   case "$REC" in
     next:*)
@@ -111,16 +126,16 @@ for i in $(seq 1 $REMAINING); do
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
-      NEXT_PHASE=$(grep -n '^\- \[ \] \*\*Phase' "$MEMORY" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
+      NEXT_PHASE=$(grep -n '^\- \[ \] \*\*Phase' "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 
   if [ "$RUN_PHASE" -eq 1 ] && [ -z "$NEXT_PHASE" ]; then
-    echo "Could not determine the next phase. Stopping — check .claude/MEMORY.md."
+    echo "Could not determine the next phase. Stopping — check the active plan under .phased/active/."
     break
   fi
 
   # Snapshot completed-phase count BEFORE the run (progress guard)
-  BEFORE_DONE=$(grep -c '^\- \[x\]' "$MEMORY" 2>/dev/null || true)
+  BEFORE_DONE=$(grep -c '^\- \[x\]' "$PLAN" 2>/dev/null || true)
   BEFORE_DONE=${BEFORE_DONE:-0}
 
   # Look up model and effort from the execution config table, by COLUMN
@@ -132,7 +147,7 @@ for i in $(seq 1 $REMAINING); do
   # `$NEXT_PHASE[^0-9]` parses as an array subscript and aborts the command
   # with "bad math expression", leaving MODEL_LINE empty and silently
   # defaulting every phase's model, effort and cap.
-  MODEL_LINE=$(grep -E "^\|[[:space:]]*Phase ${NEXT_PHASE}[^0-9]" "$MEMORY" | head -1)
+  MODEL_LINE=$(grep -E "^\|[[:space:]]*Phase ${NEXT_PHASE}[^0-9]" "$PLAN" | head -1)
   col() { printf '%s\n' "$MODEL_LINE" | awk -F'|' -v n="$1" \
             '{gsub(/^[ \t]+|[ \t]+$/, "", $n); print tolower($n)}'; }
 
@@ -189,23 +204,32 @@ for i in $(seq 1 $REMAINING); do
     echo "========================================="
     echo "Phase $NEXT_PHASE — model: $MODEL, effort: $EFFORT, mode: $MODE_LABEL, $CAP_LABEL"
     echo "========================================="
+    # Tee the session into the plan's log directory: this transcript is the
+    # only record of what a headless sub-session actually did, and
+    # /repair-phase reads it when a phase comes back [!].
+    # pipefail, NOT ${PIPESTATUS[0]}: zsh does not define PIPESTATUS (it has a
+    # 1-indexed $pipestatus instead), and this script is also run under zsh.
+    # Without it $? would be tee's status and every non-zero claude exit would
+    # be read as success.
+    set -o pipefail
     claude -p "$RUN_PROMPT" \
       --model "$MODEL" \
       --effort "$EFFORT" \
       --permission-mode auto \
-      "${BUDGET_ARGS[@]}"
+      "${BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/phase-$NEXT_PHASE.txt"
 
     CLAUDE_EXIT=$?
+    set +o pipefail
     if [ "$CLAUDE_EXIT" -ne 0 ]; then
       echo ""
       echo "claude exited with code $CLAUDE_EXIT. Stopping."
-      echo "Check .claude/MEMORY.md — reset any stale [>] phase to [ ] before relaunching."
+      echo "Check the active plan under .phased/active/ — reset any stale [>] phase to [ ] before relaunching."
       break
     fi
   fi
 
   # Check for issues — one fresh-eyes repair attempt before stopping
-  if grep -q '^\- \[!\]' "$MEMORY" 2>/dev/null; then
+  if grep -q '^\- \[!\]' "$PLAN" 2>/dev/null; then
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
@@ -216,17 +240,19 @@ for i in $(seq 1 $REMAINING); do
     # Repair runs on the strongest model: it is by definition the case where
     # the phase's model already failed once. Fallback to opus only if the
     # fable session cannot start (e.g. no credits — claude exits non-zero
-    # without touching MEMORY.md).
+    # without touching the plan).
     echo ""
     echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
     REPAIR_BUDGET_ARGS=()
     [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
+    set -o pipefail
     claude -p "$REPAIR_PROMPT" \
       --model fable \
       --effort max \
       --permission-mode auto \
-      "${REPAIR_BUDGET_ARGS[@]}"
+      "${REPAIR_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/repair-fable.txt"
     REPAIR_EXIT=$?
+    set +o pipefail
 
     # Only fall back if the fable session never ran at all (non-zero exit AND no
     # outcome written). If it ran and gave up, it left the marker — do not
@@ -239,19 +265,19 @@ for i in $(seq 1 $REMAINING); do
         --model opus \
         --effort max \
         --permission-mode auto \
-        "${REPAIR_BUDGET_ARGS[@]}"
+        "${REPAIR_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
     fi
 
-    if grep -q '^\- \[!\]' "$MEMORY" 2>/dev/null; then
+    if grep -q '^\- \[!\]' "$PLAN" 2>/dev/null; then
       echo ""
-      echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in MEMORY.md."
+      echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
       break
     fi
     echo "Repair succeeded — continuing with next phase."
     REPAIRED_THIS_ROUND=1
   fi
 
-  if grep -q '^\- \[~\]' "$MEMORY" 2>/dev/null; then
+  if grep -q '^\- \[~\]' "$PLAN" 2>/dev/null; then
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
     break
@@ -260,7 +286,7 @@ for i in $(seq 1 $REMAINING); do
   # Progress guard: a successful run must either complete a phase ([x] count
   # grows) or leave a resumable WIP ([>] + WIP note). Anything else means the
   # session died leaving the phase stuck — looping again would burn runs.
-  AFTER_DONE=$(grep -c '^\- \[x\]' "$MEMORY" 2>/dev/null || true)
+  AFTER_DONE=$(grep -c '^\- \[x\]' "$PLAN" 2>/dev/null || true)
   AFTER_DONE=${AFTER_DONE:-0}
   # A Case A reopen (a completed phase sent back to [!] by a later phase's
   # baseline check) makes the [x] count DROP, so a successful repair only
@@ -268,12 +294,12 @@ for i in $(seq 1 $REMAINING); do
   # guard when a repair landed this round, or the run would stop on a
   # misleading "no progress".
   if [ "$AFTER_DONE" -le "$BEFORE_DONE" ] && [ "$REPAIRED_THIS_ROUND" -eq 0 ]; then
-    if grep -q '^\- \[>\]' "$MEMORY" 2>/dev/null && grep -q 'WIP:' "$MEMORY" 2>/dev/null; then
+    if grep -q '^\- \[>\]' "$PLAN" 2>/dev/null && grep -q 'WIP:' "$PLAN" 2>/dev/null; then
       echo "Phase left in WIP state — next session will resume it."
     else
       echo ""
       echo "No progress in the last run (phase stuck as [>]?). Stopping."
-      echo "Check .claude/MEMORY.md — reset stale [>] phases to [ ] and relaunch."
+      echo "Check the active plan under .phased/active/ — reset stale [>] phases to [ ] and relaunch."
       break
     fi
   fi
@@ -286,15 +312,27 @@ echo "========================================="
 echo "Summary"
 echo "========================================="
 echo ""
-grep '^\- \[' "$MEMORY" | head -20
+grep '^\- \[' "$PLAN" | head -20
 echo ""
-echo "Working tree changes (uncommitted — consolidate via /finalize-workflow):"
-git diff --stat HEAD | tail -15
+# One commit per phase now, so the run's output is history, not a dirty tree.
+# The base is the commit that ADDED the plan — on an adopted branch it is what
+# separates this workflow from the work that preceded it.
+PLAN_BASE=$(git log -1 --diff-filter=A --format=%H -- "$PLAN" 2>/dev/null)
+if [ -n "$PLAN_BASE" ]; then
+  echo "Phase commits (consolidate via /finalize-workflow):"
+  git log --oneline "$PLAN_BASE"..HEAD | head -15
+else
+  echo "Working tree changes (uncommitted — consolidate via /finalize-workflow):"
+  git diff --stat HEAD | tail -15
+fi
 
-# Rolling-wave reminder: Roadmap entries are inert bullets, not phases —
-# the next macro gets detailed by a fresh /write-workflow after finalize.
-if grep -q '^## Roadmap' "$MEMORY" 2>/dev/null; then
+# Rolling-wave reminder. The roadmap lives in its own file, one level above
+# active/, so it outlives the macro being worked (finalize moves the plan
+# directory into done/) and so a roadmap bullet can never be mistaken for a
+# phase line.
+ROADMAP="$REPO_ROOT/.phased/roadmap.md"
+if [ -f "$ROADMAP" ]; then
   echo ""
   echo "Roadmap (pending macro-phases — after /finalize-workflow, detail the next one with /write-workflow):"
-  awk '/^## Roadmap/{f=1;next} /^## /{f=0} f && /^- /' "$MEMORY" | head -10
+  grep '^- ' "$ROADMAP" | head -10
 fi

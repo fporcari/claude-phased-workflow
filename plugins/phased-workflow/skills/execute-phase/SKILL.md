@@ -1,5 +1,5 @@
 ---
-description: Execute the next phase from the work plan (MEMORY.md or parallel context)
+description: Execute the next phase from the active work plan
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
 ---
 
@@ -7,20 +7,15 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
 
 Execute the next uncompleted phase. **Semi-autonomous**: ONE approval gate up front (plan + all questions batched), then run to completion without interruptions.
 
-**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, MEMORY.md path resolution, phase-selection semantics.
+**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch, phase-selection semantics.
 
 ## Step 1: Find the plan and the phase
 
 ```bash
-git rev-parse --show-toplevel
-git worktree list --porcelain
+python3 ~/.claude/scripts/next-phase.py
 ```
 
-In a worktree → `<repo_root>/.claude/MEMORY.md`. In the main repo → look for active `- [ ]` phases in `MEMORY.md`, `memory_*.md` and `.claude/worktrees/*/`; none → stop; one → use it; several → AskUserQuestion. If a worktree plan is chosen from the main repo, tell the user to run from there: `cd .claude/worktrees/<name> && claude`.
-
-```bash
-python3 ~/.claude/scripts/next-phase.py <memory-file>
-```
+No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work.
 
 Act on `recommendation:` — `next: N` → proceed (a `unit: N,M,...` means a `group:N` runs together in this chat, the only case where one invocation spans several phases); `resume-candidate: N` → ask whether to take over a phase another chat left `[>]`; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop.
 
@@ -53,7 +48,17 @@ In a `group:N` unit, implement in order and close every non-last phase `[x]` wit
 
 ## Step 6: Record and notify
 
-Replace `[>]` with `[x]` + `> Done:` + `> Files:` (+ `> Verify:` for untested UI work), or `[!]` + `> Issue:`, or `[~]` + `> Blocked:`. **Always list ALL touched files** — `/finalize-workflow` scopes commits by them. Do NOT commit.
+Replace `[>]` with `[x]` + `> Done:` + `> Files:` (+ `> Verify:` for untested UI work), or `[!]` + `> Issue:`, or `[~]` + `> Blocked:`. **Always list ALL touched files** — the baseline check of later phases attributes regressions by them, and `/repair-phase` diffs against them.
+
+Then commit the phase's code together with its status update, so the next one starts from a clean tree:
+
+```bash
+git add -A && git commit -q -m "wf(phase N): <title>"
+```
+
+A phase closing `[!]` commits too, as `wf(phase N): FAILED — <title>` — repair needs to see the failing code.
+
+In a `group:N` unit, one commit for the whole unit, at the end: `wf(phase N-M): <unit title>`.
 
 ```bash
 osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'
@@ -63,12 +68,12 @@ Then summarise in Italian: what was done, test results, and the manual checks le
 
 ## Context window
 
-The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ Il contesto si sta riempiendo. Apri una nuova chat e rilancia /execute-phase. Faccio un commit WIP di salvataggio prima?"* On yes: `git add <files> && git commit -m "WIP: <phase title> — partial progress"` (the only commit allowed here), then keep `[>]` and add `> WIP: <what is done, what remains. WIP commit present.>`.
+The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ Il contesto si sta riempiendo. Apri una nuova chat e rilancia /execute-phase. Salvo il lavoro parziale in un commit prima?"* On yes: `git add -A && git commit -m "wf(phase N): partial — <title>"`, then keep `[>]` and add `> WIP: <what is done, what remains>`.
 
 ## Rules
 
 - NEVER edit before the Step 3 approval; the `vast` fan-out never bypasses it
 - ONE phase per invocation, except a `group:N` unit; no out-of-scope refactoring
 - After approval, no further questions except the Step 4 blocker policy
-- Do NOT commit (except the WIP safety commit)
-- If the session dies with the memory file still writable, reset `[>]` to `[ ]` with `> Execution interrupted, phase available for retry`
+- ONE commit per phase (or per `group:N` unit), at Step 6 and nowhere else
+- If the session dies with the plan still writable, reset `[>]` to `[ ]` with `> Execution interrupted, phase available for retry` — and commit that reset as `wf: reset phase N` (the plan is tracked)

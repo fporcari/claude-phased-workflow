@@ -26,13 +26,15 @@ The user picks robottino when the task suits it, so friction usually means a mis
 
 Split when more than ~8-10 phases would be needed, or a phase can only be written concretely after an earlier one lands, or the combined diff would be too large for one finalize review.
 
-Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in a `## Roadmap` section as plain bullets — deliberately not phase lines, so the launcher ignores them:
+Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phased/roadmap.md`, as plain bullets — a file of its own, one level above `active/`, because the roadmap has to outlive the macro currently being worked: when `/finalize-workflow` moves `active/<slug>/` into `done/`, the roadmap stays where the next `/write-workflow` will look for it.
 
 ```
-## Roadmap
-- Macro 1 (current): <title> — detailed above as Phases 1..N
+# Roadmap
+- Macro 1 (current): <title> — detailed in active/<slug>/plan.md as Phases 1..N
 - Macro 2: <one-line scope — what it delivers, what it needs from Macro 1>
 ```
+
+Keeping it out of `plan.md` also means the launcher cannot mistake a roadmap bullet for a phase line: the separation is structural, not a matter of formatting.
 
 The cycle: `/run-all-phases` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
 
@@ -63,9 +65,9 @@ Mode: autonomous
   - Files: only the files written by Phases 1..N (collect them from their `Files:` fields). Never touch a pre-existing file they did not modify.
   - Decisions:
     - Auto-fix directly: tool-fixable lint (ruff/prettier/eslint/black), unused imports, formatting, trivially mechanical fixes. Re-run the tests after each non-tooling fix; if one breaks a test, roll back that fix and flag it instead.
-    - Never auto-fix: logic errors, design divergences from the pattern reference, missing edge cases, anything architectural. Those go to REVIEW.md only.
-  - Details: convergence loop (max 3 cycles) of linter scoped to the file set → auto-fix → linter → test suite; stop early if a cycle makes no progress. Then write `<repo_root>/.claude/REVIEW.md` with three sections: **Auto-fixed** (file, what, tool), **Flagged for human** (file, description, suggested action), **Final state** (linter output, suite result, files reviewed).
-  - Done: `.claude/REVIEW.md` exists with the three sections, linter zero errors on the file set, full suite green.
+    - Never auto-fix: logic errors, design divergences from the pattern reference, missing edge cases, anything architectural. Those go to `review.md` only.
+  - Details: convergence loop (max 3 cycles) of linter scoped to the file set → auto-fix → linter → test suite; stop early if a cycle makes no progress. Then write `.phased/active/<slug>/review.md` with three sections: **Auto-fixed** (file, what, tool), **Flagged for human** (file, description, suggested action), **Final state** (linter output, suite result, files reviewed).
+  - Done: `review.md` exists in the plan directory with the three sections, linter zero errors on the file set, full suite green.
 
 ## Notes
 [Attention points, dependencies, breaking changes, scope deviations recorded during refinement]
@@ -89,9 +91,9 @@ Keep the column order exactly as above — `/run-all-phases` reads Effort and Mo
 ## Closing message
 
 ```
-Piano robottino-ready scritto in <file> (<N> fasi + review finale).
+Piano robottino-ready scritto in .phased/active/<slug>/plan.md (<N> fasi + review finale), committato su <branch>.
 Tutte le fasi hanno: pattern reference, files, decisions pre-fatte, done criterion misurabile.
 Ogni fase gira in loop auto-correttivo (3 tentativi test+lint, review indipendente, gate sul Done); su fase fallita parte UNA riparazione automatica a occhi freschi prima di fermarsi per te.
-La review finale corregge le minchiate e segnala il resto in .claude/REVIEW.md.
+La review finale corregge le minchiate e segnala il resto in .phased/active/<slug>/review.md.
 Per eseguire: /run-all-phases (passerà la pre-flight check senza domande).
 ```

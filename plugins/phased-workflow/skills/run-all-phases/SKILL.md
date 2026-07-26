@@ -11,7 +11,7 @@ Runs `~/.claude/scripts/run-all-phases.sh`, which launches one fresh `claude` se
 
 ## Pre-flight review (MANDATORY — before running the script)
 
-1. **Read** `.claude/MEMORY.md`.
+1. **Read** the active plan (`python3 ~/.claude/scripts/next-phase.py --resolve`).
 
 2. For every remaining `[ ]` phase, check it is **autonomous-ready**:
    - **Concrete and verifiable**, not exploratory ("explore", "investigate", "decide", "evaluate options" → not ready).
@@ -37,7 +37,7 @@ Runs `~/.claude/scripts/run-all-phases.sh`, which launches one fresh `claude` se
 
    It sets `--effort`, the runaway cap, and light mode: `low` phases run a slim `/goal` contract *without* the auto-phase skill, so their `Details:`/`Done:` must be fully self-contained.
 
-6. **Rewrite MEMORY.md** with the refined phases and the table, show the user the final phase list with the model chosen for each, and get explicit confirmation before launching.
+6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), show the user the final phase list with the model chosen for each, and get explicit confirmation before launching.
 
 ## Execution
 
@@ -55,5 +55,5 @@ The script owns the loop; do not reimplement it. Report its output to the user.
 
 ## After completion
 
-- `grep '^\- \[' .claude/MEMORY.md` — phase status
+- `grep '^\- \[' "$(python3 ~/.claude/scripts/next-phase.py --resolve)"` — phase status
 - all `[x]` → `/finalize-workflow`; any `[!]` → read its `> Issue:`/`> Attempted:` notes first

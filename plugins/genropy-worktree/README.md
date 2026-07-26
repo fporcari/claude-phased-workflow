@@ -1,6 +1,6 @@
 # GenroPy Worktree Support
 
-Run GenroPy sites and CLI commands (`gnr web serve`, `gnr db setup`, etc.) from a git worktree — one created by `/create-context` or by hand with `git worktree add` — and serve several worktrees side by side.
+Run GenroPy sites and CLI commands (`gnr web serve`, `gnr db setup`, etc.) from a git worktree — one created by `/write-workflow` on an autonomous plan, or by hand with `git worktree add` — and serve several worktrees side by side.
 
 ## The Problem
 

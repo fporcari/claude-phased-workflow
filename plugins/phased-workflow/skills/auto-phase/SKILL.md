@@ -5,20 +5,20 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 # Auto Phase
 
-Execute ONE phase of `.claude/MEMORY.md` unattended: implement, test, record the outcome, exit.
+Execute ONE phase of the active plan unattended: implement, test, record the outcome, commit, exit.
 
 **Usage:** `claude -p '/auto-phase'` — or `/run-all-phases` for the whole plan.
 
 **Non-negotiables:**
-- **No questions.** Never AskUserQuestion. Decide, and document the decision in MEMORY.md.
-- **No commits** of your own work, except the Step 0.4 baseline WIP commit. `/finalize-workflow` consolidates.
+- **No questions.** Never AskUserQuestion. Decide, and document the decision in the plan.
+- **One commit, at the end, for your own phase** (Step 6) — and nothing else. `/finalize-workflow` consolidates them all later.
 - **One phase per invocation.** Never start the next one.
-- **The outcome in MEMORY.md is the exit condition**, not bookkeeping — under `/run-all-phases` an independent evaluator re-checks it every turn.
+- **The outcome in the plan is the exit condition**, not bookkeeping — under `/run-all-phases` an independent evaluator re-checks it every turn.
 - All written content in English.
 
 ## Step 0: Read the plan
 
-`REPO_ROOT=$(git rev-parse --show-toplevel)` → read `$REPO_ROOT/.claude/MEMORY.md`. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
+Resolve the active plan (`python3 ~/.claude/scripts/next-phase.py --resolve`, see `common.md`) and read it. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
 
 ## Step 0.2: Baseline check (before any edit)
 
@@ -46,20 +46,16 @@ Keep its `> Done:`/`> Repaired:` history — the repair session needs it.
 
 Ambiguous attribution → prefer Case B. A wrong reopen burns the culprit's only repair on the wrong bug.
 
-## Step 0.4: Baseline restore point
+## Step 0.4: Restore point
 
-Tree dirty (earlier phases left changes) → one commit so the convergence loop has somewhere to return to:
+`HEAD` is the restore point: every earlier phase committed its own work, so the tree is clean when you start. Nothing to do here.
 
-```bash
-git add -A && git commit -q -m "WIP: baseline before Phase N"
-```
-
-Clean tree → skip, `HEAD` already is the restore point.
+A **dirty tree means something is wrong** — a previous session died mid-phase, or someone edited by hand. Do not commit it as if it were yours: report what is uncommitted, mark your phase `[~]` with a `> Blocked:` note naming the stray files, and exit.
 
 ## Step 1: Select the phase
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py "$REPO_ROOT/.claude/MEMORY.md"
+python3 ~/.claude/scripts/next-phase.py
 ```
 
 Act on `recommendation:` — `next: N` → take it; `resume-candidate: N` → resume if it has `wip: yes`, else take over if older than 2h, else exit reporting it busy; `attention: ...` → mark the pending phase `[~] Blocked` and exit; `done` → exit; `blocked: ...` → exit with the reason. Script unavailable → apply the semantics in `~/.claude/workflow-refs/common.md`.
@@ -83,7 +79,7 @@ Green signal = test suite + linter scoped to the touched files. Both must pass.
 - **Green** → Step 5.
 - **Failure** → up to **3 fix attempts**. Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
 - **No-progress detector**: identical failure signature twice in a row → stop early.
-- **Revert, don't stack**: an attempt that leaves the signal worse gets undone (`git checkout -- <files it touched>` returns to the Step 0.4 restore point) before re-diagnosing. Patch-on-patch also poisons what `/repair-phase` receives.
+- **Revert, don't stack**: an attempt that leaves the signal worse gets undone (`git checkout -- <files it touched>` returns to `HEAD`, the Step 0.4 restore point) before re-diagnosing. Patch-on-patch also poisons what `/repair-phase` receives.
 - **Budget exhausted or stuck** → `[!]` with the Step 6 notes. Leave the failing code **in place** — repair needs to see it.
 
 ## Step 5: Verify and gate
@@ -115,6 +111,14 @@ When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general
 
 `> Attempted:` is mandatory on `[!]`: it is the input of `/repair-phase`, which must not repeat those attempts.
 
+Then commit — the phase's code and its own status update, together, so the next phase starts from a clean tree:
+
+```bash
+git add -A && git commit -q -m "wf(phase N): <title>"
+```
+
+A phase closing `[!]` commits too, as `wf(phase N): FAILED — <title>`. **Leave the failing code in place**: repair has to see it, and it needs a clean tree to work from.
+
 Print `✓ Phase N completed: <title>` or `⚠ Phase N has issues: <reason>` and stop.
 
-**Context running out mid-phase** (past ~60% with substantial work left): keep `[>]`, add `> WIP: <what is done, what remains>`, and exit — the next invocation resumes.
+**Context running out mid-phase** (past ~60% with substantial work left): commit what exists as `wf(phase N): partial — <title>`, keep `[>]`, add `> WIP: <what is done, what remains>`, and exit — the next invocation resumes from a clean tree.

@@ -16,9 +16,9 @@ git rev-parse --show-toplevel
 git worktree list --porcelain
 ```
 
-Not in a worktree → stop: *"Non sei in un worktree. Questo comando va lanciato dall'interno di un contesto creato con `/create-context`."* Otherwise extract the worktree name and path, the branch, and the main repo path (first entry of the list).
+Not in a worktree → stop: *"Non sei in un worktree. Questo comando va lanciato dall'interno del worktree di un workflow."* Otherwise extract the worktree name and path, the branch, and the main repo path (first entry of the list).
 
-Then collect, in parallel: `git status --porcelain` (uncommitted), `git log origin/<branch>..HEAD --oneline` (unpushed), the completed/total phase count from `.claude/MEMORY.md`, disk usage, and whether the branch is merged into its parent (`cat .claude/parent-branch`, fallback `develop`, then `git branch --merged origin/<parent>`).
+Then collect, in parallel: `git status --porcelain` (uncommitted), `git log origin/<branch>..HEAD --oneline` (unpushed), the completed/total phase count from `.phased/active/*/plan.md`, disk usage, and whether the branch is merged into its parent (the plan's `Parent:` line, fallback `develop`, then `git branch --merged origin/<parent>`).
 
 ## Step 2: Present and choose
 

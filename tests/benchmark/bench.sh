@@ -1,7 +1,7 @@
 #!/bin/bash
 # Benchmark the phase-execution path on a fixed, well-specified phase.
 # Each run: fresh copy of the fixture project -> one real claude -p session
-# -> external verification of the Done criterion (pytest + flake8 + MEMORY state).
+# -> external verification of the Done criterion (pytest + flake8 + plan state).
 # Metrics from --output-format json: num_turns, total_cost_usd, duration_ms.
 #
 # Usage: bench.sh [runs_per_config] [config ...]
@@ -50,7 +50,7 @@ LIGHT_GOAL_PROMPT="$(extract_contract LIGHT_PROMPT)" || exit 1
 
 # The plain-slim arm is NOT a shipped contract: it is a deliberate no-discipline
 # control, so it stays hardcoded here on purpose.
-SLIM_PROMPT='Execute the next pending [ ] phase in .claude/MEMORY.md: implement what it describes, then update MEMORY.md marking that phase [x] with > Done: and > Files: notes (or [!] with an > Issue: note if you cannot complete it). Do not commit anything.'
+SLIM_PROMPT='Execute the next pending [ ] phase in the active plan under .phased/active/: implement what it describes, then update the plan marking that phase [x] with > Done: and > Files: notes (or [!] with an > Issue: note if you cannot complete it). Do not commit anything.'
 
 sha() { printf '%s' "$1" | shasum -a 256 | cut -c1-12; }
 echo "contracts: PHASE_PROMPT=$(sha "$GOAL_PROMPT")  LIGHT_PROMPT=$(sha "$LIGHT_GOAL_PROMPT")  (extracted from $SKILL_RAP)"
@@ -66,7 +66,7 @@ for CFG in "${CONFIGS[@]}"; do
   # the fixture's own declared effort when the config omits it.
   if [ -z "${EFFORT:-}" ]; then
     EFFORT=$(awk -F'|' '/^\|[[:space:]]*Phase 1[^0-9]/{gsub(/^[ \t]+|[ \t]+$/,"",$3); print tolower($3); exit}' \
-             "$FIXTURE/.claude/MEMORY.md" 2>/dev/null)
+             "$FIXTURE/.phased/active/bench/plan.md" 2>/dev/null)
     case "$EFFORT" in low|medium|high|xhigh|max) ;; *) EFFORT=high ;; esac
   fi
   for i in $(seq 1 "$RUNS"); do
@@ -101,7 +101,7 @@ except Exception:
     GREEN=yes
     ( cd "$DIR" && python3 -m pytest tests/ -q >/dev/null 2>&1 ) || GREEN=no
     ( cd "$DIR" && python3 -m flake8 textutils/ tests/ >/dev/null 2>&1 ) || GREEN=no
-    MARKED_X=no; grep -q '^- \[x\]' "$DIR/.claude/MEMORY.md" && MARKED_X=yes
+    MARKED_X=no; grep -q '^- \[x\]' "$DIR/.phased/active/bench/plan.md" && MARKED_X=yes
     # Classify: success = [x] and externally green; false_done = [x] but red
     # (the failure mode the /goal guard targets); honest_fail = anything else
     # (e.g. an honest [!], or no outcome at all).

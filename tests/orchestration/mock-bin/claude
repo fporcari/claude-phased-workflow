@@ -4,7 +4,7 @@ if [ "$1" = "--version" ]; then
   exit 0
 fi
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-export MEM="$REPO_ROOT/.claude/MEMORY.md"
+export MEM=$(find "$REPO_ROOT/.phased/active" -mindepth 2 -maxdepth 2 -name plan.md 2>/dev/null | head -1)
 echo "CALL: $*" >> "$REPO_ROOT/.claude/invocations.log"
 Q="$REPO_ROOT/.claude/mock-queue"
 line=$(head -n 1 "$Q")

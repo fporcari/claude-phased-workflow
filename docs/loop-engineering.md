@@ -15,7 +15,7 @@ self-correct; given one shot, they behave like any model.
 
 The chain keeps the right skeleton for long-running autonomous work:
 
-- **Persistent state in MEMORY.md** — the loop's memory that survives contexts
+- **Persistent state in the committed plan** — the loop's memory that survives contexts
 - **One fresh session per phase** — no polluted context, every iteration restarts clean
 - **Measurable `Done:` criteria** — the convergence condition, written at planning time
 
@@ -204,7 +204,7 @@ Five test tiers cover the chain (2026-07):
    interactive path, which is where all four of those commands live. A
    skill can be added to the repo and forgotten in `tools/kb-sync.py`, which
    means `/update-skills` never delivers it to anyone else; that is how
-   `pull-request`, `issue` and `clean-memories` went missing from the KB topic.
+   `pull-request` and `issue` went missing from the KB topic.
 
    **The suite runs the script under both bash and zsh** (S9). This is not
    redundancy: the production invocation path is the user's shell — zsh on
@@ -221,7 +221,7 @@ Five test tiers cover the chain (2026-07):
    gaps as `> Review:` notes without blocking the phase.
 3. **Benchmark harness** (`tests/benchmark/bench.sh`): fresh fixture copy per
    run, real sessions, metrics from `--output-format json`, success judged
-   externally (pytest + flake8 + MEMORY state), CSV output. First calibration
+   externally (pytest + flake8 + plan state), CSV output. First calibration
    (n=1 per config, same phase, both succeeded):
 
    | config | success | turns | cost | duration |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compute the next eligible phase from a MEMORY.md work plan.
+"""Compute the next eligible phase from a phased work plan.
 
 Deterministic implementation of the phase-selection semantics used by
 the phased-workflow skills (/execute-phase, /auto-phase). The canonical
@@ -29,6 +29,7 @@ Output: a "phases:" table plus one final "recommendation:" line:
 """
 
 import argparse
+import pathlib
 import re
 import subprocess
 import sys
@@ -112,15 +113,32 @@ def group_unit(phases, i):
     return [p.number for p in phases[lo:hi + 1]]
 
 
-def default_memory_path():
+def repo_root():
     try:
-        root = subprocess.run(
+        return subprocess.run(
             ['git', 'rev-parse', '--show-toplevel'],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
     except (subprocess.CalledProcessError, OSError):
-        root = '.'
-    return f'{root}/.claude/MEMORY.md'
+        return '.'
+
+
+def resolve_plan_path():
+    """Locate the active plan at <git root>/.phased/active/*/plan.md.
+
+    Exactly one is expected: one branch, one plan, no discovery. Returns
+    (path, error) with error None on success.
+    """
+    active = pathlib.Path(repo_root()) / '.phased' / 'active'
+    found = sorted(active.glob('*/plan.md'))
+    if not found:
+        return None, (f'no active plan under {active} — run /write-workflow, '
+                      'or /import-workflow on an older plan')
+    if len(found) > 1:
+        names = ', '.join(p.parent.name for p in found)
+        return None, (f'several active plans under {active} ({names}); '
+                      'exactly one is expected')
+    return str(found[0]), None
 
 
 def describe(phases, i):
@@ -170,11 +188,21 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('memory', nargs='?', default=None,
-                    help='path to MEMORY.md '
-                         '(default: <git root>/.claude/MEMORY.md)')
+    ap.add_argument('plan', nargs='?', default=None,
+                    help='path to the plan file (default: the active plan '
+                         'under <git root>/.phased/active/)')
+    ap.add_argument('--resolve', action='store_true',
+                    help='print the active plan path and exit')
     args = ap.parse_args()
-    path = args.memory or default_memory_path()
+    path = args.plan
+    if path is None:
+        path, err = resolve_plan_path()
+        if err:
+            print(f'error: {err}')
+            return 1
+    if args.resolve:
+        print(path)
+        return 0
     try:
         phases = parse(path)
     except OSError as e:
