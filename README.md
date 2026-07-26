@@ -480,8 +480,10 @@ Everything is traceable: plan in a versionable file, single clean commit per wor
 Add the marketplace and install the plugin directly from Claude Code:
 ```bash
 claude plugin marketplace add fporcari/claude-phased-workflow
-claude plugin install phased-workflow@fporcari/claude-phased-workflow
+claude plugin install phased-workflow@claude-phased-workflow
 ```
+
+Note the reference: `phased-workflow@` is the plugin, `claude-phased-workflow` is the **marketplace name** declared in `marketplace.json` — not the GitHub slug you passed to `marketplace add`.
 
 Or from inside a Claude Code session:
 ```
@@ -496,7 +498,7 @@ Add to your project's `.claude/settings.json`:
 {
   "plugins": {
     "marketplaces": ["fporcari/claude-phased-workflow"],
-    "installed": ["phased-workflow@fporcari/claude-phased-workflow"]
+    "installed": ["phased-workflow@claude-phased-workflow"]
   }
 }
 ```
@@ -513,7 +515,13 @@ bash claude-phased-workflow/plugins/phased-workflow/install.sh
 >
 > Coming from a flat install? Run `install.sh` **after** installing the plugin: it moves the superseded files to `~/.claude/phased-workflow-superseded-commands/` (moves, never deletes) and touches only the 13 names this plugin owns. Run before the plugin is installed, it detects the situation and leaves everything alone — those files are your only working copy until the plugin is there.
 
-**The support files are not optional.** Whichever option you pick, run the plugin's `install.sh` (marketplace installs do not run it for you) to place them under `~/.claude`:
+**The support files are not optional.** Whichever option you pick, run the plugin's `install.sh` — marketplace installs do not run it for you:
+
+```bash
+bash ~/.claude/plugins/cache/claude-phased-workflow/phased-workflow/*/install.sh
+```
+
+(from a clone, it is `plugins/phased-workflow/install.sh`. In an installed plugin the plugin root *is* the plugin directory, so there is no `plugins/phased-workflow/` below it.) It places under `~/.claude`:
 
 | File | Role |
 |------|------|
