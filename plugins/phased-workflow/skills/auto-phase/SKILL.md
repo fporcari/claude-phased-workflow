@@ -1,6 +1,6 @@
 ---
 description: Execute the next phase autonomously — no confirmations, auto-test, no commit
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, mcp__sourcerer__kb_*, mcp__sourcerer__sem_*, mcp__sourcerer__code_*
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 ---
 
 # Auto Phase

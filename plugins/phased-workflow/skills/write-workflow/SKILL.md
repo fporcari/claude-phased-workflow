@@ -1,6 +1,6 @@
 ---
 description: Write a phased work plan (MEMORY.md) from the current conversation
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__sourcerer__kb_*, mcp__sourcerer__sem_*, mcp__sourcerer__code_*
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Read, Grep, Glob, Write, AskUserQuestion, Agent
 ---
 
 # Write Workflow

@@ -533,7 +533,7 @@ bash ~/.claude/plugins/cache/claude-phased-workflow/phased-workflow/*/install.sh
 
 Without them the chain runs degraded: phase selection falls back to reading the plan by hand, and the independent reviewer to a generic read-only subagent.
 
-**Inside Softwell:** the same set is published to the Sourcerer KB topic `Crew/Workflow/Phased Workflow`, which also carries entries that have no counterpart here. Ask Claude, in a session with the Sourcerer MCP connected, to follow the *Install Phased Workflow Plugin* skill in that topic — it installs and updates commands and support files in one step, frontmatter included. The repo stays the source of truth; `tools/kb-sync.py` keeps the KB in step with it (`--audit` reports anything unmapped in either direction).
+**Inside Softwell:** the same set is mirrored to a Sourcerer KB topic, which also carries a few internal entries with no counterpart here. As of 3.0.0 that mirror is **not** an install channel for these skills — it writes flat files into `~/.claude/commands/`, which is the channel this release retires. Install the plugin; use the KB only for the internal-only commands. The repo is the source of truth and `tools/kb-sync.py` keeps the mirror in step with it (`--audit` reports anything unmapped in either direction).
 
 ### First Use
 

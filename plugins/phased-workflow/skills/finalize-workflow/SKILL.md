@@ -1,6 +1,6 @@
 ---
 description: Finalize the workflow - verify all phases, prepare final commit
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, mcp__sourcerer__kb_*
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Read, Grep, Glob, Write, AskUserQuestion, Skill
 ---
 
 # Finalize Workflow
@@ -66,7 +66,7 @@ Build the message from the objective, the completed phases, the actual diff and 
 
 Present it, get approval (default: yes), allow edits, then `git commit`.
 
-## Step 6: Capture durable lessons (Sourcerer)
+## Step 6: Capture durable lessons
 
 This is the last moment the whole run is visible and the memory file still exists — after cleanup it goes with the worktree. Without this the loop learns nothing across runs.
 
@@ -74,7 +74,7 @@ Scan the memory file for: `> Repaired:` notes (a root cause *plus why earlier at
 
 One bar: **would this have saved a future session real work, in a way the repo and git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" → yes. Bugs specific to this diff, anything visible by opening the file → no.
 
-Nothing clears it → say so in one line and move on. Something does → propose it via AskUserQuestion with a draft title and two-line summary, then on approval `kb_add_skill` (or `kb_update_skill` — check `kb_find_skills` first; an updated skill beats a near-duplicate). Never push without approval.
+Nothing clears it → say so in one line and move on; this step is silent by default. Something does → propose it via AskUserQuestion with a draft title and a two-line summary, and on approval write it wherever this project keeps durable know-how, following whatever your global rules say about that. Prefer correcting an existing entry over adding a near-duplicate. Never publish without approval.
 
 ## Step 7: Close out
 

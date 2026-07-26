@@ -124,7 +124,7 @@ for i in $(seq 1 $REMAINING); do
   BEFORE_DONE=${BEFORE_DONE:-0}
 
   # Look up model and effort from the execution config table, by COLUMN
-  # (| Phase | Effort | Model | Sourcerer |) rather than by grepping the whole
+  # (| Phase | Effort | Model |) rather than by grepping the whole
   # row for keywords — "xhigh" contains "high", and a keyword grep would also
   # read a value out of the wrong column.
   # Exact row match: "Phase 1" must not match "Phase 10".
