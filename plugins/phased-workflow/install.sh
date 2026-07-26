@@ -25,10 +25,14 @@ echo "  ~/.claude/scripts/run-all-phases.sh"
 echo "  ~/.claude/agents/phase-verifier.md"
 
 # ---------------------------------------------------------------- legacy flat
-# Only the names this plugin ships — never touch anything else in commands/.
+# Only the names this plugin ships or used to ship — never touch anything else
+# in commands/. The retired ones matter for the same reason as the current ones:
+# dropping a skill does not remove the flat file a previous install left behind,
+# so it keeps answering `/<name>` with instructions for a command that is gone.
+RETIRED_NAMES="create-context close-context clean-contexts clean-memories"
 SKILL_NAMES=$(ls -d "$SRC"/skills/*/ | xargs -n1 basename)
 STALE=""
-for n in $SKILL_NAMES; do
+for n in $SKILL_NAMES $RETIRED_NAMES; do
   [ -f "$HOME/.claude/commands/$n.md" ] && STALE="$STALE $n"
 done
 
@@ -47,6 +51,8 @@ if grep -q '"phased-workflow@' "$HOME/.claude/plugins/installed_plugins.json" 2>
   echo "  ~/.claude/commands/{$(echo $STALE | tr ' ' ',')}.md"
   echo "  -> $DEST/"
   echo "Use /phased-workflow:<name>, or the bare /<name> now that nothing shadows it."
+  echo "Retired in 3.0.2 and NOT replaced — worktrees are plain git now:"
+  echo "  $RETIRED_NAMES"
   echo "Delete that directory once you are satisfied nothing was lost."
 else
   echo ""

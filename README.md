@@ -107,13 +107,6 @@ The plan is the coordination point between sessions, and it is committed on the 
 | `/run-all-phases` | The whole plan, unattended | Pre-flight review, then one fresh `/goal`-guarded session per phase; light mode for `Effort=low`; one repair attempt on failure before stopping |
 | `/repair-phase` | A phase came back failed | Fresh-eyes repair: reads the `> Issue:` and `> Attempted:` notes, may not repeat a listed attempt, restarts from the diagnosis |
 
-### Context management (optional — for parallelization)
-
-| Command | When to use | What it does |
-|---------|------------|--------------|
-| `/close-context` | Done with a worktree | Close and optionally remove a worktree context |
-| `/clean-contexts` | Housekeeping | List and remove stale worktree contexts |
-
 ### Auxiliary
 
 | Command | When to use | What it does |
@@ -160,9 +153,8 @@ cd .claude/worktrees/add-pdf-export && claude
 # 3. Execute phases (new chat for each)
 > /execute-phase
 
-# 4. Finalize and close
+# 4. Finalize — it offers to remove the worktree when it is done
 > /finalize-workflow
-> /close-context
 ```
 
 ### Autonomous
@@ -280,27 +272,11 @@ When all phases are complete:
 
 The merge option is designed for the **long feature with parallel sub-tasks** pattern.
 
-**After finalizing:** run `/close-context` to clean up the worktree, or do it after creating the PR with `/pull-request`. Either way, the worktree stays on disk until you explicitly remove it.
+**After finalizing:** it offers to remove the worktree and the workflow branch. Decline and they stay on disk — `git worktree list` shows them, `git worktree remove <path>` clears them.
 
 ### `/pull-request` — Code Review + PR
 
 Acts as a meticulous maintainer: checks issue coherence, code quality, comments in English, security. Blocks the PR with a detailed report if problems are found.
-
-### `/close-context` — Close Worktree
-
-Close the current worktree context. Must be run from inside a worktree. Removes the worktree directory and closes the VS Code window. **The git branch is NOT deleted** — it stays available for PRs, merges, or future work.
-
-Options:
-
-- **Close and remove** — remove worktree + close VS Code (recommended)
-- **Close and keep** — return to the main repo, worktree stays on disk
-- **Cancel** — stay in the context
-
-Always warns about uncommitted changes and unpushed commits before removing. Branch cleanup happens separately via `/clean-contexts` after merging.
-
-### `/clean-contexts` — Housekeeping
-
-List all worktree contexts with their status (merged, completed, orphaned) and let the user select which ones to remove. Detects orphaned directories and shows disk space freed after cleanup.
 
 ---
 
@@ -581,7 +557,7 @@ The ones whose feedback signal is machine-checkable: a `Done:` you could re-run 
 No. `/finalize-workflow` is the only command that commits, and it asks before doing so. Phase sessions never commit (except a WIP safety commit when context runs low).
 
 **Q: How do I clean up old worktrees?**
-Use `/clean-contexts` from the main repo. It lists all worktrees with their status and lets you select which to remove. Or use `/close-context` from inside a specific worktree.
+Plain git: `git worktree list` shows them all, `git worktree remove <path>` removes one, `git worktree prune` clears entries whose directory is already gone. `/finalize-workflow` offers to do it for the workflow it just closed.
 
 ---
 

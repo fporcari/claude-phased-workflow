@@ -150,6 +150,11 @@ Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
 ```
 
-On a worktree, add: *"Il worktree è in `.claude/worktrees/<slug>` — lavora da lì: `cd .claude/worktrees/<slug> && claude`."*
+On a worktree, append these two lines to that message — they are for the user to run, not for you:
+
+```
+Il worktree è in .claude/worktrees/<slug>. Lavora da lì:
+  cd .claude/worktrees/<slug> && claude
+```
 
 (Autonomous plans use the closing message in the autonomous reference file.)

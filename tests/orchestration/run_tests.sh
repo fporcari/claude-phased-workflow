@@ -273,7 +273,8 @@ echo "== S15: every skill stays inside its own allowed-tools =="
 # Free tier, no session. A skill body is instructions; allowed-tools decides
 # which of them can run. The gap is silent at authoring time and fatal at
 # runtime, and it produced three real defects (write-workflow's gh/Sourcerer
-# calls, close-context's grep|head|sed pipes, pull-request's code-review skill).
+# calls, the worktree skills' grep|head|sed pipes and bare cat/pwd steps,
+# pull-request's code-review skill).
 SKILLS_DIR="$TESTDIR/../../plugins/phased-workflow/skills"
 CHECKER="$TESTDIR/check_allowlists.py"
 ALLOW_OUT="$(python3 "$CHECKER" "$SKILLS_DIR" 2>&1)"; ALLOW_RC=$?
@@ -283,7 +284,7 @@ assert "every skill declares frontmatter with allowed-tools" \
   '[ "$(grep -l "^allowed-tools:" "$SKILLS_DIR"/*/SKILL.md | wc -l | tr -d " ")" = "$(ls -d "$SKILLS_DIR"/*/ | wc -l | tr -d " ")" ]'
 # The checker is only worth having if it fails on the defect it describes.
 MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$MUT/"
-python3 - "$MUT/close-context/SKILL.md" <<'PYM'
+python3 - "$MUT/finalize-workflow/SKILL.md" <<'PYM'
 import sys
 p = sys.argv[1]
 open(p, 'w').write(open(p).read().replace(', Bash(sed:*)', '', 1))
@@ -291,6 +292,29 @@ PYM
 python3 "$CHECKER" "$MUT" >/dev/null 2>&1; MUT_RC=$?
 rm -rf "$MUT"
 assert "checker fails when an allowlist entry is removed" '[ "$MUT_RC" != 0 ]'
+# A command written in prose needs the same permission as one inside a fence.
+# Reading only fences let `pull-request` gain an inline python3 call and still
+# report clean, while the same command in finalize-workflow's fence was caught
+# — a hole in a check whose whole value is that it does not have one. The
+# target is `issue`: the only skill whose allowlist has neither python3 nor
+# unrestricted Bash, so the finding can only come from the inline scan.
+MUT2="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$MUT2/"
+cat >> "$MUT2/issue/SKILL.md" <<'EOF'
+
+Resolve the phase with `python3 ~/.claude/scripts/next-phase.py --resolve` first.
+EOF
+MUT2_OUT="$(python3 "$CHECKER" "$MUT2" 2>&1)"; MUT2_RC=$?
+rm -rf "$MUT2"
+assert "checker fails on a command instructed inline in prose" '[ "$MUT2_RC" != 0 ]'
+assert "the inline finding names the offending command" \
+  'echo "$MUT2_OUT" | grep -q "issue: runs .python3."'
+# ...but a bare command name in prose is a mention, not an instruction.
+MUT3="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$MUT3/"
+printf '\nA worktree would only cost a `cd`, and the `git` history stays readable.\n' \
+  >> "$MUT3/issue/SKILL.md"
+python3 "$CHECKER" "$MUT3" >/dev/null 2>&1; MUT3_RC=$?
+rm -rf "$MUT3"
+assert "a bare command name in prose is not read as an instruction" '[ "$MUT3_RC" = 0 ]'
 
 echo "== S16: every repo skill is on the KB sync list =="
 # `/update-skills` delivers what the KB holds. A skill added to the repo and

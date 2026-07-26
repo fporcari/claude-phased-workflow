@@ -195,9 +195,9 @@ Five test tiers cover the chain (2026-07):
 
    S15 and S16 exist because both gaps are quiet by construction. A skill can
    instruct a command its allowlist never pre-approves — `write-workflow` called
-   `gh issue view` and Sourcerer without permission for either, `close-context`
-   piped git through `grep|head|sed`, `pull-request` invoked the `code-review`
-   skill without the `Skill` tool. Nothing fails loudly: the step stops to ask
+   `gh issue view` and Sourcerer without permission for either, the worktree
+   skills piped git through `grep|head|sed`, `pull-request` invoked the
+   `code-review` skill without the `Skill` tool. Nothing fails loudly: the step stops to ask
    for a permission the author meant to grant, and where nobody can answer it
    does not run. Autonomous sessions are gated by `--permission-mode auto`
    rather than by the command's allowlist, so this is a defect of the
