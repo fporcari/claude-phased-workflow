@@ -38,11 +38,11 @@ Mode: autonomous
   - Done: check three
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | low | sonnet | no |
-| Phase 2 | medium | opus | no |
-| Phase 3 | high | fable | no |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | sonnet |
+| Phase 2 | medium | opus |
+| Phase 3 | high | fable |
 EOF
 }
 
@@ -61,10 +61,10 @@ Mode: autonomous
   - Done: check two
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | low | sonnet | no |
-| Phase 2 | low | opus | no |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | sonnet |
+| Phase 2 | low | opus |
 EOF
 }
 
@@ -234,9 +234,9 @@ Mode: autonomous
   - Done: check one
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | xhigh | opus | yes |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | xhigh | opus |
 EOF
 printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run

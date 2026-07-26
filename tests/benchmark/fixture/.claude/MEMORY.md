@@ -17,6 +17,6 @@ Add a truncate_words utility to the textutils package, following the existing sl
 Benchmark fixture for workflow chain measurements.
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | low | sonnet | no |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | sonnet |

@@ -125,7 +125,8 @@ fails). Inside, the machine self-corrects.
   that gap at the only moment where the whole run is visible and the memory
   file still exists — it harvests `> Repaired:` notes (a root cause plus why
   earlier attempts missed it), `new-pattern` phases that landed, and pattern
-  references that proved wrong, and proposes them to Sourcerer. Silent by
+  references that proved wrong, and proposes them for the project's own
+  knowledge base. Silent by
   default: the bar is "would this have saved a future session real work, in a
   way the repo and the git history don't already say?"
 - **The cross-phase blind spot lives at finalize.** Each phase is verified in

@@ -39,7 +39,10 @@ TOOL_HINTS = {
     'Agent': r'Agent tool|subagent',
     'Skill': r'Skill tool',
 }
-MCP_HINT = r'mcp__sourcerer|kb_add_skill|kb_update_skill|kb_find_skills|sem_ask_codebase|code_search'
+# Any MCP call named in a body, by server. Was hardcoded to the one MCP the
+# skills used to reach for; a public plugin should not know which MCP that is,
+# and the rule is the same for all of them.
+MCP_CALL = re.compile(r'\bmcp__([a-z0-9_-]+)__')
 # "do NOT use AskUserQuestion" is a prohibition, not a requirement. `/auto-phase`
 # forbids exactly that, and counting it as a use would demand the tool it bans.
 NEGATION = re.compile(r'\b(?:NOT|not|never|Never|no|No|without|senza)\b')
@@ -126,8 +129,10 @@ def check(skills_dir):
         for tool, hint in TOOL_HINTS.items():
             if instructed(body, hint) and tool not in tools:
                 findings.append(f'{name}: body instructs {tool} but allowed-tools omits it')
-        if instructed(body, MCP_HINT) and not any(t.startswith('mcp__sourcerer') for t in tools):
-            findings.append(f'{name}: body uses the Sourcerer MCP but allowed-tools omits it')
+        for server in sorted({mm.group(1) for mm in MCP_CALL.finditer(body)}):
+            if instructed(body, rf'mcp__{re.escape(server)}__') \
+                    and not any(t.startswith(f'mcp__{server}') for t in tools):
+                findings.append(f'{name}: body calls the {server} MCP but allowed-tools omits it')
     return findings
 
 
