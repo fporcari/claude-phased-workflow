@@ -1,7 +1,7 @@
 {
   "name": "phased-workflow",
-  "description": "Phased development workflow for Claude Code — create context, converse, plan, execute, finalize. Uses git worktrees for isolated parallel workflows and MEMORY.md as shared state between sessions.",
-  "version": "3.0.0",
+  "description": "Phased development workflow for Claude Code \u2014 create context, converse, plan, execute, finalize. Uses git worktrees for isolated parallel workflows and MEMORY.md as shared state between sessions.",
+  "version": "3.0.1",
   "author": {
     "name": "Francesco Porcari"
   }
