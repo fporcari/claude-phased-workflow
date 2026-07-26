@@ -5,47 +5,22 @@ allowed-tools: Bash(git:*), Bash(cd:*), Bash(du:*), Bash(command:*), Bash(cat:*)
 
 # Close Context
 
-Close the current worktree context: remove the worktree directory, close VS Code, return to the main repo. The git branch is NOT deleted — it stays available for PRs, merges, or future work.
+Remove the current worktree directory and return to the main repo. **The git branch is NOT deleted** — it stays available for PRs, merges, or future work. Branch cleanup happens after merge/PR, or via `/clean-contexts`.
 
-Must be run from inside a worktree.
+Must run from inside a worktree.
 
-## Step 1: Verify we are in a worktree
+## Step 1: Gather the state
 
 ```bash
 git rev-parse --show-toplevel
 git worktree list --porcelain
 ```
 
-Compare current directory with worktree list. If NOT in a worktree, stop: *"Non sei in un worktree. Questo comando va lanciato dall'interno di un contesto creato con `/create-context`."*
+Not in a worktree → stop: *"Non sei in un worktree. Questo comando va lanciato dall'interno di un contesto creato con `/create-context`."* Otherwise extract the worktree name and path, the branch, and the main repo path (first entry of the list).
 
-Extract:
-- **Worktree name** and path
-- **Branch name**
-- **Main repo path**: first entry in `git worktree list`
+Then collect, in parallel: `git status --porcelain` (uncommitted), `git log origin/<branch>..HEAD --oneline` (unpushed), the completed/total phase count from `.claude/MEMORY.md`, disk usage, and whether the branch is merged into its parent (`cat .claude/parent-branch`, fallback `develop`, then `git branch --merged origin/<parent>`).
 
-## Step 2: Check status
-
-Run in parallel:
-
-1. **Uncommitted changes**:
-   ```bash
-   git status --porcelain
-   ```
-
-2. **Unpushed commits**:
-   ```bash
-   git log origin/<branch>..HEAD --oneline 2>/dev/null
-   ```
-
-3. **MEMORY.md status**: read `.claude/MEMORY.md` — count completed vs total phases
-
-4. **Merge status**: check if branch is merged into parent
-   ```bash
-   PARENT=$(cat .claude/parent-branch 2>/dev/null || echo "develop")
-   git branch --merged origin/$PARENT | grep <branch>
-   ```
-
-## Step 3: Present status and options
+## Step 2: Present and choose
 
 ```
 Stato del contesto "<branch-name>":
@@ -63,49 +38,25 @@ Come vuoi procedere?
 [ ] Annulla — resta nel contesto
 ```
 
-Default:
-- "Chiudi e rimuovi" se nessun cambio pendente
-- "Chiudi e mantieni" altrimenti
+Recommend "Chiudi e rimuovi" when nothing is pending, "Chiudi e mantieni" otherwise.
 
-## Step 4: Execute
+## Step 3: Execute
 
-### Chiudi e rimuovi
+**Chiudi e rimuovi** — never without confirming data loss first:
 
-If uncommitted changes exist, warn and require explicit confirmation:
-*"Ci sono modifiche non committate che verranno perse. Sei sicuro?"*
+- Uncommitted changes → *"Ci sono modifiche non committate che verranno perse. Sei sicuro?"*
+- Unpushed commits → offer to push first (`git push -u origin <branch>`); on no, require explicit confirmation that they will be lost.
 
-If unpushed commits exist, warn:
-*"Ci sono N commit non pushati. Vuoi pushare prima di rimuovere?"*
-- If yes: `git push -u origin <branch>`, then proceed
-- If no: require explicit confirmation that commits will be lost
+Then remove the worktree from the main repo (the `code` CLI cannot close a window — remind the user to close the worktree's VS Code manually):
 
-**VS Code window**: the `code` CLI cannot close an open window programmatically — remind the user to close the worktree's VS Code window manually.
-
-**Remove the worktree** (NOT the branch):
 ```bash
 MAIN_REPO=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
 cd "$MAIN_REPO"
 git worktree remove .claude/worktrees/<name> --force
 ```
 
-**The branch is NOT deleted.** Closing a context removes only the worktree directory and the VS Code workspace. The branch remains available for PRs, merges, or future work. Branch cleanup happens separately (after merge/PR, or via `/clean-contexts`).
+Inform: *"Worktree rimosso. Il branch `<branch>` resta disponibile. Sei tornato su `$MAIN_REPO`."* — and that their terminal is still sitting in the deleted directory.
 
-Inform: *"Worktree rimosso. Il branch `<branch>` resta disponibile. Sei tornato su `$MAIN_REPO`."*
+**Chiudi e mantieni** — *"Il worktree resta in `.claude/worktrees/<name>/`. Puoi riaprirlo con `cd .claude/worktrees/<name> && claude`."* Suggest `/clean-contexts` for later cleanup.
 
-### Chiudi e mantieni
-
-Simply inform: *"Il worktree resta in `.claude/worktrees/<name>/`. Puoi riaprirlo con `cd .claude/worktrees/<name> && claude`."*
-
-Suggest: *"Per pulizia futura, lancia `/clean-contexts` dal repo principale."*
-
-### Annulla
-
-Do nothing.
-
-## Rules
-
-- NEVER remove without user confirmation
-- Always warn about data loss (uncommitted changes, unpushed commits)
-- Offer to push before removing if there are unpushed commits
-- Closing a context does NOT delete the git branch — only the worktree and VS Code workspace
-- After removal, the user's terminal will still be in the deleted directory — remind them to `cd` elsewhere
+**Annulla** — do nothing.

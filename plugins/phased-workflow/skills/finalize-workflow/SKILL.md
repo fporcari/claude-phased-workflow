@@ -5,232 +5,79 @@ allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), R
 
 # Finalize Workflow
 
-Verify the entire work plan is complete and prepare the final state for commit/PR.
-
-**IMPORTANT: This command is for FINALIZATION ONLY. Do NOT edit source code. If issues are found, report them to the user for delegation.**
-
-**Model tip:** run this from a chat on **opus at `xhigh` effort**. Most of this command is git plumbing (worktree detection, staging, soft-reset, commit message) where a premium model buys nothing; the judgment is concentrated in Step 5.5, and opus is high-precision *and* high-recall on diff review. Reach for fable only in the one case where the premium actually pays: an autonomous plan (`Mode: autonomous`) with a large diff no human has read. Better than either, when the diff is big: the reviewer panel described in Step 5.5.
+Verify the work plan is complete and turn the working tree into one clean commit. **Never edit source code here** — findings get reported and delegated.
 
 **Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, MEMORY.md path resolution.
 
-## Step 1: Detect environment and select the plan
-
-### Worktree detection
+## Step 1: Find the plan
 
 ```bash
 git rev-parse --show-toplevel
 git worktree list --porcelain
 ```
 
-Compare the current working directory with the worktree list to determine if we are in a worktree.
-Set `IN_WORKTREE=true/false` for use in subsequent steps.
+Set `IN_WORKTREE` from whether the cwd is in the worktree list. In a worktree → `<repo_root>/.claude/MEMORY.md`. In the main repo → also check `memory_*.md` and `.claude/worktrees/*/`; one plan with active phases → use it, several → AskUserQuestion. If a worktree plan is chosen from the main repo, tell the user to run from there.
 
-### Memory file selection
+Read it for branch, `Parent:`, issue number and phase states (also `.claude/parent-branch` if present). **Resolve the base ref**: `origin/<parent>` if `git rev-parse --verify` finds it, otherwise the local `<parent>` — use it everywhere below.
 
-**If in a worktree** → read the work plan from `<repo_root>/.claude/MEMORY.md` (where `<repo_root>` is `$(git rev-parse --show-toplevel)`). Use it directly.
+## Step 2: Verify completion
 
-**If in the main repo:**
+All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
-Also check for `<repo_root>/.claude/memory_*.md` files and scan `<repo_root>/.claude/worktrees/*/` for active plans.
+Collect any `> Verify:` lines — manual UI checks `/execute-phase` recorded — and ask whether the user has done them.
 
-1. **If only one memory file has active phases** → use it directly
-2. **If multiple memory files have active phases** → use AskUserQuestion with checkbox-style options:
-   ```
-   Ci sono più piani attivi. Quale vuoi finalizzare?
+## Step 3: Stage the work
 
-   [ ] MEMORY.md — <context name from first line>
-   [ ] memory_<name>.md — <context name from first line>
-   [ ] worktree: <name> — <context from worktree MEMORY.md>
-   ```
-   - Default: `MEMORY.md`
-   - If a worktree plan is selected from the main repo, inform the user: "Questo workflow è in un worktree. Esegui `/finalize-workflow` da: `cd .claude/worktrees/<name> && claude`"
-3. Store the chosen file path — all reads/writes in this session target that file.
+**In a worktree**, everything belongs to this workflow: `git diff --name-only <base>...HEAD` + `git status --short`, present it, then stage.
 
-Read the selected memory file and extract:
-- Branch name and **parent branch** (from `Parent:` line)
-- Issue number (if any)
-- All phases and their status
+**In the main repo** (parallel workflows without worktrees), scope by the `> Files:` notes of the `[x]` phases: cross-reference against `git status --short`, flag files changed but listed in no phase (ask whether to include), flag files listed but unchanged (warn), and stage only the confirmed set.
 
-Also read `.claude/parent-branch` file if it exists (written by `/create-context`).
+Then consolidate WIP commits. Inspect `git log <base>..HEAD --oneline`:
 
-**Resolve the base ref.** Check `git rev-parse --verify origin/<parent>`: if it exists, the base ref is `origin/<parent>`; otherwise the parent is a local-only branch and the base ref is the local `<parent>`. Use this resolved ref wherever the steps below mention `origin/<base>`.
+- All commits in range are WIP → `git reset --soft <base>`
+- WIP plus real commits → soft-reset only to the parent of the oldest commit in the contiguous WIP streak at HEAD (`git reset --soft <oldest-wip>^`)
+- WIP and real commits interleaved → **STOP and ask the user**
 
-## Step 2: Verify phase completion
+Then `git add -A` (worktree) or `git reset HEAD . && git add <files>` (selective), and say how many WIP commits are being consolidated. In selective mode, files from *other* workflows inside those WIP commits become uncommitted again — expected.
 
-Check that ALL phases are marked as completed (`[x]`).
+## Step 4: Pre-commit review
 
-Also collect any `> Verify:` lines on `[x]` phases (manual UI checks recorded by `/execute-phase`). If present, ask the user: *"Queste fasi hanno verifiche manuali UI in sospeso: <list>. Le hai verificate?"* — if not, suggest verifying before committing.
+Run the built-in `code-review` skill (Skill tool) on the staged diff — never with `--fix`. Effort `high` when the plan is `Mode: autonomous` or any phase carries a `> Review:` note (nobody read that code as it landed); `medium` otherwise.
 
-If any phases are `[ ]`, `[>]`, `[!]`, or `[~]`:
-- Report the incomplete/problematic phases to the user
-- For `[>]` phases specifically, warn: "La fase N risulta ancora in esecuzione da un'altra chat. Potrebbe essere una sessione terminata."
-- Use AskUserQuestion: "Ci sono fasi non completate. Vuoi procedere comunque con la finalizzazione?" (default: "no")
-- If "no", stop and suggest running `/execute-phase` or `/check-phase-context`
+Pass every `> Review:` note as an explicit focus point — each must come out confirmed or explicitly dismissed, never silently dropped. And instruct the review to hunt **cross-phase** issues specifically: each phase ran in a fresh session and was verified in isolation, so nothing has yet seen the whole diff at once — one phase breaking another's assumption, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
 
-## Step 3: Build the workflow file list
+**Large autonomous diffs:** offer the user a reviewer panel instead of the single pass — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) in parallel, each finding then verified by 3 independent skeptics prompted to *refute* it, keeping only what survives a majority. Read-only, under ~15 agents, never edits source.
 
-### If IN_WORKTREE=true (simplified)
+Findings → present them in Italian and ask: *"La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?"* (recommended: fix first). Fixing is delegated, not done here; then re-run `/finalize-workflow`.
 
-All changes in the worktree belong to this workflow. No selective filtering needed:
-```bash
-git diff --name-only origin/<base>...HEAD
-git status --short
-```
-Collect all modified/untracked files as the workflow file set. Present to user for confirmation.
+This step is the only whole-diff review on the "Merge sul parent" and "Solo commit" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 
-### If IN_WORKTREE=false (selective — legacy mode)
+## Step 5: Commit
 
-Extract the list of files belonging to THIS workflow:
+Build the message from the objective, the completed phases, the actual diff and the issue (`fixes #N`):
 
-1. Parse the completed phases (`[x]`) in the memory file — each has a `> Files:` line listing modified files
-2. Also parse any `> In progress:` notes from partially completed phases
-3. Collect all file paths mentioned into a **workflow file set**
-4. Cross-reference with actual git state:
-   ```bash
-   git status --short
-   git diff --name-only origin/<base>...HEAD
-   ```
-5. Present the file list to the user for confirmation:
-   - Show which files from the workflow are modified (uncommitted or in WIP commits)
-   - Flag any files that appear changed but are NOT listed in any phase note — ask the user whether to include them
-   - Flag any files listed in phase notes that are NOT actually changed — warn the user
-
-This step is critical when parallel workflows exist without worktrees — it ensures only files belonging to the current workflow are committed.
-
-## Step 4: Analyze git state
-
-Run in parallel:
-
-1. **All commits on branch** (look for WIP commits from this workflow):
-   ```bash
-   git log origin/<base>..HEAD --oneline --no-decorate
-   ```
-
-2. **Uncommitted changes** (filter by workflow file set):
-   ```bash
-   git status --short
-   ```
-
-## Step 5: Consolidate and stage work
-
-### If IN_WORKTREE=true (simplified)
-
-All changes belong to this workflow. Staging is straightforward:
-
-**Case A — No WIP commits:**
-```bash
-git add -A
-```
-
-**Case B — WIP commits exist:**
-
-First inspect `git log origin/<base>..HEAD --oneline`:
-- If ALL commits in the range are WIP commits → `git reset --soft origin/<base>`
-- If there are also non-WIP commits (manual commits, previously finalized work not yet pushed), do NOT reset past them: soft-reset only to the parent of the oldest commit in the contiguous WIP streak at HEAD (`git reset --soft <oldest-wip>^`). If WIP and non-WIP commits are interleaved, STOP and ask the user how to consolidate.
-
-Then:
-```bash
-git add -A
-```
-Inform the user that N WIP commits will be consolidated into a single clean commit.
-
-**Case C — No changes:**
-Inform the user there is nothing to commit.
-
-### If IN_WORKTREE=false (selective staging — legacy mode)
-
-Using the confirmed workflow file set from Step 3:
-
-**Case A — No WIP commits, only uncommitted changes:**
-- Stage only the workflow files:
-  ```bash
-  git add <file1> <file2> ...
-  ```
-
-**Case B — WIP commits from execute-phase exist:**
-- Same guard as the worktree case: inspect `git log origin/<base>..HEAD --oneline` first. Reset to `origin/<base>` only if ALL commits in the range are WIP; otherwise soft-reset to the parent of the oldest contiguous WIP commit at HEAD, or STOP and ask the user if WIP and real commits are interleaved.
-- Reset WIP commits to unstage them, then selectively re-stage only workflow files:
-  ```bash
-  git reset --soft <reset-target>
-  git reset HEAD .
-  git add <file1> <file2> ...
-  ```
-- Inform the user that N WIP commits will be consolidated into a single clean commit
-- **WARNING**: If WIP commits contain files from OTHER workflows, those files will become uncommitted changes again — this is expected and correct
-
-**Case C — No changes for this workflow:**
-- All workflow files are already clean — inform the user there is nothing to commit
-
-## Step 5.5: Pre-commit review
-
-With the workflow files staged, run the built-in `code-review` skill (Skill tool) on the staged diff. Do NOT use `--fix` — this command never edits source.
-
-**Effort is dynamic:**
-- `high` — when the plan is autonomous (`Mode: autonomous` in the memory file) or any phase carries a `> Review:` note. No human looked at those phases while they ran: this is the first deep pass with the whole diff in one context.
-- `medium` — otherwise (interactive plans, phases already seen by the user).
-
-**Feed the review the phase-level context.** Collect every `> Review:` note from the memory file (judgment-level findings flagged by the per-phase verification) and pass them to the review as explicit focus points. Each note must come out either confirmed (a real finding to present) or explicitly dismissed — never silently dropped.
-
-**Cross-phase coherence focus.** Each phase ran in a fresh session and was verified in isolation; no phase-level check ever saw the whole diff at once. Instruct the review to look specifically for cross-phase issues: one phase breaking an assumption another relies on, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
-
-**Reviewer panel (optional — large autonomous diffs).** When the plan is `Mode: autonomous` AND the diff spans many phases, a single review pass is the weak link: it is one perspective on code no human has read. If the user opts in, run the review as a fan-out instead — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) reviewed in parallel, then each surviving finding verified by 3 independent skeptics prompted to *refute* it, keeping only findings that survive a majority. Findings arrive with the reasoning that justifies them, which is what you need to triage them here. This is worth more than upgrading the single pass to fable, and it is read-only like the rest of Step 5.5. Keep the agent count under ~15 (verify findings, not dimensions) and never let the panel edit source.
-
-- No findings → proceed to Step 6.
-- Findings → present them (in Italian) and ask via AskUserQuestion: "La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?" (recommended: fix first). Fixing is not this command's job — delegate (a quick fix session or a new phase via `/write-workflow`), then re-run `/finalize-workflow`.
-
-Role split with `/pull-request`: this step = whole-diff coherence + phase `> Review:` notes; `/pull-request` Step 4 = maintainer-grade review. The PR path gets both; the "Merge sul parent" / "Solo commit" paths get only this one — another reason not to skimp here.
-
-## Step 6: Prepare commit message
-
-Generate a commit message based on:
-- The objective from the selected memory file
-- The phases completed
-- The actual changes in the diff
-- The issue number (if present, use "fixes #N" or "closes #N")
-
-Format:
 ```
 <type>: <concise summary>
 
-<detailed description of changes, organized by logical groups>
+<detailed description, grouped logically>
 
 [Fixes #N]
 ```
 
-Present the commit message to the user for review.
-Use AskUserQuestion: "Ecco il messaggio di commit proposto. Va bene?" (default: "si")
+Present it, get approval (default: yes), allow edits, then `git commit`.
 
-Allow the user to edit/adjust before proceeding.
+## Step 6: Capture durable lessons (Sourcerer)
 
-## Step 7: Commit
+This is the last moment the whole run is visible and the memory file still exists — after cleanup it goes with the worktree. Without this the loop learns nothing across runs.
 
-After user approval:
-```bash
-git commit -m "<approved message>"
-```
+Scan the memory file for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
 
-## Step 7.5: Capture durable lessons (Sourcerer)
+One bar: **would this have saved a future session real work, in a way the repo and git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" → yes. Bugs specific to this diff, anything visible by opening the file → no.
 
-This is the only moment where the whole run is visible at once and the memory file still exists — after cleanup it is gone with the worktree. Without this step the loop learns nothing across runs: the same wrong pattern reference gets chosen again next time.
+Nothing clears it → say so in one line and move on. Something does → propose it via AskUserQuestion with a draft title and two-line summary, then on approval `kb_add_skill` (or `kb_update_skill` — check `kb_find_skills` first; an updated skill beats a near-duplicate). Never push without approval.
 
-Scan the memory file for the few things worth outliving this workflow:
+## Step 7: Close out
 
-- `> Repaired:` notes — a root cause plus *why the earlier attempts missed it*. The highest-value kind: it encodes a trap.
-- Phases whose `Pattern:` was `new-pattern` and that landed cleanly — now there IS a reference for next time.
-- `> Review:` findings that turned out to reveal a convention rather than a one-off bug.
-- A pattern reference that proved **wrong** — worth recording as much as a right one.
-
-Judge each against one bar: **would this have saved a future session real work, in a way the repo and the git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" conventions → yes. Bugs specific to this diff, anything a reader would find by opening the file → no.
-
-If nothing clears the bar, say so in one line and move on — this step is silent by default.
-
-If something does, propose it via AskUserQuestion with the draft skill title and a two-line summary, then on approval write it with `kb_add_skill` (or `kb_update_skill` when it corrects an existing one — check with `kb_find_skills` first, an updated skill beats a near-duplicate). Never push without approval.
-
-## Step 8: Clean up
-
-The work is now captured in the git history.
-
-Use AskUserQuestion:
 ```
 Workflow completato e committato. Come vuoi procedere?
 
@@ -238,55 +85,16 @@ Workflow completato e committato. Come vuoi procedere?
 [ ] Merge sul parent — merge diretto su <parent-branch> e push
 [ ] Solo commit — lascia tutto com'è, decido dopo
 ```
-Default: "Pull request"
 
-### Pull request
-Push the branch and suggest running `/pull-request`:
-```bash
-git push -u origin <feature-branch>
-```
-Then inform: *"Branch pushato. Lancia `/pull-request` per creare la PR verso `<parent-branch>`."*
+**Pull request** → `git push -u origin <branch>`, then: *"Branch pushato. Lancia `/pull-request` per creare la PR verso `<parent>`."*
 
-### Merge sul parent
-Push the feature branch, then merge on the parent:
-```bash
-git push -u origin <feature-branch>
-```
+**Merge sul parent** → push the branch, then from the main repo (`git worktree list --porcelain | head -1 | sed 's/worktree //'`): switch to the parent, pull, merge, push. Then ask whether to remove the worktree (default: yes) — `git worktree remove .claude/worktrees/<name>` + `git branch -d <branch>`.
 
-Then get the main repo path and merge:
-```bash
-MAIN_REPO=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
-cd "$MAIN_REPO"
-git switch <parent-branch>
-git pull origin <parent-branch>
-git merge <feature-branch>
-git push
-```
+**Solo commit** → the work is committed locally, decide later.
 
-After successful merge, ask: *"Merge completato su `<parent-branch>`. Vuoi rimuovere il worktree?"* (default: "si")
-
-If yes:
-```bash
-cd "$MAIN_REPO"
-git worktree remove .claude/worktrees/<name>
-git branch -d <feature-branch>
-```
-
-### Solo commit
-Inform the user the work is committed locally and they can decide later.
-
-### Memory cleanup
-After any option, leave MEMORY.md as-is — all phases are `[x]`. If the worktree is removed, the MEMORY.md goes with it.
-
-**Roadmap check (rolling wave):** if MEMORY.md contains a `## Roadmap` section with macro-phases beyond the one just completed, remind the user (in Italian): *"La roadmap ha altre macrofasi. Prossimo passo: nuova chat e `/write-workflow` per dettagliare la prossima — col senno di poi di quella appena committata."*
-
-### Suggest cleanup
-After completing any option, if IN_WORKTREE=true, inform the user:
-*"Per rimuovere questo e altri worktree vecchi, lancia `/clean-contexts` dal repo principale."*
+Leave MEMORY.md as-is (all `[x]`; it goes with the worktree if that is removed). If it has a `## Roadmap` with further macro-phases, remind the user: *"La roadmap ha altre macrofasi. Prossimo passo: nuova chat e `/write-workflow` per dettagliare la prossima — col senno di poi di quella appena committata."* If `IN_WORKTREE`, mention `/clean-contexts` for old worktrees.
 
 ## Rules
 
-- **NO source code editing** from this command
-- If issues are found during verification, report to user — do not fix them directly
-- Always show the user what will happen before executing git operations
-- Be extra careful with reset operations — always confirm first
+- **NO source code editing** — report findings, delegate fixes
+- Show what will happen before any git operation; be especially careful with resets

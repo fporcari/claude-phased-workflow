@@ -395,9 +395,9 @@ Parent: <parent-branch> | Issue: #<number>
 [Constraints, dependencies, attention points]
 
 ## Suggested execution config
-| Phase | Effort | Model | Sourcerer |
-|-------|--------|-------|-----------|
-| Phase 1 | medium | sonnet | no |
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | medium | sonnet |
 ```
 
 Autonomous plans add a `Mode: autonomous` header, and ambitious ones a `## Roadmap` section whose bullets are inert — the launcher never executes them, it only reminds you they are pending.
@@ -436,11 +436,15 @@ Each finalized workflow = a clean commit. You can `git log` to reconstruct what 
 
 ### 3. Model Flexibility
 The `Suggested execution config` table sets model and effort per phase, decided by the pre-flight review rather than by a blanket rule:
-- **sonnet** where the phase is well-specified, has a solid pattern reference and testable logic — the verification loops catch its mistakes
-- **opus** as the default, and at `xhigh` wherever a dense template has to be filled precisely (planning, pre-flight, finalize)
+- **opus** is the default and the answer whenever in doubt — and the **floor for anything touching UI or declarative code**, where the output is poorly testable and the loops can't catch much
+- **sonnet** is the rare exception: mechanical work only — renames, extractions, moves — or an implementation that merely follows a cited pattern with a test-enforced `Done:`. Marking a phase `sonnet` is a commitment about the *plan*, not the model: whatever the skill no longer spells out, that phase must. If you can't write it that way, leave it opus
 - **fable** for genuinely hard phases, and for repair — by definition the phase's own model already failed once, and nobody is watching
 
 The stronger the verification loops, the cheaper the executor can be. The economics still bite, though: a sonnet phase that fails costs a fable repair, so sonnet pays only where first-pass success is likely.
+
+Effort follows the same logic, with a twist specific to this chain. Anthropic's guidance is to stop reaching for `xhigh` reflexively and sweep downward, because `low` and `medium` punch well above their weight on current models — and here that applies harder than usual: a phase that passed the pre-flight is *well-specified by construction*, so high effort gets spent re-exploring and re-verifying decisions the plan already settled. Start low, climb only where real design judgment survives inside the phase, and treat `max` as practically never (it overthinks). Effort levels copied from an older plan rarely transfer.
+
+The same reasoning removed a step: `/auto-phase` no longer sends every phase to an independent verifier. Current models verify their own work as they go, and telling them to verify again produces re-litigation rather than findings. The verifier now runs only where it earns its keep — a `sonnet` phase, a `new-pattern` phase, or a repair, where the code already failed once. The `Done:` gate still runs on every phase: that is a contract check against a criterion the executor did not write, which is a different thing from re-reading your own work.
 
 ### 4. The Human Moves to the Edges
 Autonomous does not mean unsupervised — it means the supervision is concentrated where it pays:
@@ -497,20 +501,25 @@ Add to your project's `.claude/settings.json`:
 }
 ```
 
-**Option C — Copy commands manually:**
+**Option C — From a clone:**
 ```bash
 git clone https://github.com/fporcari/claude-phased-workflow.git
-cp -r claude-phased-workflow/plugins/phased-workflow/skills/*/SKILL.md ~/.claude/commands/
+claude plugin marketplace add ./claude-phased-workflow
+claude plugin install phased-workflow@claude-phased-workflow
 bash claude-phased-workflow/plugins/phased-workflow/install.sh
 ```
-Note: when copying manually, rename each `SKILL.md` to `<command-name>.md` (e.g., `create-context.md`).
+
+> **Do not copy the skills into `~/.claude/commands/`.** That was the pre-3.0 install and it is now actively harmful: personal commands are flat and unnamespaced, so they collide with your other skills — and worse, a stale `~/.claude/commands/write-workflow.md` wins the bare `/write-workflow` over the plugin's copy, so you keep running an old version without noticing. Installed as a plugin, the skills are namespaced `/phased-workflow:<name>` and *cannot* conflict with any other level; the bare `/<name>` also works whenever nothing else claims it.
+>
+> Coming from a flat install? Run `install.sh` **after** installing the plugin: it moves the superseded files to `~/.claude/phased-workflow-superseded-commands/` (moves, never deletes) and touches only the 13 names this plugin owns. Run before the plugin is installed, it detects the situation and leaves everything alone — those files are your only working copy until the plugin is there.
 
 **The support files are not optional.** Whichever option you pick, run the plugin's `install.sh` (marketplace installs do not run it for you) to place them under `~/.claude`:
 
 | File | Role |
 |------|------|
 | `scripts/next-phase.py` | Deterministic phase selection — same inputs, same phase |
-| `agents/phase-verifier.md` | Read-only subagent for per-phase independent verification |
+| `scripts/run-all-phases.sh` | The autonomous phase loop — executed by the skill, never read into context |
+| `agents/phase-verifier.md` | Read-only subagent, for the phases where independent review still earns its keep |
 | `workflow-refs/common.md` | Shared conventions, single source of truth for the skills |
 | `workflow-refs/write-workflow-autonomous.md` | Autonomous-plan addendum (macro-phases, model tiers, `Done:` rules) |
 

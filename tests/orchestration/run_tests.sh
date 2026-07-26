@@ -1,6 +1,6 @@
 #!/bin/bash
 # Regression tests for the phased-workflow chain.
-# S1-S13 run the real run-all-phases script (extracted from its own SKILL.md)
+# S1-S13 run the real shipped run-all-phases.sh
 # against a mock `claude` binary: model/effort/cap selection under the /goal
 # guard, repair success and failure, the idempotent repair marker, fable->opus
 # fallback, progress guard, baseline attribution (reopen / [~]), inert Roadmap,
@@ -8,19 +8,14 @@
 # repo ships: no frozen copies of the shipped contracts (S14), every skill
 # inside its own allowed-tools (S15), every skill on the KB sync list (S16).
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
-SKILL="$TESTDIR/../../plugins/phased-workflow/skills/run-all-phases/SKILL.md"
+RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-all-phases.sh"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 OT="$WORK"
 mkdir -p "$OT/bin"
 cp "$TESTDIR/mock-bin/claude" "$OT/bin/claude"
 cp "$TESTDIR/mockops.py" "$OT/mockops.py"
-python3 - "$SKILL" "$OT/runner.sh" <<'PYEOF'
-import re, sys
-text = open(sys.argv[1]).read()
-blocks = re.findall(r'```bash\n(.*?)```', text, re.S)
-open(sys.argv[2], 'w').write(max(blocks, key=len))
-PYEOF
+cp "$RUNNER_SRC" "$OT/runner.sh"
 bash -n "$OT/runner.sh" || { echo "runner syntax error"; exit 1; }
 export OPS="$OT/mockops.py"
 PASS=0; FAIL=0
@@ -251,7 +246,7 @@ assert "xhigh uses the FULL skill contract" 'grep -q -- "-p /goal Use the auto-p
 echo "== S14: shipped contracts are the ones measured (no frozen copies) =="
 # Free tier, no session: guards the invalidator that silently makes a paid
 # benchmark night measure a previous version of the chain.
-SKILL_RAP="$TESTDIR/../../plugins/phased-workflow/skills/run-all-phases/SKILL.md"
+SKILL_RAP="$RUNNER_SRC"
 BENCH="$TESTDIR/../benchmark/bench.sh"
 extract() { python3 - "$SKILL_RAP" "$1" <<'PYX'
 import re, sys

@@ -77,6 +77,8 @@ MAPPING = {
 EMBEDDED = {
     'plugins/phased-workflow/scripts/next-phase.py':
         ('next-phase.py — deterministic phase selection script', 'python'),
+    'plugins/phased-workflow/scripts/run-all-phases.sh':
+        ('run-all-phases.sh — autonomous phase loop launcher', 'bash'),
 }
 
 # KB entries with no counterpart in this repo, on purpose. Listed so `--audit`
