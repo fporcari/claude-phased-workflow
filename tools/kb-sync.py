@@ -84,7 +84,6 @@ EMBEDDED = {
 KB_ONLY = {
     'Guida ai comandi — Phased Workflow': 'KB-authored command guide (Italian)',
     'Install Phased Workflow Plugin': 'KB-authored install instructions',
-    'open-context': 'command not shipped by the plugin',
     'push-context-memory': 'Sourcerer-specific, internal machines only',
     'ui-test': 'GenroPy-specific, internal machines only',
     'Worktree GenroPy runtime isolation': 'genropy-worktree plugin note',
@@ -317,12 +316,33 @@ def sync_embedded(kb, index, changed):
         changed.append((skill_id, title, merged))
 
 
+PREAMBLE_RE = re.compile(r'\A(.*?^\*\*Installation:\*\*.*?^---\s*$\n)', re.S | re.M)
+
+
+def kb_preamble(kb_text):
+    """The KB-only header an entry carries before the repo body starts.
+
+    Some entries open with a title plus an "**Installation:** save this
+    content ..." note and a rule. That block belongs to the KB, not to the
+    repo file, so a repo-wins rewrite has to carry it across. Everything
+    after the rule is the body, and the body is what the repo owns.
+    """
+    m = PREAMBLE_RE.match(kb_text)
+    return m.group(1) if m else ''
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--apply', action='store_true', help='write to the KB (default: dry run)')
     ap.add_argument('--base', help='repo ref the KB currently reflects (default: recorded state)')
     ap.add_argument('--only', nargs='*', metavar='NAME', help='limit to these skill titles or paths')
+    ap.add_argument('--repo-wins', action='store_true',
+                    help='replace the KB body with the repo body instead of merging. '
+                         'For a refactor that rewrote the same regions the KB had '
+                         'edited, where every conflict hunk is just the old body. '
+                         'Keeps the Installation preamble; discards everything else '
+                         'the KB held.')
     ap.add_argument('--audit', action='store_true',
                     help='report coverage gaps in both directions and exit')
     ap.add_argument('--create', action='store_true',
@@ -367,7 +387,9 @@ def main():
         name = rel.split('/skills/')[1].split('/')[0] if '/skills/' in rel else title
         base_body, new_body = strip_frontmatter(base_text), strip_frontmatter(new_text)
         bad = False
-        if new_body == base_body or new_body.rstrip('\n') in kb_text:
+        if args.repo_wins:
+            merged = kb_preamble(kb_text) + new_body
+        elif new_body == base_body or new_body.rstrip('\n') in kb_text:
             # Nothing to propagate: either the body did not move, or the KB
             # already carries it verbatim (several entries are "repo body plus a
             # KB-only preamble or tail" — an Installation: block, a
