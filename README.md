@@ -36,7 +36,7 @@ flowchart TD
     style PR fill:#555,color:#fff
 ```
 
-> **Note:** `/write-workflow` opens the workflow branch and commits the plan as its first commit. A worktree is created only for autonomous plans, where the run needs to grind somewhere other than your main checkout.
+> **Note:** `/write-workflow` opens the workflow branch and commits the plan as its first commit — branch and plan only. Worktrees belong to execution: `/run-workflow` attaches or creates one when the run needs it, and `/finalize-workflow` removes it.
 
 The autonomous path replaces the middle of that diagram with a loop that runs unattended:
 
@@ -140,14 +140,16 @@ claude
 
 ### Isolated (with worktree)
 
-Use when you need to **parallelize** multiple tasks on the same repo. Each worktree has its own branch, files, and plan.
+Use when you need to **parallelize** multiple tasks on the same repo. Each worktree has its own branch, files, and plan. Worktrees are plain git — the tooling creates one on demand for autonomous runs; for interactive work you add it yourself:
 
 ```bash
 claude
 # 1. Discuss the work, then crystallize the plan
-> /write-workflow          # ask for a worktree when it offers the branch line
+> /write-workflow          # opens wf/add-pdf-export, commits the plan
 
-# 2. Move into the worktree it created
+# 2. Give the branch its own checkout and work there
+git switch main
+git worktree add .claude/worktrees/add-pdf-export wf/add-pdf-export
 cd .claude/worktrees/add-pdf-export && claude
 
 # 3. Execute phases (new chat for each)
@@ -261,10 +263,10 @@ Read-only analysis of the plan vs actual code state: exact per-phase attribution
 
 When all phases are complete:
 
-1. Verifies all phases are `[x]`
-2. Builds the workflow file list
-3. In a worktree: `git add -A` (everything belongs to this workflow)
-4. Creates a single clean commit
+1. Verifies all phases are `[x]` and collects the `> Verify:` checks left to the human
+2. Reviews the whole workflow diff (`BASE..HEAD`) — in-session; or, when the plan lives in its own worktree, via a read-only `finalize-workflow-agent` sub-session launched at the plan's root by `agent-session.sh`. Findings are reported, never auto-fixed
+3. Captures durable lessons, then archives the plan under `.phased/done/`
+4. Consolidates the per-phase commits into a single clean commit
 5. **Offers three options:**
    - **Pull request** — push and create PR toward the parent branch
    - **Merge on parent** — direct merge on the parent branch, then optionally remove the worktree
@@ -400,6 +402,8 @@ Every state transition leaves machine-readable evidence — this is what makes f
 | `> Repaired:` | root cause, plus *why the earlier attempts missed it* |
 | `> Review:` | judgment-level finding from the independent verification, for finalize |
 | `> Blocked:` | the failure signature behind a `[~]` |
+| `> Verify:` | manual checks left to the human on untested UI work — collected by finalize |
+| `> Verified:` | optional record of the verification evidence a phase ran |
 
 ---
 
@@ -434,8 +438,8 @@ Inside those edges the machine self-corrects. Nothing reaches the parent branch 
 
 ### 5. Parallel Workflows
 Two approaches:
-- **With worktrees** (recommended for parallelization): ask `/write-workflow` for a worktree on each task. Each gets its own branch, plan, and VS Code window.
-- **Without worktrees**: one plan per branch — switch branches to switch workflow.
+- **With worktrees** (recommended for parallelization): one plain-git worktree per task — `/run-workflow` creates it on demand for autonomous runs, or you add it yourself for interactive work (see [Typical Flow](#isolated-with-worktree)). Each gets its own branch, plan, and window.
+- **Without worktrees**: one plan per branch — switch branches to switch workflow. `next-phase.py --plans` lists every workflow reachable from the repo, including branches with no checkout.
 
 ### 6. Full Traceability
 Everything is traceable: plan in a versionable file, single clean commit per workflow, structured PR template, `/resume-workflow` reconstructs state at any time.
@@ -553,17 +557,18 @@ Plain git: `git worktree list` shows them all, `git worktree remove <path>` remo
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**109 assertions over 21 scenarios.** S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S17 drives `/import-workflow`'s classification and its mid-run git sequence; S18 proves that prose bullets in a `## Notes` section stay inert and that every phase-state grep goes through a single-source helper; S19 checks that `next-phase.py --validate` gates the launcher before any session starts; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`.
+**124 assertions over 23 scenarios.** S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S19 checks that `next-phase.py --validate` gates the launcher before any session starts — and that warning lines are printed, not computed and discarded; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`. Two scenarios build real git repos instead of driving the mock: S17 (`/import-workflow`'s classification and its mid-run git sequence) and S22 (the `--plans` location service: root plan, worktree plan, orphan-branch plan read without checkout). S18 is a hybrid: it proves live that prose bullets in a `## Notes` section stay inert, and statically that every phase-state match is single-source.
 
 The suite runs the script under **both bash and zsh** (S9), which is not redundancy: the production invocation path is the user's shell, and an unbraced `$NEXT_PHASE[^0-9]` inside a grep pattern parses as an array subscript in zsh, silently emptying the config-table lookup and defaulting every phase's model, effort and cap. A bash-only harness cannot see it, and `zsh -n` does not either.
 
-S14–S16, S18 and S21 are static checks on what the repo ships:
+S14–S16, S21 and S23 are purely static checks on what the repo ships (S18's guard is the static half of its hybrid):
 
 - **S14** — no frozen copy of a shipped `/goal` contract anywhere in the harness. The benchmark used to hold one, so it measured a previous version of the chain while reporting the current one. S14 also guards, both ways, that the light contract carries its per-phase-commit clause and no longer forbids committing.
 - **S15** — every skill stays inside its own `allowed-tools`, checked by reading its bash blocks and its prose ([check_allowlists.py](tests/orchestration/check_allowlists.py)). A skill can instruct a command its allowlist never pre-approves; nothing fails loudly, the step just stops to ask for a permission the author meant to grant — and where nobody can answer, it does not run.
 - **S16** — every skill is on the KB sync list, so a new command cannot be added here and silently never reach anyone else.
-- **S18** — the phase-state greps in the launcher are single-source: a regression that reintroduces an unqualified state grep (one that would read a prose `- [!]` bullet in `## Notes` as a phase) fails the check.
-- **S21** — every skill and ref addresses the plugin through `${CLAUDE_PLUGIN_ROOT}`, never `~/.claude/` (the one `settings.json` mention in `refs/common.md` is the documented exemption).
+- **S18** — the phase-state matches in the launcher are single-source ([check_state_matches.py](tests/orchestration/check_state_matches.py)): a regression that reintroduces an unqualified state grep — or strips the `**Phase` anchor from the awk block — fails the check. Proven by mutation: the suite re-runs the real guard on a copy with the anchor stripped and expects red.
+- **S21** — every skill and ref addresses the plugin through `${CLAUDE_PLUGIN_ROOT}`, never `~/.claude/` ([check_home_paths.py](tests/orchestration/check_home_paths.py); the one `settings.json` mention in `refs/common.md` is the documented exemption). Proven by mutation with the same real guard.
+- **S23** — every `-agent` skill is a thin variant: it cites its base skill by name and stays under a line ceiling, so the unattended sibling can never fork into a second body nobody updates — the exact shape of the 4.1.0 `Never commit` defect. Proven by mutation, both ways.
 
 A GitHub Actions workflow ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs `flake8`, both the bash and zsh suites, and `next-phase.py --validate` on the benchmark fixture on every push and pull request against `main`.
 
@@ -604,6 +609,19 @@ gnr web serve sandboxpg --debug
 See [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md) for details.
 
 ---
+
+## What changed in 5.0.0
+
+5.0.0 implements Macro 1 of [docs/target-workflow.md](docs/target-workflow.md) — the command surface, plan location and workspace lifecycle. Breaking: two commands renamed, one retired, two tags removed.
+
+- **`/resume-workflow` replaces `/check-phase-context`.** Same read-only audit (per-phase attribution from the phase commits, the two kinds of drift, oversized phases), plus an explicit healthy path: "just tell me where we are" early-exits with the state report. `install.sh` supersedes the stale flat command.
+- **`/run-all-phases` is now `/run-workflow`, `/auto-phase` is now `/execute-phase-agent`.** The lifecycle commands act on the workflow (`write` → `run` → `resume` → `finalize`), the phase commands on one phase — and the `-agent` suffix names the environment, not a behaviour: *there is nobody in here who can answer you*. The env var is now `RUN_WORKFLOW_NO_BUDGET`.
+- **`-agent` variants are structurally thin.** The shared execution mechanics live once, in `refs/phase-execution.md`; `execute-phase-agent` states only the unattended constraints and cites its base skill. S23 enforces it (base citation + line ceiling, proven by mutation) — the 4.1.0 `Never commit` defect was exactly a sibling copy nobody updated, and this makes that shape fail the suite.
+- **Plans are reachable from anywhere.** `next-phase.py --plans` lists every workflow the repo can see — current root, linked worktrees, and `wf/*` branches with no checkout, read without checking them out (S22). Skills anchor to the plan's root (`git -C`) per the shared *Plan location* rule.
+- **The workspace lifecycle moved to execution.** `/write-workflow` creates branch + plan only; `/run-workflow` attaches or creates the worktree (announced in one line) and copies `settings.local.json` into it; `/finalize-workflow` removes it.
+- **Finalize can verify in a clean sub-session.** `agent-session.sh` runs a shipped skill via `claude -p` at the plan's root; `finalize-workflow-agent` is the read-only reviewer it launches when the plan lives in a worktree — findings come back to the chat where the decisions (base, wording, squash) stay with you.
+- **`parallel:N` and `group:N` are retired; `vast` survives.** Parallel never produced concurrency in autonomous runs, and grouped phases were a symptom of boundaries a human cannot verify. Phases run strictly in order; pre-5.0 plans degrade gracefully (the retired tags surface as validator warnings, never errors).
+- **4.1.0's carried defects are closed.** The launcher prints validator warnings instead of discarding them (S19e); the S18 guard covers the awk block and is proven by mutation against the real check (`check_state_matches.py`), as is S21 (`check_home_paths.py`); `> Verify:`/`> Verified:` are documented note fields; the suite header and these test counts match the suite's own output.
 
 ## What changed in 4.1.0
 

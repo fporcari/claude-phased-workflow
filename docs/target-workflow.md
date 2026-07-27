@@ -420,7 +420,9 @@ guard covers this". Worth making a standing part of the finalize review, not a o
 Eight items is past the ~8-10 ceiling for one wave, and two of them only become
 writable once the first lands. Rolling wave, three macros:
 
-- **Macro 1 — Command surface, location and workspace** (A0, A1, A, B, C, H, K, L). The
+- **Macro 1 — Command surface, location and workspace** (A0, A1, A, B, C, H, K, L) —
+  **DONE in 5.0.0** (`wf/command-surface-5-0-0`), together with M.2–M.6 and the M.7
+  count fixes. The
   foundation: without it nothing else is reachable from outside the plan's own
   directory. A0 and A1 go first, so that A and B never migrate a skill destined for
   deletion or for a new name. H is no longer one prose rule — retiring both tags touches

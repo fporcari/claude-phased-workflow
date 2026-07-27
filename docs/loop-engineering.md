@@ -181,23 +181,29 @@ mediocrity.
 
 Five test tiers cover the chain (2026-07):
 
-1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`):
-   the run-workflow script — a shipped file since 4.0.0 — exercised with a
-   mock `claude` over twenty-one scenarios: /goal call shape, model/effort/cap
-   selection (fable cap doubled, `xhigh` → 250), repair success resuming the
-   loop, repair failure stopping it, the idempotent `Repair attempted:` marker,
-   relaunch on a `[!]` *without* that marker, attribution Case A (a reopened
-   `[x]` phase drops the done-count without tripping the progress guard),
-   attribution Case B (`[~]` stops the run), fable→opus fallback on session
-   crash, no-progress guard, inert `## Roadmap`, prose bullets in `## Notes`
-   held inert with the state greps single-source (S18), `--validate` gating the
-   launcher before any session (S19), every silent fallback announcing itself
-   (S20), `/import-workflow` classification and its mid-run git sequence (S17),
-   and the pre-2.1.139 plain-prompt fallback — plus static checks on what the
-   repo ships: no frozen copy of a shipped contract anywhere in the harness and
-   the light contract's per-phase-commit clause intact (S14), every skill inside
-   its own `allowed-tools` (S15), every skill on the KB sync list (S16), and no
-   skill or ref still addressing `~/.claude/` (S21). **109 assertions.**
+1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`),
+   **124 assertions over 23 scenarios**, in three kinds. *Mock-driven* (a mock
+   `claude` binary drives the run-workflow script, a shipped file since
+   4.0.0): /goal call shape, model/effort/cap selection (fable cap doubled,
+   `xhigh` → 250), repair success resuming the loop, repair failure stopping
+   it, the idempotent `Repair attempted:` marker, relaunch on a `[!]`
+   *without* that marker, attribution Case A (a reopened `[x]` phase drops
+   the done-count without tripping the progress guard), attribution Case B
+   (`[~]` stops the run), fable→opus fallback on session crash, no-progress
+   guard, inert `## Roadmap`, the pre-2.1.139 plain-prompt fallback (S1–S13),
+   `--validate` gating the launcher before any session and warnings printed
+   rather than discarded (S19), every silent fallback announcing itself
+   (S20), and the live half of S18 (prose bullets in `## Notes` held inert).
+   *Real-git, no mock*: `/import-workflow` classification and its mid-run git
+   sequence (S17); the `--plans` location service across root, worktree and
+   checkout-less branch (S22). *Static, on what the repo ships*: no frozen
+   copy of a shipped contract anywhere in the harness and the light
+   contract's per-phase-commit clause intact (S14), every skill inside its
+   own `allowed-tools` (S15), every skill on the KB sync list (S16), the
+   phase-state matches single-source — S18's static half, proven by mutation
+   —, no skill or ref still addressing `~/.claude/` (S21, proven by
+   mutation), and every `-agent` skill a thin variant citing its base (S23,
+   proven by mutation).
 
    S15 and S16 exist because both gaps are quiet by construction. A skill can
    instruct a command its allowlist never pre-approves — `write-workflow` called
