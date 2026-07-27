@@ -110,7 +110,9 @@ still commit one by one as `wf(phase N): <title>`.
   - Details: sweep all stale names/counts; update both JSON versions; keep README:493's historical file references intact.
   - Done: `grep -rn '4\.1\.0' README.md plugins/` shows only the historical changelog section; suite green; validator green on the benchmark fixture plan (CI's last step).
 
-- [ ] **Phase 12**: Coherence review and auto-fix (final)
+- [x] **Phase 12**: Coherence review and auto-fix (final)
+  > Done: review.md written (Auto-fixed: none needed / Flagged: KB sync pass, launcher asymmetry by design, stale 4.x plugin cache, article stays historical / Final state: 124/124 both shells, flake8 zero, validator clean on fixture and on this plan); straggler greps clean; S14 mutation spot-check red-then-green.
+  > Files: .phased/active/command-surface-5-0-0/review.md
   - Pattern: cross-check against Phases 1–11
   - Files: only files written by Phases 1–11; .phased/active/command-surface-5-0-0/review.md (new)
   - Decisions: auto-fix only tool-fixable lint and mechanical stragglers (a missed rename); logic/design findings go to review.md, not fixed. Mutation spot-checks: revert one awk anchor and one contract clause on a copy, confirm the suite catches both.
