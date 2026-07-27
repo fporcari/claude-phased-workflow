@@ -1,0 +1,13 @@
+Phase 1 stays `[x]`, Phase 2 is now `[x]`, Phases 3–7 untouched at `[ ]`. Exactly one phase changed state, one commit with the four expected files.
+
+✓ Phase 2 completed: The automation fork in /write-workflow
+
+**Summary:**
+- **Baseline** was green (130 passed, flake8 clean) — matched the recorded baseline plus Phase 1's +8. Tree clean apart from the harness's benign untracked `log/` placeholder (recognised by the Phase 1 log itself), which I kept out of the commit.
+- **`write-workflow/SKILL.md`**: inserted `## Step 2: The automation fork` between Step 1 and Build-the-plan; renumbered the following steps to 3–6; both internal cross-references now resolve to Open-the-branch as Step 4. The fork is one `AskUserQuestion` (recommended-first per `common.md`) with a task-derived recommendation line (UI → interactive; refactor/startup/migration → autonomous, no fixed default) and routing to the autonomous ref or this file's format. Added `Mode: interactive` to the plan template; deleted the retired "interactive by default; don't ask" clause.
+- **`write-workflow-autonomous.md`**: removed the duplicate "Confirm with the user" line, reframed the loading condition to the fork, and made the *Honesty check* the documented way back (flip the fork to interactive).
+- **`run_tests.sh`**: added S24 — a mutation-proven static guard over the skills+refs dirs checking the four load-bearing strings; listed in the suite header comment.
+- **Done gate, all three criteria run literally:** suite exit 0, `133 passed, 0 failed`, no `FAIL` line, S24 assertions present; `grep -c "don't ask" …` → 0; `grep -c "Confirm with the user" …` → 0. Verifier skipped (opus/high, existing-file pattern — not `sonnet`/`new-pattern`).
+- One commit: `wf(phase 2): The automation fork in /write-workflow`.
+
+Exactly one phase changed state ([ ] → [x]); no other phase touched. Stopping — one phase per invocation.

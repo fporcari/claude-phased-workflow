@@ -1,0 +1,16 @@
+✓ Phase 5 completed: The notification protocol in /run-workflow
+
+**Baseline:** green before I started (suite 139 passed / 0 failed, flake8 clean, tree clean apart from the launcher's own untracked `log/` — left untracked exactly as the earlier phase commits did).
+
+**What landed:**
+- `run-workflow/SKILL.md` — *Execution* rewritten: background launch teeing to a log **outside** the repo, one self-terminating Monitor on the `EVENT:` lines, the push policy (first `phase-failed`, any `phase-blocked`, one end push from the command's own completion — no duplicate), the ≤200-char message shape, the no-parent-write rule, and the declared foreground fallback. Step 6 gained the Remote Control line; `Monitor, PushNotification` added to `allowed-tools`.
+- `refs/common.md` — new *Notifications* section holding the local-ping-vs-push policy once.
+- `check_allowlists.py` — narrow `TOOL_HINTS` entries `Monitor: 'Monitor tool'`, `PushNotification: 'PushNotification'`.
+- `run_tests.sh` — S25 static drift guard (tokens extracted live from the shipped launcher, asserted present in the skill, mutation-proven) + header updated.
+
+**Done gate — all three criteria verified live:**
+- `bash tests/orchestration/run_tests.sh` → exit 0, **142 passed / 0 failed**, no FAIL line
+- `python3 tests/orchestration/check_allowlists.py plugins/phased-workflow/skills` → exit 0 (0 findings)
+- `grep -q "Remote Control" …/run-workflow/SKILL.md` → exit 0
+
+Verifier skipped per Step 5 (phase is `opus`, not `new-pattern`). Committed as `9456e4c`, staging only Phase 5's files. Phases 6 and 7 remain pending.

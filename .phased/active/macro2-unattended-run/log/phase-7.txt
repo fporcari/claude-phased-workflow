@@ -1,0 +1,18 @@
+✓ Fase 7 completata e committata (`6d80c4b`). La directory `log/` resta correttamente non tracciata (bookkeeping del launcher, esclusa dal commit).
+
+**✓ Phase 7 completed: Coherence review and auto-fix (final, mandatory)**
+
+Riepilogo di quanto svolto in questa sessione:
+
+- **Baseline (prima di ogni modifica):** suite `142 passed, 0 failed` (exit 0), `flake8` pulito → nessun red baseline, nessuna attribuzione necessaria. Tree "sporco" solo da `log/` (i log per-fase del launcher `/run-workflow`), riconosciuto come bookkeeping dell'harness e non come edit al sorgente.
+- **Fase selezionata:** Fase 7 (unica `[ ]`), effort `xhigh`/`opus` → nessun verifier indipendente richiesto.
+- **Convergence loop:** flake8 sui due file Python toccati (`next-phase.py`, `check_allowlists.py`) già pulito e suite già verde → converge al ciclo 1 senza auto-fix; Fase 7 non ha modificato codice.
+- **Cross-check di coerenza dell'ondata (tutti superati):**
+  1. Regola del fork descritta in un solo posto (`write-workflow/SKILL.md:38`) e *citata* da `import-workflow:55`, non duplicata.
+  2. Set di token `EVENT:` (`phase-failed`/`phase-blocked`/`run-end`) concorde tra launcher, skill e S25.
+  3. Nessuna prosa nuova reintroduce path `~/.claude/` fuori dall'esenzione S21; `check_home_paths` verde.
+  4. `check_allowlists.py` → 0 findings (S15). In più: versione 5.1.0 uniforme, claim "never commits" ritirato (grep → 0), catena `Mode:` chiusa writer→ref→consumatori→validator.
+- **Done gate:** `review.md` scritto con le tre sezioni (Auto-fixed / Flagged for human / Final state — verificate 1 ciascuna); `flake8` exit 0; suite exit 0, `142 passed, 0 failed`, nessuna riga `FAIL`.
+- **Commit:** `6d80c4b wf(phase 7): Coherence review and auto-fix` (solo `review.md` + `plan.md`).
+
+Tutte le fasi del piano sono ora `[x]`. Il passo successivo naturale è `/finalize-workflow`.

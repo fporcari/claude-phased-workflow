@@ -1,0 +1,11 @@
+Phase 6 committed cleanly (the pre-existing untracked `log/` directory correctly left out).
+
+✓ Phase 6 completed: Documentation and the 5.1.0 release notes
+
+**What happened this turn:**
+- **Baseline (Step 0.2):** green — 142 passed / 0 failed, flake8 clean. Tree clean apart from a pre-existing untracked `log/` dir (not mine, left alone).
+- **Implemented Phase 6:** version → `5.1.0` in `plugin.json` (1×) and `marketplace.json` (2×); README gained the automation-fork step, `Mode:` documentation in *Plan Format*, the `/run-workflow` reportable-while-running + Remote Control paragraph, a *What changed in 5.1.0* section, a "Can I walk away during a run?" FAQ, and the corrected commit claim (verified against the shared `refs/phase-execution.md`); `docs/target-workflow.md` items D/E got *DECIDED — DONE in 5.1.0* paragraphs and the Macro 2 entry is marked done. `docs/loop-engineering.md` was deliberately left untouched — it carries no launcher-output/walking-away description, and the phase's decision scoped the edit to "only where it describes them, no rewrite".
+- **Done gate (Step 5):** every criterion re-run literally — all pass (grep count 0, versions 2/1, both anchors present, suite exits 0). Independent verifier not required (opus phase, not `new-pattern`); no Python touched, so no flake8 scope.
+- **Committed** as `wf(phase 6): Documentation and the 5.1.0 release notes` (3dbf5da).
+
+The plan now has exactly one new `[x]` phase with its Done criterion demonstrated. Phase 7 (Coherence review) remains pending.

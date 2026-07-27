@@ -1,0 +1,8 @@
+✓ Phase 3 completed: The fork's consumers — /run-workflow pre-flight and /import-workflow
+
+The single phase is done and its Done criterion demonstrated in-conversation:
+- **`/run-workflow`** pre-flight step 1 now reads the plan's `Mode:` header first, with the three branches (autonomous proceeds, interactive offers the conversion or stops — never silently, no header = legacy).
+- **`/import-workflow`** Step 3 gained the same automation fork, keeping an existing header or asking the fork question by pointing at `/write-workflow` Step 2 (one source), then writing the resulting header.
+- **`s24_guard()`** extended with the three consumer rules plus a fourth mutation proof.
+
+Verification actually run: suite exits 0 with **134 passed / 0 failed**, no FAIL line, new S24 consumer assertion present; both Done greps exit 0. `run-workflow.sh` still parses (`bash -n` exit 0). Committed as `b62f81b`. Only Phase 3 changed state ([ ] → [x]); no other phase touched.

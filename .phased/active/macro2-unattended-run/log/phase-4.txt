@@ -1,0 +1,14 @@
+Phase committed cleanly; only the pre-existing untracked `log/` remains.
+
+✓ Phase 4 completed: Stable EVENT lines in the launcher
+
+**What landed:**
+- **`run-workflow.sh`** — three stdout-only `EVENT:` lines (no file, no `osascript`):
+  - `EVENT: phase-failed <N>` at the top of the `[!]` branch, before the repair session
+  - `EVENT: phase-blocked <N>` in the `[~]` branch
+  - `EVENT: run-end <status> <done>/<total>` once as the launcher's final line — `ok` only when no `[ ]`/`[!]`/`[~]`/`[>]` phase remains, else `stopped`. Phase numbers and counts all come from the existing helpers (`phase_re`, `phase_count`, `phase_lines`).
+- **`run_tests.sh`** — S25 live half (fail→repair-fail → `phase-failed 1` once; blocked fixture → `phase-blocked 1`; clean fixture3 → `run-end ok 3/3` exactly once) plus the suite-header note.
+
+**Done criterion demonstrated:** `bash -n run-workflow.sh` → exit 0; `bash tests/orchestration/run_tests.sh` → exit 0, 139 passed / 0 failed, zero FAIL lines, S25 assertions present.
+
+Baseline was green at the start (134 passed, flake8 clean), so no attribution case applied. Exactly one phase moved to `[x]`; no other phase changed state. The next pending phase is Phase 5 (the notification protocol in `/run-workflow`), which adds S25's static drift guard on top of this contract.

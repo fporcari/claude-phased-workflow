@@ -1,0 +1,12 @@
+Committed. The stray `log/` placeholder was correctly left out.
+
+✓ Phase 1 completed: Mode header semantics in the plan validator
+
+**Summary:**
+- Baseline was green (122 passed, flake8 clean) — matched the plan's recorded baseline. Tree clean apart from a benign empty `log/phase-1.txt` placeholder present at session start, which I kept out of the commit.
+- In `next-phase.py`: added `MODE_RE`/`MODES`, made `validate()` capture the first `Mode:` value + line number, derive `mode_autonomous`/`mode_interactive`, **error** on an unknown value (`Mode: 'robot' is not one of: autonomous, interactive`) and **warn** on `Mode: interactive` carrying a config table. Autonomous-without-table error unchanged; no header stays silent (legacy = interactive).
+- In `run_tests.sh`: added S19 (f) live unknown-value rejection with empty `invocations.log`, (g) direct interactive-plus-table one-warning case, (h) direct no-header clean case; updated the suite header comment.
+- **Done gate, both criteria run:** `bash tests/orchestration/run_tests.sh` → exit 0, `RESULT: 130 passed, 0 failed`, zero `FAIL` lines; `flake8 plugins/phased-workflow/scripts/next-phase.py` → exit 0.
+- One commit: `wf(phase 1): Mode header semantics in the plan validator`.
+
+Exactly one phase changed state ([ ] → [x]); no other phase touched. Stopping as required — one phase per invocation.
