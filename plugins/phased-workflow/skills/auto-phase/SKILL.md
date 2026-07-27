@@ -1,5 +1,5 @@
 ---
-description: Execute the next phase autonomously — no confirmations, auto-test, no commit
+description: Execute the next phase autonomously — no confirmations, auto-test, one commit per phase
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 ---
 

@@ -1,0 +1,19 @@
+All phases are now `[x]`, the working tree is clean, and Phase 10 committed cleanly.
+
+✓ **Phase 10 completed: Coherence review and auto-fix (final, mandatory)**
+
+**Baseline** was green before any edit (flake8 clean; bash and zsh suites 109/0) — no red-baseline attribution applied.
+
+**What I did** — reviewed the 21-file set written by Phases 1–9 against the four specified cross-checks (plus an independent read-only coherence scan), all passing:
+- Phases 1/2/3/4/8 coexist in `run-all-phases.sh` without one undoing another (`bash -n`/`zsh -n` clean).
+- No phase-state grep bypasses Phase 1's four helpers or `first_bang_block`'s strict awk.
+- No `~/.claude/` under `skills/` or `refs/` except the documented `settings.json` exemption.
+- Doc numbers match reality: 109 assertions / 21 scenarios = the suite's `RESULT:` line; slim-control provenance on every ~37%/~60% figure; versions 4.1.0; article moved; `--validate` on the benchmark fixture clean.
+
+**One mechanical auto-fix:** `install.sh` printed the install ref as the GitHub slug (`phased-workflow@fporcari/claude-phased-workflow`); README documents the marketplace-name form (`phased-workflow@claude-phased-workflow`) and warns against the slug. Aligned it — a one-token, in-repo-documented, test-safe correction.
+
+**Three judgment findings flagged for finalize** (not auto-fixed, per the phase's rule): auto-phase's frontmatter `description` still says "no commit" while the body commits every phase; README lines 243 vs 424 disagree on whether the verifier always runs; `docs/article-medium.md` is stale (likely intentional historical content).
+
+**Done criterion demonstrated in this conversation:** `review.md` exists in the plan directory with all three sections (Auto-fixed / Flagged for human / Final state); `flake8 .` = 0 errors; `bash tests/orchestration/run_tests.sh` and `zsh tests/orchestration/run_tests.sh` both exit 0 at 109 passed / 0 failed.
+
+One phase moved `[>]→[x]`; no other phase changed state. Committed as `6c3c7a2`. All ten phases are now complete — the next step is `/finalize-workflow`. Stopping here: one phase per invocation.
