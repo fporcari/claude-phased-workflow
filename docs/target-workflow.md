@@ -162,6 +162,14 @@ launcher — the launcher must stay silent under the test suite, and the local p
 `/execute-phase` where the user is present; and detachment (per D2) — a detached run has no
 session to notify from.
 
+*Amended right after the release, on the user's decision:* the Remote Control half of this
+item is **retired**. The launch confirmation no longer mentions it, and neither does the
+shared notification policy — the user connects Remote Control by hand when they want the
+push on the phone, and where a notification lands is their setup, not the chain's business.
+What survives is the mechanism: the events, the background run, the Monitor and the pushes.
+The one operational line that stays in the confirmation is unrelated to Remote Control —
+the run is attached to the launching session, so the app must stay open.
+
 **F · ~~Transcripts to log only~~ — DROPPED, the premise was wrong.** The claim was
 that `claude -p ... | tee log/phase-N.txt` pours each sub-session's full transcript into
 the launching chat's context. Measured on the 4.1.0 run: the per-phase logs are **1–2 KB
