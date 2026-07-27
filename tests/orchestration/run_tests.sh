@@ -7,11 +7,13 @@
 # attribution (reopen / [~]), inert Roadmap, and the pre-2.1.139 prompt
 # fallback. S19 exercises the --validate gate (and that warnings are printed,
 # not discarded), including Mode: header semantics — unknown value rejected,
-# interactive-plus-table warned, no header reading as interactive; S20 the
-# announced fallbacks (missing selector, unknown model/effort); S25 the EVENT
-# contract — the stable EVENT: lines the parent Monitor watches (phase-failed,
-# phase-blocked, run-end), each emitted verbatim at its site (live), plus a
-# static drift guard coupling those tokens to run-workflow/SKILL.md, proven by
+# malformed line rejected, interactive-plus-table warned, no header reading as
+# interactive; S20 the announced fallbacks (missing selector, unknown
+# model/effort); S25 the EVENT contract — the stable EVENT: lines the parent
+# Monitor watches (phase-failed, phase-blocked, run-end), each emitted verbatim
+# at its site, run-end on EVERY exit path (early exits included) with the phase
+# number read by an anchored sed (live), plus a static drift guard coupling
+# those tokens to run-workflow/SKILL.md in BOTH directions, proven by
 # mutation. S18 is a hybrid: live (prose bullets in ## Notes stay inert)
 # plus a static guard (check_state_matches.py — every phase-state match goes
 # through the single-source helpers or carries the **Phase anchor), proven by
@@ -24,17 +26,19 @@
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
 # every skill inside its own allowed-tools (S15), the Done:/Verify: verification
-# contract single-source in common.md and cited by its three consumers (S27,
+# contract single-source in common.md and cited by its consumers — the -agent
+# variants included — with the when vocabulary restated only verbatim (S27,
 # proven by mutation), no skill or ref addressing
 # ~/.claude/ (S21, check_home_paths.py, proven by mutation), every -agent
 # skill a thin variant citing its base (S23, proven by mutation), and
 # /write-workflow's automation fork being real — the Step 2 heading and the
 # Mode: interactive header present, the old "don't ask" default and the
 # reference's duplicate "Confirm with the user" gone (S24, proven by mutation),
-# and every shipped `claude -p` sub-session prompt carrying a `/<plugin>:<skill>`
-# namespace rather than a bare slash that dies with "Unknown command" (S26,
-# proven by mutation). S16 retired with the KB mirror in 5.0.0; the number stays
-# vacant.
+# and every shipped `claude -p` sub-session prompt — call sites AND prompt
+# assignments alike — carrying a `/<plugin>:<skill>` namespace rather than a
+# bare slash that dies with "Unknown command" (S26, proven by mutation, plus
+# the S7b live repair run on the pre-2.1.139 path). S16 retired with the KB
+# mirror in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -198,6 +202,22 @@ assert "fallback notice printed" 'grep -q "goal guard unavailable" out.log'
 assert "namespaced /phased-workflow:execute-phase-agent prompt used" 'grep -q -- "-p /phased-workflow:execute-phase-agent --model" .claude/invocations.log'
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
+# (b) same old CLI, repair path: REPAIR_PROMPT is the OTHER plain-prompt
+# assignment, and it used to ship a bare slash that no static scan of the call
+# sites could see — so the repair path gets its own live run.
+setup S7b; fixture2
+python3 - <<'EOF'
+s = open('.phased/active/toy/plan.md').read()
+s = s.replace('- [ ] **Phase 1**: phase one',
+  '- [!] **Phase 1**: phase one\n  > Issue: boom\n  > Attempted: 1) fix A -> err1', 1)
+open('.phased/active/toy/plan.md','w').write(s)
+EOF
+printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' > .claude/mock-queue
+finish_setup
+MOCK_CLAUDE_VERSION=2.1.100 run
+assert "S7b: namespaced /phased-workflow:repair-phase prompt used" 'grep -q -- "-p /phased-workflow:repair-phase --model fable" .claude/invocations.log'
+assert "S7b: no bare-slash repair prompt" '! grep -q -- "-p /repair-phase" .claude/invocations.log'
+assert "S7b: repair succeeded on the old CLI too" 'grep -q "Repair succeeded" out.log'
 
 echo "== S8: roadmap.md is inert and triggers the rolling-wave reminder =="
 # The roadmap lives OUTSIDE plan.md (one level above active/), so it survives
@@ -657,6 +677,24 @@ MN_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_NONE_PLAN" 2>&1)"; MN_RC=$?
 assert "S19h: no Mode: line and no table validates clean (exit 0)" '[ "$MN_RC" = 0 ]'
 assert "S19h: no Mode finding is emitted" '! printf "%s" "$MN_OUT" | grep -qi "Mode:"'
 
+# (i) a MALFORMED Mode: line ("Mode: autonomous (robottino)") is an error, not
+# a silent no-header read — the same threat as (f), one notch earlier: a line
+# the value-check cannot even parse must not degrade into the interactive
+# default either.
+MODE_MALFORMED_PLAN="$OT/mode-malformed-plan.md"
+cat > "$MODE_MALFORMED_PLAN" <<'EOF'
+# Context: mode-malformed
+Parent: main
+Mode: autonomous (robottino)
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+EOF
+MM_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_MALFORMED_PLAN" 2>&1)"; MM_RC=$?
+assert "S19i: malformed Mode: line is an error (exit 1)" '[ "$MM_RC" = 1 ]'
+assert "S19i: the finding names the malformed line" 'printf "%s" "$MM_OUT" | grep -q "malformed Mode: line"'
+
 echo "== S20: every silent fallback announces itself with a NOTE =="
 # Force the fallback path. After Phase 2 the launcher resolves its selector
 # beside itself, so a runner copied to a directory with no sibling next-phase.py
@@ -913,6 +951,97 @@ sed -i.bak 's/phase-failed//g' "$S25_MUT/SKILL.md" && rm -f "$S25_MUT/SKILL.md.b
 assert "S25: the static guard fails when the phase-failed token is dropped" \
   '[ -n "$(s25_static_guard "$S25_MUT/SKILL.md")" ]'
 rm -rf "$S25_MUT"
+# Reverse direction: a token the SKILL names but the launcher never emits is
+# the failure the forward guard's own rationale describes — the parent watching
+# for a line that never comes. Tokens are read from the skill's EVENT-speaking
+# lines only; `run-workflow` (the skill's own name) is excluded by name.
+s25_skill_tokens() {
+  grep 'EVENT' "$1" 2>/dev/null | grep -oE '\b(phase|run)-[a-z]+\b' \
+    | grep -vx 'run-workflow' | sort -u
+}
+s25_reverse_guard() {  # $1 = a run-workflow SKILL.md; one line per ghost token
+  S25_EMITTED="$(s25_tokens)"
+  for S25_T in $(s25_skill_tokens "$1"); do
+    printf '%s\n' "$S25_EMITTED" | grep -qx "$S25_T" \
+      || echo "$1: names EVENT token '$S25_T' the launcher never emits"
+  done
+}
+S25_REV_OUT="$(s25_reverse_guard "$S25_SKILL")"
+[ -z "$S25_REV_OUT" ] || echo "  offending: $S25_REV_OUT"
+assert "S25: the skill names no EVENT token the launcher never emits" '[ -z "$S25_REV_OUT" ]'
+S25_MUT="$(mktemp -d)"
+cp "$S25_SKILL" "$S25_MUT/SKILL.md"
+printf '\nAlso watch the `EVENT:` token `phase-repaired`.\n' >> "$S25_MUT/SKILL.md"
+assert "S25: the reverse guard fails on a token the launcher never emits" \
+  '[ -n "$(s25_reverse_guard "$S25_MUT/SKILL.md")" ]'
+rm -rf "$S25_MUT"
+
+# (d) the phase number in the event is read with an ANCHORED sed: a title that
+# itself contains "Phase 10" must not hijack the number (greedy `.*Phase` did).
+setup S25d
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [!] **Phase 1**: prep for Phase 10 rollout
+  > Issue: boom
+  > Attempted: 1) fix A -> err1
+- [ ] **Phase 2**: phase two
+  - Details: do thing two
+  - Done: check two
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+| Phase 2 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" repair_fail; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25d: the event carries the PHASE number, not the title's" 'grep -q "^EVENT: phase-failed 1$" out.log'
+assert "S25d: no event with the title's number" '! grep -q "^EVENT: phase-failed 10" out.log'
+
+# (e) run-end is emitted on EVERY exit path, not only through the loop: an
+# all-[x] plan exits before the loop ("No phases remaining") and the parent
+# Monitor still needs its terminator.
+setup S25e
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [x] **Phase 1**: phase one
+  > Done: done
+  > Files: a.py
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+finish_setup; run
+assert "S25e: all-[x] early exit still emits run-end" 'grep -q "^EVENT: run-end ok 1/1$" out.log'
+assert "S25e: run-end is emitted exactly once" '[ "$(grep -c "^EVENT: run-end" out.log)" = 1 ]'
+assert "S25e: no session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (f) same for the validation-failure exit: the run stopped, so the status is
+# `stopped` even though the phases the plan carries are untouched.
+setup S25f
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: robot
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+EOF
+finish_setup; run
+assert "S25f: validation-failure exit still emits run-end" 'grep -q "^EVENT: run-end stopped 0/1$" out.log'
+assert "S25f: run-end is emitted exactly once" '[ "$(grep -c "^EVENT: run-end" out.log)" = 1 ]'
 
 echo "== S26: every claude -p sub-session prompt carries a plugin: namespace =="
 # A slash command in a headless `claude -p` session resolves only against
@@ -937,6 +1066,21 @@ s26_guard() {  # $1 = a scripts dir; one line per bare-slash claude -p prompt
                 esac ;;
           esac
         done
+    # Prompt ASSIGNMENTS too. Both 5.1.0 regressions lived in PHASE_PROMPT /
+    # REPAIR_PROMPT assignments, not at the call sites — `claude -p "$VAR"` is
+    # rightly ignored above, so the value must be checked where it is SET, or
+    # the exact defect class this guard was written for comes back unseen.
+    # The /goal contracts pass the same *:* test (they embed `Condition:`).
+    grep -oE "^[[:space:]]*[A-Z_]+_PROMPT=('[^']*'|\"[^\"]*\")" "$S26_F" 2>/dev/null \
+      | sed -E "s/^[[:space:]]*[A-Z_]+_PROMPT=[\"']//; s/[\"']$//" \
+      | while IFS= read -r S26_ARG; do
+          case "$S26_ARG" in
+            /*) case "$S26_ARG" in
+                  *:*) ;;
+                  *) echo "$S26_F: bare-slash prompt assignment '$S26_ARG' — needs a plugin: namespace" ;;
+                esac ;;
+          esac
+        done
   done
 }
 S26_OUT="$(s26_guard "$S26_SCRIPTS")"
@@ -951,15 +1095,27 @@ printf '\nclaude -p "/execute-phase-agent"\n' >> "$S26_MUT/agent-session.sh"
 assert "S26: the guard fails when a bare-slash prompt is reintroduced" \
   '[ -n "$(s26_guard "$S26_MUT")" ]'
 rm -rf "$S26_MUT"
+# Mutation on the ASSIGNMENT half: the pre-2.1.139 REPAIR_PROMPT loses its
+# namespace — the exact regression that once left the whole suite green.
+S26_MUT="$(mktemp -d)"
+cp "$S26_SCRIPTS"/*.sh "$S26_MUT/"
+sed -i.bak 's|REPAIR_PROMPT="/\$PLUGIN_NAME:repair-phase"|REPAIR_PROMPT="/repair-phase"|' \
+  "$S26_MUT/run-workflow.sh" && rm -f "$S26_MUT/run-workflow.sh.bak"
+grep -q 'REPAIR_PROMPT="/repair-phase"' "$S26_MUT/run-workflow.sh" \
+  || echo "  S26 mutation did not apply — the assignment shape changed"
+assert "S26: the guard fails when a prompt ASSIGNMENT loses its namespace" \
+  '[ -n "$(s26_guard "$S26_MUT")" ]'
+rm -rf "$S26_MUT"
 
 echo "== S27: the Done:/Verify: contract lives once and is cited, not restated =="
 # Interactive mode splits verification in two — Done: for the machine, Verify:
 # for the human, each Verify: step carrying a when (now / deferred: needs Phase
 # M) and the deferred ones accumulating in verify.md. That contract is prose
-# spread over four files, which is exactly the shape that drifts (the 4.1.0
+# spread over several files, which is exactly the shape that drifts (the 4.1.0
 # LIGHT_PROMPT defect was a second copy nobody updated). So: common.md owns it,
-# the consumers cite it by section name, and no consumer restates the when
-# vocabulary on its own.
+# the consumers — the -agent variants included — cite it by section name and
+# name verify.md, and a consumer that restates the when vocabulary must
+# restate it VERBATIM: a paraphrase is drift and is flagged.
 s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S27_C="$2/common.md"
   grep -q '^## Verification: `Done:` and `Verify:`' "$S27_C" 2>/dev/null \
@@ -974,11 +1130,27 @@ s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     grep -q 'Verification' "$S27_F" 2>/dev/null \
       || echo "$S27_F: does not cite common.md's Verification section"
   done
-  # The two files that must know where deferred checks land.
+  # A consumer may restate the when vocabulary only VERBATIM — the source is
+  # pinned above, and an unpinned copy is free to drift into a paraphrase the
+  # executor would then write into real plans. Concrete instances
+  # ("deferred: needs Phase 3") are the vocabulary applied, not a paraphrase.
+  for S27_S in write-workflow execute-phase execute-phase-agent finalize-workflow; do
+    S27_F="$1/$S27_S/SKILL.md"
+    if grep 'deferred:' "$S27_F" 2>/dev/null \
+        | grep -vE 'deferred: needs Phase ([0-9]+|M)' | grep -q .; then
+      echo "$S27_F: paraphrases the deferred when (canonical: 'deferred: needs Phase M')"
+    fi
+  done
+  # The files that must know where deferred checks land — the -agent variants
+  # included: on the worktree path they ARE the executor and the QA collector.
   grep -q 'verify\.md' "$1/execute-phase/SKILL.md" 2>/dev/null \
     || echo "$1/execute-phase/SKILL.md: does not append deferred checks to verify.md"
+  grep -q 'verify\.md' "$1/execute-phase-agent/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase-agent/SKILL.md: does not append deferred checks to verify.md"
   grep -q 'verify\.md' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/finalize-workflow/SKILL.md: does not present verify.md"
+  grep -q 'verify\.md' "$1/finalize-workflow-agent/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow-agent/SKILL.md: does not collect verify.md"
   return 0
 }
 S27_OUT="$(s27_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -998,6 +1170,24 @@ sed 's/^## Verification.*/## Verification (renamed)/' "$S24_REFS/common.md" \
   > "$S27_MUT/refs/common.md"
 assert "S27: the guard fails when common.md stops owning the contract" \
   '[ -n "$(s27_guard "$S27_MUT" "$S27_MUT/refs")" ]'
+rm -rf "$S27_MUT"
+# A consumer's restated vocabulary drifts into a paraphrase — the copy defect
+# the single-source rule exists for, previously invisible to this guard.
+S27_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S27_MUT/"
+sed -i.bak 's/deferred: needs Phase M/deferred: after Phase M/g' \
+  "$S27_MUT/execute-phase/SKILL.md" && rm -f "$S27_MUT/execute-phase/SKILL.md.bak"
+assert "S27: the guard fails when a consumer paraphrases the when vocabulary" \
+  '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
+rm -rf "$S27_MUT"
+# The finalize AGENT stops collecting verify.md — on the worktree path that
+# silently empties the QA pass, so the guard covers the -agent consumers too.
+S27_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S27_MUT/"
+sed -i.bak '/verify\.md/d' "$S27_MUT/finalize-workflow-agent/SKILL.md" \
+  && rm -f "$S27_MUT/finalize-workflow-agent/SKILL.md.bak"
+assert "S27: the guard fails when the finalize agent stops collecting verify.md" \
+  '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
 rm -rf "$S27_MUT"
 
 echo ""

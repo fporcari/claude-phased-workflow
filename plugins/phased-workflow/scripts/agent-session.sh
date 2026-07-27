@@ -37,8 +37,12 @@ NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
 # the session dies at once with "Unknown command: /<skill>". Derive the plugin
 # name from our own plugin.json (found via SCRIPT_DIR), never retyped — with a
 # literal fallback so a failed read can never reintroduce a bare slash.
-PLUGIN_NAME=$(sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-  "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1)
+# grep -o, not a greedy sed over the whole line: on a minified single-line
+# plugin.json a greedy match would return the LAST "name" (the author's),
+# while -o emits matches in order and head -1 keeps the first — the plugin's.
+PLUGIN_NAME=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+  "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1 \
+  | sed 's/.*"\([^"]*\)"$/\1/')
 PLUGIN_NAME=${PLUGIN_NAME:-phased-workflow}
 
 REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1

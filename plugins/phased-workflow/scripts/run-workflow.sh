@@ -25,9 +25,40 @@ NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
 # the session dies at once with "Unknown command: /<skill>". Derive the plugin
 # name from our own plugin.json (found via SCRIPT_DIR), never retyped — with a
 # literal fallback so a failed read can never reintroduce a bare slash.
-PLUGIN_NAME=$(sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-  "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1)
+# grep -o, not a greedy sed over the whole line: on a minified single-line
+# plugin.json a greedy match would return the LAST "name" (the author's),
+# while -o emits matches in order and head -1 keeps the first — the plugin's.
+PLUGIN_NAME=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+  "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1 \
+  | sed 's/.*"\([^"]*\)"$/\1/')
 PLUGIN_NAME=${PLUGIN_NAME:-phased-workflow}
+
+# Every run ends with exactly ONE stable `EVENT: run-end` line, whatever the
+# exit path. The parent Monitor terminates on this line, so an early exit —
+# validation failure, no active plan, nothing left to do — must emit it too,
+# not only the happy loop; the EXIT trap is what makes "exactly one per run"
+# true by construction, and the flag keeps it single. Status is `ok` only when
+# the launcher itself exits 0 AND every phase reached [x] — a validation
+# failure on an all-[x] plan is still a stopped run. Before the plan (or the
+# helpers) exist, it reports `stopped 0/0`. Counts come from the phase
+# helpers, never a fresh grep of the plan.
+RUN_END_EMITTED=""
+LAUNCHER_RC=0
+emit_run_end() {
+  [ -n "$RUN_END_EMITTED" ] && return 0
+  RUN_END_EMITTED=1
+  DONE_COUNT=0; TOTAL_COUNT=0; RUN_STATUS=stopped
+  if [ -n "$PLAN" ] && [ -f "$PLAN" ] && type phase_count >/dev/null 2>&1; then
+    DONE_COUNT=$(phase_count x); DONE_COUNT=${DONE_COUNT:-0}
+    TOTAL_COUNT=$(phase_lines | grep -c .); TOTAL_COUNT=${TOTAL_COUNT:-0}
+    if [ "$LAUNCHER_RC" -eq 0 ] && ! phase_any ' ' && ! phase_any '!' \
+       && ! phase_any '~' && ! phase_any '>'; then
+      RUN_STATUS=ok
+    fi
+  fi
+  echo "EVENT: run-end $RUN_STATUS $DONE_COUNT/$TOTAL_COUNT"
+}
+trap 'LAUNCHER_RC=$?; emit_run_end' EXIT
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
@@ -86,6 +117,19 @@ PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
 mkdir -p "$PLAN_DIR/log"
 
+# Phase-state matching lives in ONE place. A plain "- [!]" bullet in a
+# ## Notes section is prose, not a phase; before this was centralised such a
+# bullet launched a real fable repair session at cap $300 and stopped the run.
+# Every state match — including the ones already strict — goes through these
+# helpers, so the "**Phase" anchor can never drift between call sites.
+# phase_re emits ^- \[<state>\] \*\*Phase; the redundant \- escape is dropped.
+# Defined BEFORE the validation gate so the run-end trap reports real counts
+# even when the gate stops the run.
+phase_re()    { printf '^- \\[%s\\] \\*\\*Phase' "$1"; }
+phase_count() { grep -c "$(phase_re "$1")" "$PLAN" 2>/dev/null || true; }
+phase_any()   { grep -q "$(phase_re "$1")" "$PLAN" 2>/dev/null; }
+phase_lines() { grep -E '^- \[[ x!~>]\] \*\*Phase' "$PLAN" 2>/dev/null; }
+
 # Pre-loop validation gate. next-phase.py --validate shares the selector's own
 # regexes, so a plan it rejects is one the loop could not drive correctly. Print
 # its output verbatim (no re-wording) and stop before spending a single session.
@@ -108,17 +152,6 @@ if [ -f "$NEXT_PHASE_PY" ]; then
 else
   echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
 fi
-
-# Phase-state matching lives in ONE place. A plain "- [!]" bullet in a
-# ## Notes section is prose, not a phase; before this was centralised such a
-# bullet launched a real fable repair session at cap $300 and stopped the run.
-# Every state match — including the ones already strict — goes through these
-# helpers, so the "**Phase" anchor can never drift between call sites.
-# phase_re emits ^- \[<state>\] \*\*Phase; the redundant \- escape is dropped.
-phase_re()    { printf '^- \\[%s\\] \\*\\*Phase' "$1"; }
-phase_count() { grep -c "$(phase_re "$1")" "$PLAN" 2>/dev/null || true; }
-phase_any()   { grep -q "$(phase_re "$1")" "$PLAN" 2>/dev/null; }
-phase_lines() { grep -E '^- \[[ x!~>]\] \*\*Phase' "$PLAN" 2>/dev/null; }
 
 # /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
 # goal loop — an independent evaluator (small fast model) re-checks the exit
@@ -227,7 +260,7 @@ for i in $(seq 1 $REMAINING); do
       # one phase's model, effort and cap to a different phase than the
       # sub-session actually runs.
       echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores [>] resumes and attention/blocked handling, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
-      NEXT_PHASE=$(grep -n "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
+      NEXT_PHASE=$(grep "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/^- \[.\] \*\*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 
   if [ "$RUN_PHASE" -eq 1 ] && [ -z "$NEXT_PHASE" ]; then
@@ -336,8 +369,9 @@ for i in $(seq 1 $REMAINING); do
     # Stable event line: the parent Monitor turns this into a notification.
     # Fires once per loop iteration that finds a [!] phase, before the repair
     # session. The phase number comes from phase_re — the shared state anchor —
-    # not a second private regex.
-    FAILED_PHASE=$(grep "$(phase_re '!')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/')
+    # not a second private regex. The sed is anchored to the phase-line prefix:
+    # a greedy `.*Phase` would read a "Phase 10" inside the TITLE as the number.
+    FAILED_PHASE=$(grep "$(phase_re '!')" "$PLAN" | head -1 | sed 's/^- \[.\] \*\*Phase \([0-9]\{1,\}\).*/\1/')
     echo "EVENT: phase-failed $FAILED_PHASE"
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
@@ -387,8 +421,9 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   if phase_any '~'; then
-    # Stable event line (see phase-failed above): phase number via phase_re.
-    BLOCKED_PHASE=$(grep "$(phase_re '~')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/')
+    # Stable event line (see phase-failed above): phase number via phase_re,
+    # sed anchored to the phase-line prefix like phase-failed's.
+    BLOCKED_PHASE=$(grep "$(phase_re '~')" "$PLAN" | head -1 | sed 's/^- \[.\] \*\*Phase \([0-9]\{1,\}\).*/\1/')
     echo "EVENT: phase-blocked $BLOCKED_PHASE"
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
@@ -449,16 +484,8 @@ if [ -f "$ROADMAP" ]; then
   grep '^- ' "$ROADMAP" | head -10
 fi
 
-# Stable event line: exactly one per run, after the whole summary. Status is
-# `ok` only when every phase reached [x] — any pending, failed, blocked or
-# resumable phase left over means the run stopped short. The parent Monitor
-# exits on this line, so it is deliberately the launcher's last word. Counts
-# come from the phase helpers, never a fresh grep of the plan.
-DONE_COUNT=$(phase_count x); DONE_COUNT=${DONE_COUNT:-0}
-TOTAL_COUNT=$(phase_lines | grep -c .); TOTAL_COUNT=${TOTAL_COUNT:-0}
-if phase_any ' ' || phase_any '!' || phase_any '~' || phase_any '>'; then
-  RUN_STATUS=stopped
-else
-  RUN_STATUS=ok
-fi
-echo "EVENT: run-end $RUN_STATUS $DONE_COUNT/$TOTAL_COUNT"
+# Stable event line: exactly one per run, after the whole summary — it is
+# deliberately the launcher's last word. The emitter and its EXIT trap live at
+# the top of this file; the explicit call here keeps the happy path readable,
+# the trap covers every early exit, and the flag keeps the line single.
+emit_run_end

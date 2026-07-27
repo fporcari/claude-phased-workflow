@@ -11,6 +11,7 @@ The fork already asked whether the plan targets autonomous execution — do not 
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/execute-phase-agent` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
+6. **`Verify:` only where human eyes are genuinely needed** — the mechanism is thin in this mode and most phases carry none, but it is never absent (contract: `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*); each step carries its *when* (`now` / `deferred: needs Phase M`).
 
 ## Honesty check
 

@@ -153,10 +153,20 @@ contract** — the skills cite it, they never restate it.
     the pricing phase lands
 ```
 
+**One contract, two origins.** A `Verify:` step is either **authored in the
+plan** (a field on the phase, written by `/write-workflow`) or **surfaced at
+execution**. The executing skill carries the authored ones into its
+end-of-phase `> Verify:` notes exactly like its own — deferred ones into
+`verify.md` — so the QA pass reads ONE list and an authored check can never
+fall between the two syntaxes.
+
 **Split by who can check it.** What an agent can assert never reaches the human
-list: the flow works, the record persists, the grid reloads — that is what the
-`ui-test` skill drives a real browser for. The human list carries only what
-needs human judgment: aesthetics, "is this interaction right?", UX ambiguity.
+list: the flow works, the record persists, the grid reloads — that is what a
+browser-driving skill (`ui-test` where installed; it ships separately, not with
+this plugin) exercises. **No such skill available → declare it, and hand
+exactly those checks to the human as `Verify: now` steps** — a named fallback,
+never a silent skip. The human list otherwise carries only what needs human
+judgment: aesthetics, "is this interaction right?", UX ambiguity.
 Without this split the list fills with automatable work and stops being read.
 
 **Deferred steps accumulate in `verify.md`** in the plan directory, appended per
@@ -190,7 +200,8 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 - `> Review:` — judgment-level findings from the per-phase independent
   verification, flagged for the human at finalize; they never block `[x]`.
 - `> Verify:` — one manual check left to the human, carrying its *when*
-  (`now` / `deferred: needs Phase M`); written by `/execute-phase`, deferred
+  (`now` / `deferred: needs Phase M`); written by the executing skill —
+  thick in `/execute-phase`, thin in `/execute-phase-agent` — deferred
   ones copied into `verify.md`, all of them collected by
   `/finalize-workflow`. Semantics in *Verification* above.
 - `> Verified:` — optional record of the verification evidence a phase ran

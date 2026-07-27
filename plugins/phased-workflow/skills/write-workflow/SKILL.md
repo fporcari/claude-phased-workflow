@@ -130,7 +130,7 @@ Mode: interactive
 
 Phases run strictly in order: a phase starts only when every phase above it is `[x]`.
 
-No "Suggested execution config" table on interactive plans: nothing reads it. The one useful per-phase hint is `Model hint: sonnet`, and it is deliberately rare — mechanical work only (renames, extractions, moves), **never on UI or declarative phases**, and only when that phase's `Details:` is spelled out to the point where nothing is left to infer. If you can't write it that way, leave the hint off. No hint means opus.
+No "Suggested execution config" table on interactive plans: nothing reads it. No per-phase model hints either — interactive execution follows `/execute-phase`'s own rule (`opus` floor, never `sonnet`), so a hint could only repeat it or contradict it. A phase mechanical enough to tempt a `sonnet` hint is a phase that belongs on the autonomous side of the Step 2 fork.
 
 ## Step 6: Commit and close
 

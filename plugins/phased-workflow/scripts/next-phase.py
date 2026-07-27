@@ -290,10 +290,19 @@ def validate(path, phases, text):
     for idx, line in enumerate(lines, 1):
         if line.startswith('Parent:'):
             has_parent = True
-        mm = MODE_RE.match(line)
-        if mm and mode_value is None:
-            mode_value = mm.group(1).lower()
-            mode_lineno = idx
+        if line.startswith('Mode:'):
+            mm = MODE_RE.match(line)
+            if mm:
+                if mode_value is None:
+                    mode_value = mm.group(1).lower()
+                    mode_lineno = idx
+            else:
+                # "Mode: autonomous (robottino)" must not silently read as
+                # "no header" and degrade to the interactive default — the
+                # same threat the unknown-value error below exists for.
+                add(idx, 'error',
+                    'malformed Mode: line "%s" — expected exactly '
+                    '"Mode: <value>"' % line.strip())
 
         if line.startswith('## '):
             heading = line[3:].strip()

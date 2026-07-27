@@ -54,12 +54,22 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh" 2>&1 \
 
 The script owns the loop; do not reimplement it.
 
-**Watch it with the Monitor tool** — one persistent monitor on that log, filtered to the `EVENT:` lines the launcher emits (`phase-failed`, `phase-blocked`, `run-end`) and self-terminating when the run ends:
+**Watch it with the Monitor tool** — one persistent monitor on that log, filtered to the `EVENT:` lines the launcher emits (`phase-failed`, `phase-blocked`, `run-end`). The launcher emits `run-end` on **every** exit path, so the loop below always terminates — never `tail -f | awk '… exit'` here: when the log goes quiet after `run-end` (it always does — `run-end` is the launcher's last word), `tail` never gets its SIGPIPE and the pipeline hangs forever:
 
 ```bash
-tail -f -n +1 "${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log" \
-  | awk '/^EVENT: (phase-failed|phase-blocked)/ {print; fflush()} /^EVENT: run-end/ {print; fflush(); exit}'
+LOG="${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log"; SEEN=0
+while :; do
+  COUNT=$(grep -c '^EVENT: ' "$LOG" 2>/dev/null); COUNT=${COUNT:-0}
+  if [ "$COUNT" -gt "$SEEN" ]; then
+    grep '^EVENT: ' "$LOG" | tail -n +"$((SEEN + 1))"
+    SEEN=$COUNT
+  fi
+  grep -q '^EVENT: run-end' "$LOG" 2>/dev/null && exit 0
+  sleep 5
+done
 ```
+
+If the launcher is killed outright (`kill -9`, machine shutdown) even `run-end` cannot arrive: the background command's own completion still notifies, and this monitor is then stopped by hand (TaskStop) — say so instead of leaving it armed.
 
 **Push policy** (see `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Notifications*): send a **PushNotification** on the **first** `phase-failed` of the run, on **any** `phase-blocked`, and once when the run ends — the end push comes from the background command's own completion, not from the `run-end` event, so there is exactly one source per notification and no duplicate. At most one failure push per run. Nothing else is pushed: routine per-phase progress is not worth an interruption. Each message leads with what the user would act on, one line under 200 characters with no markdown — e.g. `run stopped: phase 4 [!] after repair, 3/7 done — see its > Issue: note`.
 

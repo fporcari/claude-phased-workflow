@@ -58,7 +58,7 @@ Inventing a plausible `Done:` for a phase whose author never wrote one is worse 
 
 Show the plan and get approval. Then, depending on Step 2:
 
-**Fresh import** → same branch rules as `/write-workflow` Step 3: on a base branch, `git switch -c wf/<slug>`; on a feature branch, adopt it by default, with `wf/<slug>` off it as the alternative.
+**Fresh import** → same branch rules as `/write-workflow` Step 4 (*Open the branch*): on a base branch, `git switch -c wf/<slug>`; on a feature branch, adopt it by default, with `wf/<slug>` off it as the alternative.
 
 **Mid-run import** → **adopt the current branch, no question, no rebase, no reset.** The completed phases correspond to work already in this tree and to commits already made; a fresh branch would strand them. Say so explicitly: *"Import in place su `<branch>`: le fasi già `[x]` corrispondono a lavoro già presente qui, quindi nessun branch nuovo e nessuna riscrittura della history."*
 

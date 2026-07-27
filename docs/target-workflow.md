@@ -16,7 +16,7 @@ finalize, where choosing the base is a real decision.
 flowchart TD
     A[Conversation] --> B["/write-workflow<br/>creates the branch, commits the plan"]
     B --> C{"Automate everything?"}
-    C -->|"yes — refactors, project startup"| D["/run-all-phases<br/>creates the workspace<br/>offers Remote Control"]
+    C -->|"yes — refactors, project startup"| D["/run-all-phases<br/>creates the workspace"]
     C -->|"no — UI work"| E["New chat per phase<br/>/execute-phase<br/>strong model, interactive:<br/>gate, then execution —<br/>asks when a real doubt arises"]
     E --> E2["End of phase: a human Verify list.<br/>Mid-phase questions happen<br/>live in the chat.<br/>Context-dependent checks deferred<br/>to verify.md"]
     E2 --> E
@@ -38,7 +38,6 @@ flowchart TD
 | `/write-workflow` | branch + plan **+ worktree** | branch + plan **only** | worktree moves to execution |
 | "Automate everything?" | inferred — interactive unless the user says robottino, and the skill is told *don't ask* | an **explicit** question, asked before the plan is written (it selects the format) | new fork |
 | `/run-all-phases` | must be launched from inside the plan's root | launched from anywhere; creates-or-attaches the workspace | plan location + workspace lifecycle |
-| Remote Control | never mentioned | one line in the launch confirmation, at the only moment it matters | one line |
 | Walking away | the loop is a child of the Claude app process tree | notification when it ends, or when a phase goes `[!]` | notification, not detachment — see D2 |
 | `/execute-phase` (manual mode) | one approval gate, then runs; verification burden lands on the user per phase, often on trivial or context-dependent checks | bigger phases bounded by "something demoable exists"; strong model; questions asked live as they arise (a trivial "try this" interruption stays a sizing defect, see J3); a human `Verify:` list at the end | item J |
 | Interrupted run | nothing finds it from another chat | find the workflow across worktrees **and branches**, ask which, drop the user in, analyse, repair by hand | the largest missing piece |
@@ -142,9 +141,8 @@ fixed default with no question — it is exactly the "interactive by default; do
 clause the fork replaces, and it let an interactive plan be silently converted; and
 duplicating the derivation rule into each consumer, which S24 now forbids.
 
-**E · Notification.** The launch confirmation states that with Remote Control
-connected the completion notification reaches the phone. A proactive notification on
-run end, and on the first `[!]`, without waiting for the end.
+**E · Notification.** A proactive notification on run end, and on the first `[!]`,
+without waiting for the end.
 
 **DECIDED — DONE in 5.1.0.** Three stable `EVENT:` lines on the launcher's stdout —
 `phase-failed <N>`, `phase-blocked <N>`, `run-end <status> <done>/<total>` — and nothing
@@ -162,13 +160,12 @@ launcher — the launcher must stay silent under the test suite, and the local p
 `/execute-phase` where the user is present; and detachment (per D2) — a detached run has no
 session to notify from.
 
-*Amended right after the release, on the user's decision:* the Remote Control half of this
-item is **retired**. The launch confirmation no longer mentions it, and neither does the
-shared notification policy — the user connects Remote Control by hand when they want the
-push on the phone, and where a notification lands is their setup, not the chain's business.
-What survives is the mechanism: the events, the background run, the Monitor and the pushes.
-The one operational line that stays in the confirmation is unrelated to Remote Control —
-the run is attached to the launching session, so the app must stay open.
+*Amended right after the release, on the user's decision:* where a notification lands
+(desktop, phone, anything else) is the user's own setup, managed by hand — never named
+and never offered by this chain. What survives is the mechanism: the events, the
+background run, the Monitor and the pushes. The one operational line that stays in the
+confirmation is purely mechanical — the run is attached to the launching session, so
+the app must stay open.
 
 **F · ~~Transcripts to log only~~ — DROPPED, the premise was wrong.** The claim was
 that `claude -p ... | tee log/phase-N.txt` pours each sub-session's full transcript into
@@ -482,6 +479,9 @@ writable once the first lands. Rolling wave, three macros:
   *Shipped without the chain:* written in one session on the user's request ("fai al volo"),
   so with no independent finalize review and no coherence phase — the thinner safety net is
   a fact about this slice, not a property of the items.
+  *Amended in 5.2.1:* the missing review happened after the fact — an adversarial pass over
+  the whole 5.1.0–5.2.0 range (guards mutation-tested, shipped contracts executed) found
+  and fixed what the thinner net let through; see README → *What changed in 5.2.1*.
 - **Macro 3 — Recovery** (G) **plus the resume hardening inherited from 2b**. Depends on
   Macro 1's location service; benefits from Macro 2's status output.
 
@@ -498,8 +498,7 @@ shopping" means the user leaves the house, not that the Mac shuts down. If the a
 stays open, the run survives and a live session can send the notification. Full
 detachment (`setsid` + a status file) would break that: a detached run has no session
 to notify from, which is what dragged an external push service into the discussion for
-no reason. **Prefer attached + Remote Control.** Revisit only if a run must survive a
-reboot.
+no reason. **Prefer attached.** Revisit only if a run must survive a reboot.
 
 **D3 · When the branch is already checked out in the main repo,** `git worktree add`
 refuses. The recovery and run paths would have to move the main repo's HEAD back to

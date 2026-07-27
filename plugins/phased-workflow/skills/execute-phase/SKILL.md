@@ -42,14 +42,14 @@ Implement only this phase. If something the plan doesn't cover comes up and a wr
 ## Step 5: Verify
 
 - Testable logic → write/update tests in the repo's existing style, run the suite. A failure that doesn't touch this phase's `Files:` is probably pre-existing: check before absorbing it, and tell the user instead. Fix and re-run, ONE retry; still red → `[!]`.
-- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool) drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't.
+- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool), where installed, drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't — and when it is not installed, apply the declared fallback in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: those checks go to the human as `Verify: now` steps, said out loud.
 - `vast` → optionally re-run the read-only fan-out to confirm no site was missed, then test as usual.
 
-What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
+What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
 
 ## Step 6: Record and notify
 
-Record the outcome and make the phase commit exactly as the shared core (`refs/phase-execution.md`) specifies — plus, for untested UI work, a `> Verify:` note with the manual checks, surfaced in the notification and the summary.
+Record the outcome and make the phase commit exactly as the shared core (`refs/phase-execution.md`) specifies — the Step 5 `> Verify:` notes included, surfaced in the notification and the summary.
 
 ```bash
 osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'
