@@ -13,6 +13,14 @@
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
+# The selector ships in the same plugin directory as this launcher, so it can
+# never be a different version than we expect. Resolve it relative to our own
+# location ($(dirname "$0"), never ${BASH_SOURCE[0]} — this runs under zsh too,
+# where BASH_SOURCE does not exist), and there is no need for ${CLAUDE_PLUGIN_ROOT}
+# inside a script that can find itself.
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
+
 # Resolve the active plan: exactly one .phased/active/<slug>/plan.md.
 # Done with `find` rather than a glob on purpose — an unmatched glob is left
 # literal by bash but ABORTS the script under zsh, which is the production
@@ -110,7 +118,7 @@ for i in $(seq 1 $REMAINING); do
   # uses (it honours parallel:N barriers, group:N units and [>] resumes). Using
   # plain file order here would pick a different phase than the one that
   # actually runs, and apply the wrong row's model/effort/cap to it.
-  REC=$(python3 "$HOME/.claude/scripts/next-phase.py" "$PLAN" 2>/dev/null \
+  REC=$(python3 "$NEXT_PHASE_PY" "$PLAN" 2>/dev/null \
         | sed -n 's/^recommendation: //p')
   case "$REC" in
     next:*)

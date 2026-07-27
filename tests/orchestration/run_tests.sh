@@ -16,6 +16,10 @@ mkdir -p "$OT/bin"
 cp "$TESTDIR/mock-bin/claude" "$OT/bin/claude"
 cp "$TESTDIR/mockops.py" "$OT/mockops.py"
 cp "$RUNNER_SRC" "$OT/runner.sh"
+# The launcher now resolves its selector next to itself, so the suite must place
+# next-phase.py beside the copied runner — otherwise it exercises whatever is
+# installed on the machine (or the silent file-order fallback when nothing is).
+cp "$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py" "$OT/next-phase.py"
 bash -n "$OT/runner.sh" || { echo "runner syntax error"; exit 1; }
 export OPS="$OT/mockops.py"
 PASS=0; FAIL=0
@@ -101,6 +105,14 @@ assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permi
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
 assert "no repair launched" '! grep -q "repair-phase skill" .claude/invocations.log'
+# $HOME-independence: the launcher now resolves its selector beside itself, so a
+# run must no longer depend on $HOME. Re-run the happy path with HOME pointing at
+# a nonexistent dir and prove phases still complete and per-phase models still read.
+setup S1_nohome; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; HOME=/nonexistent PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "run completes with HOME=/nonexistent" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
+assert "per-phase model still read under HOME=/nonexistent" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 
 echo "== S2: phase fails -> fable repair succeeds -> loop continues =="
 setup S2; fixture2

@@ -1,0 +1,14 @@
+✓ Phase 1 completed: Unify every phase-state match in the launcher
+
+**What was done** — Per the auto-phase skill, exactly one phase executed:
+
+- **Baseline (Step 0.2)**: green — flake8 clean, suite 77/0. Proceeded.
+- **Implementation**: Added four single-source helpers (`phase_re`, `phase_count`, `phase_any`, `phase_lines`) to `run-all-phases.sh` and routed **all ten** phase-state call sites through them — `REMAINING`, the loop-top guard, the file-order fallback, `BEFORE_DONE`/`AFTER_DONE`, the two `[!]` checks, the `[~]` check, the `[>]` check, and the summary listing. Also rewrote `first_bang_block`'s awk to the strict `**Phase` anchor and tightened the WIP grep to `^[[:space:]]*> WIP:`.
+- **Tests**: Added scenario **S18** — decoy `- [x]/[!]/[~]/[>]` bullets and a bare `WIP:` in a `## Notes` section, proven inert (both phases complete, no spurious repair/block/no-progress), plus a static regression guard that fails if any unqualified phase-state grep re-enters the launcher.
+
+**Done criterion demonstrated in this conversation:**
+- `bash tests/orchestration/run_tests.sh` → exit 0, **84 passed / 0 failed** (S18 green; 84 > 77, no prior assertion lost)
+- `zsh tests/orchestration/run_tests.sh` → exit 0, 84 passed
+- `bash -n` and `zsh -n` clean on `run-all-phases.sh`
+
+Phase marked `[x]` with Done/Files notes; committed as `e7ce519`. The verifier was skipped correctly (phase is `opus`, copy-adapt pattern — not `sonnet`/`new-pattern`). One phase per invocation — stopping here without starting Phase 2.

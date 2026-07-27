@@ -76,7 +76,19 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     tests/orchestration/run_tests.sh` also exits 0; `bash -n` and `zsh -n` clean on
     `plugins/phased-workflow/scripts/run-all-phases.sh`.
 
-- [ ] **Phase 2**: Launcher and install.sh resolve their own paths
+- [x] **Phase 2**: Launcher and install.sh resolve their own paths
+  > Done: run-all-phases.sh now resolves its selector beside itself
+  > (SCRIPT_DIR=$(dirname "$0"), NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py") and the
+  > REC invocation uses "$NEXT_PHASE_PY" — no $HOME/.claude reference remains
+  > (grep -c 'HOME/.claude' = 0). install.sh no longer installs anything: the
+  > mkdir/cp/chmod block is gone (grep -c 'cp "$SRC"' = 0), replaced by a
+  > SUPPORT_STALE pass that moves the five orphaned support copies to
+  > ~/.claude/phased-workflow-superseded-support/ (move, not delete) and the header
+  > reframes it as a 4.0.0-or-earlier migration tool. The suite copies next-phase.py
+  > beside the runner and S1 gained a HOME=/nonexistent re-run. Suite: 86 passed / 0
+  > failed under bash and zsh (>77) and under HOME=/nonexistent bash (exit 0); bash -n
+  > clean on both scripts, zsh -n clean on the launcher.
+  > Files: plugins/phased-workflow/scripts/run-all-phases.sh, plugins/phased-workflow/install.sh, tests/orchestration/run_tests.sh
   - Pattern reference: `plugins/phased-workflow/install.sh` — its
     `SRC="$(cd "$(dirname "$0")" && pwd)"` is the in-repo idiom for a script
     locating its own directory. For the superseded-files handling, copy-adapt the
