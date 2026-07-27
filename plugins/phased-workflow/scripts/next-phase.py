@@ -31,6 +31,12 @@ Output: a "phases:" table plus one final "recommendation:" line:
 "<path>:<line>: error|warning: <message>" per finding, then a final
 "validate: N error(s), M warning(s)". Exit 0 when clean or warnings only,
 1 on validation errors, 2 when the plan is unreadable or unresolvable.
+
+--plans lists every workflow plan reachable from this repo — the current
+root's, every linked worktree's, and every wf/* branch with no worktree
+(read without checkout) — one pipe-separated line per plan:
+  plan|<path or branch:path>|branch|<name>|worktree|<path or ->
+      |phases|<done>/<total>|state|<clean|running|failed|blocked>
 """
 
 import argparse
@@ -80,20 +86,24 @@ class Phase:
         return (now - ts).total_seconds() / 3600
 
 
-def parse(path):
+def parse_lines(lines):
     phases = []
-    with open(path, encoding='utf-8') as f:
-        for line in f:
-            m = PHASE_RE.match(line.rstrip())
+    for line in lines:
+        m = PHASE_RE.match(line.rstrip())
+        if m:
+            phases.append(Phase(*m.groups()))
+        elif phases and line.lstrip().startswith('>'):
+            m = EXEC_RE.search(line)
             if m:
-                phases.append(Phase(*m.groups()))
-            elif phases and line.lstrip().startswith('>'):
-                m = EXEC_RE.search(line)
-                if m:
-                    phases[-1].since = m.group(1)
-                if 'WIP:' in line:
-                    phases[-1].wip = True
+                phases[-1].since = m.group(1)
+            if 'WIP:' in line:
+                phases[-1].wip = True
     return phases
+
+
+def parse(path):
+    with open(path, encoding='utf-8') as f:
+        return parse_lines(f)
 
 
 def blockers(phases, i):
@@ -144,6 +154,70 @@ def resolve_plan_path():
         return None, (f'several active plans under {active} ({names}); '
                       'exactly one is expected')
     return str(found[0]), None
+
+
+# --- plan location (--plans) ------------------------------------------------
+# Every workflow plan reachable from this repo: the current root's active
+# plan(s), every linked worktree's, and every wf/* branch that has no worktree,
+# read WITHOUT checking it out. One line per plan, pipe-separated, so a skill
+# can disambiguate when several workflows exist.
+
+def _git(args, cwd=None):
+    try:
+        return subprocess.run(['git'] + args, capture_output=True, text=True,
+                              check=True, cwd=cwd).stdout
+    except (subprocess.CalledProcessError, OSError):
+        return ''
+
+
+def worktree_map():
+    """branch -> checkout path, from `git worktree list --porcelain`."""
+    result, path = {}, None
+    for line in _git(['worktree', 'list', '--porcelain']).splitlines():
+        if line.startswith('worktree '):
+            path = line[len('worktree '):]
+        elif line.startswith('branch refs/heads/') and path:
+            result[line[len('branch refs/heads/'):]] = path
+    return result
+
+
+def plan_state(phases):
+    for status, state in (('!', 'failed'), ('~', 'blocked'), ('>', 'running')):
+        if any(p.status == status for p in phases):
+            return state
+    return 'clean'
+
+
+def list_plans():
+    """[(location, branch, checkout-or-None, phases)] for every plan found."""
+    rows, root = [], repo_root()
+    checkouts = worktree_map()
+    for branch, path in checkouts.items():
+        for plan in sorted(pathlib.Path(path).glob('.phased/active/*/plan.md')):
+            rows.append((str(plan), branch, path, parse(plan)))
+    for line in _git(['for-each-ref', '--format=%(refname:short)',
+                      'refs/heads/wf/'], cwd=root).splitlines():
+        if line in checkouts:
+            continue
+        names = _git(['ls-tree', '-r', '--name-only', line,
+                      '.phased/active/'], cwd=root).splitlines()
+        for name in names:
+            if not name.endswith('/plan.md'):
+                continue
+            text = _git(['show', f'{line}:{name}'], cwd=root)
+            if text:
+                rows.append((f'{line}:{name}', line, None,
+                             parse_lines(text.splitlines())))
+    return rows
+
+
+def print_plans():
+    for location, branch, checkout, phases in list_plans():
+        done = sum(1 for p in phases if p.status == 'x')
+        print(f'plan|{location}|branch|{branch}'
+              f'|worktree|{checkout or "-"}'
+              f'|phases|{done}/{len(phases)}'
+              f'|state|{plan_state(phases)}')
 
 
 def describe(phases, i):
@@ -374,10 +448,17 @@ def main():
                          'under <git root>/.phased/active/)')
     ap.add_argument('--resolve', action='store_true',
                     help='print the active plan path and exit')
+    ap.add_argument('--plans', action='store_true',
+                    help='list every plan reachable from this repo (current '
+                         'root, linked worktrees, wf/* branches read without '
+                         'checkout), one pipe-separated line per plan')
     ap.add_argument('--validate', action='store_true',
                     help='validate the plan structure and exit '
                          '(0 clean/warnings, 1 errors, 2 unreadable)')
     args = ap.parse_args()
+    if args.plans:
+        print_plans()
+        return 0
     path = args.plan
     if path is None:
         path, err = resolve_plan_path()

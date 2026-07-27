@@ -38,7 +38,9 @@ still commit one by one as `wf(phase N): <title>`.
   - Details: git mv both, update SKILL.md internal references and the script's own header comments; sweep every listed mention; RETIRED_NAMES += run-all-phases.
   - Done: `bash tests/orchestration/run_tests.sh` and `zsh` run green with RUNNER_SRC pointing at run-workflow.sh; `grep -rn run-all-phases` returns only historical/changelog mentions.
 
-- [ ] **Phase 4**: Location service — next-phase.py --plans
+- [x] **Phase 4**: Location service — next-phase.py --plans
+  > Done: --plans lists root/worktree/orphan-branch plans (parse refactored to parse_lines for ls-tree/show reads); S22 covers all three sources with a real git fixture; 116/116 bash+zsh, flake8 clean.
+  > Files: plugins/phased-workflow/scripts/next-phase.py, tests/orchestration/run_tests.sh
   - Pattern: `plugins/phased-workflow/scripts/next-phase.py:resolve_plan_path` (extend beside it)
   - Files: plugins/phased-workflow/scripts/next-phase.py, tests/orchestration/run_tests.sh (new scenario S22)
   - Decisions: output format one line per plan, pipe-separated for machine use: `plan|<path or branch:path>|branch|<name>|worktree|<path or ->|phases|<done>/<total>|state|<clean|running|failed|blocked>`; sources: (a) current root `.phased/active/*/plan.md`, (b) every linked worktree from `git worktree list --porcelain`, (c) every `wf/*` branch with no worktree, read WITHOUT checkout via `git ls-tree`/`git show`; exit 0 with no output when none found. `--resolve` unchanged (single-root fast path).

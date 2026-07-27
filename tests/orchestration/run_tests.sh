@@ -650,6 +650,55 @@ PYH
 rm -rf "$S21_MUT"
 assert "S21: the guard fails when a ~/.claude/ path is reintroduced" '[ -n "$S21_MUT_OUT" ]'
 
+echo "== S22: --plans finds every reachable plan — root, worktree, orphan branch =="
+# The location service behind "launched from anywhere": the current root's
+# plan, a linked worktree's, and a wf/* branch with no worktree at all, read
+# without checkout. Real git repo, no mock.
+S22_ROOT="$OT/scenarios/S22"
+rm -rf "$S22_ROOT"; mkdir -p "$S22_ROOT"; cd "$S22_ROOT" || exit 1
+git init -q -b main
+echo base > base.txt; git add -A; git commit -qm base
+plan_fixture() {  # $1 = dir, $2 = second-phase status
+  mkdir -p "$1"
+  printf '%s\n' "# Context: s22" "Parent: main" "" "## Work Plan" \
+    "- [x] **Phase 1**: done one" \
+    "- [$2] **Phase 2**: pending two" > "$1/plan.md"
+}
+# (a) plan on a branch checked out in the root
+git switch -qc wf/in-root
+plan_fixture .phased/active/rootplan " "
+git add -A; git commit -qm "wf: plan for rootplan"
+# (b) plan in a linked worktree on its own branch
+git worktree add -q "$OT/scenarios/S22-wt" -b wf/in-worktree main
+plan_fixture "$OT/scenarios/S22-wt/.phased/active/wtplan" "!"
+git -C "$OT/scenarios/S22-wt" add -A
+git -C "$OT/scenarios/S22-wt" commit -qm "wf: plan for wtplan"
+# (c) plan on a wf/ branch with no checkout anywhere
+git worktree add -q "$OT/scenarios/S22-tmp" -b wf/orphan main
+plan_fixture "$OT/scenarios/S22-tmp/.phased/active/orphanplan" ">"
+git -C "$OT/scenarios/S22-tmp" add -A
+git -C "$OT/scenarios/S22-tmp" commit -qm "wf: plan for orphanplan"
+git worktree remove --force "$OT/scenarios/S22-tmp"
+
+PLANS_OUT="$(python3 "$OT/next-phase.py" --plans 2>&1)"
+assert "S22: exactly three plans found" '[ "$(printf "%s\n" "$PLANS_OUT" | grep -c "^plan|")" = "3" ]'
+# Suffix match on the checkout paths: macOS reports /private/var where mktemp
+# said /var, so an absolute-path equality would fail on the symlink alone.
+assert "S22: root plan carries its branch and checkout path" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "worktree|.*scenarios/S22|"'
+assert "S22: worktree plan reports the worktree, not the root" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-worktree" | grep -q "worktree|.*scenarios/S22-wt|"'
+assert "S22: orphan-branch plan is read without a checkout" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/orphan" | grep -q "worktree|-"'
+assert "S22: orphan location is branch:path, not a filesystem path" \
+  'printf "%s\n" "$PLANS_OUT" | grep -q "plan|wf/orphan:.phased/active/orphanplan/plan.md"'
+assert "S22: phase counts come from the parsed plan" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "phases|1/2"'
+assert "S22: states classified per plan (failed / running / clean)" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-worktree" | grep -q "state|failed" &&
+   printf "%s\n" "$PLANS_OUT" | grep "branch|wf/orphan" | grep -q "state|running" &&
+   printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "state|clean"'
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]
