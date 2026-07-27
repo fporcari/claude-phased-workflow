@@ -1,8 +1,8 @@
 # Write Workflow — Autonomous (robottino) addendum
 
-Loaded by `/write-workflow` only when the user explicitly asks for a plan to run via `/run-workflow`. Everything in the main skill still applies; this adds a stricter refinement and format, because the plan must pass the launcher's pre-flight without a single question.
+Loaded by `/write-workflow` when its automation fork (Step 2) selects autonomous. Everything in the main skill still applies; this adds a stricter refinement and format, because the plan must pass the launcher's pre-flight without a single question.
 
-Confirm with the user (in Italian) that the plan really targets autonomous execution before starting.
+The fork already asked whether the plan targets autonomous execution — do not ask again. If the refinement below reveals the task does not fit, the *Honesty check* is the way back.
 
 ## Per-phase refinement
 
@@ -14,7 +14,7 @@ Confirm with the user (in Italian) that the plan really targets autonomous execu
 
 ## Honesty check
 
-If the refinement reveals the task doesn't fit autonomous execution, say so instead of forcing it. Red flags: the work *is* the exploration; decisions that only implementation can settle; visual/UX output needing human judgment per iteration; heavy dependence on external state; tests requiring human setup; success meaning "the user will recognise it when they see it".
+If the refinement reveals the task doesn't fit autonomous execution, say so instead of forcing it — flip the fork (Step 2 of `/write-workflow`) back to interactive rather than bending the plan to a mode it resists. Red flags: the work *is* the exploration; decisions that only implementation can settle; visual/UX output needing human judgment per iteration; heavy dependence on external state; tests requiring human setup; success meaning "the user will recognise it when they see it".
 
 The user picks robottino when the task suits it, so friction usually means a misunderstanding, not a stubborn user. Stop and ask, in Italian:
 

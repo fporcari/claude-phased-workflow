@@ -20,9 +20,12 @@
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
 # every skill inside its own allowed-tools (S15), no skill or ref addressing
-# ~/.claude/ (S21, check_home_paths.py, proven by mutation), and every -agent
-# skill a thin variant citing its base (S23, proven by mutation). S16 retired
-# with the KB mirror in 5.0.0; the number stays vacant.
+# ~/.claude/ (S21, check_home_paths.py, proven by mutation), every -agent
+# skill a thin variant citing its base (S23, proven by mutation), and
+# /write-workflow's automation fork being real — the Step 2 heading and the
+# Mode: interactive header present, the old "don't ask" default and the
+# reference's duplicate "Confirm with the user" gone (S24, proven by mutation).
+# S16 retired with the KB mirror in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -802,6 +805,46 @@ awk 'BEGIN{for(i=0;i<101;i++) print "- padding: a body large enough to be a copy
 assert "S23: the guard fails when an -agent variant grows a full body" \
   '[ -n "$(s23_guard "$S23_MUT")" ]'
 rm -rf "$S23_MUT"
+
+echo "== S24: the automation fork is real, not decorative =="
+# /write-workflow's Step 2 asks the automation question up front and its plan
+# template carries Mode: interactive; the old "interactive by default; don't
+# ask" instruction and the reference's duplicate "Confirm with the user" line
+# are gone (with the fork, that question would be asked twice). The guard
+# checks the four load-bearing strings; mutation proves it bites.
+S24_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
+s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S24_W="$1/write-workflow/SKILL.md"
+  S24_A="$2/write-workflow-autonomous.md"
+  grep -q "## Step 2: The automation fork" "$S24_W" 2>/dev/null \
+    || echo "$S24_W: missing '## Step 2: The automation fork' heading"
+  grep -q "Mode: interactive" "$S24_W" 2>/dev/null \
+    || echo "$S24_W: missing 'Mode: interactive' plan header"
+  if grep -q "don't ask" "$S24_W" 2>/dev/null; then
+    echo "$S24_W: still carries the retired \"don't ask\" default"
+  fi
+  if grep -q "Confirm with the user" "$S24_A" 2>/dev/null; then
+    echo "$S24_A: still asks the automation question a second time"
+  fi
+  return 0
+}
+S24_OUT="$(s24_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S24_OUT" ] || echo "  offending: $S24_OUT"
+assert "S24: write-workflow forks on automation and drops the old default" '[ -z "$S24_OUT" ]'
+# Mutations re-run the SAME guard on a copy of the skills dir (real refs passed through).
+S24_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S24_MUT/"
+sed -i.bak '/## Step 2: The automation fork/d' "$S24_MUT/write-workflow/SKILL.md" \
+  && rm -f "$S24_MUT/write-workflow/SKILL.md.bak"
+assert "S24: the guard fails when the fork heading is dropped" \
+  '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
+rm -rf "$S24_MUT"
+S24_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S24_MUT/"
+printf "\ndon't ask\n" >> "$S24_MUT/write-workflow/SKILL.md"
+assert "S24: the guard fails when \"don't ask\" is reintroduced" \
+  '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
+rm -rf "$S24_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
