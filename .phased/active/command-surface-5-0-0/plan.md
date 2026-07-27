@@ -11,7 +11,9 @@ Executed in-session with the approval gate waived by the user ("mano libera"); p
 still commit one by one as `wf(phase N): <title>`.
 
 ## Work Plan
-- [ ] **Phase 1**: Create /resume-workflow (absorbs check-phase-context's audit)
+- [x] **Phase 1**: Create /resume-workflow (absorbs check-phase-context's audit)
+  > Done: skill created — locate/audit/report/approved-edits, healthy early-exit in description and Step 3; check-phase-context step 2 ported verbatim; MAPPING entry added; suite 109/109, S16 green, flake8 clean.
+  > Files: plugins/phased-workflow/skills/resume-workflow/SKILL.md, tools/kb-sync.py
   - Pattern: `plugins/phased-workflow/skills/check-phase-context/SKILL.md` (steps 1–4 are the base; its step 2 ported verbatim)
   - Files: plugins/phased-workflow/skills/resume-workflow/SKILL.md (new), tools/kb-sync.py (MAPPING entry)
   - Decisions: name per target-workflow D1; description must cover the healthy case ("just tell me where we are" early-exits with the state report) or it will not trigger when nothing is broken; read-only on source code, may edit only the plan (approved re-phasing / stale [>] reset), each edit its own `wf:` commit. Full recovery flow (attach workspace, drive repairs) is Macro 3 — this phase ships locate → analyse → report → approved plan edits only.

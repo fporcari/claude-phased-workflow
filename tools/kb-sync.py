@@ -58,6 +58,7 @@ MAPPING = {
     'plugins/phased-workflow/skills/auto-phase/SKILL.md': 'auto-phase',
     'plugins/phased-workflow/skills/run-all-phases/SKILL.md': 'run-all-phases',
     'plugins/phased-workflow/skills/repair-phase/SKILL.md': 'repair-phase',
+    'plugins/phased-workflow/skills/resume-workflow/SKILL.md': 'resume-workflow',
     'plugins/phased-workflow/skills/finalize-workflow/SKILL.md': 'finalize-workflow',
     'plugins/phased-workflow/skills/check-phase-context/SKILL.md': 'check-phase-context',
     'plugins/phased-workflow/skills/pull-request/SKILL.md': 'pull-request',
