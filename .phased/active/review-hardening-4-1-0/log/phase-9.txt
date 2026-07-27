@@ -1,0 +1,19 @@
+Phase 9 committed, tree clean. 
+
+✓ Phase 9 completed: Align the documentation with the evidence, and release 4.1.0
+
+**What changed** — I aligned the 4.0.0 documentation with the actual evidence and bumped the release to 4.1.0, touching nine files:
+
+- **Benchmark provenance** — every surviving `~37% / ~60%` figure (README light-mode bullet, both `loop-engineering.md` occurrences, the launcher's light-mode comment) now names the `slim` hardcoded control on an n=3 toy fixture in the same breath, and the stale third wording (`~40% cheaper, half the wall time`) is gone.
+- **Test counts** — README restated to **109 assertions over 21 scenarios** (matching the suite's own `RESULT:` line), the "extracts the script from its own `SKILL.md`" claim deleted, S17–S21 added to the S-list, and the CI workflow mentioned; the same corrections in `loop-engineering.md`, whose `Sourcerer` mention was generalised to "an internal knowledge-base MCP".
+- **The per-phase-commit defect** — corrected everywhere it conflated the interactive path with the autonomous chain, and written into a new `## What changed in 4.1.0` section with its cascade (a full-skill phase inferring a repo-wide no-commit mode) and what it broke (red-baseline attribution).
+- **Auto-mode categories** reframed in all three places as what Claude Code's classifier is expected to deny plus the plugin's convention — not a guarantee (no hooks, no permissions).
+- **Install** — `install.sh` reframed as a ≤4.0.0 migration, the obsolete "support files not optional" block removed, Softwell/KB moved to its own end section; `article-medium.md` → `docs/article-medium.md`; Italianism → English; versions to 4.1.0 in `plugin.json` and both `marketplace.json` fields.
+
+**Done criterion demonstrated in this conversation** (baseline was green first — flake8 clean, 109/0):
+- every `37%/60%` occurrence carries `slim`-control provenance; `62 assertions|62/62|from its own .SKILL.md.` and `minchiate` in `plugins/` both return nothing
+- README's stated count (109) equals `bash run_tests.sh`'s `RESULT:` line
+- `article-medium.md` gone, `docs/article-medium.md` present; `plugin.json` version == `4.1.0`
+- flake8 clean; **bash and zsh suites exit 0 at 109 passed / 0 failed**; `--validate` on the benchmark fixture exits 0
+
+One phase moved `[ ]→[x]`; no other phase changed state. Committed as `c35545c`. Only Phase 10 (coherence review) remains. Stopping here — one phase per invocation.

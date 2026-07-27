@@ -658,7 +658,21 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     assert json.load(open('plugins/phased-workflow/.claude-plugin/plugin.json'))['version']
     == '4.1.0'"` succeeds; `bash tests/orchestration/run_tests.sh` still exits 0.
 
-- [ ] **Phase 10**: Coherence review and auto-fix (final, mandatory)
+- [x] **Phase 10**: Coherence review and auto-fix (final, mandatory)
+  > Done: Coherence review of the 21-file set written by Phases 1–9 against the four
+  > specific cross-checks — all pass: Phases 1/2/3/4/8 coexist in run-all-phases.sh
+  > without one undoing another (bash -n and zsh -n clean); no phase-state grep
+  > bypasses Phase 1's four helpers or first_bang_block's strict awk; no ~/.claude/
+  > under skills/ or refs/ bar the documented settings.json exemption; and the doc
+  > numbers match reality (109 assertions / 21 scenarios = the suite RESULT line,
+  > slim-control provenance on every ~37%/~60% figure, versions 4.1.0, article moved,
+  > minchiate gone, --validate on the benchmark fixture clean). One mechanical
+  > auto-fix: install.sh's install ref used the GitHub slug instead of the marketplace
+  > name README documents — aligned to `phased-workflow@claude-phased-workflow`.
+  > review.md written with the three sections. flake8 . = 0; bash and zsh suites exit
+  > 0 at 109 passed / 0 failed.
+  > Files: .phased/active/review-hardening-4-1-0/review.md, plugins/phased-workflow/install.sh
+  > Review: three judgment findings recorded in review.md "Flagged for human" for finalize — (1) auto-phase/SKILL.md line 2 description still says "no commit" while the body commits every phase (contradicts the 4.1.0 commit architecture, user-visible); (2) README lines 243 vs 424 disagree on whether /auto-phase's verifier always runs; (3) docs/article-medium.md carries stale content (retired commands, MEMORY.md, Haiku), likely an intentional historical snapshot Phase 9 only git-mv-ed.
   - Pattern reference: same as Phases 1–9 (cross-check against them)
   - Files: only the files written by Phases 1–9 (collect them from their `Files:`
     fields). Never touch a pre-existing file they did not modify.

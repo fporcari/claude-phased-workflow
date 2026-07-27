@@ -81,6 +81,6 @@ else
   echo "  $STALE"
   echo "To move to the plugin (namespaced commands, no collisions with your other skills):"
   echo "  claude plugin marketplace add fporcari/claude-phased-workflow"
-  echo "  claude plugin install phased-workflow@fporcari/claude-phased-workflow"
+  echo "  claude plugin install phased-workflow@claude-phased-workflow"
   echo "then re-run this script — it will supersede the flat copies for you."
 fi
