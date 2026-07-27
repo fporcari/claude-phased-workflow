@@ -810,8 +810,10 @@ echo "== S24: the automation fork is real, not decorative =="
 # /write-workflow's Step 2 asks the automation question up front and its plan
 # template carries Mode: interactive; the old "interactive by default; don't
 # ask" instruction and the reference's duplicate "Confirm with the user" line
-# are gone (with the fork, that question would be asked twice). The guard
-# checks the four load-bearing strings; mutation proves it bites.
+# are gone (with the fork, that question would be asked twice). The guard also
+# checks the fork's consumers: run-workflow's pre-flight reads Mode: interactive
+# and offers the conversion, and import-workflow writes a Mode: header. Mutation
+# proves it bites.
 S24_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
 s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S24_W="$1/write-workflow/SKILL.md"
@@ -826,6 +828,14 @@ s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   if grep -q "Confirm with the user" "$S24_A" 2>/dev/null; then
     echo "$S24_A: still asks the automation question a second time"
   fi
+  S24_R="$1/run-workflow/SKILL.md"
+  S24_I="$1/import-workflow/SKILL.md"
+  grep -q "Mode: interactive" "$S24_R" 2>/dev/null \
+    || echo "$S24_R: pre-flight does not read the 'Mode: interactive' header"
+  grep -q "Offer the conversion" "$S24_R" 2>/dev/null \
+    || echo "$S24_R: missing the interactive-to-autonomous conversion offer"
+  grep -qE "Mode: (interactive|autonomous)" "$S24_I" 2>/dev/null \
+    || echo "$S24_I: does not write a Mode: header into the imported plan"
   return 0
 }
 S24_OUT="$(s24_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -843,6 +853,14 @@ S24_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S24_MUT/"
 printf "\ndon't ask\n" >> "$S24_MUT/write-workflow/SKILL.md"
 assert "S24: the guard fails when \"don't ask\" is reintroduced" \
+  '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
+rm -rf "$S24_MUT"
+# The fork's consumers: dropping run-workflow's conversion offer must bite too.
+S24_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S24_MUT/"
+sed -i.bak '/Offer the conversion/d' "$S24_MUT/run-workflow/SKILL.md" \
+  && rm -f "$S24_MUT/run-workflow/SKILL.md.bak"
+assert "S24: the guard fails when run-workflow drops the conversion offer" \
   '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
 rm -rf "$S24_MUT"
 
