@@ -23,7 +23,9 @@
 #
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
-# every skill inside its own allowed-tools (S15), no skill or ref addressing
+# every skill inside its own allowed-tools (S15), the Done:/Verify: verification
+# contract single-source in common.md and cited by its three consumers (S27,
+# proven by mutation), no skill or ref addressing
 # ~/.claude/ (S21, check_home_paths.py, proven by mutation), every -agent
 # skill a thin variant citing its base (S23, proven by mutation), and
 # /write-workflow's automation fork being real — the Step 2 heading and the
@@ -949,6 +951,54 @@ printf '\nclaude -p "/execute-phase-agent"\n' >> "$S26_MUT/agent-session.sh"
 assert "S26: the guard fails when a bare-slash prompt is reintroduced" \
   '[ -n "$(s26_guard "$S26_MUT")" ]'
 rm -rf "$S26_MUT"
+
+echo "== S27: the Done:/Verify: contract lives once and is cited, not restated =="
+# Interactive mode splits verification in two — Done: for the machine, Verify:
+# for the human, each Verify: step carrying a when (now / deferred: needs Phase
+# M) and the deferred ones accumulating in verify.md. That contract is prose
+# spread over four files, which is exactly the shape that drifts (the 4.1.0
+# LIGHT_PROMPT defect was a second copy nobody updated). So: common.md owns it,
+# the consumers cite it by section name, and no consumer restates the when
+# vocabulary on its own.
+s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S27_C="$2/common.md"
+  grep -q '^## Verification: `Done:` and `Verify:`' "$S27_C" 2>/dev/null \
+    || echo "$S27_C: missing the '## Verification: Done: and Verify:' section"
+  grep -q 'deferred: needs Phase M' "$S27_C" 2>/dev/null \
+    || echo "$S27_C: the Verification section does not define the deferred when"
+  grep -q 'verify\.md' "$S27_C" 2>/dev/null \
+    || echo "$S27_C: the Verification section does not name verify.md"
+  # Every consumer of the contract cites the section instead of re-deriving it.
+  for S27_S in write-workflow execute-phase finalize-workflow; do
+    S27_F="$1/$S27_S/SKILL.md"
+    grep -q 'Verification' "$S27_F" 2>/dev/null \
+      || echo "$S27_F: does not cite common.md's Verification section"
+  done
+  # The two files that must know where deferred checks land.
+  grep -q 'verify\.md' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: does not append deferred checks to verify.md"
+  grep -q 'verify\.md' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: does not present verify.md"
+  return 0
+}
+S27_OUT="$(s27_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S27_OUT" ] || echo "  offending: $S27_OUT"
+assert "S27: the verification contract is single-source and cited" '[ -z "$S27_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+S27_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S27_MUT/"
+sed -i.bak '/verify\.md/d' "$S27_MUT/execute-phase/SKILL.md" \
+  && rm -f "$S27_MUT/execute-phase/SKILL.md.bak"
+assert "S27: the guard fails when a phase stops writing verify.md" \
+  '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
+rm -rf "$S27_MUT"
+S27_MUT="$(mktemp -d)"; mkdir -p "$S27_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S27_MUT/"
+sed 's/^## Verification.*/## Verification (renamed)/' "$S24_REFS/common.md" \
+  > "$S27_MUT/refs/common.md"
+assert "S27: the guard fails when common.md stops owning the contract" \
+  '[ -n "$(s27_guard "$S27_MUT" "$S27_MUT/refs")" ]'
+rm -rf "$S27_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

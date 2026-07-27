@@ -468,12 +468,22 @@ writable once the first lands. Rolling wave, three macros:
   next to the files Macro 1 already opens.
 - **Macro 2 — Unattended run** (D, E) — **DONE in 5.1.0** (`wf/macro2-unattended-run`).
   The "I have to do the shopping" path. (F2 was fixed inside 4.1.0 and left this list.)
-- **Macro 2b — Manual mode** (J, J2, J3). The `Verify:` mechanics (`verify.md`, the
-  `ui-test` split), the sizing rules, and the `/execute-phase` adjustments. Independent of
-  Macro 2 once D lands: same fork, the other branch. Needs the resume path hardened —
-  big in-chat phases make `[>]` / `> WIP:` load-bearing — so it pairs naturally with G.
-- **Macro 3 — Recovery** (G). Depends on Macro 1's location service; benefits from
-  Macro 2's status output.
+- **Macro 2b — Manual mode** (J, J2, J3) — **DONE in 5.2.0, minus the resume hardening.**
+  Landed: the `Verify:` mechanics with the *when* (`now` / `deferred: needs Phase M`),
+  `verify.md` accumulating the deferred checks and presented by `/finalize-workflow` as one
+  QA pass, the `ui-test` split that keeps automatable checks off the human list, the
+  interactive phase boundary at "something a human can look at exists", and
+  `/execute-phase`'s ask-live rule with its `opus` floor. The contract is single-source in
+  `refs/common.md` → *Verification*, cited by its three consumers, guarded by S27 with a
+  mutation proof.
+  *Not landed, deliberately:* the resume path. Bigger in-chat phases make `[>]` / `> WIP:`
+  load-bearing and it still has no real test coverage — that pairs with G, so it moves to
+  Macro 3 rather than being claimed here.
+  *Shipped without the chain:* written in one session on the user's request ("fai al volo"),
+  so with no independent finalize review and no coherence phase — the thinner safety net is
+  a fact about this slice, not a property of the items.
+- **Macro 3 — Recovery** (G) **plus the resume hardening inherited from 2b**. Depends on
+  Macro 1's location service; benefits from Macro 2's status output.
 
 ## Open decisions
 

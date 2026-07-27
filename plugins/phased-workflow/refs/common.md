@@ -29,6 +29,8 @@ git repository root:
   active/<slug>/          # exactly one at a time
     plan.md               # the work plan
     notes.md              # free-form annotations
+    verify.md             # human checks a phase deferred to a wider context
+                          #   (see "Verification: Done: and Verify:" below)
     log/phase-N.txt       # stdout of each /run-workflow sub-session (.txt,
                           #   not .log: `*.log` sits in most global gitignores
                           #   and these are meant to be committed)
@@ -126,6 +128,49 @@ the script is unavailable — are:
   the script reports their age and whether a `> WIP:` note exists — what
   to do with that is the calling skill's decision.
 
+## Verification: `Done:` and `Verify:`
+
+Two fields, two audiences. **This section is the single source of the
+contract** — the skills cite it, they never restate it.
+
+- **`Done:`** — the machine's exit condition: tests, lint, build, a named
+  output. Re-runnable verbatim by whoever reads the plan next. It stays
+  machine-checkable in both modes; `/execute-phase-agent` re-runs it before
+  closing a phase.
+- **`Verify:`** — steps a *person* performs, each with the result they should
+  see. Never a substitute for a weak `Done:`: a phase whose tests could have
+  covered it does not get to push the work onto the human.
+
+**Every `Verify:` step carries a *when*:**
+
+- `now` — check it at the end of this phase; it makes sense on its own.
+- `deferred: needs Phase M` — it only makes sense in a wider context, so it is
+  **dated, not skipped**.
+
+```
+  > Verify: now — open /foo, save a row, it reappears in the grid after reload
+  > Verify: deferred: needs Phase 5 — the invoice total matches the order once
+    the pricing phase lands
+```
+
+**Split by who can check it.** What an agent can assert never reaches the human
+list: the flow works, the record persists, the grid reloads — that is what the
+`ui-test` skill drives a real browser for. The human list carries only what
+needs human judgment: aesthetics, "is this interaction right?", UX ambiguity.
+Without this split the list fills with automatable work and stops being read.
+
+**Deferred steps accumulate in `verify.md`** in the plan directory, appended per
+phase, and `/finalize-workflow` presents the file as one QA pass at the end
+instead of scattering checks the user cannot yet perform.
+
+The mechanism is **thick in interactive mode and thin in autonomous, never
+absent**: an autonomous project startup still wants human eyes on the result.
+One mechanism in two thicknesses beats two that drift apart.
+
+`verify.md` and `review.md` are siblings, not duplicates: `review.md` says
+*"here is what I noticed and will not decide for you"* — the user reads and
+judges; `verify.md` says *"here is what you must exercise"* — the user does.
+
 ## Failure and repair notes
 
 Note fields the autonomous chain writes on phases, and what consumes them:
@@ -144,8 +189,10 @@ Note fields the autonomous chain writes on phases, and what consumes them:
   repair round after manual intervention.
 - `> Review:` — judgment-level findings from the per-phase independent
   verification, flagged for the human at finalize; they never block `[x]`.
-- `> Verify:` — manual checks left to the human, written by `/execute-phase`
-  on untested UI work; `/finalize-workflow` collects them before closing.
+- `> Verify:` — one manual check left to the human, carrying its *when*
+  (`now` / `deferred: needs Phase M`); written by `/execute-phase`, deferred
+  ones copied into `verify.md`, all of them collected by
+  `/finalize-workflow`. Semantics in *Verification* above.
 - `> Verified:` — optional record of the verification evidence a phase ran
   (which test, which check, what confirmed the `Done:`).
 

@@ -57,12 +57,22 @@ Extract from the conversation: objective, phases, files per phase, pattern refer
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
-**Sizing.** Size each phase:
-1. **Standard** (no tag) — one concern, ~6-8 files, testable alone. The common case. Too small to test alone (a model half, a migration, a schema)? Merge it into the phase that makes it testable — a phase boundary the user cannot verify is a boundary in the wrong place.
+**Sizing.** The boundary depends on the mode chosen in Step 2.
+
+*Interactive plans — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
+
+*Autonomous plans — one concern, ~6-8 files, closed by a re-runnable `Done:`* (the stricter rules live in `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md`).
+
+Either way:
+1. Too small to verify alone (a model half, a migration, a schema)? Merge it into the phase that makes it verifiable — a phase boundary the user cannot verify is a boundary in the wrong place.
 2. **Split** — two concerns in one phase: just write more phases, no tag.
-3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the ~6-8 file ceiling is lifted for it only.
+3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the file ceiling is lifted for it only.
 
 Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
+
+*The cost of the interactive boundary, chosen deliberately:* a big phase runs in one chat, whose context can fill. `/execute-phase` offers the WIP escape hatch (`[>]` plus a `> WIP:` note) and a new chat resumes from it — which makes that path load-bearing rather than theoretical.
+
+**Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list.
 
 **Present the plan in Italian** and iterate until the user approves.
 
@@ -106,7 +116,10 @@ Mode: interactive
   - Details: <what to do concretely>
 - [ ] **Phase 2**: table foo with its TH UI (model + webpage)
   - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
-  - Details: table + columns + relations, then TableHandler view + form. End-to-end test: create a row via the form, assert it persists and reloads in the grid.
+  - Details: table + columns + relations, then TableHandler view + form.
+  - Done: end-to-end test — create a row via the form, assert it persists and reloads in the grid
+  - Verify: now — the form reads well: field order, labels, nothing cramped
+  - Verify: deferred: needs Phase 3 — the renamed amount column still lines up in the grid
 - [ ] **Phase 3**: rename legacyAmount → amount across the web layer  `vast`
   - Files: discovery rule — all references to `legacyAmount` under packages/foo/ and gnr/web/
   - Details: rename + deprecated alias.

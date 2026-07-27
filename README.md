@@ -231,10 +231,14 @@ The `Parent:` field is critical — it tells `/finalize-workflow` where to merge
 
 Runs **one phase** per chat session.
 
+This is the whole of interactive mode, not a lesser `/run-workflow`: here somebody can answer, so a doubt that needs a **decision** is asked live in the chat and execution resumes with the answer. Being asked to *try something trivial* mid-phase is not a question — it is a phase that was cut too small, and the cure is sizing.
+
 Key behaviors:
 - **One phase per chat** — always-fresh context
 - **One commit per phase** — `wf(phase N): <title>` on the workflow branch (a WIP safety commit if context runs low); `/finalize-workflow` squashes them into one clean commit on the parent
-- **Human verification** — waits for the user to confirm before marking done
+- **Bigger phases** — an interactive phase ends where *something a human can look at exists*, so it cannot close on half a button
+- **`opus` floor** — never `sonnet`, the standing rule for UI and declarative work
+- **Two verification fields** — `Done:` stays machine-re-runnable; `Verify:` carries the human steps, each with a *when* (`now`, or `deferred: needs Phase M`). What a browser agent can assert goes to the `ui-test` skill, never onto the human's list; deferred steps accumulate in `verify.md` and finalize presents them as one QA pass
 - **Records modified files** in the `> Files:` line — source of truth for finalize
 
 ### `/execute-phase-agent`, `/run-workflow`, `/repair-phase` — Unattended Execution
@@ -265,7 +269,7 @@ Read-only analysis of the plan vs actual code state: exact per-phase attribution
 
 When all phases are complete:
 
-1. Verifies all phases are `[x]` and collects the `> Verify:` checks left to the human
+1. Verifies all phases are `[x]` and presents the QA pass — the `> Verify:` notes plus everything in `verify.md`, grouped by phase, deferred checks whose phase has landed now due
 2. Reviews the whole workflow diff (`BASE..HEAD`) — in-session; or, when the plan lives in its own worktree, via a read-only `finalize-workflow-agent` sub-session launched at the plan's root by `agent-session.sh`. Findings are reported, never auto-fixed
 3. Captures durable lessons, then archives the plan under `.phased/done/`
 4. Consolidates the per-phase commits into a single clean commit
@@ -404,7 +408,7 @@ Every state transition leaves machine-readable evidence — this is what makes f
 | `> Repaired:` | root cause, plus *why the earlier attempts missed it* |
 | `> Review:` | judgment-level finding from the independent verification, for finalize |
 | `> Blocked:` | the failure signature behind a `[~]` |
-| `> Verify:` | manual checks left to the human on untested UI work — collected by finalize |
+| `> Verify:` | one manual check left to the human, with its *when* (`now` / `deferred: needs Phase M`) — deferred ones accumulate in `verify.md`, all collected by finalize |
 | `> Verified:` | optional record of the verification evidence a phase ran |
 
 ---
@@ -613,6 +617,17 @@ gnr web serve sandboxpg --debug
 See [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md) for details.
 
 ---
+
+## What changed in 5.2.0
+
+5.2.0 implements Macro 2b of [docs/target-workflow.md](docs/target-workflow.md) — interactive mode as a first-class mode rather than "autonomous minus the robot". No command changes; the interactive branch of the 5.1.0 fork gets its own shape.
+
+- **Two verification fields, one contract.** `Done:` stays the machine's re-runnable exit condition; `Verify:` carries the steps a person performs, each with a *when* — `now`, or `deferred: needs Phase M`, so a check that only makes sense later is **dated, not skipped**. Deferred steps accumulate in `verify.md` in the plan directory, and `/finalize-workflow` presents them as one QA pass, sibling to `review.md` (what you must *exercise* vs what you must *judge*).
+- **The human list carries only human judgment.** What a browser agent can assert — the flow works, the record persists, the grid reloads — goes to the `ui-test` skill inside the phase. Aesthetics, "is this interaction right?", UX ambiguity are what reach the user. Without that split the list fills with automatable work and stops being read.
+- **The interactive phase boundary is "something a human can look at exists".** Phases come out bigger as a consequence, not as a goal — and the point is what it makes impossible: a phase cannot close on half a button, so a trivial "try this for me" interruption cannot arise. Master tables *with their UI* are one phase, not two.
+- **`/execute-phase` asks live.** A doubt needing a decision is asked in the chat and execution resumes with the answer; being asked to try something trivial is a sizing defect, not a question. `opus` floor, never `sonnet`.
+- **The contract is single-source and guarded.** It lives in `refs/common.md` → *Verification*; `write-workflow`, `execute-phase` and `finalize-workflow` cite it instead of restating it, and S27 fails (proven by mutation) if a consumer stops writing `verify.md` or if `common.md` stops owning the section. `execute-phase` gained the `Skill` tool it needs to run `ui-test` — instructing a tool a skill cannot use is the defect S15 exists to catch.
+- **Left for Macro 3:** bigger interactive phases make the resume path (`[>]` plus `> WIP:`) load-bearing, and it still has no real test coverage. That hardening pairs with recovery, and is deliberately not claimed here.
 
 ## What changed in 5.1.0
 

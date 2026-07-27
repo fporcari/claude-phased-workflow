@@ -1,11 +1,13 @@
 ---
 description: Execute the next phase from the active work plan
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill
 ---
 
 # Execute Phase
 
-Execute the next uncompleted phase. **Semi-autonomous**: ONE approval gate up front (plan + all questions batched), then run to completion without interruptions.
+Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution — and a real doubt is asked **live, in this chat**, because here there is somebody who can answer.
+
+Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on a strong model — `opus` floor, never `sonnet`, which is also the standing rule for UI and declarative work.
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch, phase-selection semantics. **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` — selection, implementation discipline, outcome formats, the phase commit; `/execute-phase-agent` is this same skill with the gate replaced by unattended constraints.
 
@@ -40,8 +42,10 @@ Implement only this phase. If something the plan doesn't cover comes up and a wr
 ## Step 5: Verify
 
 - Testable logic → write/update tests in the repo's existing style, run the suite. A failure that doesn't touch this phase's `Files:` is probably pre-existing: check before absorbing it, and tell the user instead. Fix and re-run, ONE retry; still red → `[!]`.
-- Purely UI/declarative → no tests; **the user is the verifier**. Record the manual checks as `> Verify:` and surface them in the notification and the summary.
+- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool) drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't.
 - `vast` → optionally re-run the read-only fan-out to confirm no site was missed, then test as usual.
+
+What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
 
 ## Step 6: Record and notify
 

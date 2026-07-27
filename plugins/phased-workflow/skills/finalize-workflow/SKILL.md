@@ -34,7 +34,9 @@ git rev-list --count "$BASE"^..<parent>                         # 0 => BASE is t
 
 All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
-Collect any `> Verify:` lines — manual UI checks `/execute-phase` recorded — and ask whether the user has done them.
+**Present the QA pass.** Collect the `> Verify:` notes from the plan *and* the whole of `verify.md` if it exists (the deferred checks `/execute-phase` dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Show them as ONE list, in Italian, grouped by phase, each with the result the user should see; a deferred step whose phase has since landed is now due. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding.
+
+`verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
 ## Step 3: Review the scope
 

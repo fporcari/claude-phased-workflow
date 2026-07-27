@@ -17,7 +17,7 @@ Resolve the plan and `BASE` exactly as `finalize-workflow` Step 1 does (`--resol
 
 ## Step 2: Verify completion
 
-Every phase's state, and for each `[x]` phase its `Done:` criterion re-checked literally — run the named tests and lint where re-runnable, and say explicitly which criteria could not be re-run and why. Collect every `> Verify:` (manual checks for the human) and `> Review:` note (each must come out of Step 3 confirmed or dismissed, never dropped).
+Every phase's state, and for each `[x]` phase its `Done:` criterion re-checked literally — run the named tests and lint where re-runnable, and say explicitly which criteria could not be re-run and why. Collect every `> Verify:` note (manual checks for the human, each with its *when*) plus the whole of `verify.md` if the plan directory has one, and every `> Review:` note (each must come out of Step 3 confirmed or dismissed, never dropped).
 
 ## Step 3: Whole-diff review
 
@@ -31,7 +31,7 @@ DONE-CHECK: per phase — met / not re-runnable (why) / FAILED (evidence)
 FINDINGS:
   MECHANICAL: <file:line — defect, evidence>          (real bugs, wrong API, pattern divergence)
   JUDGMENT: <file:line — trade-off for the human>     (design calls; includes each > Review: note, confirmed or dismissed)
-VERIFY-NOTES: <the collected > Verify: items, verbatim>
+VERIFY-NOTES: <the collected > Verify: items and verify.md entries, verbatim, each with its when>
 ```
 
 No findings → say `NO FINDINGS` in that section, never silence.
