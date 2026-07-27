@@ -1,0 +1,33 @@
+Verification complete. Everything is coherent across all eight phases. Here is the deliverable report.
+
+---
+
+```
+STATE: wf/macro2-unattended-run | base 2b035a4 (dedicated: plan commit IS the branch point, BASE^..main = 0) | tree dirty: 1 file (.phased/active/macro2-unattended-run/log/finalize-workflow-agent.txt — this agent's OWN tee target, being written as this session runs; not a phase leak) | phases 8 done / 8 total, no [!]/[~]/[>]
+
+DONE-CHECK: (re-ran the full suite + flake8 + every grep criterion at HEAD)
+  Phase 1 — MET. Suite 145 passed / 0 failed (plan recorded 130 at its time; grown by later phases, no FAIL line); flake8 next-phase.py exit 0. MODE_RE/MODES present, unknown-value error + interactive-plus-table warning wired in validate().
+  Phase 2 — MET. `grep -c "don't ask" write-workflow/SKILL.md` → 0; `grep -c "Confirm with the user" write-workflow-autonomous.md` → 0; `## Step 2: The automation fork` present; S24 in suite.
+  Phase 3 — MET. `grep -q "Mode: interactive" run-workflow/SKILL.md` exit 0; `grep -qE "Mode: (interactive|autonomous)" import-workflow/SKILL.md` exit 0; S24 consumer rules present.
+  Phase 4 — MET. `bash -n run-workflow.sh` exit 0; three EVENT echoes present at the three sites, phase numbers via phase_re/phase_count/phase_lines (verified helper bodies).
+  Phase 5 — MET. `check_allowlists.py plugins/phased-workflow/skills` → 0 findings; `grep -q "Remote Control" run-workflow/SKILL.md` exit 0; Monitor/PushNotification in allowed-tools and TOOL_HINTS.
+  Phase 6 — MET. `grep -rn "never commits" README.md docs/ | grep -c execute-phase` → 0; marketplace.json "5.1.0" ×2, plugin.json ×1; "What changed in 5.1.0" in README; "DONE in 5.1.0" in target-workflow.md.
+  Phase 7 — MET. review.md has 3 `^## ` sections; flake8 touched-py exit 0; suite green.
+  Phase 8 — MET. `bash -n` both launchers exit 0; `grep -c 'claude -p "/$SKILL"' agent-session.sh` → 0; `grep -q phased-workflow agent-session.sh` exit 0; S26 assertions present; PLUGIN_NAME derivation live-tested → resolves to "phased-workflow" (first `"name"` line, head -1 beats author.name).
+  Not re-runnable: none — every Done: criterion was machine-checkable and re-run at HEAD.
+
+FINDINGS:
+  MECHANICAL: NO FINDINGS. Whole-diff review of BASE..HEAD found no real bug, wrong API, or pattern divergence. Cross-phase specifics all held:
+    - PLUGIN_NAME derivation (P8) reads ../.claude-plugin/plugin.json via SCRIPT_DIR, head -1 correctly selects the plugin name over author.name; literal fallback in place.
+    - EVENT phase-number extraction (P4) uses the shared phase_re anchor, not a private regex; sed matches the `**Phase N**` line shape.
+    - run-workflow SKILL allowed-tools gained Monitor+PushNotification (P5) and check_allowlists is green — instruction/declaration coupling intact.
+    - write-workflow step renumbering (P2) 2→3..5→6 with both internal cross-refs ("fork decides the branch in Step 4", "pre-filled per Step 4") pointing correctly.
+    - Single-source fork rule: derivation lives only in write-workflow Step 2; import-workflow and run-workflow cite it, no second copy.
+    - Version 5.1.0 uniform across all three fields; retired "never commits" claim gone from README + docs.
+
+  JUDGMENT: NO FINDINGS. No > Review: note was recorded on any phase (checked plan.md + notes.md). review.md (Phase 7) flagged nothing for the human. No design trade-off surfaced that needs a human call before consolidation. Note only: the plan Context line carries no `Issue:` header, so the finalize commit has no `fixes #N` to append — a fact for the message, not a defect.
+
+VERIFY-NOTES: none — no `> Verify:` lines exist in the plan or notes.md. This workflow edits skill/script/doc text guarded by the S-suite (145 tests) and flake8; there is no untested UI surface, so no manual human check was deferred.
+```
+
+Everything the plan set out to do is present, internally consistent, and green. The only non-clean state is the agent's own log file — expected. Ready for consolidation; that decision, and the commit wording, belong to you in the parent chat.
