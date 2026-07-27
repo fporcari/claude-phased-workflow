@@ -1,0 +1,14 @@
+Tree clean after commit.
+
+✓ Phase 8 completed: Every phase commits — remove `Never commit` from the light contract
+
+**What changed** — `LIGHT_PROMPT` in `run-all-phases.sh` no longer ends with `Never commit.`; it now carries the per-phase commit requirement in `auto-phase`'s own wording (one commit per phase, `wf(phase N): <title>`, code + plan status update together, clean tree). The light-mode comment records why: the commit was the one chain invariant the light contract didn't carry, so low-effort phases left work uncommitted and a later full-skill phase inferred a repo-wide no-commit mode from that. Two new S14 assertions guard the clause both ways.
+
+**Done criterion demonstrated in this conversation:**
+- baseline was green before starting (flake8 clean, 107 passed / 0 failed)
+- `bash` and `zsh` suites both exit 0 at **109 passed / 0 failed** (>77), the two new S14 assertions green
+- `grep -c 'Never commit'` on the launcher → **0**
+- the `LIGHT_PROMPT` line contains `wf(phase`
+- `bash -n` and `zsh -n` clean on the launcher
+
+One phase moved to `[x]`; no other phase changed state. Committed as `wf(phase 8): …`. Stopping here — one phase per invocation.

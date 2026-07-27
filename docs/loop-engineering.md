@@ -84,11 +84,13 @@ fails). Inside, the machine self-corrects.
   ritual: a slim `/goal` contract (~450 chars vs the ~9.5KB skill body) carries
   every chain invariant itself — including the `> Done:`/`> Files:` bookkeeping
   notes that the 2x2 experiment showed get silently dropped when the contract
-  omits them ("the spec is sovereign"). Measured on the seeded fixture: same
-  external outcomes, ~37% cheaper and ~60% of the wall time (`slim` control vs
-  `plain`, the two arms whose provenance is intact — see
-  `tests/benchmark/results/README.md`). The full ritual remains
-  the default for `medium`/`high`/`max` phases and on CLIs without the guard.
+  omits them ("the spec is sovereign"). Measured on the seeded toy fixture
+  (n=3): ~37% cheaper and ~60% of the wall time — the `slim` hardcoded control
+  vs `plain`, the two arms whose provenance survived the frozen-copy defect. The
+  shipped light contract's own "same external outcomes" was never measured
+  against it, so that parity is a design claim, not a benchmarked one; see
+  `tests/benchmark/results/README.md`. The full ritual remains the default for
+  `medium`/`high`/`max` phases and on CLIs without the guard.
 - **Rolling-wave macro-phases for ambitious plans.** Beyond ~8-10 phases — or
   when a phase's shape depends on an earlier phase's *outcome* — the plan
   splits into macro-phases: only the first is detailed, the rest live as inert
@@ -180,22 +182,27 @@ mediocrity.
 Five test tiers cover the chain (2026-07):
 
 1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`):
-   the run-all-phases script, extracted from its own SKILL.md, exercised with a
-   mock `claude` over thirteen scenarios — /goal call shape, model/effort/cap
+   the run-all-phases script — a shipped file since 4.0.0 — exercised with a
+   mock `claude` over twenty-one scenarios: /goal call shape, model/effort/cap
    selection (fable cap doubled, `xhigh` → 250), repair success resuming the
    loop, repair failure stopping it, the idempotent `Repair attempted:` marker,
    relaunch on a `[!]` *without* that marker, attribution Case A (a reopened
    `[x]` phase drops the done-count without tripping the progress guard),
    attribution Case B (`[~]` stops the run), fable→opus fallback on session
-   crash, no-progress guard, inert `## Roadmap`, and the pre-2.1.139
-   plain-prompt fallback — plus three static checks on what the repo ships:
-   no frozen copy of a shipped contract anywhere in the harness (S14), every
-   skill inside its own `allowed-tools` (S15), every skill on the KB sync list
-   (S16). **62/62 assertions.**
+   crash, no-progress guard, inert `## Roadmap`, prose bullets in `## Notes`
+   held inert with the state greps single-source (S18), `--validate` gating the
+   launcher before any session (S19), every silent fallback announcing itself
+   (S20), `/import-workflow` classification and its mid-run git sequence (S17),
+   and the pre-2.1.139 plain-prompt fallback — plus static checks on what the
+   repo ships: no frozen copy of a shipped contract anywhere in the harness and
+   the light contract's per-phase-commit clause intact (S14), every skill inside
+   its own `allowed-tools` (S15), every skill on the KB sync list (S16), and no
+   skill or ref still addressing `~/.claude/` (S21). **109 assertions.**
 
    S15 and S16 exist because both gaps are quiet by construction. A skill can
    instruct a command its allowlist never pre-approves — `write-workflow` called
-   `gh issue view` and Sourcerer without permission for either, the worktree
+   `gh issue view` and an internal knowledge-base MCP without permission for
+   either, the worktree
    skills piped git through `grep|head|sed`, `pull-request` invoked the
    `code-review` skill without the `Skill` tool. Nothing fails loudly: the step stops to ask
    for a permission the author meant to grant, and where nobody can answer it
@@ -251,8 +258,10 @@ Five test tiers cover the chain (2026-07):
    `results/run-2026-07-19-slim-2x2/`): full-skill vs 300-char slim prompt,
    plain vs /goal, on a fixture whose plan omits that adding a module breaks a
    registry test. 12/12 external successes across all four arms — no outcome
-   difference; the slim arms cost ~37% less and finished in ~60% of the wall
-   time. The one quality gap: the slim-goal arm recorded zero
+   difference; the `slim` hardcoded control (n=3, whose provenance the
+   frozen-copy defect could not touch — not the shipped light contract) cost
+   ~37% less and finished in ~60% of the wall time. The one quality gap: the
+   slim-goal arm recorded zero
    `> Done:`/`> Files:` notes (0/3) because its contract never asked for them,
    while arms whose active spec asked got them 6/6 and 3/3 — discipline is
    movable between skill prompt and goal contract, but whatever the spec omits

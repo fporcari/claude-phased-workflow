@@ -538,7 +538,34 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     the `LIGHT_PROMPT` line contains `wf(phase`; `bash -n` and `zsh -n` clean on the
     launcher.
 
-- [ ] **Phase 9**: Align the documentation with the evidence, and release 4.1.0
+- [x] **Phase 9**: Align the documentation with the evidence, and release 4.1.0
+  > Done: Benchmark numbers keep their magnitude and gained slim-control
+  > provenance in the same breath (n=3 toy fixture, `slim` control not the shipped
+  > light mode) in all three places — README light-mode bullet, both
+  > loop-engineering occurrences, and the launcher's light-mode comment (the old
+  > `~40% cheaper, half the wall time` third wording is gone). README Tests section
+  > restated to 109 assertions over 21 scenarios, the `from its own SKILL.md`
+  > extraction claim deleted, S17–S21 added to the S-list and the CI workflow
+  > mentioned; loop-engineering's `62/62` and extraction claim likewise corrected
+  > and its Sourcerer mention generalised to "an internal knowledge-base MCP". The
+  > per-phase-commit claim corrected everywhere it conflated interactive with
+  > autonomous (README design note, edges paragraph, FAQ), and the light-contract
+  > defect written into a new `## What changed in 4.1.0` section with its cascade
+  > and what it broke (red-baseline attribution). Auto-mode blocked categories
+  > reframed in all three places (common.md canonical list, run-all-phases SKILL,
+  > write-workflow-autonomous) as what Claude Code's classifier is expected to deny
+  > plus the plugin's convention — reason stated once (no hooks, no permissions).
+  > install.sh reframed as a ≤4.0.0 migration and the obsolete "support files not
+  > optional" block removed; Softwell/KB paragraph moved to its own end section.
+  > `minchiate`/`cose-da-segnalare` Italianism → English (the Italian user-facing
+  > closing message stays Italian, reworded to drop the word). article-medium.md →
+  > docs/article-medium.md (git mv, no inbound links). Version 4.1.0 in plugin.json
+  > and both places in marketplace.json. Verified: every 37%/60% occurrence carries
+  > slim provenance; `62 assertions|62/62|from its own .SKILL.md.` and `minchiate`
+  > in plugins/ both empty; README states 109 = the suite RESULT line; article moved;
+  > versions 4.1.0; flake8 clean; bash and zsh suites exit 0 at 109 passed / 0 failed;
+  > --validate on the benchmark fixture exits 0.
+  > Files: README.md, docs/loop-engineering.md, plugins/phased-workflow/refs/common.md, plugins/phased-workflow/skills/run-all-phases/SKILL.md, plugins/phased-workflow/refs/write-workflow-autonomous.md, plugins/phased-workflow/scripts/run-all-phases.sh, docs/article-medium.md, plugins/phased-workflow/.claude-plugin/plugin.json, .claude-plugin/marketplace.json
   - Pattern reference: `tests/benchmark/results/README.md` — the one document in this
     repo that already does honest provenance: it states what each run measured, which
     conclusions survive, and which are superseded. Match its register and its habit

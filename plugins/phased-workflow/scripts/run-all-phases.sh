@@ -85,8 +85,11 @@ if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V 
   # light phase completed its work but left it uncommitted, and a later full-skill
   # phase, seeing predecessors with no commits, inferred a repo-wide no-commit mode
   # and followed suit. The commit instruction now lives in the contract; S14 guards
-  # the clause. Measured on the seeded fixture: same external outcomes as the full
-  # skill, ~40% cheaper, half the wall time. Hard phases keep the full ritual.
+  # the clause. Measured on the seeded toy fixture (n=3): ~37% cheaper and ~60% of
+  # the wall time. That figure is the `slim` hardcoded control vs `plain`, the two
+  # arms whose provenance survived the frozen-copy defect — not this shipped light
+  # contract, whose "same external outcomes" was never measured against it. See
+  # tests/benchmark/results/README.md. Hard phases keep the full ritual.
   LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. When the phase is done, make exactly one commit for it -- the phase code and its own plan status update together, git add -A && git commit -m "wf(phase N): <title>" -- so the next phase starts from a clean tree. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
