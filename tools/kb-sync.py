@@ -29,7 +29,7 @@ Usage
     tools/kb-sync.py                 # dry run: what would change, per file
     tools/kb-sync.py --apply         # push, then record the new base
     tools/kb-sync.py --base <ref>    # override the recorded base commit
-    tools/kb-sync.py --only run-all-phases finalize-workflow
+    tools/kb-sync.py --only run-workflow finalize-workflow
 
 Exit status is non-zero if any file conflicts, so CI can gate on it.
 """
@@ -55,11 +55,13 @@ MAPPING = {
     'plugins/phased-workflow/skills/write-workflow/SKILL.md': 'write-workflow',
     'plugins/phased-workflow/skills/import-workflow/SKILL.md': 'import-workflow',
     'plugins/phased-workflow/skills/execute-phase/SKILL.md': 'execute-phase',
-    'plugins/phased-workflow/skills/auto-phase/SKILL.md': 'auto-phase',
-    'plugins/phased-workflow/skills/run-all-phases/SKILL.md': 'run-all-phases',
+    'plugins/phased-workflow/skills/execute-phase-agent/SKILL.md': 'execute-phase-agent',
+    'plugins/phased-workflow/skills/run-workflow/SKILL.md': 'run-workflow',
     'plugins/phased-workflow/skills/repair-phase/SKILL.md': 'repair-phase',
+    'plugins/phased-workflow/skills/resume-workflow/SKILL.md': 'resume-workflow',
     'plugins/phased-workflow/skills/finalize-workflow/SKILL.md': 'finalize-workflow',
-    'plugins/phased-workflow/skills/check-phase-context/SKILL.md': 'check-phase-context',
+    'plugins/phased-workflow/skills/finalize-workflow-agent/SKILL.md':
+        'finalize-workflow-agent',
     'plugins/phased-workflow/skills/pull-request/SKILL.md': 'pull-request',
     'plugins/phased-workflow/skills/issue/SKILL.md': 'issue',
     'plugins/phased-workflow/refs/common.md': 'Phased Workflow — shared conventions (common.md)',
@@ -74,14 +76,24 @@ MAPPING = {
 EMBEDDED = {
     'plugins/phased-workflow/scripts/next-phase.py':
         ('next-phase.py — deterministic phase selection script', 'python'),
-    'plugins/phased-workflow/scripts/run-all-phases.sh':
-        ('run-all-phases.sh — autonomous phase loop launcher', 'bash'),
+    'plugins/phased-workflow/scripts/run-workflow.sh':
+        ('run-workflow.sh — autonomous phase loop launcher', 'bash'),
+    'plugins/phased-workflow/scripts/agent-session.sh':
+        ('agent-session.sh — run a shipped skill at the plan root', 'bash'),
 }
 
 # KB entries with no counterpart in this repo, on purpose. Listed so `--audit`
 # reports them as known rather than as a gap — an unexplained KB-only entry is
 # how drift starts.
 KB_ONLY = {
+    'check-phase-context': 'retired in 5.0.0 — absorbed into resume-workflow; '
+                           'KB entry kept as history',
+    'run-all-phases': 'renamed to run-workflow in 5.0.0; KB entry kept as '
+                      'history',
+    'auto-phase': 'renamed to execute-phase-agent in 5.0.0; KB entry kept '
+                  'as history',
+    'run-all-phases.sh — autonomous phase loop launcher':
+        'renamed to run-workflow.sh in 5.0.0; KB entry kept as history',
     'Guida ai comandi — Phased Workflow': 'KB-authored command guide (Italian)',
     'Install Phased Workflow Plugin': 'KB-authored install instructions',
     'push-context-memory': 'Sourcerer-specific, internal machines only',

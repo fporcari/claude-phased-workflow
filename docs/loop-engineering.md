@@ -1,7 +1,7 @@
 # Loop engineering — self-correcting autonomous chain
 
 The conceptual foundation of the phased-workflow autonomous chain
-(`/write-workflow` → `/run-all-phases` → `/auto-phase` / `/repair-phase` →
+(`/write-workflow` → `/run-workflow` → `/execute-phase-agent` / `/repair-phase` →
 `/finalize-workflow`). Read this to understand *why* the commands are shaped
 the way they are before modifying them.
 
@@ -25,11 +25,11 @@ The chain keeps the right skeleton for long-running autonomous work:
 macro-loop (rolling wave — ambitious plans only; the human at EVERY boundary):
     while the ## Roadmap has macro-phases left:
         /write-workflow        # detail ONLY the next macro (5-8 phases), with hindsight
-        run-all-phases ...     # the machine loops below
+        run-workflow ...     # the machine loops below
         /finalize-workflow     # commit this macro — bounded diff, review-sized
         human checkpoint       # verify direction, adjust the roadmap
 
-run-all-phases (outer loop — bash, consumes no model):
+run-workflow (outer loop — bash, consumes no model):
     pre-flight review of the plan          # human in the loop HERE
     while [ ] phases remain:
         claude -p "/goal <phase contract>" # fresh session, ONE phase, goal-guarded
@@ -45,7 +45,7 @@ run-all-phases (outer loop — bash, consumes no model):
 
 Each loop has its own budget and exit condition. The human doesn't disappear —
 they move **to the edges**: plan approval (`/write-workflow`), pre-flight
-confirmation (`/run-all-phases`), and `/finalize-workflow` (or when repair
+confirmation (`/run-workflow`), and `/finalize-workflow` (or when repair
 fails). Inside, the machine self-corrects.
 
 ## Key design decisions
@@ -94,7 +94,7 @@ fails). Inside, the machine self-corrects.
 - **Rolling-wave macro-phases for ambitious plans.** Beyond ~8-10 phases — or
   when a phase's shape depends on an earlier phase's *outcome* — the plan
   splits into macro-phases: only the first is detailed, the rest live as inert
-  `## Roadmap` bullets. Each macro gets its own run-all-phases + finalize
+  `## Roadmap` bullets. Each macro gets its own run-workflow + finalize
   (bounded uncommitted surface, review-sized diffs), and the next
   /write-workflow re-plans with hindsight. This widens the robottinizzabile
   class: "phase 19 depends on phase 12" stops being a rejection reason. The
@@ -138,7 +138,7 @@ fails). Inside, the machine self-corrects.
 
 ## Command choice: who is the verifier?
 
-- `/auto-phase` (via `/run-all-phases`) works when the feedback signal is
+- `/execute-phase-agent` (via `/run-workflow`) works when the feedback signal is
   **machine-checkable**: measurable Done, runnable tests, pre-made decisions,
   pattern references in the plan.
 - `/execute-phase` (interactive) is for phases where **the human is the
@@ -168,7 +168,7 @@ degrades fable's output, and most of these skills are exactly that.
 |--------|-------|-----|
 | Discussion *before* `/write-workflow` | fable, when the plan itself is the hard problem | Ambiguity and novel design are its strength; here there is no template fighting it |
 | `/write-workflow` (planning) | fable if the work is introspective/inventive, else opus `xhigh` | The plan is the loop's contract, so quality multiplies — but this skill is a dense template, so on fable read its steps as a contract on the output, not a procedure |
-| `/run-all-phases` pre-flight | opus `xhigh` | Judgment work, but it ends in an explicit human confirmation, so a misjudgement is caught before the loop starts |
+| `/run-workflow` pre-flight | opus `xhigh` | Judgment work, but it ends in an explicit human confirmation, so a misjudgement is caught before the loop starts |
 | Autonomous phases | opus default; sonnet when well-specified + solid pattern reference + testable logic; fable for genuinely hard phases | Decided per phase by the pre-flight |
 | `/repair-phase` | fable at `--effort max` (opus fallback) | By definition the phase's own model already failed once, and nobody is watching |
 | `/finalize-workflow` | opus `xhigh` | Most of it is git plumbing; the judgment is concentrated in the whole-diff review, where opus is high-precision *and* high-recall. On a large autonomous diff a reviewer panel beats upgrading the single pass |
@@ -181,23 +181,29 @@ mediocrity.
 
 Five test tiers cover the chain (2026-07):
 
-1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`):
-   the run-all-phases script — a shipped file since 4.0.0 — exercised with a
-   mock `claude` over twenty-one scenarios: /goal call shape, model/effort/cap
-   selection (fable cap doubled, `xhigh` → 250), repair success resuming the
-   loop, repair failure stopping it, the idempotent `Repair attempted:` marker,
-   relaunch on a `[!]` *without* that marker, attribution Case A (a reopened
-   `[x]` phase drops the done-count without tripping the progress guard),
-   attribution Case B (`[~]` stops the run), fable→opus fallback on session
-   crash, no-progress guard, inert `## Roadmap`, prose bullets in `## Notes`
-   held inert with the state greps single-source (S18), `--validate` gating the
-   launcher before any session (S19), every silent fallback announcing itself
-   (S20), `/import-workflow` classification and its mid-run git sequence (S17),
-   and the pre-2.1.139 plain-prompt fallback — plus static checks on what the
-   repo ships: no frozen copy of a shipped contract anywhere in the harness and
-   the light contract's per-phase-commit clause intact (S14), every skill inside
-   its own `allowed-tools` (S15), every skill on the KB sync list (S16), and no
-   skill or ref still addressing `~/.claude/` (S21). **109 assertions.**
+1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`),
+   **124 assertions over 23 scenarios**, in three kinds. *Mock-driven* (a mock
+   `claude` binary drives the run-workflow script, a shipped file since
+   4.0.0): /goal call shape, model/effort/cap selection (fable cap doubled,
+   `xhigh` → 250), repair success resuming the loop, repair failure stopping
+   it, the idempotent `Repair attempted:` marker, relaunch on a `[!]`
+   *without* that marker, attribution Case A (a reopened `[x]` phase drops
+   the done-count without tripping the progress guard), attribution Case B
+   (`[~]` stops the run), fable→opus fallback on session crash, no-progress
+   guard, inert `## Roadmap`, the pre-2.1.139 plain-prompt fallback (S1–S13),
+   `--validate` gating the launcher before any session and warnings printed
+   rather than discarded (S19), every silent fallback announcing itself
+   (S20), and the live half of S18 (prose bullets in `## Notes` held inert).
+   *Real-git, no mock*: `/import-workflow` classification and its mid-run git
+   sequence (S17); the `--plans` location service across root, worktree and
+   checkout-less branch (S22). *Static, on what the repo ships*: no frozen
+   copy of a shipped contract anywhere in the harness and the light
+   contract's per-phase-commit clause intact (S14), every skill inside its
+   own `allowed-tools` (S15), every skill on the KB sync list (S16), the
+   phase-state matches single-source — S18's static half, proven by mutation
+   —, no skill or ref still addressing `~/.claude/` (S21, proven by
+   mutation), and every `-agent` skill a thin variant citing its base (S23,
+   proven by mutation).
 
    S15 and S16 exist because both gaps are quiet by construction. A skill can
    instruct a command its allowlist never pre-approves — `write-workflow` called

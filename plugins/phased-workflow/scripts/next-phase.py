@@ -2,26 +2,22 @@
 """Compute the next eligible phase from a phased work plan.
 
 Deterministic implementation of the phase-selection semantics used by
-the phased-workflow skills (/execute-phase, /auto-phase). The canonical
+the phased-workflow skills (/execute-phase, /execute-phase-agent). The canonical
 description of the semantics lives in
 ${CLAUDE_PLUGIN_ROOT}/refs/common.md ("Phase selection").
 
 Statuses: [ ] pending, [>] in execution, [x] done, [!] issue, [~] blocked.
-Tags (backticked at end of the phase line): parallel:N, group:N, vast.
+Tags (backticked at end of the phase line): vast.
 
 Rules:
 - [x] phases are complete; every other status counts as "not complete".
-- A pending phase is blocked while any preceding phase outside its own
-  parallel:N group is not complete. A phase without parallel:N is a
-  synchronization barrier: all preceding phases must be [x].
-- A selected group:N phase pulls in its whole consecutive run of the
-  same tag as one unit.
+- Phases run strictly in order: a pending phase is blocked while any
+  preceding phase is not [x].
 - [>] phases are reported as resume candidates only when no pending
   phase is eligible.
 
 Output: a "phases:" table plus one final "recommendation:" line:
   recommendation: next: 3               execute Phase 3
-  recommendation: next: 3 unit: 3,4     group unit, phases run together
   recommendation: resume-candidate: 2 (age: 3.4h, wip: yes)
   recommendation: attention: 5[!]       user must resolve before going on
   recommendation: done                  all phases [x]
@@ -31,6 +27,12 @@ Output: a "phases:" table plus one final "recommendation:" line:
 "<path>:<line>: error|warning: <message>" per finding, then a final
 "validate: N error(s), M warning(s)". Exit 0 when clean or warnings only,
 1 on validation errors, 2 when the plan is unreadable or unresolvable.
+
+--plans lists every workflow plan reachable from this repo — the current
+root's, every linked worktree's, and every wf/* branch with no worktree
+(read without checkout) — one pipe-separated line per plan:
+  plan|<path or branch:path>|branch|<name>|worktree|<path or ->
+      |phases|<done>/<total>|state|<clean|running|failed|blocked>
 """
 
 import argparse
@@ -41,7 +43,7 @@ import sys
 from datetime import datetime
 
 PHASE_RE = re.compile(r'^- \[([ x!~>])\] \*\*Phase (\d+)\*\*:\s*(.*)$')
-TAG_RE = re.compile(r'`(parallel:\d+|group:\d+|vast)`')
+TAG_RE = re.compile(r'`(vast)`')
 EXEC_RE = re.compile(r'In execution since\s+(\S+)')
 
 
@@ -53,20 +55,6 @@ class Phase:
         self.title = TAG_RE.sub('', rest).strip()
         self.since = None
         self.wip = False
-
-    def _tag(self, prefix):
-        for t in self.tags:
-            if t.startswith(prefix):
-                return t
-        return None
-
-    @property
-    def parallel(self):
-        return self._tag('parallel:')
-
-    @property
-    def group(self):
-        return self._tag('group:')
 
     @property
     def age_hours(self):
@@ -80,42 +68,29 @@ class Phase:
         return (now - ts).total_seconds() / 3600
 
 
-def parse(path):
+def parse_lines(lines):
     phases = []
-    with open(path, encoding='utf-8') as f:
-        for line in f:
-            m = PHASE_RE.match(line.rstrip())
+    for line in lines:
+        m = PHASE_RE.match(line.rstrip())
+        if m:
+            phases.append(Phase(*m.groups()))
+        elif phases and line.lstrip().startswith('>'):
+            m = EXEC_RE.search(line)
             if m:
-                phases.append(Phase(*m.groups()))
-            elif phases and line.lstrip().startswith('>'):
-                m = EXEC_RE.search(line)
-                if m:
-                    phases[-1].since = m.group(1)
-                if 'WIP:' in line:
-                    phases[-1].wip = True
+                phases[-1].since = m.group(1)
+            if 'WIP:' in line:
+                phases[-1].wip = True
     return phases
+
+
+def parse(path):
+    with open(path, encoding='utf-8') as f:
+        return parse_lines(f)
 
 
 def blockers(phases, i):
     """Numbers of preceding phases that block phases[i]."""
-    p = phases[i]
-    return [q.number for q in phases[:i]
-            if q.status != 'x'
-            and not (p.parallel and q.parallel == p.parallel)]
-
-
-def group_unit(phases, i):
-    """Numbers of the maximal consecutive run sharing phases[i]'s group tag."""
-    tag = phases[i].group
-    if not tag:
-        return None
-    lo = i
-    while lo > 0 and phases[lo - 1].group == tag:
-        lo -= 1
-    hi = i
-    while hi + 1 < len(phases) and phases[hi + 1].group == tag:
-        hi += 1
-    return [p.number for p in phases[lo:hi + 1]]
+    return [q.number for q in phases[:i] if q.status != 'x']
 
 
 def repo_root():
@@ -146,6 +121,70 @@ def resolve_plan_path():
     return str(found[0]), None
 
 
+# --- plan location (--plans) ------------------------------------------------
+# Every workflow plan reachable from this repo: the current root's active
+# plan(s), every linked worktree's, and every wf/* branch that has no worktree,
+# read WITHOUT checking it out. One line per plan, pipe-separated, so a skill
+# can disambiguate when several workflows exist.
+
+def _git(args, cwd=None):
+    try:
+        return subprocess.run(['git'] + args, capture_output=True, text=True,
+                              check=True, cwd=cwd).stdout
+    except (subprocess.CalledProcessError, OSError):
+        return ''
+
+
+def worktree_map():
+    """branch -> checkout path, from `git worktree list --porcelain`."""
+    result, path = {}, None
+    for line in _git(['worktree', 'list', '--porcelain']).splitlines():
+        if line.startswith('worktree '):
+            path = line[len('worktree '):]
+        elif line.startswith('branch refs/heads/') and path:
+            result[line[len('branch refs/heads/'):]] = path
+    return result
+
+
+def plan_state(phases):
+    for status, state in (('!', 'failed'), ('~', 'blocked'), ('>', 'running')):
+        if any(p.status == status for p in phases):
+            return state
+    return 'clean'
+
+
+def list_plans():
+    """[(location, branch, checkout-or-None, phases)] for every plan found."""
+    rows, root = [], repo_root()
+    checkouts = worktree_map()
+    for branch, path in checkouts.items():
+        for plan in sorted(pathlib.Path(path).glob('.phased/active/*/plan.md')):
+            rows.append((str(plan), branch, path, parse(plan)))
+    for line in _git(['for-each-ref', '--format=%(refname:short)',
+                      'refs/heads/wf/'], cwd=root).splitlines():
+        if line in checkouts:
+            continue
+        names = _git(['ls-tree', '-r', '--name-only', line,
+                      '.phased/active/'], cwd=root).splitlines()
+        for name in names:
+            if not name.endswith('/plan.md'):
+                continue
+            text = _git(['show', f'{line}:{name}'], cwd=root)
+            if text:
+                rows.append((f'{line}:{name}', line, None,
+                             parse_lines(text.splitlines())))
+    return rows
+
+
+def print_plans():
+    for location, branch, checkout, phases in list_plans():
+        done = sum(1 for p in phases if p.status == 'x')
+        print(f'plan|{location}|branch|{branch}'
+              f'|worktree|{checkout or "-"}'
+              f'|phases|{done}/{len(phases)}'
+              f'|state|{plan_state(phases)}')
+
+
 def describe(phases, i):
     p = phases[i]
     parts = [f'  {p.number} [{p.status}] {p.title}']
@@ -166,9 +205,6 @@ def describe(phases, i):
 def recommend(phases):
     for i, p in enumerate(phases):
         if p.status == ' ' and not blockers(phases, i):
-            unit = group_unit(phases, i)
-            if unit and len(unit) > 1:
-                return f'next: {p.number} unit: {",".join(map(str, unit))}'
             return f'next: {p.number}'
     candidates = [p for p in phases if p.status == '>']
     if candidates:
@@ -199,11 +235,15 @@ def recommend(phases):
 
 KNOWN_NOTE_FIELDS = (
     'Done', 'Files', 'Issue', 'Attempted', 'Repaired', 'Repair attempted',
-    'Review', 'Blocked', 'WIP', 'In execution since',
+    'Review', 'Blocked', 'WIP', 'In execution since', 'Verify', 'Verified',
 )
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')
 CONFIG_HEADING = 'Suggested execution config'
+# Known limitation: NOTE_RE cannot distinguish a new note field from a
+# wrapped continuation line of a previous note that happens to begin
+# "Capitalised:" — such a line draws the unknown-field warning. Accepted by
+# design: it is a warning, and a warning never blocks.
 NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):')
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
@@ -220,7 +260,8 @@ def _taglike(tok):
     Narrow on purpose: a phase title routinely carries backticked prose
     (`next-phase.py --validate`), and flagging that would make the validator
     cry wolf. Only `parallel`/`group`/`vast` prefixes and `word:number` shapes
-    qualify.
+    qualify — which also makes the retired `parallel:N` / `group:N` tags on
+    a pre-5.0 plan surface as warnings instead of being silently ignored.
     """
     return bool(re.match(r'(parallel|group|vast)', tok)
                 or re.match(r'[a-z]+:\d+$', tok))
@@ -278,8 +319,7 @@ def validate(path, phases, text):
                 if _taglike(tok):
                     add(idx, 'warning',
                         'backticked token `%s` on the phase line looks like a '
-                        'malformed tag (valid: parallel:N, group:N, vast)'
-                        % tok)
+                        'malformed or retired tag (valid: vast)' % tok)
 
         if in_work_plan:
             nm = NOTE_RE.match(line)
@@ -374,10 +414,17 @@ def main():
                          'under <git root>/.phased/active/)')
     ap.add_argument('--resolve', action='store_true',
                     help='print the active plan path and exit')
+    ap.add_argument('--plans', action='store_true',
+                    help='list every plan reachable from this repo (current '
+                         'root, linked worktrees, wf/* branches read without '
+                         'checkout), one pipe-separated line per plan')
     ap.add_argument('--validate', action='store_true',
                     help='validate the plan structure and exit '
                          '(0 clean/warnings, 1 errors, 2 unreadable)')
     args = ap.parse_args()
+    if args.plans:
+        print_plans()
+        return 0
     path = args.plan
     if path is None:
         path, err = resolve_plan_path()

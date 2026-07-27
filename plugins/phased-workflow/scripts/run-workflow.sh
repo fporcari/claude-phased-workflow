@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase loop for /run-all-phases: one fresh `claude` session per phase.
+# Phase loop for /run-workflow: one fresh `claude` session per phase.
 #
 # Resolves the active plan under .phased/, asks next-phase.py which phase is
 # next, looks up its model/effort/cap in the execution config table, launches
@@ -11,8 +11,6 @@
 # tests/benchmark/bench.sh extract them from here, so keep them as
 # single-quoted one-line assignments.
 
-REPO_ROOT=$(git rev-parse --show-toplevel)
-
 # The selector ships in the same plugin directory as this launcher, so it can
 # never be a different version than we expect. Resolve it relative to our own
 # location ($(dirname "$0"), never ${BASH_SOURCE[0]} — this runs under zsh too,
@@ -20,6 +18,42 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 # inside a script that can find itself.
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Workspace create-or-attach: the launcher runs from anywhere. If the current
+# root has no active plan, ask the selector for every reachable one (--plans).
+# One plan in another checkout -> operate there; one plan on a branch with no
+# checkout -> create its worktree under .claude/worktrees/ (announced: it is
+# the one git mechanic worth a line); several plans -> list them and stop.
+if ! find "$REPO_ROOT/.phased/active" -mindepth 2 -maxdepth 2 -name plan.md 2>/dev/null | grep -q . \
+   && [ -f "$NEXT_PHASE_PY" ]; then
+  PLANS=$(python3 "$NEXT_PHASE_PY" --plans 2>/dev/null | grep '^plan|')
+  PLANS_COUNT=$(printf '%s' "$PLANS" | grep -c .)
+  if [ "$PLANS_COUNT" -gt 1 ]; then
+    echo "Several workflows reachable from here — relaunch from the one you mean:"
+    printf '%s\n' "$PLANS"
+    exit 1
+  fi
+  if [ "$PLANS_COUNT" -eq 1 ]; then
+    PLAN_BRANCH=$(printf '%s' "$PLANS" | awk -F'|' '{print $4}')
+    PLAN_CHECKOUT=$(printf '%s' "$PLANS" | awk -F'|' '{print $6}')
+    if [ "$PLAN_CHECKOUT" = "-" ]; then
+      PLAN_SLUG=$(printf '%s' "$PLANS" | awk -F'|' '{print $2}' \
+        | sed 's|.*/\.phased/active/||; s|^[^:]*:\.phased/active/||; s|/plan\.md$||')
+      PLAN_CHECKOUT="$REPO_ROOT/.claude/worktrees/$PLAN_SLUG"
+      echo "NOTE: branch $PLAN_BRANCH has no checkout — creating its worktree at $PLAN_CHECKOUT."
+      git worktree add "$PLAN_CHECKOUT" "$PLAN_BRANCH" || exit 1
+      mkdir -p "$PLAN_CHECKOUT/.claude"
+      [ -f "$REPO_ROOT/.claude/settings.local.json" ] \
+        && cp "$REPO_ROOT/.claude/settings.local.json" "$PLAN_CHECKOUT/.claude/settings.local.json"
+    else
+      echo "NOTE: the active plan lives in $PLAN_CHECKOUT (branch $PLAN_BRANCH) — operating there."
+    fi
+    cd "$PLAN_CHECKOUT" || exit 1
+    REPO_ROOT="$PLAN_CHECKOUT"
+  fi
+fi
 
 # Resolve the active plan: exactly one .phased/active/<slug>/plan.md.
 # Done with `find` rather than a glob on purpose — an unmatched glob is left
@@ -55,6 +89,12 @@ if [ -f "$NEXT_PHASE_PY" ]; then
     echo "Plan validation failed — fix the plan under .phased/active/ and relaunch."
     exit 1
   fi
+  # Warnings never block, but computing them and discarding them would leave
+  # the two-severity design half-mute — print every warning line.
+  if printf '%s\n' "$VALIDATE_OUT" | grep -q 'warning:'; then
+    printf '%s\n' "$VALIDATE_OUT" | grep 'warning:'
+    echo "NOTE: plan validation reported warnings (non-blocking) — see above."
+  fi
 else
   echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
 fi
@@ -76,7 +116,7 @@ phase_lines() { grep -E '^- \[[ x!~>]\] \*\*Phase' "$PLAN" 2>/dev/null; }
 # the plan shows the outcome. Older CLIs fall back to the plain skill prompt.
 CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
 if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
-  PHASE_PROMPT='/goal Use the auto-phase skill to execute exactly ONE phase of the active plan under .phased/active/. Condition: the plan gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
+  PHASE_PROMPT='/goal Use the execute-phase-agent skill to execute exactly ONE phase of the active plan under .phased/active/. Condition: the plan gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
   REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
   # Light mode for Effort=low phases: no skill ritual — the goal contract
   # carries the chain invariants itself (bookkeeping notes included: what the
@@ -93,7 +133,7 @@ if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V 
   LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. When the phase is done, make exactly one commit for it -- the phase code and its own plan status update together, git add -A && git commit -m "wf(phase N): <title>" -- so the next phase starts from a clean tree. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
-  PHASE_PROMPT='/auto-phase'
+  PHASE_PROMPT='/execute-phase-agent'
   REPAIR_PROMPT='/repair-phase'
   LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
@@ -139,9 +179,9 @@ for i in $(seq 1 $REMAINING); do
   RUN_PHASE=1
 
   # Ask next-phase.py which phase is next — the SAME selector the sub-session
-  # uses (it honours parallel:N barriers, group:N units and [>] resumes). Using
-  # plain file order here would pick a different phase than the one that
-  # actually runs, and apply the wrong row's model/effort/cap to it.
+  # uses (it honours the strict phase order and [>] resumes). Using plain
+  # file order here would pick a different phase than the one that actually
+  # runs, and apply the wrong row's model/effort/cap to it.
   # Keep stderr (2>&1, not 2>/dev/null): if the selector cannot run, the reason
   # (missing file, syntax error, unreadable plan) must be visible in the NOTE
   # the *) fallback arm prints, not swallowed.
@@ -172,10 +212,11 @@ for i in $(seq 1 $REMAINING); do
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
-      # This is the serious fallback and says so: file order ignores parallel:N
-      # and group:N barriers, so the launcher may apply one phase's model,
-      # effort and cap to a different phase than the sub-session actually runs.
-      echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores parallel:N / group:N barriers, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
+      # This is the serious fallback and says so: file order ignores [>]
+      # resumes and the attention/blocked handling, so the launcher may apply
+      # one phase's model, effort and cap to a different phase than the
+      # sub-session actually runs.
+      echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores [>] resumes and attention/blocked handling, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
       NEXT_PHASE=$(grep -n "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 
@@ -243,11 +284,11 @@ for i in $(seq 1 $REMAINING); do
 
   # Budget flag assembled once; empty array = no cap (raw subscription mode)
   BUDGET_ARGS=()
-  if [ -z "$RUN_ALL_PHASES_NO_BUDGET" ]; then
+  if [ -z "$RUN_WORKFLOW_NO_BUDGET" ]; then
     BUDGET_ARGS=(--max-budget-usd "$BUDGET")
     CAP_LABEL="runaway-cap: \$$BUDGET"
   else
-    CAP_LABEL="cap: none (RUN_ALL_PHASES_NO_BUDGET=1)"
+    CAP_LABEL="cap: none (RUN_WORKFLOW_NO_BUDGET=1)"
   fi
 
   # RUN_PHASE=0 means the selector found no startable phase (a [!]/[~] blocks
@@ -285,7 +326,7 @@ for i in $(seq 1 $REMAINING); do
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
-      echo "Fix the issue (or delete its 'Repair attempted:' note to grant another repair round), then run /run-all-phases again."
+      echo "Fix the issue (or delete its 'Repair attempted:' note to grant another repair round), then run /run-workflow again."
       break
     fi
 
@@ -296,7 +337,7 @@ for i in $(seq 1 $REMAINING); do
     echo ""
     echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
     REPAIR_BUDGET_ARGS=()
-    [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
+    [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
     set -o pipefail
     claude -p "$REPAIR_PROMPT" \
       --model fable \
@@ -312,7 +353,7 @@ for i in $(seq 1 $REMAINING); do
     if [ "$REPAIR_EXIT" -ne 0 ] && ! first_bang_block | grep -q 'Repair attempted:'; then
       echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
       REPAIR_BUDGET_ARGS=()
-      [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+      [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
       claude -p "$REPAIR_PROMPT" \
         --model opus \
         --effort max \

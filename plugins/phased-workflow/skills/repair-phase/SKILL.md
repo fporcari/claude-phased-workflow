@@ -5,22 +5,22 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 # Repair Phase
 
-Fresh-eyes repair of a phase `/auto-phase` left `[!]`. It runs in a new context on purpose: **the previous session's diagnosis may itself be the problem — question it, don't continue it.**
+Fresh-eyes repair of a phase `/execute-phase-agent` left `[!]`. It runs in a new context on purpose: **the previous session's diagnosis may itself be the problem — question it, don't continue it.**
 
-**Usage:** launched by `/run-all-phases` (at most once per phase), or `claude -p '/repair-phase'`.
+**Usage:** launched by `/run-workflow` (at most once per phase), or `claude -p '/repair-phase'`.
 
-**Non-negotiables:** no questions, ONE commit at the end (Step 4), one phase per invocation, everything written in English, and always leave a machine-readable outcome — `[x]` + `> Repaired:`, or `[!]` + `> Repair attempted:`. Under `/run-all-phases` that outcome is the session's exit condition, checked by an independent evaluator.
+**Non-negotiables:** no questions, ONE commit at the end (Step 4), one phase per invocation, everything written in English, and always leave a machine-readable outcome — `[x]` + `> Repaired:`, or `[!]` + `> Repair attempted:`. Under `/run-workflow` that outcome is the session's exit condition, checked by an independent evaluator.
 
 ## Step 1: Locate and read the failure
 
-Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`) and take the **first** `[!]` phase.
+Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`; from outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*) and take the **first** `[!]` phase.
 
 - No `[!]` → print "No failed phases to repair." and exit.
 - It already has `> Repair attempted:` → print "Repair already attempted for Phase N — human review required." and exit. Never loop repairs.
 
 Read its `> Issue:`, `> Attempted:` and `> Files:`. **Hard rule: never repeat an attempt listed in `> Attempted:`.** If your diagnosis leads to essentially one of those fixes, the diagnosis is wrong — dig deeper.
 
-Under `/run-all-phases` there is one more source, and it is the richest: `log/phase-N.txt` next to the plan holds the failing session's actual transcript. The `> Attempted:` notes are that session's summary of itself — the log is what it really did.
+Under `/run-workflow` there is one more source, and it is the richest: `log/phase-N.txt` next to the plan holds the failing session's actual transcript. The `> Attempted:` notes are that session's summary of itself — the log is what it really did.
 
 ## Step 2: Diagnose from scratch
 
@@ -30,11 +30,11 @@ Under `/run-all-phases` there is one more source, and it is the richest: `log/ph
 
    `HEAD` is that commit only if nothing landed after it, which is the normal case (a `[!]` phase stops the run). Otherwise find it by message rather than assuming: `git log --format='%H %s' | grep "phase N"`.
 4. Root-cause first: grep the callers of the touched functions, compare against the pattern reference, and ask whether the previous fixes aimed at a symptom.
-5. Scale exploration to the phase's Effort as in `/auto-phase` Step 2.
+5. Scale exploration to the phase's Effort as in `/execute-phase-agent` Step 2.
 
 ## Step 3: Fix and converge
 
-Same rules as `/auto-phase` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
+Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
 
 Then run ONE `phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays.
 

@@ -1,6 +1,6 @@
 ---
 description: Finalize the workflow - verify all phases, prepare final commit
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Skill
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent
 ---
 
 # Finalize Workflow
@@ -17,7 +17,7 @@ git branch --show-current
 git worktree list --porcelain
 ```
 
-Set `IN_WORKTREE` from whether the cwd is in the worktree list. No active plan → stop; the plan lives on the workflow branch, so check `git branch --show-current` before concluding there is nothing to finalize.
+Set `IN_WORKTREE` from whether the cwd is in the worktree list. No active plan → stop; the plan lives on the workflow branch, so check `git branch --show-current` before concluding there is nothing to finalize — and check `--plans` first: the workflow may live in another checkout (`common.md` → *Plan location*). When it does, every git command below runs `git -C <plan root>` and every path is anchored there; the consolidation itself (Step 7) must happen on the plan's branch, never on the cwd's.
 
 Read the plan for `Parent:`, the issue number and the phase states. **Resolve the parent ref**: `origin/<parent>` if `git rev-parse --verify` finds it, otherwise the local `<parent>`.
 
@@ -49,7 +49,15 @@ Consolidation happens at Step 7, once the review has passed, and its shape depen
 
 ## Step 4: Pre-commit review
 
-Run the built-in `code-review` skill (Skill tool) on the staged diff — never with `--fix`. Effort `high` when the plan is `Mode: autonomous` or any phase carries a `> Review:` note (nobody read that code as it landed); `medium` otherwise.
+**When the plan lives in another checkout (its own worktree), or the cwd is outside the plan's root**, do not review in-session: silently run the shipped verify agent in a clean sub-session at the plan's root —
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/agent-session.sh" finalize-workflow-agent
+```
+
+— and read its report (stdout, teed to the plan's `log/finalize-workflow-agent.txt`). Its prompt ships in the plugin, not composed here: that is what keeps the review independent. Treat its FINDINGS exactly like the in-session review's below, and its VERIFY-NOTES as Step 2's `> Verify:` collection. The agent never touches history; every decision stays here, with the user.
+
+**Otherwise** (the plan is in this root, no worktree of its own), run the built-in `code-review` skill (Skill tool) on the staged diff — never with `--fix`. Effort `high` when the plan is `Mode: autonomous` or any phase carries a `> Review:` note (nobody read that code as it landed); `medium` otherwise.
 
 Pass every `> Review:` note as an explicit focus point — each must come out confirmed or explicitly dismissed, never silently dropped. And instruct the review to hunt **cross-phase** issues specifically: each phase ran in a fresh session and was verified in isolation, so nothing has yet seen the whole diff at once — one phase breaking another's assumption, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
 

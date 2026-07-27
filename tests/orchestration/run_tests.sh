@@ -1,14 +1,29 @@
 #!/bin/bash
 # Regression tests for the phased-workflow chain.
-# S1-S13 run the real shipped run-all-phases.sh
-# against a mock `claude` binary: model/effort/cap selection under the /goal
-# guard, repair success and failure, the idempotent repair marker, fable->opus
-# fallback, progress guard, baseline attribution (reopen / [~]), inert Roadmap,
-# and the pre-2.1.139 prompt fallback. S14-S16 are static checks on what the
-# repo ships: no frozen copies of the shipped contracts (S14), every skill
-# inside its own allowed-tools (S15), every skill on the KB sync list (S16).
+#
+# Live scenarios (mock `claude`): S1-S13 run the real shipped run-workflow.sh —
+# model/effort/cap selection under the /goal guard, repair success and failure,
+# the idempotent repair marker, fable->opus fallback, progress guard, baseline
+# attribution (reopen / [~]), inert Roadmap, and the pre-2.1.139 prompt
+# fallback. S19 exercises the --validate gate (and that warnings are printed,
+# not discarded); S20 the announced fallbacks (missing selector, unknown
+# model/effort). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
+# plus a static guard (check_state_matches.py — every phase-state match goes
+# through the single-source helpers or carries the **Phase anchor), proven by
+# mutation.
+#
+# Real-git scenarios (no mock): S17 drives /import-workflow's classifier and
+# its mid-run git sequence; S22 the --plans location service (root, worktree,
+# orphan branch).
+#
+# Static checks on what the repo ships: no frozen copies of the shipped
+# contracts and the light contract's per-phase-commit clause intact (S14),
+# every skill inside its own allowed-tools (S15), every skill on the KB sync
+# list (S16), no skill or ref addressing ~/.claude/ (S21, check_home_paths.py,
+# proven by mutation), and every -agent skill a thin variant citing its base
+# (S23, proven by mutation).
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
-RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-all-phases.sh"
+RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 OT="$WORK"
@@ -100,7 +115,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup; run
 assert "phase1 (low) uses LIGHT contract" 'grep -q -- "-p /goal Execute the next pending.*--model sonnet --effort [a-z]* --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
 assert "light contract demands bookkeeping notes" 'grep -q -- "> Done: and > Files: notes recorded" .claude/invocations.log'
-assert "phases 2-3 use FULL skill contract" '[ "$(grep -c -- "-p /goal Use the auto-phase skill" .claude/invocations.log)" = 2 ]'
+assert "phases 2-3 use FULL skill contract" '[ "$(grep -c -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log)" = 2 ]'
 assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
@@ -167,7 +182,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
 assert "fallback notice printed" 'grep -q "goal guard unavailable" out.log'
-assert "plain /auto-phase prompt used" 'grep -q -- "-p /auto-phase --model" .claude/invocations.log'
+assert "plain /execute-phase-agent prompt used" 'grep -q -- "-p /execute-phase-agent --model" .claude/invocations.log'
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
@@ -210,7 +225,7 @@ open('.phased/active/toy/plan.md','w').write(s)
 EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "no phase session started" '! grep -q "auto-phase skill\|Execute the next pending" .claude/invocations.log'
+assert "no phase session started" '! grep -q "execute-phase-agent skill\|Execute the next pending" .claude/invocations.log'
 assert "repair launched" 'grep -q "repair-phase skill" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
 assert "phase 1 repaired" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
@@ -256,7 +271,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "xhigh cap 250 and effort passed" 'grep -q -- "--model opus --effort xhigh --permission-mode auto --max-budget-usd 250" .claude/invocations.log'
-assert "xhigh uses the FULL skill contract" 'grep -q -- "-p /goal Use the auto-phase skill" .claude/invocations.log'
+assert "xhigh uses the FULL skill contract" 'grep -q -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log'
 
 echo "== S14: shipped contracts are the ones measured (no frozen copies) =="
 # Free tier, no session: guards the invalidator that silently makes a paid
@@ -431,29 +446,24 @@ assert "S18: the [!] decoy did not report a failed phase" '! grep -q "A phase fa
 assert "S18: the [~] decoy did not block the run" '! grep -q "A phase is blocked" out.log'
 assert "S18: no false no-progress stop" '! grep -q "No progress in the last run" out.log'
 
-# Static regression guard: no unqualified phase-state grep may re-enter the
+# Static regression guard: no unqualified phase-state match may re-enter the
 # launcher. Every grep whose pattern carries a bracketed state (\[x\], \[ \],
 # \[!\], \[~\], \[>\], or the \[[ x!~>]\] class) must be one of the four
-# single-source helper definitions. Follows the S14 extract() heredoc idiom.
-GUARD_OUT="$(python3 - "$RUNNER_SRC" <<'PYG'
-import re, sys
-lines = open(sys.argv[1], encoding='utf-8').read().splitlines()
-helper = re.compile(r'^(phase_re|phase_count|phase_any|phase_lines)\(\)')
-state = re.compile(r'\\\[\[?[ x!~>]')   # a literal \[ opening a phase-state match
-bad = []
-for i, line in enumerate(lines, 1):
-    if 'grep' not in line:
-        continue
-    if not state.search(line):
-        continue
-    if helper.match(line.strip()):
-        continue
-    bad.append('%d: %s' % (i, line.strip()))
-sys.stdout.write('\n'.join(bad))
-PYG
-)"
+# single-source helper definitions — and non-grep matchers (the awk block in
+# first_bang_block) must carry the \*\*Phase anchor. The guard lives in
+# check_state_matches.py so the mutation below re-runs the REAL check, not a
+# re-implementation (the S15 idiom).
+STATE_GUARD="$TESTDIR/check_state_matches.py"
+GUARD_OUT="$(python3 "$STATE_GUARD" "$RUNNER_SRC")"
 [ -z "$GUARD_OUT" ] || echo "  offending: $GUARD_OUT"
-assert "S18: no phase-state grep bypasses the helpers" '[ -z "$GUARD_OUT" ]'
+assert "S18: no phase-state match bypasses the helpers or the anchor" '[ -z "$GUARD_OUT" ]'
+# Mutation: strip the \*\*Phase anchor everywhere (the pre-4.1.0 shape of the
+# awk patterns) — the guard must go red on the awk lines it used to skip.
+S18_MUT="$(mktemp -d)"
+sed 's/\\\*\\\*Phase//g' "$RUNNER_SRC" > "$S18_MUT/runner.sh"
+assert "S18: the guard fails when the awk anchor is stripped" \
+  '! python3 "$STATE_GUARD" "$S18_MUT/runner.sh" >/dev/null 2>&1'
+rm -rf "$S18_MUT"
 
 echo "== S19: next-phase.py --validate gates the launcher before any session =="
 # The validator shares the selector's own regexes, so a plan it rejects is one
@@ -553,6 +563,32 @@ WARN_OUT="$(python3 "$NEXTPHASE" --validate "$WARN_PLAN" 2>&1)"; WARN_RC=$?
 assert "S19: an unknown note field warns but does not fail (exit 0)" '[ "$WARN_RC" = 0 ]'
 assert "S19: the warning names the unknown field" 'printf "%s" "$WARN_OUT" | grep -q "warning: unknown note field .> Foo:"'
 
+# (e) a warnings-only plan still runs, and the launcher PRINTS the warnings —
+# the two-severity design is mute if warning lines are computed and discarded.
+setup S19e
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [x] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+
+## Notes
+- [ ] a prose checkbox that draws a warning
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19e: warnings-only plan is not blocked" '! grep -q "Plan validation failed" out.log'
+assert "S19e: the warning lines are printed, not discarded" 'grep -q "warning: checkbox bullet outside" out.log'
+assert "S19e: the launcher flags them as non-blocking" 'grep -q "NOTE: plan validation reported warnings" out.log'
+
 echo "== S20: every silent fallback announces itself with a NOTE =="
 # Force the fallback path. After Phase 2 the launcher resolves its selector
 # beside itself, so a runner copied to a directory with no sibling next-phase.py
@@ -569,7 +605,7 @@ setup S20a; fixture2
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run_nosel
 assert "S20a: the selector fallback prints a NOTE" 'grep -q "falling back to plan file order" out.log'
-assert "S20a: the NOTE names the barrier consequence" 'grep -q "parallel:N / group:N barriers" out.log'
+assert "S20a: the NOTE names the fallback's consequence" 'grep -q "resumes and attention/blocked handling" out.log'
 assert "S20a: both phases still complete on file order" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
 
 # (b) unsupported Model and Effort cells -> both NOTEs, safe defaults applied.
@@ -605,50 +641,111 @@ echo "== S21: skills and refs address the plugin, not ~/.claude =="
 # longer owns. The one legitimate mention is refs/common.md naming
 # ~/.claude/settings.json as a file auto mode must not self-modify — a different
 # file, and a description, not a path the plugin resolves. Static check, S18 idiom.
+# The guard lives in check_home_paths.py so the mutation below re-runs the
+# REAL check, not an inline copy of its logic (the S15 idiom).
 S21_SKILLS="$TESTDIR/../../plugins/phased-workflow/skills"
 S21_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
-HOME_OUT="$(python3 - "$S21_SKILLS" "$S21_REFS" <<'PYH'
-import os, sys
-bad = []
-for root in sys.argv[1:]:
-    for dirpath, _, names in os.walk(root):
-        for name in names:
-            p = os.path.join(dirpath, name)
-            for i, line in enumerate(open(p, encoding='utf-8').read().splitlines(), 1):
-                if '~/.claude/' not in line and '$HOME/.claude/' not in line:
-                    continue
-                # documented exemption: the settings.json auto-mode mention
-                if line.count('~/.claude/') == 1 and '~/.claude/settings.json' in line \
-                        and '$HOME/.claude/' not in line:
-                    continue
-                bad.append('%s:%d: %s' % (p, i, line.strip()))
-sys.stdout.write('\n'.join(bad))
-PYH
-)"
+HOME_GUARD="$TESTDIR/check_home_paths.py"
+HOME_OUT="$(python3 "$HOME_GUARD" "$S21_SKILLS" "$S21_REFS")"
 [ -z "$HOME_OUT" ] || echo "  offending: $HOME_OUT"
 assert "S21: no skill or ref addresses ~/.claude/ or \$HOME/.claude/" '[ -z "$HOME_OUT" ]'
 # The guard is only worth having if it fails on the defect it describes.
 S21_MUT="$(mktemp -d)"; cp -R "$S21_SKILLS" "$S21_MUT/skills"
 printf '\nSee `python3 ~/.claude/scripts/next-phase.py --resolve` for the plan.\n' \
-  >> "$S21_MUT/skills/auto-phase/SKILL.md"
-S21_MUT_OUT="$(python3 - "$S21_MUT/skills" <<'PYH'
-import os, sys
-bad = []
-for dirpath, _, names in os.walk(sys.argv[1]):
-    for name in names:
-        p = os.path.join(dirpath, name)
-        for i, line in enumerate(open(p, encoding='utf-8').read().splitlines(), 1):
-            if '~/.claude/' not in line and '$HOME/.claude/' not in line:
-                continue
-            if line.count('~/.claude/') == 1 and '~/.claude/settings.json' in line \
-                    and '$HOME/.claude/' not in line:
-                continue
-            bad.append('%s:%d' % (p, i))
-sys.stdout.write('\n'.join(bad))
-PYH
-)"
+  >> "$S21_MUT/skills/execute-phase-agent/SKILL.md"
+assert "S21: the guard fails when a ~/.claude/ path is reintroduced" \
+  '! python3 "$HOME_GUARD" "$S21_MUT/skills" >/dev/null 2>&1'
 rm -rf "$S21_MUT"
-assert "S21: the guard fails when a ~/.claude/ path is reintroduced" '[ -n "$S21_MUT_OUT" ]'
+
+echo "== S22: --plans finds every reachable plan — root, worktree, orphan branch =="
+# The location service behind "launched from anywhere": the current root's
+# plan, a linked worktree's, and a wf/* branch with no worktree at all, read
+# without checkout. Real git repo, no mock.
+S22_ROOT="$OT/scenarios/S22"
+rm -rf "$S22_ROOT"; mkdir -p "$S22_ROOT"; cd "$S22_ROOT" || exit 1
+git init -q -b main
+echo base > base.txt; git add -A; git commit -qm base
+plan_fixture() {  # $1 = dir, $2 = second-phase status
+  mkdir -p "$1"
+  printf '%s\n' "# Context: s22" "Parent: main" "" "## Work Plan" \
+    "- [x] **Phase 1**: done one" \
+    "- [$2] **Phase 2**: pending two" > "$1/plan.md"
+}
+# (a) plan on a branch checked out in the root
+git switch -qc wf/in-root
+plan_fixture .phased/active/rootplan " "
+git add -A; git commit -qm "wf: plan for rootplan"
+# (b) plan in a linked worktree on its own branch
+git worktree add -q "$OT/scenarios/S22-wt" -b wf/in-worktree main
+plan_fixture "$OT/scenarios/S22-wt/.phased/active/wtplan" "!"
+git -C "$OT/scenarios/S22-wt" add -A
+git -C "$OT/scenarios/S22-wt" commit -qm "wf: plan for wtplan"
+# (c) plan on a wf/ branch with no checkout anywhere
+git worktree add -q "$OT/scenarios/S22-tmp" -b wf/orphan main
+plan_fixture "$OT/scenarios/S22-tmp/.phased/active/orphanplan" ">"
+git -C "$OT/scenarios/S22-tmp" add -A
+git -C "$OT/scenarios/S22-tmp" commit -qm "wf: plan for orphanplan"
+git worktree remove --force "$OT/scenarios/S22-tmp"
+
+PLANS_OUT="$(python3 "$OT/next-phase.py" --plans 2>&1)"
+assert "S22: exactly three plans found" '[ "$(printf "%s\n" "$PLANS_OUT" | grep -c "^plan|")" = "3" ]'
+# Suffix match on the checkout paths: macOS reports /private/var where mktemp
+# said /var, so an absolute-path equality would fail on the symlink alone.
+assert "S22: root plan carries its branch and checkout path" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "worktree|.*scenarios/S22|"'
+assert "S22: worktree plan reports the worktree, not the root" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-worktree" | grep -q "worktree|.*scenarios/S22-wt|"'
+assert "S22: orphan-branch plan is read without a checkout" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/orphan" | grep -q "worktree|-"'
+assert "S22: orphan location is branch:path, not a filesystem path" \
+  'printf "%s\n" "$PLANS_OUT" | grep -q "plan|wf/orphan:.phased/active/orphanplan/plan.md"'
+assert "S22: phase counts come from the parsed plan" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "phases|1/2"'
+assert "S22: states classified per plan (failed / running / clean)" \
+  'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-worktree" | grep -q "state|failed" &&
+   printf "%s\n" "$PLANS_OUT" | grep "branch|wf/orphan" | grep -q "state|running" &&
+   printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "state|clean"'
+
+echo "== S23: -agent skills are thin variants, not second copies =="
+# The -agent suffix names the environment ("nobody in here can answer you"),
+# not a second body: a variant that restates its base recreates the 4.1.0
+# LIGHT_PROMPT 'Never commit' defect — the sibling copy nobody updates. The
+# guard enforces the structural half: every skills/<name>-agent/SKILL.md
+# cites its base skill by name, the base exists, and the file stays under a
+# 100-line ceiling (thin = constraints + delegation, never the whole body).
+s23_guard() {  # $1 = a skills dir; prints one line per violation
+  for S23_D in "$1"/*-agent/; do
+    [ -d "$S23_D" ] || continue
+    S23_F="$S23_D/SKILL.md"
+    S23_B="$(basename "$S23_D")"; S23_B="${S23_B%-agent}"
+    [ -d "$1/$S23_B" ] || echo "$S23_F: base skill '$S23_B' does not exist"
+    grep -q "Base skill: $S23_B" "$S23_F" 2>/dev/null \
+      || echo "$S23_F: missing 'Base skill: $S23_B' citation"
+    S23_L=$(wc -l < "$S23_F" | tr -d ' ')
+    [ "$S23_L" -le 100 ] \
+      || echo "$S23_F: $S23_L lines — over the 100-line thin-variant ceiling"
+  done
+}
+S23_OUT="$(s23_guard "$SKILLS_DIR")"
+[ -z "$S23_OUT" ] || echo "  offending: $S23_OUT"
+assert "S23: every -agent skill cites its base and stays thin" '[ -z "$S23_OUT" ]'
+assert "S23: the guard actually saw the -agent skills" \
+  '[ "$(ls -d "$SKILLS_DIR"/*-agent/ | wc -l | tr -d " ")" -ge 2 ]'
+# Mutations re-run the SAME guard function (not a re-implementation) on a copy.
+S23_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S23_MUT/"
+sed -i.bak '/Base skill:/d' "$S23_MUT/execute-phase-agent/SKILL.md" \
+  && rm -f "$S23_MUT/execute-phase-agent/SKILL.md.bak"
+assert "S23: the guard fails when the base citation is dropped" \
+  '[ -n "$(s23_guard "$S23_MUT")" ]'
+rm -rf "$S23_MUT"
+S23_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S23_MUT/"
+awk 'BEGIN{for(i=0;i<101;i++) print "- padding: a body large enough to be a copy"}' \
+  >> "$S23_MUT/finalize-workflow-agent/SKILL.md"
+assert "S23: the guard fails when an -agent variant grows a full body" \
+  '[ -n "$(s23_guard "$S23_MUT")" ]'
+rm -rf "$S23_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

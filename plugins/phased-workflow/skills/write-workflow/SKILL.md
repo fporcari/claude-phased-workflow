@@ -12,7 +12,7 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
-**Mode:** plans are **interactive** by default; don't ask. Only if the user explicitly asks for an autonomous/robottino plan (for `/run-all-phases`), read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter format on top of this.
+**Mode:** plans are **interactive** by default; don't ask. Only if the user explicitly asks for an autonomous/robottino plan (for `/run-workflow`), read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter format on top of this.
 
 ## Step 1: Where are we
 
@@ -32,28 +32,25 @@ This same fork decides the branch in Step 4 — remember which side you are on.
 
 ## Step 2: Build the plan
 
-Extract from the conversation: objective, phases, files per phase, pattern references, decisions, parallel groups, sizing, notes.
+Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
 **Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase instead of searching serially, and reason over what they return.
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
-**Parallel groups.** Rare bonus, not the default. `parallel:N` only when the phases touch **completely different files**, exchange no data, share no state, and live in different areas of the codebase. Any doubt → sequential (a wrong tag causes git conflicts between chats). Propose it to the user unless they already said the phases are independent.
-
 **Sizing.** Size each phase:
-1. **Standard** (no tag) — one concern, ~6-8 files, testable alone. The common case.
-2. **`group:N`** — too small to test alone (a model half, a migration, a schema): consecutive phases run together in one chat, verified by a single end-to-end test written in the **last** one's `Details:`. Combined they must still fit one chat.
-3. **Split** — two concerns in one phase: just write more phases, no tag.
-4. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the ~6-8 file ceiling is lifted for it only.
+1. **Standard** (no tag) — one concern, ~6-8 files, testable alone. The common case. Too small to test alone (a model half, a migration, a schema)? Merge it into the phase that makes it testable — a phase boundary the user cannot verify is a boundary in the wrong place.
+2. **Split** — two concerns in one phase: just write more phases, no tag.
+3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the ~6-8 file ceiling is lifted for it only.
 
-A phase carries at most one of `group:N` / `parallel:N`. Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions; grouping just gets shown in the plan review.
+Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
 
 **Present the plan in Italian** and iterate until the user approves.
 
 **Close the presentation with the branch line**, pre-filled per Step 3 and flippable — one line, not a separate question:
 
 ```
-Branch: <what will happen> · Worktree: <sì/no>   (dimmi se preferisci diversamente)
+Branch: <what will happen>   (dimmi se preferisci diversamente)
 ```
 
 ## Step 3: Open the branch
@@ -68,15 +65,7 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 Adoption is safe because the workflow's base is the plan commit, not the branch point (see `common.md`): whatever the branch already carried stays outside the workflow.
 
-**Worktree** — only on an autonomous plan (`Mode: autonomous`), where the run grinds elsewhere for a long time and leaves the main repo free. An interactive plan stays here: you drive `/execute-phase` from this session, and a worktree would only cost a `cd`. When it applies, and only when a new branch is being created:
-
-```bash
-git worktree add .claude/worktrees/<slug> -b wf/<slug> HEAD
-mkdir -p .claude/worktrees/<slug>/.claude
-[ -f .claude/settings.local.json ] && cp .claude/settings.local.json .claude/worktrees/<slug>/.claude/settings.local.json
-```
-
-One command creates branch and worktree together, and the main repo stays put — do NOT `git switch -c` first, a branch checked out in the main repo cannot be added as a worktree.
+**No worktree here.** Planning creates the branch and the plan, nothing else: the workspace belongs to execution. `/run-workflow` attaches or creates the worktree itself when the run needs one, and `/finalize-workflow` removes it — the user never manages it.
 
 ## Step 4: Write it
 
@@ -95,17 +84,10 @@ Parent: <parent-branch> | Issue: #<number> (if present)
   - Files: <involved files, if known>
   - Decisions: <choices already settled — omit if none>
   - Details: <what to do concretely>
-- [ ] **Phase 2**: <concise title>  `parallel:1`
-  - Pattern: ...
-  - Files: ...
-  - Details: ...
-- [ ] **Phase 3**: create table foo (model)  `group:1`
-  - Files: packages/foo/model/foo.py
-  - Details: table + columns + relations. No standalone test (tested with Phase 4).
-- [ ] **Phase 4**: TH UI to manage foo  `group:1`
-  - Files: packages/foo/webpages/foo.py
-  - Details: TableHandler view + form on foo. Group end-to-end test: create a row via the form, assert it persists and reloads in the grid.
-- [ ] **Phase 5**: rename legacyAmount → amount across the web layer  `vast`
+- [ ] **Phase 2**: table foo with its TH UI (model + webpage)
+  - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
+  - Details: table + columns + relations, then TableHandler view + form. End-to-end test: create a row via the form, assert it persists and reloads in the grid.
+- [ ] **Phase 3**: rename legacyAmount → amount across the web layer  `vast`
   - Files: discovery rule — all references to `legacyAmount` under packages/foo/ and gnr/web/
   - Details: rename + deprecated alias.
 
@@ -113,7 +95,7 @@ Parent: <parent-branch> | Issue: #<number> (if present)
 [Attention points, dependencies, breaking changes]
 ```
 
-Phases sharing a `parallel:N` can run from separate chats; a phase without the tag is a **synchronization barrier** — every phase above it must be `[x]` first.
+Phases run strictly in order: a phase starts only when every phase above it is `[x]`.
 
 No "Suggested execution config" table on interactive plans: nothing reads it. The one useful per-phase hint is `Model hint: sonnet`, and it is deliberately rare — mechanical work only (renames, extractions, moves), **never on UI or declarative phases**, and only when that phase's `Details:` is spelled out to the point where nothing is left to infer. If you can't write it that way, leave the hint off. No hint means opus.
 
@@ -130,13 +112,6 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 ```
 Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch>.
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
-```
-
-On a worktree, append these two lines to that message — they are for the user to run, not for you:
-
-```
-Il worktree è in .claude/worktrees/<slug>. Lavora da lì:
-  cd .claude/worktrees/<slug> && claude
 ```
 
 (Autonomous plans use the closing message in the autonomous reference file.)
