@@ -386,6 +386,54 @@ assert "skill still forbids rewriting history on that path" \
 assert "skill still classifies via the parser, not by eye" \
   'grep -q "next-phase.py <source>" "$IMPORT_SKILL"'
 
+echo "== S18: prose bullets in ## Notes are inert; state greps are single-source =="
+# A column-0 "- [!]" / "- [~]" bullet in a Notes section used to launch a real
+# fable repair session (cap $300) or halt a healthy run. Every phase-state
+# match now goes through the phase_re/phase_count/phase_any/phase_lines helpers,
+# so such decoys are structurally invisible. Modelled on S8 (roadmap-inert).
+setup S18; fixture2
+cat >> .phased/active/toy/plan.md <<'EOF'
+
+## Notes
+- [x] decided to use sqlite
+- [!] the parser rewrite is open upstream
+- [~] waiting on the upstream release
+- [>] follow up later
+WIP: rewrite the tokenizer
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S18: both real phases reached [x]" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
+assert "S18: exactly 2 phase sessions ran" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 2 ]'
+assert "S18: the [!] decoy launched no repair" '! grep -q "repair-phase skill" .claude/invocations.log'
+assert "S18: the [!] decoy did not report a failed phase" '! grep -q "A phase failed" out.log'
+assert "S18: the [~] decoy did not block the run" '! grep -q "A phase is blocked" out.log'
+assert "S18: no false no-progress stop" '! grep -q "No progress in the last run" out.log'
+
+# Static regression guard: no unqualified phase-state grep may re-enter the
+# launcher. Every grep whose pattern carries a bracketed state (\[x\], \[ \],
+# \[!\], \[~\], \[>\], or the \[[ x!~>]\] class) must be one of the four
+# single-source helper definitions. Follows the S14 extract() heredoc idiom.
+GUARD_OUT="$(python3 - "$RUNNER_SRC" <<'PYG'
+import re, sys
+lines = open(sys.argv[1], encoding='utf-8').read().splitlines()
+helper = re.compile(r'^(phase_re|phase_count|phase_any|phase_lines)\(\)')
+state = re.compile(r'\\\[\[?[ x!~>]')   # a literal \[ opening a phase-state match
+bad = []
+for i, line in enumerate(lines, 1):
+    if 'grep' not in line:
+        continue
+    if not state.search(line):
+        continue
+    if helper.match(line.strip()):
+        continue
+    bad.append('%d: %s' % (i, line.strip()))
+sys.stdout.write('\n'.join(bad))
+PYG
+)"
+[ -z "$GUARD_OUT" ] || echo "  offending: $GUARD_OUT"
+assert "S18: no phase-state grep bypasses the helpers" '[ -z "$GUARD_OUT" ]'
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

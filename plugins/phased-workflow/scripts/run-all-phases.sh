@@ -34,6 +34,17 @@ PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
 mkdir -p "$PLAN_DIR/log"
 
+# Phase-state matching lives in ONE place. A plain "- [!]" bullet in a
+# ## Notes section is prose, not a phase; before this was centralised such a
+# bullet launched a real fable repair session at cap $300 and stopped the run.
+# Every state match — including the ones already strict — goes through these
+# helpers, so the "**Phase" anchor can never drift between call sites.
+# phase_re emits ^- \[<state>\] \*\*Phase; the redundant \- escape is dropped.
+phase_re()    { printf '^- \\[%s\\] \\*\\*Phase' "$1"; }
+phase_count() { grep -c "$(phase_re "$1")" "$PLAN" 2>/dev/null || true; }
+phase_any()   { grep -q "$(phase_re "$1")" "$PLAN" 2>/dev/null; }
+phase_lines() { grep -E '^- \[[ x!~>]\] \*\*Phase' "$PLAN" 2>/dev/null; }
+
 # /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
 # goal loop — an independent evaluator (small fast model) re-checks the exit
 # condition after every turn, so a session cannot declare itself done before
@@ -62,16 +73,16 @@ fi
 # stale marker belonging to a DIFFERENT [!] phase.
 first_bang_block() {
   awk '
-    /^- \[/ { if (seen) exit }
+    /^- \[[ x!~>]\] \*\*Phase/ { if (seen) exit }
     /^## /  { if (seen) exit }
-    /^- \[!\]/ { seen = 1 }
+    /^- \[!\] \*\*Phase/ { seen = 1 }
     seen { print }
   ' "$PLAN" 2>/dev/null
 }
 
 # Count only real phase lines: a stray "- [ ]" checkbox in Notes is not a phase.
 # NOTE: grep -c prints 0 itself on no match (exit 1) — do NOT add "|| echo 0", it would double the output
-REMAINING=$(grep -c '^\- \[ \] \*\*Phase' "$PLAN" 2>/dev/null || true)
+REMAINING=$(phase_count ' ')
 REMAINING=${REMAINING:-0}   # unreadable file → empty var → treat as 0
 
 if [ "$REMAINING" -eq 0 ]; then
@@ -84,7 +95,7 @@ echo ""
 
 for i in $(seq 1 $REMAINING); do
   # Re-read the plan to get current state
-  if ! grep -q '^\- \[ \] \*\*Phase' "$PLAN" 2>/dev/null; then
+  if ! phase_any ' '; then
     echo ""
     echo "All phases completed!"
     break
@@ -126,7 +137,7 @@ for i in $(seq 1 $REMAINING); do
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
-      NEXT_PHASE=$(grep -n '^\- \[ \] \*\*Phase' "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
+      NEXT_PHASE=$(grep -n "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 
   if [ "$RUN_PHASE" -eq 1 ] && [ -z "$NEXT_PHASE" ]; then
@@ -135,7 +146,7 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   # Snapshot completed-phase count BEFORE the run (progress guard)
-  BEFORE_DONE=$(grep -c '^\- \[x\]' "$PLAN" 2>/dev/null || true)
+  BEFORE_DONE=$(phase_count x)
   BEFORE_DONE=${BEFORE_DONE:-0}
 
   # Look up model and effort from the execution config table, by COLUMN
@@ -229,7 +240,7 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   # Check for issues — one fresh-eyes repair attempt before stopping
-  if grep -q '^\- \[!\]' "$PLAN" 2>/dev/null; then
+  if phase_any '!'; then
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
@@ -268,7 +279,7 @@ for i in $(seq 1 $REMAINING); do
         "${REPAIR_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
     fi
 
-    if grep -q '^\- \[!\]' "$PLAN" 2>/dev/null; then
+    if phase_any '!'; then
       echo ""
       echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
       break
@@ -277,7 +288,7 @@ for i in $(seq 1 $REMAINING); do
     REPAIRED_THIS_ROUND=1
   fi
 
-  if grep -q '^\- \[~\]' "$PLAN" 2>/dev/null; then
+  if phase_any '~'; then
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
     break
@@ -286,7 +297,7 @@ for i in $(seq 1 $REMAINING); do
   # Progress guard: a successful run must either complete a phase ([x] count
   # grows) or leave a resumable WIP ([>] + WIP note). Anything else means the
   # session died leaving the phase stuck — looping again would burn runs.
-  AFTER_DONE=$(grep -c '^\- \[x\]' "$PLAN" 2>/dev/null || true)
+  AFTER_DONE=$(phase_count x)
   AFTER_DONE=${AFTER_DONE:-0}
   # A Case A reopen (a completed phase sent back to [!] by a later phase's
   # baseline check) makes the [x] count DROP, so a successful repair only
@@ -294,7 +305,7 @@ for i in $(seq 1 $REMAINING); do
   # guard when a repair landed this round, or the run would stop on a
   # misleading "no progress".
   if [ "$AFTER_DONE" -le "$BEFORE_DONE" ] && [ "$REPAIRED_THIS_ROUND" -eq 0 ]; then
-    if grep -q '^\- \[>\]' "$PLAN" 2>/dev/null && grep -q 'WIP:' "$PLAN" 2>/dev/null; then
+    if phase_any '>' && grep -q '^[[:space:]]*> WIP:' "$PLAN" 2>/dev/null; then
       echo "Phase left in WIP state — next session will resume it."
     else
       echo ""
@@ -312,7 +323,7 @@ echo "========================================="
 echo "Summary"
 echo "========================================="
 echo ""
-grep '^\- \[' "$PLAN" | head -20
+phase_lines | head -20
 echo ""
 # One commit per phase now, so the run's output is history, not a dirty tree.
 # The base is the commit that ADDED the plan — on an adopted branch it is what

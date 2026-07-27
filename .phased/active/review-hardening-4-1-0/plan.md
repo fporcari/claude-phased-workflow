@@ -12,7 +12,13 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
 
 ## Work Plan
 
-- [ ] **Phase 1**: Unify every phase-state match in the launcher
+- [x] **Phase 1**: Unify every phase-state match in the launcher
+  > Done: Centralised every phase-state match in run-all-phases.sh behind four
+  > single-source helpers (phase_re/phase_count/phase_any/phase_lines); all ten
+  > call sites, first_bang_block's awk and the WIP grep now go through the strict
+  > `**Phase` anchor. Added S18 (decoys inert + static regression guard). Suite:
+  > 84 passed / 0 failed under both bash and zsh (>77); bash -n and zsh -n clean.
+  > Files: plugins/phased-workflow/scripts/run-all-phases.sh, tests/orchestration/run_tests.sh
   - Pattern reference: `plugins/phased-workflow/scripts/run-all-phases.sh` — the
     `REMAINING=$(grep -c '^\- \[ \] \*\*Phase' ...)` line is the one already-correct
     strict match; propagate exactly its shape. For the new test scenario, copy-adapt
