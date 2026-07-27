@@ -28,8 +28,11 @@
 # skill a thin variant citing its base (S23, proven by mutation), and
 # /write-workflow's automation fork being real — the Step 2 heading and the
 # Mode: interactive header present, the old "don't ask" default and the
-# reference's duplicate "Confirm with the user" gone (S24, proven by mutation).
-# S16 retired with the KB mirror in 5.0.0; the number stays vacant.
+# reference's duplicate "Confirm with the user" gone (S24, proven by mutation),
+# and every shipped `claude -p` sub-session prompt carrying a `/<plugin>:<skill>`
+# namespace rather than a bare slash that dies with "Unknown command" (S26,
+# proven by mutation). S16 retired with the KB mirror in 5.0.0; the number stays
+# vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -190,7 +193,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
 assert "fallback notice printed" 'grep -q "goal guard unavailable" out.log'
-assert "plain /execute-phase-agent prompt used" 'grep -q -- "-p /execute-phase-agent --model" .claude/invocations.log'
+assert "namespaced /phased-workflow:execute-phase-agent prompt used" 'grep -q -- "-p /phased-workflow:execute-phase-agent --model" .claude/invocations.log'
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
@@ -908,6 +911,44 @@ sed -i.bak 's/phase-failed//g' "$S25_MUT/SKILL.md" && rm -f "$S25_MUT/SKILL.md.b
 assert "S25: the static guard fails when the phase-failed token is dropped" \
   '[ -n "$(s25_static_guard "$S25_MUT/SKILL.md")" ]'
 rm -rf "$S25_MUT"
+
+echo "== S26: every claude -p sub-session prompt carries a plugin: namespace =="
+# A slash command in a headless `claude -p` session resolves only against
+# ~/.claude/commands/ or a plugin's namespaced id `/<plugin>:<skill>`. A bare
+# `/<skill>` prompt dies with "Unknown command" and the sub-session does nothing
+# — the same "shipped contract no test executes" defect class as 4.1.0's
+# LIGHT_PROMPT 'Never commit'. The guard flags any literal `claude -p "/..."`
+# argument that starts with a slash and carries no colon; the /goal contracts
+# (which begin `/goal` but embed `Condition:`) and the variable-based `"$..."`
+# calls are correctly left alone.
+S26_SCRIPTS="$TESTDIR/../../plugins/phased-workflow/scripts"
+s26_guard() {  # $1 = a scripts dir; one line per bare-slash claude -p prompt
+  for S26_F in "$1"/*.sh; do
+    [ -f "$S26_F" ] || continue
+    grep -oE 'claude -p "[^"]*"' "$S26_F" 2>/dev/null \
+      | sed -E 's/^claude -p "//; s/"$//' \
+      | while IFS= read -r S26_ARG; do
+          case "$S26_ARG" in
+            /*) case "$S26_ARG" in
+                  *:*) ;;
+                  *) echo "$S26_F: bare-slash prompt '$S26_ARG' — needs a plugin: namespace" ;;
+                esac ;;
+          esac
+        done
+  done
+}
+S26_OUT="$(s26_guard "$S26_SCRIPTS")"
+[ -z "$S26_OUT" ] || echo "  offending: $S26_OUT"
+assert "S26: every shipped claude -p prompt is namespaced or a /goal contract" '[ -z "$S26_OUT" ]'
+assert "S26: the guard actually saw the launcher's claude -p calls" \
+  '[ -n "$(grep -oE "claude -p \"[^\"]*\"" "$S26_SCRIPTS/run-workflow.sh")" ]'
+# Mutation re-runs the SAME guard on a copy where a bare-slash prompt returns.
+S26_MUT="$(mktemp -d)"
+cp "$S26_SCRIPTS"/*.sh "$S26_MUT/"
+printf '\nclaude -p "/execute-phase-agent"\n' >> "$S26_MUT/agent-session.sh"
+assert "S26: the guard fails when a bare-slash prompt is reintroduced" \
+  '[ -n "$(s26_guard "$S26_MUT")" ]'
+rm -rf "$S26_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

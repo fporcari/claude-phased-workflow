@@ -19,6 +19,16 @@
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
 
+# Sub-session prompts are slash commands. In a headless `claude -p` session a
+# bare `/<skill>` resolves only against ~/.claude/commands/; a plugin-shipped
+# skill registers as `/<plugin>:<skill>`, so the namespace prefix is REQUIRED or
+# the session dies at once with "Unknown command: /<skill>". Derive the plugin
+# name from our own plugin.json (found via SCRIPT_DIR), never retyped — with a
+# literal fallback so a failed read can never reintroduce a bare slash.
+PLUGIN_NAME=$(sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+  "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1)
+PLUGIN_NAME=${PLUGIN_NAME:-phased-workflow}
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Workspace create-or-attach: the launcher runs from anywhere. If the current
@@ -133,8 +143,8 @@ if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V 
   LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. When the phase is done, make exactly one commit for it -- the phase code and its own plan status update together, git add -A && git commit -m "wf(phase N): <title>" -- so the next phase starts from a clean tree. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
-  PHASE_PROMPT='/execute-phase-agent'
-  REPAIR_PROMPT='/repair-phase'
+  PHASE_PROMPT="/$PLUGIN_NAME:execute-phase-agent"
+  REPAIR_PROMPT="/$PLUGIN_NAME:repair-phase"
   LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
 
