@@ -484,18 +484,47 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     step for zsh and a `git config --global user.email` step; and every shell command
     the workflow runs, executed locally in sequence, exits 0.
 
-- [~] **Phase 8**: Align the documentation with the evidence, and release 4.1.0
-  > Blocked: dirty working tree at the Step 0.4 restore-point check — HEAD is not a
-  > clean restore point. Phases 4–7 are marked [x] in this plan with full Done notes,
-  > but git log stops at Phase 3: their work sits uncommitted. Stray uncommitted files:
-  > plugins/phased-workflow/scripts/run-all-phases.sh (Phase 4 NOTE arms),
-  > plugins/phased-workflow/scripts/next-phase.py + refs/common.md +
-  > refs/write-workflow-autonomous.md + the nine skills/*/SKILL.md (Phases 5–6),
-  > .github/workflows/ci.yml (Phase 7, untracked), tests/orchestration/run_tests.sh
-  > (S18–S21), plan.md itself and the log/phase-*.txt files. Not committed as mine:
-  > per Step 0.4 a later phase must not absorb earlier phases' uncommitted work.
-  > Recovery: commit Phases 4–7 as their own wf(phase N) commits (the plan already
-  > documents them [x] with Files:), then re-run to execute Phase 8 from a clean tree.
+- [ ] **Phase 8**: Every phase commits — remove `Never commit` from the light contract
+  - Pattern reference: `plugins/phased-workflow/scripts/run-all-phases.sh` — `PHASE_PROMPT`
+    (the full contract) and the commit step of
+    `plugins/phased-workflow/skills/auto-phase/SKILL.md` already express the requirement
+    correctly; copy their wording rather than inventing one. For the test, the two
+    existing `LIGHT_PROMPT` assertions in `S14` are the place and the shape.
+  - Files:
+    - `plugins/phased-workflow/scripts/run-all-phases.sh`
+    - `tests/orchestration/run_tests.sh`
+  - Decisions:
+    - `LIGHT_PROMPT` ends with `Never commit.` — a leftover from before `2cfa53b` made
+      one-commit-per-phase the architecture. Replace it with the commit requirement,
+      worded as `auto-phase` words it: one commit per phase, `wf(phase N): <title>`,
+      including the plan's own status update, leaving the tree clean.
+    - **This phase is `medium`, deliberately not `low`.** The launcher executing the run
+      is the installed 4.0.0 copy, whose light contract still carries the defect. A `low`
+      phase would run under the very bug it removes and fail to commit itself.
+    - `LIGHT_PROMPT` stays a single-quoted one-line assignment: `S14` and
+      `tests/benchmark/bench.sh` extract it by that shape.
+    - Do not touch `PHASE_PROMPT` or `REPAIR_PROMPT` — neither ever carried the clause.
+    - The guard is a text check on a prompt. It stops a future edit from dropping the
+      rule; it cannot stop a model from ignoring it. Same acknowledged limit as `S14`'s
+      existing contract assertions — state it in the comment, do not oversell it.
+  - Details:
+    1. In `run-all-phases.sh`, inside the `LIGHT_PROMPT` assignment, replace
+       `Never commit.` with the commit instruction described in Decisions. Keep the whole
+       assignment on one line, single-quoted.
+    2. Update the light-mode comment above it: it currently claims the contract "carries
+       every chain invariant itself". Record that the per-phase commit was the one
+       invariant it did not carry, that a `low` phase therefore left its work
+       uncommitted, and that `S14` now guards the clause.
+    3. In `tests/orchestration/run_tests.sh`, add two assertions to `S14` beside the
+       existing `LIGHT_PROMPT` ones: the contract must NOT contain `Never commit`, and it
+       must contain the `wf(phase` commit clause.
+  - Done: `bash tests/orchestration/run_tests.sh` and `zsh tests/orchestration/run_tests.sh`
+    both exit 0 with the two new `S14` assertions green;
+    `grep -c 'Never commit' plugins/phased-workflow/scripts/run-all-phases.sh` returns 0;
+    the `LIGHT_PROMPT` line contains `wf(phase`; `bash -n` and `zsh -n` clean on the
+    launcher.
+
+- [ ] **Phase 9**: Align the documentation with the evidence, and release 4.1.0
   - Pattern reference: `tests/benchmark/results/README.md` — the one document in this
     repo that already does honest provenance: it states what each run measured, which
     conclusions survive, and which are superseded. Match its register and its habit
@@ -518,7 +547,7 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
       contract. Three places state this claim with two different numbers
       (`README.md`, `docs/loop-engineering.md` twice, and "~40% cheaper, half the wall
       time" in the launcher comment); all three become one wording.
-    - The test counts are restated from the suite's own final line after Phases 1–7,
+    - The test counts are restated from the suite's own final line after Phases 1–8,
       not from today's 77 — this phase runs last and reads the real number. The claim
       that the suite "extracts the bash script from its own `SKILL.md`" is deleted:
       the script has been a shipped file since 4.0.0.
@@ -545,10 +574,23 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
       better off than before. Nothing a consumer depends on breaks.
     - `install.sh` is removed from the install instructions and described as a
       one-time migration for machines that ran 4.0.0 or earlier.
+    - **The per-phase commit claim is currently false and must be corrected, not just
+      restated.** Until Phase 8 landed, `Effort=low` phases ran a contract ending in
+      `Never commit.`, so their work stayed uncommitted while the phase reported `[x]`.
+      Every place that promises "one commit per phase" was wrong for light-mode phases:
+      `README.md`, `docs/loop-engineering.md` and `refs/common.md`. State the fix, not
+      only the rule.
+    - This defect is the most consequential of the release and was found by running the
+      chain on itself: it belongs in the 4.1.0 notes with its cascade — a `medium` phase
+      running the full skill inferred a repo-wide "no-commit mode" from its two
+      light-mode predecessors and followed suit, so one mode's constraint propagated
+      through the observable state of the repo. Record also what it silently broke:
+      red-baseline attribution matches failures against the `> Files:` notes of
+      *committed* phases, and fused phases have no boundary to attribute to.
   - Details:
     1. `README.md`: rewrite the light-mode bullet with the provenance; correct the
        Tests section (real assertion and scenario counts, delete the SKILL.md
-       extraction claim, add the new scenarios from Phases 1–7 to the S-list, mention
+       extraction claim, add the new scenarios from Phases 1–8 to the S-list, mention
        the CI workflow); rewrite the installation section so the plugin install is
        the whole install and `install.sh` is a migration note; move the Softwell/KB
        paragraph to its own short section at the end.
@@ -562,6 +604,8 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     5. `git mv article-medium.md docs/article-medium.md`, and fix any link to it.
     6. Bump `version` to `4.1.0` in `plugins/phased-workflow/.claude-plugin/plugin.json`
        and in both places it appears in `.claude-plugin/marketplace.json`.
+    7. Correct every "one commit per phase" claim as decided above, and write the
+       light-contract defect into the 4.1.0 notes with its cascade and what it broke.
   - Done: `grep -rn '37%\|60% of the wall\|40% cheaper' README.md
     docs/loop-engineering.md plugins/phased-workflow/scripts/run-all-phases.sh` shows
     every surviving occurrence accompanied by the `slim`-control provenance;
@@ -573,9 +617,9 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     assert json.load(open('plugins/phased-workflow/.claude-plugin/plugin.json'))['version']
     == '4.1.0'"` succeeds; `bash tests/orchestration/run_tests.sh` still exits 0.
 
-- [ ] **Phase 9**: Coherence review and auto-fix (final, mandatory)
-  - Pattern reference: same as Phases 1–8 (cross-check against them)
-  - Files: only the files written by Phases 1–8 (collect them from their `Files:`
+- [ ] **Phase 10**: Coherence review and auto-fix (final, mandatory)
+  - Pattern reference: same as Phases 1–9 (cross-check against them)
+  - Files: only the files written by Phases 1–9 (collect them from their `Files:`
     fields). Never touch a pre-existing file they did not modify.
   - Decisions:
     - Auto-fix directly: tool-fixable lint (flake8 findings on the python files),
@@ -611,7 +655,7 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
   Before Phase 2 the launcher reads `$HOME/.claude/scripts/next-phase.py` — the
   installed 4.0.0 copy, which does not know `--validate` — so the gate would abort
   every scenario and Phase 3's `Done:` would be unverifiable. Do not reorder them.
-- **No `parallel:N` anywhere.** Phases 1–4 all edit
+- **No `parallel:N` anywhere.** Phases 1–4 and Phase 8 all edit
   `plugins/phased-workflow/scripts/run-all-phases.sh`, and Phases 1–4 plus Phase 6 all
   edit `tests/orchestration/run_tests.sh`. Everything is a synchronization barrier by
   construction.
@@ -652,5 +696,6 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
 | Phase 5 | low | opus |
 | Phase 6 | medium | opus |
 | Phase 7 | low | opus |
-| Phase 8 | high | opus |
-| Phase 9 | xhigh | opus |
+| Phase 8 | medium | opus |
+| Phase 9 | high | opus |
+| Phase 10 | xhigh | opus |
