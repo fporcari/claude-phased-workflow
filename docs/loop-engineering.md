@@ -1,7 +1,7 @@
 # Loop engineering — self-correcting autonomous chain
 
 The conceptual foundation of the phased-workflow autonomous chain
-(`/write-workflow` → `/run-workflow` → `/auto-phase` / `/repair-phase` →
+(`/write-workflow` → `/run-workflow` → `/execute-phase-agent` / `/repair-phase` →
 `/finalize-workflow`). Read this to understand *why* the commands are shaped
 the way they are before modifying them.
 
@@ -138,7 +138,7 @@ fails). Inside, the machine self-corrects.
 
 ## Command choice: who is the verifier?
 
-- `/auto-phase` (via `/run-workflow`) works when the feedback signal is
+- `/execute-phase-agent` (via `/run-workflow`) works when the feedback signal is
   **machine-checkable**: measurable Done, runnable tests, pre-made decisions,
   pattern references in the plan.
 - `/execute-phase` (interactive) is for phases where **the human is the

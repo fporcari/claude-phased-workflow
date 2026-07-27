@@ -2,7 +2,7 @@
 
 Single source of truth for the blocks that used to be repeated in every
 phased-workflow command (`/write-workflow`, `/import-workflow`,
-`/execute-phase`, `/auto-phase`, `/run-workflow`, `/finalize-workflow`,
+`/execute-phase`, `/execute-phase-agent`, `/run-workflow`, `/finalize-workflow`,
 `/resume-workflow`, `/push-context-memory`). Skills point here instead
 of restating them.
 
@@ -100,7 +100,7 @@ without it the interleaving ambiguity comes straight back.
 Edits made outside a phase — a `/resume-workflow` re-phasing, a
 `/repair-phase` note, hand annotations in `notes.md` — get their own
 `wf: <what changed>` commit. Otherwise the "clean tree at phase start"
-invariant that `/auto-phase` relies on is false.
+invariant that `/execute-phase-agent` relies on is false.
 
 ## Phase selection
 
@@ -130,7 +130,7 @@ the script is unavailable — are:
 
 Note fields the autonomous chain writes on phases, and what consumes them:
 
-- `> Issue:` — root symptom and current diagnosis; written by `/auto-phase`
+- `> Issue:` — root symptom and current diagnosis; written by `/execute-phase-agent`
   when a phase exits `[!]`.
 - `> Attempted:` — numbered list of fixes tried, each with its error
   signature. Mandatory on `[!]`: it is the input of `/repair-phase`, which

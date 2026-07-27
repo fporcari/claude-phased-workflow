@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
 
 Execute the next uncompleted phase. **Semi-autonomous**: ONE approval gate up front (plan + all questions batched), then run to completion without interruptions.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch, phase-selection semantics.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch, phase-selection semantics. **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` — selection, implementation discipline, outcome formats, the phase commit; `/execute-phase-agent` is this same skill with the gate replaced by unattended constraints.
 
 ## Step 1: Find the plan and the phase
 
@@ -45,15 +45,7 @@ Implement only this phase. If something the plan doesn't cover comes up and a wr
 
 ## Step 6: Record and notify
 
-Replace `[>]` with `[x]` + `> Done:` + `> Files:` (+ `> Verify:` for untested UI work), or `[!]` + `> Issue:`, or `[~]` + `> Blocked:`. **Always list ALL touched files** — the baseline check of later phases attributes regressions by them, and `/repair-phase` diffs against them.
-
-Then commit the phase's code together with its status update, so the next one starts from a clean tree:
-
-```bash
-git add -A && git commit -q -m "wf(phase N): <title>"
-```
-
-A phase closing `[!]` commits too, as `wf(phase N): FAILED — <title>` — repair needs to see the failing code.
+Record the outcome and make the phase commit exactly as the shared core (`refs/phase-execution.md`) specifies — plus, for untested UI work, a `> Verify:` note with the manual checks, surfaced in the notification and the summary.
 
 ```bash
 osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'

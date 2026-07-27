@@ -6,8 +6,8 @@
 #
 # Usage: bench.sh [runs_per_config] [config ...]
 #   config format: label|model|mode[|effort]   mode: plain | goal | slim | slimgoal
-#     plain    = full auto-phase skill, no guard
-#     goal     = full auto-phase skill under the /goal guard   (shipped PHASE_PROMPT)
+#     plain    = full execute-phase-agent skill, no guard
+#     goal     = full execute-phase-agent skill under the /goal guard   (shipped PHASE_PROMPT)
 #     slim     = minimal prompt, NO skill discipline, no guard  (hardcoded control)
 #     slimgoal = discipline carried ONLY by the goal contract   (shipped LIGHT_PROMPT)
 #   effort defaults to the fixture's own declared Effort for Phase 1, else high.
@@ -77,7 +77,7 @@ for CFG in "${CONFIGS[@]}"; do
       goal)     PROMPT="$GOAL_PROMPT" ;;
       slim)     PROMPT="$SLIM_PROMPT" ;;
       slimgoal) PROMPT="$LIGHT_GOAL_PROMPT" ;;
-      *)        PROMPT='/auto-phase' ;;
+      *)        PROMPT='/execute-phase-agent' ;;
     esac
     CONTRACT_SHA=$(sha "$PROMPT")
 

@@ -5,7 +5,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 # Repair Phase
 
-Fresh-eyes repair of a phase `/auto-phase` left `[!]`. It runs in a new context on purpose: **the previous session's diagnosis may itself be the problem — question it, don't continue it.**
+Fresh-eyes repair of a phase `/execute-phase-agent` left `[!]`. It runs in a new context on purpose: **the previous session's diagnosis may itself be the problem — question it, don't continue it.**
 
 **Usage:** launched by `/run-workflow` (at most once per phase), or `claude -p '/repair-phase'`.
 
@@ -30,11 +30,11 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 
    `HEAD` is that commit only if nothing landed after it, which is the normal case (a `[!]` phase stops the run). Otherwise find it by message rather than assuming: `git log --format='%H %s' | grep "phase N"`.
 4. Root-cause first: grep the callers of the touched functions, compare against the pattern reference, and ask whether the previous fixes aimed at a symptom.
-5. Scale exploration to the phase's Effort as in `/auto-phase` Step 2.
+5. Scale exploration to the phase's Effort as in `/execute-phase-agent` Step 2.
 
 ## Step 3: Fix and converge
 
-Same rules as `/auto-phase` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
+Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
 
 Then run ONE `phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays.
 

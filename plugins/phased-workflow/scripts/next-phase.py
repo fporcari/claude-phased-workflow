@@ -2,7 +2,7 @@
 """Compute the next eligible phase from a phased work plan.
 
 Deterministic implementation of the phase-selection semantics used by
-the phased-workflow skills (/execute-phase, /auto-phase). The canonical
+the phased-workflow skills (/execute-phase, /execute-phase-agent). The canonical
 description of the semantics lives in
 ${CLAUDE_PLUGIN_ROOT}/refs/common.md ("Phase selection").
 

@@ -67,7 +67,7 @@ TOOL_HINTS = {
 # skills used to reach for; a public plugin should not know which MCP that is,
 # and the rule is the same for all of them.
 MCP_CALL = re.compile(r'\bmcp__([a-z0-9_-]+)__')
-# "do NOT use AskUserQuestion" is a prohibition, not a requirement. `/auto-phase`
+# "do NOT use AskUserQuestion" is a prohibition, not a requirement. `/execute-phase-agent`
 # forbids exactly that, and counting it as a use would demand the tool it bans.
 NEGATION = re.compile(r'\b(?:NOT|not|never|Never|no|No|without|senza)\b')
 

@@ -10,7 +10,7 @@ Confirm with the user (in Italian) that the plan really targets autonomous execu
 2. **Scope safety.** Sub-sessions run `--permission-mode auto`; the categories its classifier is expected to deny, and this plugin's own convention for writing phases, are listed in `${CLAUDE_PLUGIN_ROOT}/refs/common.md`. A phase needing one → surface it: *"Phase X richiede `<command>`, che auto mode blocca. Opzioni: (a) rifrasare la fase per fermarsi prima — lo fai tu dopo, (b) rimuovere la fase, (c) farla a mano fuori da `/run-workflow`."* Never silently rewrite the phase to hide it.
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
-5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/auto-phase` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
+5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/execute-phase-agent` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
 
 ## Honesty check
 
@@ -82,7 +82,7 @@ Mode: autonomous
 Keep the column order exactly as above — `/run-workflow` reads Effort and Model **by column position**.
 
 - **Effort**: sets `--effort` and the runaway cap. **Start low and climb only for a reason.** An autonomous phase is by construction well-specified — `Details:`, `Done:` and `Pattern:` leave nothing to invent — and that is exactly where high effort buys least: the model spends it re-exploring and re-verifying decisions the plan already made. So `low` for mechanical work, `medium` for the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` for wide multi-file agentic work, `max` practically never (prone to overthinking, diminishing returns). Do not carry over effort levels from older plans — defaults tuned on a previous model rarely transfer.
-  `low` phases run in **light mode** — a slim `/goal` contract, no auto-phase skill — so their `Details:`/`Done:` must be fully self-contained.
+  `low` phases run in **light mode** — a slim `/goal` contract, no execute-phase-agent skill — so their `Details:`/`Done:` must be fully self-contained.
 - **Model**: `opus` is the default and the answer whenever in doubt.
   - `sonnet` — mechanical work only: renames, extractions, moves, header updates, and implementations that merely follow a cited pattern with a test-enforced `Done:`. **Never on UI or declarative phases — opus is the floor there.** Marking a phase `sonnet` is a commitment about the *plan*: its `Details:` and `Done:` must be written out until nothing is left to infer. Anything the skill no longer spells out, that phase must. If you can't write it that way, leave it `opus`.
   - `fable` — genuinely hard phases: architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference. Subject to credits.

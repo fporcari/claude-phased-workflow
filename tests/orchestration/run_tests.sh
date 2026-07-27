@@ -100,7 +100,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup; run
 assert "phase1 (low) uses LIGHT contract" 'grep -q -- "-p /goal Execute the next pending.*--model sonnet --effort [a-z]* --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
 assert "light contract demands bookkeeping notes" 'grep -q -- "> Done: and > Files: notes recorded" .claude/invocations.log'
-assert "phases 2-3 use FULL skill contract" '[ "$(grep -c -- "-p /goal Use the auto-phase skill" .claude/invocations.log)" = 2 ]'
+assert "phases 2-3 use FULL skill contract" '[ "$(grep -c -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log)" = 2 ]'
 assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
@@ -167,7 +167,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
 assert "fallback notice printed" 'grep -q "goal guard unavailable" out.log'
-assert "plain /auto-phase prompt used" 'grep -q -- "-p /auto-phase --model" .claude/invocations.log'
+assert "plain /execute-phase-agent prompt used" 'grep -q -- "-p /execute-phase-agent --model" .claude/invocations.log'
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
@@ -210,7 +210,7 @@ open('.phased/active/toy/plan.md','w').write(s)
 EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "no phase session started" '! grep -q "auto-phase skill\|Execute the next pending" .claude/invocations.log'
+assert "no phase session started" '! grep -q "execute-phase-agent skill\|Execute the next pending" .claude/invocations.log'
 assert "repair launched" 'grep -q "repair-phase skill" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
 assert "phase 1 repaired" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
@@ -256,7 +256,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "xhigh cap 250 and effort passed" 'grep -q -- "--model opus --effort xhigh --permission-mode auto --max-budget-usd 250" .claude/invocations.log'
-assert "xhigh uses the FULL skill contract" 'grep -q -- "-p /goal Use the auto-phase skill" .claude/invocations.log'
+assert "xhigh uses the FULL skill contract" 'grep -q -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log'
 
 echo "== S14: shipped contracts are the ones measured (no frozen copies) =="
 # Free tier, no session: guards the invalidator that silently makes a paid
@@ -630,7 +630,7 @@ assert "S21: no skill or ref addresses ~/.claude/ or \$HOME/.claude/" '[ -z "$HO
 # The guard is only worth having if it fails on the defect it describes.
 S21_MUT="$(mktemp -d)"; cp -R "$S21_SKILLS" "$S21_MUT/skills"
 printf '\nSee `python3 ~/.claude/scripts/next-phase.py --resolve` for the plan.\n' \
-  >> "$S21_MUT/skills/auto-phase/SKILL.md"
+  >> "$S21_MUT/skills/execute-phase-agent/SKILL.md"
 S21_MUT_OUT="$(python3 - "$S21_MUT/skills" <<'PYH'
 import os, sys
 bad = []
@@ -698,6 +698,47 @@ assert "S22: states classified per plan (failed / running / clean)" \
   'printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-worktree" | grep -q "state|failed" &&
    printf "%s\n" "$PLANS_OUT" | grep "branch|wf/orphan" | grep -q "state|running" &&
    printf "%s\n" "$PLANS_OUT" | grep "branch|wf/in-root" | grep -q "state|clean"'
+
+echo "== S23: -agent skills are thin variants, not second copies =="
+# The -agent suffix names the environment ("nobody in here can answer you"),
+# not a second body: a variant that restates its base recreates the 4.1.0
+# LIGHT_PROMPT 'Never commit' defect — the sibling copy nobody updates. The
+# guard enforces the structural half: every skills/<name>-agent/SKILL.md
+# cites its base skill by name, the base exists, and the file stays under a
+# 100-line ceiling (thin = constraints + delegation, never the whole body).
+s23_guard() {  # $1 = a skills dir; prints one line per violation
+  for S23_D in "$1"/*-agent/; do
+    [ -d "$S23_D" ] || continue
+    S23_F="$S23_D/SKILL.md"
+    S23_B="$(basename "$S23_D")"; S23_B="${S23_B%-agent}"
+    [ -d "$1/$S23_B" ] || echo "$S23_F: base skill '$S23_B' does not exist"
+    grep -q "Base skill: $S23_B" "$S23_F" 2>/dev/null \
+      || echo "$S23_F: missing 'Base skill: $S23_B' citation"
+    S23_L=$(wc -l < "$S23_F" | tr -d ' ')
+    [ "$S23_L" -le 100 ] \
+      || echo "$S23_F: $S23_L lines — over the 100-line thin-variant ceiling"
+  done
+}
+S23_OUT="$(s23_guard "$SKILLS_DIR")"
+[ -z "$S23_OUT" ] || echo "  offending: $S23_OUT"
+assert "S23: every -agent skill cites its base and stays thin" '[ -z "$S23_OUT" ]'
+assert "S23: the guard actually saw the -agent skills" \
+  '[ "$(ls -d "$SKILLS_DIR"/*-agent/ | wc -l | tr -d " ")" -ge 2 ]'
+# Mutations re-run the SAME guard function (not a re-implementation) on a copy.
+S23_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S23_MUT/"
+sed -i.bak '/Base skill:/d' "$S23_MUT/execute-phase-agent/SKILL.md" \
+  && rm -f "$S23_MUT/execute-phase-agent/SKILL.md.bak"
+assert "S23: the guard fails when the base citation is dropped" \
+  '[ -n "$(s23_guard "$S23_MUT")" ]'
+rm -rf "$S23_MUT"
+S23_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S23_MUT/"
+awk 'BEGIN{for(i=0;i<101;i++) print "- padding: a body large enough to be a copy"}' \
+  >> "$S23_MUT/finalize-workflow-agent/SKILL.md"
+assert "S23: the guard fails when an -agent variant grows a full body" \
+  '[ -n "$(s23_guard "$S23_MUT")" ]'
+rm -rf "$S23_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

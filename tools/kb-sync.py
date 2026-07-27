@@ -55,7 +55,7 @@ MAPPING = {
     'plugins/phased-workflow/skills/write-workflow/SKILL.md': 'write-workflow',
     'plugins/phased-workflow/skills/import-workflow/SKILL.md': 'import-workflow',
     'plugins/phased-workflow/skills/execute-phase/SKILL.md': 'execute-phase',
-    'plugins/phased-workflow/skills/auto-phase/SKILL.md': 'auto-phase',
+    'plugins/phased-workflow/skills/execute-phase-agent/SKILL.md': 'execute-phase-agent',
     'plugins/phased-workflow/skills/run-workflow/SKILL.md': 'run-workflow',
     'plugins/phased-workflow/skills/repair-phase/SKILL.md': 'repair-phase',
     'plugins/phased-workflow/skills/resume-workflow/SKILL.md': 'resume-workflow',
@@ -90,6 +90,8 @@ KB_ONLY = {
                            'KB entry kept as history',
     'run-all-phases': 'renamed to run-workflow in 5.0.0; KB entry kept as '
                       'history',
+    'auto-phase': 'renamed to execute-phase-agent in 5.0.0; KB entry kept '
+                  'as history',
     'run-all-phases.sh — autonomous phase loop launcher':
         'renamed to run-workflow.sh in 5.0.0; KB entry kept as history',
     'Guida ai comandi — Phased Workflow': 'KB-authored command guide (Italian)',

@@ -103,7 +103,7 @@ The plan is the coordination point between sessions, and it is committed on the 
 
 | Command | When to use | What it does |
 |---------|------------|--------------|
-| `/auto-phase` | One phase, unattended | Like `/execute-phase` with no confirmations: convergence loop (3 attempts against tests + lint, no-progress detector), independent review, `Done:` gate |
+| `/execute-phase-agent` | One phase, unattended | Like `/execute-phase` with no confirmations: convergence loop (3 attempts against tests + lint, no-progress detector), independent review, `Done:` gate |
 | `/run-workflow` | The whole plan, unattended | Pre-flight review, then one fresh `/goal`-guarded session per phase; light mode for `Effort=low`; one repair attempt on failure before stopping |
 | `/repair-phase` | A phase came back failed | Fresh-eyes repair: reads the `> Issue:` and `> Attempted:` notes, may not repeat a listed attempt, restarts from the diagnosis |
 
@@ -234,9 +234,9 @@ Key behaviors:
 - **Human verification** — waits for the user to confirm before marking done
 - **Records modified files** in the `> Files:` line — source of truth for finalize
 
-### `/auto-phase`, `/run-workflow`, `/repair-phase` — Unattended Execution
+### `/execute-phase-agent`, `/run-workflow`, `/repair-phase` — Unattended Execution
 
-`/auto-phase` is `/execute-phase` with the confirmations removed and the verification loops turned up:
+`/execute-phase-agent` is `/execute-phase` with the confirmations removed and the verification loops turned up:
 
 1. **Baseline first.** Tests and linter run *before* the first edit. A phase that inherits someone else's breakage would otherwise attribute it to itself and spend its whole fix budget — plus a repair session — on a bug it did not cause.
 2. **Convergence loop.** Tests and lint, fix, repeat — **max 3 attempts**, with an early stop when the same failure signature (same failing test, same exception) appears twice. Iterating blindly against the same error is how naive loops burn budget.
@@ -421,7 +421,7 @@ The stronger the verification loops, the cheaper the executor can be. The econom
 
 Effort follows the same logic, with a twist specific to this chain. Anthropic's guidance is to stop reaching for `xhigh` reflexively and sweep downward, because `low` and `medium` punch well above their weight on current models — and here that applies harder than usual: a phase that passed the pre-flight is *well-specified by construction*, so high effort gets spent re-exploring and re-verifying decisions the plan already settled. Start low, climb only where real design judgment survives inside the phase, and treat `max` as practically never (it overthinks). Effort levels copied from an older plan rarely transfer.
 
-The same reasoning removed a step: `/auto-phase` no longer sends every phase to an independent verifier. Current models verify their own work as they go, and telling them to verify again produces re-litigation rather than findings. The verifier now runs only where it earns its keep — a `sonnet` phase, a `new-pattern` phase, or a repair, where the code already failed once. The `Done:` gate still runs on every phase: that is a contract check against a criterion the executor did not write, which is a different thing from re-reading your own work.
+The same reasoning removed a step: `/execute-phase-agent` no longer sends every phase to an independent verifier. Current models verify their own work as they go, and telling them to verify again produces re-litigation rather than findings. The verifier now runs only where it earns its keep — a `sonnet` phase, a `new-pattern` phase, or a repair, where the code already failed once. The `Done:` gate still runs on every phase: that is a contract check against a criterion the executor did not write, which is a different thing from re-reading your own work.
 
 ### 4. The Human Moves to the Edges
 Autonomous does not mean unsupervised — it means the supervision is concentrated where it pays:
@@ -534,7 +534,7 @@ No. It is offered only for autonomous plans, where the run occupies a checkout f
 Run `/import-workflow`. It maps the old plan onto the new layout, preserving phase states and notes, and reports which phases fall short of the autonomous-ready bar instead of quietly filling the gaps. A plan with phases already `[x]` is imported in place, on the branch you are on, with no history rewritten.
 
 **Q: Does the repair run by itself, or do I launch it?**
-By itself, inside `/run-workflow`: a phase that exits `[!]` gets one repair session automatically, and the loop continues if it succeeds. You launch `/repair-phase` by hand only when the run already stopped (the automatic repair failed), when you are using `/auto-phase` on its own without the launcher, or when you want a different model or effort than the launcher would pick.
+By itself, inside `/run-workflow`: a phase that exits `[!]` gets one repair session automatically, and the loop continues if it succeeds. You launch `/repair-phase` by hand only when the run already stopped (the automatic repair failed), when you are using `/execute-phase-agent` on its own without the launcher, or when you want a different model or effort than the launcher would pick.
 
 **Q: Which phases can actually run unattended?**
 The ones whose feedback signal is machine-checkable: a `Done:` you could re-run yourself, tests that exist, decisions already settled in the plan, and a pattern reference to copy-adapt. Everything verified by eye — UI, visual output, exploratory work — belongs to `/execute-phase`. The leash reflects the nature of the phase, not the quality of the model.
