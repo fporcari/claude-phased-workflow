@@ -128,9 +128,39 @@ selects the plan format (autonomous plans need the stricter refinement and the
 execution config table). It has to be asked *before* the plan is written, not after,
 or an interactive plan gets rewritten into an autonomous one.
 
+**DECIDED — DONE in 5.1.0.** The fork is one `AskUserQuestion` in `/write-workflow`'s
+new Step 2, recommended-first, the recommendation derived from the work just discussed
+(UI → interactive; heavy refactor, project startup, mechanical migration → autonomous).
+The answer writes an explicit `Mode:` header — `Mode: autonomous` / `Mode: interactive` —
+and routes the rest of the skill. The header is single-source: `/write-workflow`'s Step 2
+states the question and the derivation rule once; `/run-workflow`'s pre-flight and
+`/import-workflow` point at it rather than restating it, so there is no second copy to
+drift (S24 guards this). `next-phase.py --validate` learned `Mode:` semantics: unknown
+value → error naming it, no header → interactive (legacy plans stay legal),
+`Mode: interactive` plus a config table → warning (a half-converted plan). *Rejected:* a
+fixed default with no question — it is exactly the "interactive by default; don't ask"
+clause the fork replaces, and it let an interactive plan be silently converted; and
+duplicating the derivation rule into each consumer, which S24 now forbids.
+
 **E · Notification.** The launch confirmation states that with Remote Control
 connected the completion notification reaches the phone. A proactive notification on
 run end, and on the first `[!]`, without waiting for the end.
+
+**DECIDED — DONE in 5.1.0.** Three stable `EVENT:` lines on the launcher's stdout —
+`phase-failed <N>`, `phase-blocked <N>`, `run-end <status> <done>/<total>` — and nothing
+else becomes an event, because every token is a potential notification. `/run-workflow`
+launches the run in the background teeing to a log under `${TMPDIR:-/tmp}/phased-workflow/`,
+watches the log with one persistent Monitor filtered to those tokens (self-terminating on
+`run-end`), and pushes on the first `phase-failed`, on any `phase-blocked`, and once at the
+end (the end push comes from the background command's own completion, so there is exactly
+one source per notification). Without Monitor/PushNotification it degrades to a foreground
+run reporting once at the end. S25 guards the contract both live and statically. *Rejected:*
+an event file inside `.phased/` — it dirties the tree at the next phase's start and lands
+inside that phase's commit, breaking the clean-tree invariant red-baseline attribution rests
+on, so the events go to stdout and the log lives outside the repo; `osascript` in the
+launcher — the launcher must stay silent under the test suite, and the local ping belongs to
+`/execute-phase` where the user is present; and detachment (per D2) — a detached run has no
+session to notify from.
 
 **F · ~~Transcripts to log only~~ — DROPPED, the premise was wrong.** The claim was
 that `claude -p ... | tee log/phase-N.txt` pours each sub-session's full transcript into
@@ -428,8 +458,8 @@ writable once the first lands. Rolling wave, three macros:
   deletion or for a new name. H is no longer one prose rule — retiring both tags touches
   two skills, both refs, the selector, the launcher and S20a — but it still belongs here,
   next to the files Macro 1 already opens.
-- **Macro 2 — Unattended run** (D, E). The "I have to do the shopping" path. (F2 was
-  fixed inside 4.1.0 and left this list.)
+- **Macro 2 — Unattended run** (D, E) — **DONE in 5.1.0** (`wf/macro2-unattended-run`).
+  The "I have to do the shopping" path. (F2 was fixed inside 4.1.0 and left this list.)
 - **Macro 2b — Manual mode** (J, J2, J3). The `Verify:` mechanics (`verify.md`, the
   `ui-test` split), the sizing rules, and the `/execute-phase` adjustments. Independent of
   Macro 2 once D lands: same fork, the other branch. Needs the resume path hardened —
