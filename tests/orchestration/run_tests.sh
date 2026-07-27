@@ -6,8 +6,13 @@
 # the idempotent repair marker, fable->opus fallback, progress guard, baseline
 # attribution (reopen / [~]), inert Roadmap, and the pre-2.1.139 prompt
 # fallback. S19 exercises the --validate gate (and that warnings are printed,
-# not discarded); S20 the announced fallbacks (missing selector, unknown
-# model/effort). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
+# not discarded), including Mode: header semantics — unknown value rejected,
+# interactive-plus-table warned, no header reading as interactive; S20 the
+# announced fallbacks (missing selector, unknown model/effort); S25 the EVENT
+# contract — the stable EVENT: lines the parent Monitor watches (phase-failed,
+# phase-blocked, run-end), each emitted verbatim at its site (live), plus a
+# static drift guard coupling those tokens to run-workflow/SKILL.md, proven by
+# mutation. S18 is a hybrid: live (prose bullets in ## Notes stay inert)
 # plus a static guard (check_state_matches.py — every phase-state match goes
 # through the single-source helpers or carries the **Phase anchor), proven by
 # mutation.
@@ -19,9 +24,15 @@
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
 # every skill inside its own allowed-tools (S15), no skill or ref addressing
-# ~/.claude/ (S21, check_home_paths.py, proven by mutation), and every -agent
-# skill a thin variant citing its base (S23, proven by mutation). S16 retired
-# with the KB mirror in 5.0.0; the number stays vacant.
+# ~/.claude/ (S21, check_home_paths.py, proven by mutation), every -agent
+# skill a thin variant citing its base (S23, proven by mutation), and
+# /write-workflow's automation fork being real — the Step 2 heading and the
+# Mode: interactive header present, the old "don't ask" default and the
+# reference's duplicate "Confirm with the user" gone (S24, proven by mutation),
+# and every shipped `claude -p` sub-session prompt carrying a `/<plugin>:<skill>`
+# namespace rather than a bare slash that dies with "Unknown command" (S26,
+# proven by mutation). S16 retired with the KB mirror in 5.0.0; the number stays
+# vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -182,7 +193,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
 assert "fallback notice printed" 'grep -q "goal guard unavailable" out.log'
-assert "plain /execute-phase-agent prompt used" 'grep -q -- "-p /execute-phase-agent --model" .claude/invocations.log'
+assert "namespaced /phased-workflow:execute-phase-agent prompt used" 'grep -q -- "-p /phased-workflow:execute-phase-agent --model" .claude/invocations.log'
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
@@ -582,6 +593,68 @@ assert "S19e: warnings-only plan is not blocked" '! grep -q "Plan validation fai
 assert "S19e: the warning lines are printed, not discarded" 'grep -q "warning: checkbox bullet outside" out.log'
 assert "S19e: the launcher flags them as non-blocking" 'grep -q "NOTE: plan validation reported warnings" out.log'
 
+# (f) a live run on a plan whose Mode: value is unknown is rejected, the gate
+# names the bad value, and NO session starts — a typo must not degrade silently
+# into the interactive default.
+setup S19f
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: robot
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19f: unknown Mode value is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19f: the gate names the bad Mode value" "grep -q \"Mode: 'robot' is not one of\" out.log"
+assert "S19f: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (g) direct --validate on a Mode: interactive plan carrying a config table
+# exits 0 with exactly one warning line naming the table — a half-converted plan
+# warns but never blocks.
+MODE_INT_PLAN="$OT/mode-interactive-plan.md"
+cat > "$MODE_INT_PLAN" <<'EOF'
+# Context: mode-int
+Parent: main
+Mode: interactive
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+MI_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_INT_PLAN" 2>&1)"; MI_RC=$?
+assert "S19g: interactive-plus-table is a warning, not an error (exit 0)" '[ "$MI_RC" = 0 ]'
+assert "S19g: exactly one warning line is printed" '[ "$(printf "%s\n" "$MI_OUT" | grep -c "warning:")" = 1 ]'
+assert "S19g: the warning names the execution-config table" 'printf "%s" "$MI_OUT" | grep -q "Suggested execution config"'
+
+# (h) direct --validate on a plan with no Mode: line and no table exits 0 with
+# no Mode finding at all — a legacy plan reads as interactive.
+MODE_NONE_PLAN="$OT/mode-none-plan.md"
+cat > "$MODE_NONE_PLAN" <<'EOF'
+# Context: mode-none
+Parent: main
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+EOF
+MN_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_NONE_PLAN" 2>&1)"; MN_RC=$?
+assert "S19h: no Mode: line and no table validates clean (exit 0)" '[ "$MN_RC" = 0 ]'
+assert "S19h: no Mode finding is emitted" '! printf "%s" "$MN_OUT" | grep -qi "Mode:"'
+
 echo "== S20: every silent fallback announces itself with a NOTE =="
 # Force the fallback path. After Phase 2 the launcher resolves its selector
 # beside itself, so a runner copied to a directory with no sibling next-phase.py
@@ -739,6 +812,143 @@ awk 'BEGIN{for(i=0;i<101;i++) print "- padding: a body large enough to be a copy
 assert "S23: the guard fails when an -agent variant grows a full body" \
   '[ -n "$(s23_guard "$S23_MUT")" ]'
 rm -rf "$S23_MUT"
+
+echo "== S24: the automation fork is real, not decorative =="
+# /write-workflow's Step 2 asks the automation question up front and its plan
+# template carries Mode: interactive; the old "interactive by default; don't
+# ask" instruction and the reference's duplicate "Confirm with the user" line
+# are gone (with the fork, that question would be asked twice). The guard also
+# checks the fork's consumers: run-workflow's pre-flight reads Mode: interactive
+# and offers the conversion, and import-workflow writes a Mode: header. Mutation
+# proves it bites.
+S24_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
+s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S24_W="$1/write-workflow/SKILL.md"
+  S24_A="$2/write-workflow-autonomous.md"
+  grep -q "## Step 2: The automation fork" "$S24_W" 2>/dev/null \
+    || echo "$S24_W: missing '## Step 2: The automation fork' heading"
+  grep -q "Mode: interactive" "$S24_W" 2>/dev/null \
+    || echo "$S24_W: missing 'Mode: interactive' plan header"
+  if grep -q "don't ask" "$S24_W" 2>/dev/null; then
+    echo "$S24_W: still carries the retired \"don't ask\" default"
+  fi
+  if grep -q "Confirm with the user" "$S24_A" 2>/dev/null; then
+    echo "$S24_A: still asks the automation question a second time"
+  fi
+  S24_R="$1/run-workflow/SKILL.md"
+  S24_I="$1/import-workflow/SKILL.md"
+  grep -q "Mode: interactive" "$S24_R" 2>/dev/null \
+    || echo "$S24_R: pre-flight does not read the 'Mode: interactive' header"
+  grep -q "Offer the conversion" "$S24_R" 2>/dev/null \
+    || echo "$S24_R: missing the interactive-to-autonomous conversion offer"
+  grep -qE "Mode: (interactive|autonomous)" "$S24_I" 2>/dev/null \
+    || echo "$S24_I: does not write a Mode: header into the imported plan"
+  return 0
+}
+S24_OUT="$(s24_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S24_OUT" ] || echo "  offending: $S24_OUT"
+assert "S24: write-workflow forks on automation and drops the old default" '[ -z "$S24_OUT" ]'
+# Mutations re-run the SAME guard on a copy of the skills dir (real refs passed through).
+S24_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S24_MUT/"
+sed -i.bak '/## Step 2: The automation fork/d' "$S24_MUT/write-workflow/SKILL.md" \
+  && rm -f "$S24_MUT/write-workflow/SKILL.md.bak"
+assert "S24: the guard fails when the fork heading is dropped" \
+  '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
+rm -rf "$S24_MUT"
+S24_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S24_MUT/"
+printf "\ndon't ask\n" >> "$S24_MUT/write-workflow/SKILL.md"
+assert "S24: the guard fails when \"don't ask\" is reintroduced" \
+  '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
+rm -rf "$S24_MUT"
+# The fork's consumers: dropping run-workflow's conversion offer must bite too.
+S24_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S24_MUT/"
+sed -i.bak '/Offer the conversion/d' "$S24_MUT/run-workflow/SKILL.md" \
+  && rm -f "$S24_MUT/run-workflow/SKILL.md.bak"
+assert "S24: the guard fails when run-workflow drops the conversion offer" \
+  '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
+rm -rf "$S24_MUT"
+
+echo "== S25: the EVENT contract — the stable lines the parent Monitor watches =="
+# Live half: each of the three event tokens is emitted at its site, verbatim,
+# with the phase number the launcher's own helpers resolve. Static half below:
+# the tokens the launcher emits and the ones run-workflow/SKILL.md documents
+# must not drift apart, or the parent watches for lines that never come.
+setup S25a; fixture2
+printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_fail; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25: a failed phase emits 'EVENT: phase-failed 1'" 'grep -q "^EVENT: phase-failed 1$" out.log'
+assert "S25: phase-failed is emitted once per failure" '[ "$(grep -c "^EVENT: phase-failed" out.log)" = 1 ]'
+setup S25b; fixture2
+printf '%s\n' 'python3 "$OPS" blocked; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25: a blocked phase emits 'EVENT: phase-blocked 1'" 'grep -q "^EVENT: phase-blocked 1$" out.log'
+setup S25c; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25: a clean run emits 'EVENT: run-end ok 3/3'" 'grep -q "^EVENT: run-end ok 3/3$" out.log'
+assert "S25: run-end is emitted exactly once" '[ "$(grep -c "^EVENT: run-end" out.log)" = 1 ]'
+# Static drift guard: every EVENT token the launcher emits must be named in the
+# skill that tells the parent which lines to watch. Tokens are extracted live
+# from the shipped launcher (the S14 idiom — measure what ships, not a copy).
+s25_tokens() { grep -oE 'EVENT: [a-z-]+' "$RUNNER_SRC" | awk '{print $2}' | sort -u; }
+s25_static_guard() {  # $1 = a run-workflow SKILL.md; one line per missing token
+  for S25_T in $(s25_tokens); do
+    grep -q "$S25_T" "$1" 2>/dev/null || echo "$1: missing EVENT token '$S25_T'"
+  done
+}
+S25_SKILL="$SKILLS_DIR/run-workflow/SKILL.md"
+S25_STATIC_OUT="$(s25_static_guard "$S25_SKILL")"
+[ -z "$S25_STATIC_OUT" ] || echo "  offending: $S25_STATIC_OUT"
+assert "S25: run-workflow/SKILL.md names every EVENT token the launcher emits" '[ -z "$S25_STATIC_OUT" ]'
+assert "S25: token extraction found all three events" '[ "$(s25_tokens | wc -l | tr -d " ")" = 3 ]'
+# Mutation re-runs the SAME guard on a copy with the phase-failed token dropped.
+S25_MUT="$(mktemp -d)"
+cp "$S25_SKILL" "$S25_MUT/SKILL.md"
+sed -i.bak 's/phase-failed//g' "$S25_MUT/SKILL.md" && rm -f "$S25_MUT/SKILL.md.bak"
+assert "S25: the static guard fails when the phase-failed token is dropped" \
+  '[ -n "$(s25_static_guard "$S25_MUT/SKILL.md")" ]'
+rm -rf "$S25_MUT"
+
+echo "== S26: every claude -p sub-session prompt carries a plugin: namespace =="
+# A slash command in a headless `claude -p` session resolves only against
+# ~/.claude/commands/ or a plugin's namespaced id `/<plugin>:<skill>`. A bare
+# `/<skill>` prompt dies with "Unknown command" and the sub-session does nothing
+# — the same "shipped contract no test executes" defect class as 4.1.0's
+# LIGHT_PROMPT 'Never commit'. The guard flags any literal `claude -p "/..."`
+# argument that starts with a slash and carries no colon; the /goal contracts
+# (which begin `/goal` but embed `Condition:`) and the variable-based `"$..."`
+# calls are correctly left alone.
+S26_SCRIPTS="$TESTDIR/../../plugins/phased-workflow/scripts"
+s26_guard() {  # $1 = a scripts dir; one line per bare-slash claude -p prompt
+  for S26_F in "$1"/*.sh; do
+    [ -f "$S26_F" ] || continue
+    grep -oE 'claude -p "[^"]*"' "$S26_F" 2>/dev/null \
+      | sed -E 's/^claude -p "//; s/"$//' \
+      | while IFS= read -r S26_ARG; do
+          case "$S26_ARG" in
+            /*) case "$S26_ARG" in
+                  *:*) ;;
+                  *) echo "$S26_F: bare-slash prompt '$S26_ARG' — needs a plugin: namespace" ;;
+                esac ;;
+          esac
+        done
+  done
+}
+S26_OUT="$(s26_guard "$S26_SCRIPTS")"
+[ -z "$S26_OUT" ] || echo "  offending: $S26_OUT"
+assert "S26: every shipped claude -p prompt is namespaced or a /goal contract" '[ -z "$S26_OUT" ]'
+assert "S26: the guard actually saw the launcher's claude -p calls" \
+  '[ -n "$(grep -oE "claude -p \"[^\"]*\"" "$S26_SCRIPTS/run-workflow.sh")" ]'
+# Mutation re-runs the SAME guard on a copy where a bare-slash prompt returns.
+S26_MUT="$(mktemp -d)"
+cp "$S26_SCRIPTS"/*.sh "$S26_MUT/"
+printf '\nclaude -p "/execute-phase-agent"\n' >> "$S26_MUT/agent-session.sh"
+assert "S26: the guard fails when a bare-slash prompt is reintroduced" \
+  '[ -n "$(s26_guard "$S26_MUT")" ]'
+rm -rf "$S26_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

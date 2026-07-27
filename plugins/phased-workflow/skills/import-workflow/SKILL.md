@@ -52,6 +52,8 @@ Phase 5 — nessun Pattern: e il codice non è banale
 
 Inventing a plausible `Done:` for a phase whose author never wrote one is worse than leaving the gap visible: it looks settled and nobody checks it again. Offer to refine them now, one at a time, or to import as-is and leave `/write-workflow` to it.
 
+**Then settle how it will run** — the same automation fork `/write-workflow` asks. If the source already carries a `Mode:` header, keep it (it is a decision the author already made). Otherwise ask the fork question and the derivation rule from `/write-workflow`'s *Step 2: The automation fork* — do not restate them here, that skill is the one source — and write the resulting header (`Mode: autonomous` or `Mode: interactive`) into the imported plan. The autonomous answer is what the gap report above feeds: an imported plan still below the autonomous-ready bar gets its gaps flagged, not hidden by the header.
+
 ## Step 4: Land it
 
 Show the plan and get approval. Then, depending on Step 2:

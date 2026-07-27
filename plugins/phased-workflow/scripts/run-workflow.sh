@@ -19,6 +19,16 @@
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
 
+# Sub-session prompts are slash commands. In a headless `claude -p` session a
+# bare `/<skill>` resolves only against ~/.claude/commands/; a plugin-shipped
+# skill registers as `/<plugin>:<skill>`, so the namespace prefix is REQUIRED or
+# the session dies at once with "Unknown command: /<skill>". Derive the plugin
+# name from our own plugin.json (found via SCRIPT_DIR), never retyped — with a
+# literal fallback so a failed read can never reintroduce a bare slash.
+PLUGIN_NAME=$(sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+  "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1)
+PLUGIN_NAME=${PLUGIN_NAME:-phased-workflow}
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Workspace create-or-attach: the launcher runs from anywhere. If the current
@@ -133,8 +143,8 @@ if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V 
   LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. When the phase is done, make exactly one commit for it -- the phase code and its own plan status update together, git add -A && git commit -m "wf(phase N): <title>" -- so the next phase starts from a clean tree. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
-  PHASE_PROMPT='/execute-phase-agent'
-  REPAIR_PROMPT='/repair-phase'
+  PHASE_PROMPT="/$PLUGIN_NAME:execute-phase-agent"
+  REPAIR_PROMPT="/$PLUGIN_NAME:repair-phase"
   LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
 
@@ -323,6 +333,12 @@ for i in $(seq 1 $REMAINING); do
 
   # Check for issues — one fresh-eyes repair attempt before stopping
   if phase_any '!'; then
+    # Stable event line: the parent Monitor turns this into a notification.
+    # Fires once per loop iteration that finds a [!] phase, before the repair
+    # session. The phase number comes from phase_re — the shared state anchor —
+    # not a second private regex.
+    FAILED_PHASE=$(grep "$(phase_re '!')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/')
+    echo "EVENT: phase-failed $FAILED_PHASE"
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
@@ -371,6 +387,9 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   if phase_any '~'; then
+    # Stable event line (see phase-failed above): phase number via phase_re.
+    BLOCKED_PHASE=$(grep "$(phase_re '~')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/')
+    echo "EVENT: phase-blocked $BLOCKED_PHASE"
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
     break
@@ -429,3 +448,17 @@ if [ -f "$ROADMAP" ]; then
   echo "Roadmap (pending macro-phases — after /finalize-workflow, detail the next one with /write-workflow):"
   grep '^- ' "$ROADMAP" | head -10
 fi
+
+# Stable event line: exactly one per run, after the whole summary. Status is
+# `ok` only when every phase reached [x] — any pending, failed, blocked or
+# resumable phase left over means the run stopped short. The parent Monitor
+# exits on this line, so it is deliberately the launcher's last word. Counts
+# come from the phase helpers, never a fresh grep of the plan.
+DONE_COUNT=$(phase_count x); DONE_COUNT=${DONE_COUNT:-0}
+TOTAL_COUNT=$(phase_lines | grep -c .); TOTAL_COUNT=${TOTAL_COUNT:-0}
+if phase_any ' ' || phase_any '!' || phase_any '~' || phase_any '>'; then
+  RUN_STATUS=stopped
+else
+  RUN_STATUS=ok
+fi
+echo "EVENT: run-end $RUN_STATUS $DONE_COUNT/$TOTAL_COUNT"

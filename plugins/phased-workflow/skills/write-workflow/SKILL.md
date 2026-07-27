@@ -12,8 +12,6 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
-**Mode:** plans are **interactive** by default; don't ask. Only if the user explicitly asks for an autonomous/robottino plan (for `/run-workflow`), read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter format on top of this.
-
 ## Step 1: Where are we
 
 ```bash
@@ -30,7 +28,28 @@ The user's answer is the primary input. Read code only in service of the plan.
 
 This same fork decides the branch in Step 4 — remember which side you are on.
 
-## Step 2: Build the plan
+## Step 2: The automation fork
+
+Before building the plan, settle how it will run. This is one explicit question, asked once, and its answer picks the plan format — never default silently to one mode.
+
+Derive the recommendation from the work just discussed and state it in one line with its reason (there is no fixed default; the recommendation follows the task):
+
+- **UI, declarative, or visual work — anything whose success is "I'll know it when I see it"** → recommend **interactive**.
+- **Heavy refactor, project startup, mechanical migration — well-specified work with a measurable done** → recommend **autonomous**.
+
+Ask with `AskUserQuestion` (recommended option first, per `common.md`), two options:
+
+- **Autonomous** — `/run-workflow` runs the whole plan unattended, one self-correcting sub-session per phase.
+- **Interactive** — one chat per phase with `/execute-phase`, a human approval gate on each.
+
+The answer routes the rest of this skill:
+
+- **Autonomous** → read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
+- **Interactive** → continue with this file's format; the plan carries `Mode: interactive`.
+
+A plan with no `Mode:` header stays legal and reads as interactive, but a plan written here always states its header explicitly.
+
+## Step 3: Build the plan
 
 Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
@@ -47,13 +66,13 @@ Only the split-vs-`vast` call materially changes execution — batch it into the
 
 **Present the plan in Italian** and iterate until the user approves.
 
-**Close the presentation with the branch line**, pre-filled per Step 3 and flippable — one line, not a separate question:
+**Close the presentation with the branch line**, pre-filled per Step 4 and flippable — one line, not a separate question:
 
 ```
 Branch: <what will happen>   (dimmi se preferisci diversamente)
 ```
 
-## Step 3: Open the branch
+## Step 4: Open the branch
 
 Only after approval, and before writing anything.
 
@@ -67,13 +86,14 @@ Adoption is safe because the workflow's base is the plan commit, not the branch 
 
 **No worktree here.** Planning creates the branch and the plan, nothing else: the workspace belongs to execution. `/run-workflow` attaches or creates the worktree itself when the run needs one, and `/finalize-workflow` removes it — the user never manages it.
 
-## Step 4: Write it
+## Step 5: Write it
 
 `.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md` and an empty `notes.md`.
 
 ```
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
+Mode: interactive
 
 ## Objective
 [2-3 sentences]
@@ -99,7 +119,7 @@ Phases run strictly in order: a phase starts only when every phase above it is `
 
 No "Suggested execution config" table on interactive plans: nothing reads it. The one useful per-phase hint is `Model hint: sonnet`, and it is deliberately rare — mechanical work only (renames, extractions, moves), **never on UI or declarative phases**, and only when that phase's `Details:` is spelled out to the point where nothing is left to infer. If you can't write it that way, leave the hint off. No hint means opus.
 
-## Step 5: Commit and close
+## Step 6: Commit and close
 
 The plan is the branch's first commit — everything after it is the workflow:
 

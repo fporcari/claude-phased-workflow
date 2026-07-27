@@ -247,6 +247,8 @@ CONFIG_HEADING = 'Suggested execution config'
 NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):')
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
+MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
+MODES = ('autonomous', 'interactive')
 
 
 def _is_separator(cells):
@@ -276,7 +278,8 @@ def validate(path, phases, text):
 
     lines = text.splitlines()
     has_parent = False
-    mode_autonomous = False
+    mode_value = None
+    mode_lineno = None
     heading = None
     in_work_plan = False
     work_plan_lineno = None
@@ -287,8 +290,10 @@ def validate(path, phases, text):
     for idx, line in enumerate(lines, 1):
         if line.startswith('Parent:'):
             has_parent = True
-        if re.match(r'^Mode:\s*autonomous\b', line):
-            mode_autonomous = True
+        mm = MODE_RE.match(line)
+        if mm and mode_value is None:
+            mode_value = mm.group(1).lower()
+            mode_lineno = idx
 
         if line.startswith('## '):
             heading = line[3:].strip()
@@ -356,10 +361,22 @@ def validate(path, phases, text):
                 'phase numbers must be contiguous ascending from 1, found %s'
                 % numbers)
 
+    mode_autonomous = mode_value == 'autonomous'
+    mode_interactive = mode_value == 'interactive'
+    if mode_value is not None and mode_value not in MODES:
+        add(mode_lineno, 'error',
+            "Mode: '%s' is not one of: %s"
+            % (mode_value, ', '.join(MODES)))
+
     table_present = config_header is not None
     if mode_autonomous and not table_present:
         add(config_lineno or 1, 'error',
             'Mode: autonomous requires a "## Suggested execution config" table')
+    if mode_interactive and table_present:
+        add(config_lineno or 1, 'warning',
+            'Mode: interactive plan carries a "## Suggested execution config" '
+            'table, which nothing reads on an interactive plan — a half-'
+            'converted plan')
 
     if table_present:
         hln, hcells = config_header

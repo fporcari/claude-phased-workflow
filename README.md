@@ -197,8 +197,9 @@ Talk to Claude naturally: describe what you want, explore the code together, dis
 When the discussion is mature, run this command. Claude:
 
 1. Synthesizes the conversation into **objective + concrete phases**
-2. Presents the plan for approval
-3. Opens `wf/<slug>`, writes the plan with phases, involved files and execution config, and commits it
+2. **Asks the automation fork** — one explicit question, *before* the plan is written: autonomous (`/run-workflow` runs it unattended) or interactive (one chat per phase with `/execute-phase`). It recommends one from the work just discussed (UI work → interactive; heavy refactor, project startup, mechanical migration → autonomous) and the answer selects the plan format and its `Mode:` header. Asking first is deliberate — an interactive plan cannot be rewritten into an autonomous one after the fact
+3. Presents the plan for approval
+4. Opens `wf/<slug>`, writes the plan with phases, involved files and execution config, and commits it
 
 **Output:** a `.phased/active/<slug>/plan.md` file:
 
@@ -232,7 +233,7 @@ Runs **one phase** per chat session.
 
 Key behaviors:
 - **One phase per chat** — always-fresh context
-- **Never commits** (except WIP safety commit when context runs low)
+- **One commit per phase** — `wf(phase N): <title>` on the workflow branch (a WIP safety commit if context runs low); `/finalize-workflow` squashes them into one clean commit on the parent
 - **Human verification** — waits for the user to confirm before marking done
 - **Records modified files** in the `> Files:` line — source of truth for finalize
 
@@ -252,6 +253,7 @@ Key behaviors:
 - **Repair is automatic, once.** A phase that exits `[!]` gets one fresh-eyes repair session (fable, opus fallback) launched by the loop; the run continues only if the repair turns the phase `[x]`. The `> Repair attempted:` note makes it idempotent — relaunching does not spend a second repair on the same phase. Delete that note to grant another round after intervening by hand.
 - **Red-baseline attribution.** When the baseline check finds tests or lint already red, the failure is matched against the `> Files:` notes of completed phases. *Case A* — a `[x]` phase owns those files: it regressed and was closed wrongly, so it is **reopened `[x] → [!]`** and the ordinary repair path handles it; the run continues. *Case B* — nobody owns it: it pre-dates the run, and the pending phase goes `[~]` for the human. Ambiguity resolves to Case B, because a wrong reopen spends a phase's only repair on the wrong bug.
 - **Bounded everywhere.** 3 fix attempts per phase, 1 repair per phase, 25 turns per contract, a notional dollar cap per session (doubled for fable, 250 for `xhigh`), and a no-progress guard that stops a run that is not moving.
+- **Reportable while it runs.** The run stays attached to the launching session — leave the app open and it survives you stepping out. The launcher emits stable `EVENT:` lines, watched by a Monitor, and a proactive notification fires on the first `[!]` and once at the end, without waiting for the whole run. **With Remote Control connected, those notifications reach your phone** — so the "I have to do the shopping" run tells you when it stops or finishes. Without Monitor/PushNotification it degrades cleanly: the script runs in the foreground and reports once at the end.
 
 Model tiers are guidance, not constraint: strong models go where judgment happens, the medium tier executes with an automatic verifier behind it. The `phase-verifier` is pinned to opus rather than inherited — on a sonnet phase an inherited verifier is as weak as the executor it is meant to check. Full map in [docs/loop-engineering.md](docs/loop-engineering.md).
 
@@ -320,11 +322,11 @@ Conflicts between sub-tasks emerge at merge time — exactly like in a human tea
 
 Git worktrees create isolated working directories on separate branches. Each worktree has its own file tree, so parallel workflows don't interfere. `git add -A` in a worktree is safe — everything there belongs to that workflow.
 
-### Why no commit during phases?
+### Why one commit per phase, then a squash?
 
-`/execute-phase` (the interactive path) never commits (except a WIP safety commit when context runs low). This gives `/finalize-workflow` full control over the final commit — one clean commit per workflow, with a proper message.
+Both paths commit once per phase — `wf(phase N): <title>` on the throwaway workflow branch — because the mechanics live once in `refs/phase-execution.md` and apply to `/execute-phase` and `/execute-phase-agent` alike. The per-phase commit is load-bearing: repair needs the failing code in history, and red-baseline attribution matches a failure against the `> Files:` of *committed* phases. `/finalize-workflow` then squashes those per-phase commits into one clean commit on the parent — so the parent branch still receives exactly one commit, with a proper message, either way.
 
-The autonomous chain works the other way: each phase session commits its own work as `wf(phase N): <title>` on the throwaway workflow branch, because repair needs the failing code in history and red-baseline attribution matches a failure against the `> Files:` of *committed* phases. `/finalize-workflow` then squashes those per-phase commits into the same single clean commit on the parent — so the parent branch still receives exactly one commit either way.
+(Before 5.0.0 the interactive path did not commit — the claim survived in older docs longer than in the code.)
 
 ### Why a separate `/write-workflow` command?
 
@@ -379,7 +381,7 @@ Parent: <parent-branch> | Issue: #<number>
 | Phase 1 | medium | sonnet |
 ```
 
-Autonomous plans add a `Mode: autonomous` header, and ambitious ones a `## Roadmap` section whose bullets are inert — the launcher never executes them, it only reminds you they are pending.
+The automation fork writes an explicit `Mode:` header: `Mode: autonomous` on autonomous plans, `Mode: interactive` on interactive ones. A plan with **no** header stays legal and reads as interactive, so pre-5.1.0 plans keep working; the validator rejects any other value by name, and warns if an interactive plan still carries an execution-config table nothing will read. Ambitious autonomous plans also add a `## Roadmap` section whose bullets are inert — the launcher never executes them, it only reminds you they are pending.
 
 ### Phase States
 
@@ -543,8 +545,11 @@ By itself, inside `/run-workflow`: a phase that exits `[!]` gets one repair sess
 **Q: Which phases can actually run unattended?**
 The ones whose feedback signal is machine-checkable: a `Done:` you could re-run yourself, tests that exist, decisions already settled in the plan, and a pattern reference to copy-adapt. Everything verified by eye — UI, visual output, exploratory work — belongs to `/execute-phase`. The leash reflects the nature of the phase, not the quality of the model.
 
+**Q: Can I walk away during a run?**
+Yes — that is the point of `/run-workflow`. The run stays attached to the launching session, so leave the app open (the loop lives in its process tree; it survives you leaving the house, not the Mac shutting down). It notifies you proactively on the first `[!]` and once at the end, and with Remote Control connected those notifications reach your phone. There is no detached mode on purpose: a detached run would have no live session to notify from.
+
 **Q: Can it commit or push without me?**
-Nothing reaches the parent branch without you. On the interactive path `/finalize-workflow` is the only command that commits, and it asks first; `/execute-phase` never commits (except a WIP safety commit when context runs low). The autonomous chain does commit once per phase — `wf(phase N): <title>` — but only on the throwaway workflow branch, which `/finalize-workflow` squashes into the single clean commit you approve. It never pushes without you.
+Nothing reaches the parent branch without you. Both paths commit once per phase — `wf(phase N): <title>` — but only on the throwaway workflow branch, which `/finalize-workflow` squashes into the single clean commit you approve, and it asks first. Nothing pushes without you.
 
 **Q: How do I clean up old worktrees?**
 Plain git: `git worktree list` shows them all, `git worktree remove <path>` removes one, `git worktree prune` clears entries whose directory is already gone. `/finalize-workflow` offers to do it for the workflow it just closed.
@@ -608,6 +613,15 @@ gnr web serve sandboxpg --debug
 See [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md) for details.
 
 ---
+
+## What changed in 5.1.0
+
+5.1.0 implements Macro 2 of [docs/target-workflow.md](docs/target-workflow.md) — the unattended run. Two items, no breaking change: pre-5.1.0 plans with no `Mode:` header keep running as interactive.
+
+- **The automation fork (item D).** `/write-workflow` now asks once, explicitly, *before* the plan is written: autonomous (`/run-workflow` runs it unattended) or interactive (one chat per phase). It recommends one from the work just discussed, and the answer writes an explicit `Mode:` header — `Mode: autonomous` / `Mode: interactive` — that selects the plan format. `/run-workflow`'s pre-flight and `/import-workflow` honour that header: an interactive plan is offered a conversion, never silently rewritten. The validator rejects an unknown `Mode:` value by name. Guarded by S24 (the fork is not decorative — static, mutation-proven) and S19's `Mode:` checks.
+- **Notification while the run is live (item E).** The launcher emits three stable `EVENT:` lines on stdout — `phase-failed`, `phase-blocked`, `run-end` — and nothing else becomes an event. `/run-workflow` launches the run in the background, watches those lines with a Monitor, and pushes a proactive notification on the first `[!]` and once at the end, without waiting for the whole run; with Remote Control connected they reach your phone. The run stays attached to the session (D2 — no detachment, so there is a session to notify from), and the parent never writes to the repo while the run owns the working tree. Guarded by S25 (the EVENT contract — live on the mock plus a static drift guard).
+- **The stale claim that the interactive path never commits is corrected.** Both execution paths have committed once per phase since 5.0.0 — the mechanics live once in `refs/phase-execution.md` — so the *Why one commit per phase* design note and the FAQ now say so instead of repeating the pre-5.0.0 claim.
+- **Sub-session slash prompts are namespaced.** A shipped skill registers as `/<plugin>:<skill>`, so a headless `claude -p "/<skill>"` prompt died with "Unknown command" and the sub-session did nothing — the same "shipped contract no test executes" defect class as 4.1.0's `LIGHT_PROMPT: Never commit`. `run-workflow.sh` and `agent-session.sh` now derive the plugin name from their own `plugin.json` and namespace every launch prompt (literal `phased-workflow` fallback so a failed read can never reintroduce a bare slash). Guarded by S26, proven by mutation.
 
 ## What changed in 5.0.0
 
