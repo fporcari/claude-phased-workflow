@@ -60,6 +60,8 @@ MAPPING = {
     'plugins/phased-workflow/skills/repair-phase/SKILL.md': 'repair-phase',
     'plugins/phased-workflow/skills/resume-workflow/SKILL.md': 'resume-workflow',
     'plugins/phased-workflow/skills/finalize-workflow/SKILL.md': 'finalize-workflow',
+    'plugins/phased-workflow/skills/finalize-workflow-agent/SKILL.md':
+        'finalize-workflow-agent',
     'plugins/phased-workflow/skills/pull-request/SKILL.md': 'pull-request',
     'plugins/phased-workflow/skills/issue/SKILL.md': 'issue',
     'plugins/phased-workflow/refs/common.md': 'Phased Workflow — shared conventions (common.md)',
@@ -76,6 +78,8 @@ EMBEDDED = {
         ('next-phase.py — deterministic phase selection script', 'python'),
     'plugins/phased-workflow/scripts/run-workflow.sh':
         ('run-workflow.sh — autonomous phase loop launcher', 'bash'),
+    'plugins/phased-workflow/scripts/agent-session.sh':
+        ('agent-session.sh — run a shipped skill at the plan root', 'bash'),
 }
 
 # KB entries with no counterpart in this repo, on purpose. Listed so `--audit`
