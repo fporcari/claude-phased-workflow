@@ -8,7 +8,10 @@
 # fallback. S19 exercises the --validate gate (and that warnings are printed,
 # not discarded), including Mode: header semantics — unknown value rejected,
 # interactive-plus-table warned, no header reading as interactive; S20 the
-# announced fallbacks (missing selector, unknown model/effort). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
+# announced fallbacks (missing selector, unknown model/effort); S25 the EVENT
+# contract — the stable EVENT: lines the parent Monitor watches (phase-failed,
+# phase-blocked, run-end), each emitted verbatim at its site (live half; the
+# static drift guard follows in Phase 5). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
 # plus a static guard (check_state_matches.py — every phase-state match goes
 # through the single-source helpers or carries the **Phase anchor), proven by
 # mutation.
@@ -863,6 +866,25 @@ sed -i.bak '/Offer the conversion/d' "$S24_MUT/run-workflow/SKILL.md" \
 assert "S24: the guard fails when run-workflow drops the conversion offer" \
   '[ -n "$(s24_guard "$S24_MUT" "$S24_REFS")" ]'
 rm -rf "$S24_MUT"
+
+echo "== S25: the EVENT contract — the stable lines the parent Monitor watches =="
+# Live half: each of the three event tokens is emitted at its site, verbatim,
+# with the phase number the launcher's own helpers resolve. (Phase 5 adds the
+# static drift guard coupling these tokens to run-workflow/SKILL.md.)
+setup S25a; fixture2
+printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_fail; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25: a failed phase emits 'EVENT: phase-failed 1'" 'grep -q "^EVENT: phase-failed 1$" out.log'
+assert "S25: phase-failed is emitted once per failure" '[ "$(grep -c "^EVENT: phase-failed" out.log)" = 1 ]'
+setup S25b; fixture2
+printf '%s\n' 'python3 "$OPS" blocked; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25: a blocked phase emits 'EVENT: phase-blocked 1'" 'grep -q "^EVENT: phase-blocked 1$" out.log'
+setup S25c; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S25: a clean run emits 'EVENT: run-end ok 3/3'" 'grep -q "^EVENT: run-end ok 3/3$" out.log'
+assert "S25: run-end is emitted exactly once" '[ "$(grep -c "^EVENT: run-end" out.log)" = 1 ]'
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

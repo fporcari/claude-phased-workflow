@@ -323,6 +323,12 @@ for i in $(seq 1 $REMAINING); do
 
   # Check for issues — one fresh-eyes repair attempt before stopping
   if phase_any '!'; then
+    # Stable event line: the parent Monitor turns this into a notification.
+    # Fires once per loop iteration that finds a [!] phase, before the repair
+    # session. The phase number comes from phase_re — the shared state anchor —
+    # not a second private regex.
+    FAILED_PHASE=$(grep "$(phase_re '!')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/')
+    echo "EVENT: phase-failed $FAILED_PHASE"
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
@@ -371,6 +377,9 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   if phase_any '~'; then
+    # Stable event line (see phase-failed above): phase number via phase_re.
+    BLOCKED_PHASE=$(grep "$(phase_re '~')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/')
+    echo "EVENT: phase-blocked $BLOCKED_PHASE"
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
     break
@@ -429,3 +438,17 @@ if [ -f "$ROADMAP" ]; then
   echo "Roadmap (pending macro-phases — after /finalize-workflow, detail the next one with /write-workflow):"
   grep '^- ' "$ROADMAP" | head -10
 fi
+
+# Stable event line: exactly one per run, after the whole summary. Status is
+# `ok` only when every phase reached [x] — any pending, failed, blocked or
+# resumable phase left over means the run stopped short. The parent Monitor
+# exits on this line, so it is deliberately the launcher's last word. Counts
+# come from the phase helpers, never a fresh grep of the plan.
+DONE_COUNT=$(phase_count x); DONE_COUNT=${DONE_COUNT:-0}
+TOTAL_COUNT=$(phase_lines | grep -c .); TOTAL_COUNT=${TOTAL_COUNT:-0}
+if phase_any ' ' || phase_any '!' || phase_any '~' || phase_any '>'; then
+  RUN_STATUS=stopped
+else
+  RUN_STATUS=ok
+fi
+echo "EVENT: run-end $RUN_STATUS $DONE_COUNT/$TOTAL_COUNT"
