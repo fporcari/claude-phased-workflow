@@ -1,6 +1,6 @@
 ---
 description: Run all remaining phases autonomously — launches a new claude session per phase with correct model
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, Monitor, PushNotification
 ---
 
 # Run Workflow
@@ -40,17 +40,34 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
    It sets `--effort`, the runaway cap, and light mode: `low` phases run a slim `/goal` contract *without* the execute-phase-agent skill, so their `Details:`/`Done:` must be fully self-contained.
 
-6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), show the user the final phase list with the model chosen for each, and get explicit confirmation before launching.
+6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), show the user the final phase list with the model chosen for each, and get explicit confirmation before launching. The run stays attached to this session, so leave the app open; with Remote Control connected, the end-of-run and first-`[!]` notifications reach your phone.
 
 ## Execution
 
-After confirmation:
+After confirmation, launch the run in the **background** and watch it while it runs — the run stays attached to this session. Tee the launcher's output to a log **outside the repo** (`<slug>` = the active plan's directory name under `.phased/active/`); a file inside `.phased/` would dirty the tree at the next phase's start and land in that phase's commit, which is exactly why the launcher itself writes no file:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh"
+mkdir -p "${TMPDIR:-/tmp}/phased-workflow"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh" 2>&1 \
+  | tee "${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log"
 ```
 
-The script owns the loop; do not reimplement it. Report its output to the user.
+The script owns the loop; do not reimplement it.
+
+**Watch it with the Monitor tool** — one persistent monitor on that log, filtered to the `EVENT:` lines the launcher emits (`phase-failed`, `phase-blocked`, `run-end`) and self-terminating when the run ends:
+
+```bash
+tail -f -n +1 "${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log" \
+  | awk '/^EVENT: (phase-failed|phase-blocked)/ {print; fflush()} /^EVENT: run-end/ {print; fflush(); exit}'
+```
+
+**Push policy** (see `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Notifications*): send a **PushNotification** on the **first** `phase-failed` of the run, on **any** `phase-blocked`, and once when the run ends — the end push comes from the background command's own completion, not from the `run-end` event, so there is exactly one source per notification and no duplicate. At most one failure push per run. Nothing else is pushed: routine per-phase progress is not worth an interruption. Each message leads with what the user would act on, one line under 200 characters with no markdown — e.g. `run stopped: phase 4 [!] after repair, 3/7 done — see its > Issue: note`.
+
+**While the run is in the background, this session does NOT write to the repository.** The run owns the working tree; a parent-side edit breaks the clean-tree invariant every phase session checks at its start.
+
+**Degradation is declared, not silent.** Without the Monitor tool or PushNotification available, run the script in the foreground exactly as before and report once at the end — and say that the early `[!]` notification needs the background path.
+
+Report the launcher's output to the user.
 
 **Runaway cap:** `--max-budget-usd` is a bugged-loop safety net, not a spend limit — on a subscription plan quota is the 5-hour window, not dollars. Caps come from effort ($50 low → $300 max, doubled for fable). A phase that actually trips its cap is a signal to investigate, not to raise it. `RUN_WORKFLOW_NO_BUDGET=1` removes the flag entirely.
 

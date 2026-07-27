@@ -10,8 +10,9 @@
 # interactive-plus-table warned, no header reading as interactive; S20 the
 # announced fallbacks (missing selector, unknown model/effort); S25 the EVENT
 # contract — the stable EVENT: lines the parent Monitor watches (phase-failed,
-# phase-blocked, run-end), each emitted verbatim at its site (live half; the
-# static drift guard follows in Phase 5). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
+# phase-blocked, run-end), each emitted verbatim at its site (live), plus a
+# static drift guard coupling those tokens to run-workflow/SKILL.md, proven by
+# mutation. S18 is a hybrid: live (prose bullets in ## Notes stay inert)
 # plus a static guard (check_state_matches.py — every phase-state match goes
 # through the single-source helpers or carries the **Phase anchor), proven by
 # mutation.
@@ -869,8 +870,9 @@ rm -rf "$S24_MUT"
 
 echo "== S25: the EVENT contract — the stable lines the parent Monitor watches =="
 # Live half: each of the three event tokens is emitted at its site, verbatim,
-# with the phase number the launcher's own helpers resolve. (Phase 5 adds the
-# static drift guard coupling these tokens to run-workflow/SKILL.md.)
+# with the phase number the launcher's own helpers resolve. Static half below:
+# the tokens the launcher emits and the ones run-workflow/SKILL.md documents
+# must not drift apart, or the parent watches for lines that never come.
 setup S25a; fixture2
 printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_fail; exit 0' > .claude/mock-queue
 finish_setup; run
@@ -885,6 +887,27 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup; run
 assert "S25: a clean run emits 'EVENT: run-end ok 3/3'" 'grep -q "^EVENT: run-end ok 3/3$" out.log'
 assert "S25: run-end is emitted exactly once" '[ "$(grep -c "^EVENT: run-end" out.log)" = 1 ]'
+# Static drift guard: every EVENT token the launcher emits must be named in the
+# skill that tells the parent which lines to watch. Tokens are extracted live
+# from the shipped launcher (the S14 idiom — measure what ships, not a copy).
+s25_tokens() { grep -oE 'EVENT: [a-z-]+' "$RUNNER_SRC" | awk '{print $2}' | sort -u; }
+s25_static_guard() {  # $1 = a run-workflow SKILL.md; one line per missing token
+  for S25_T in $(s25_tokens); do
+    grep -q "$S25_T" "$1" 2>/dev/null || echo "$1: missing EVENT token '$S25_T'"
+  done
+}
+S25_SKILL="$SKILLS_DIR/run-workflow/SKILL.md"
+S25_STATIC_OUT="$(s25_static_guard "$S25_SKILL")"
+[ -z "$S25_STATIC_OUT" ] || echo "  offending: $S25_STATIC_OUT"
+assert "S25: run-workflow/SKILL.md names every EVENT token the launcher emits" '[ -z "$S25_STATIC_OUT" ]'
+assert "S25: token extraction found all three events" '[ "$(s25_tokens | wc -l | tr -d " ")" = 3 ]'
+# Mutation re-runs the SAME guard on a copy with the phase-failed token dropped.
+S25_MUT="$(mktemp -d)"
+cp "$S25_SKILL" "$S25_MUT/SKILL.md"
+sed -i.bak 's/phase-failed//g' "$S25_MUT/SKILL.md" && rm -f "$S25_MUT/SKILL.md.bak"
+assert "S25: the static guard fails when the phase-failed token is dropped" \
+  '[ -n "$(s25_static_guard "$S25_MUT/SKILL.md")" ]'
+rm -rf "$S25_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

@@ -62,6 +62,10 @@ TOOL_HINTS = {
     'AskUserQuestion': r'AskUserQuestion',
     'Agent': r'Agent tool|subagent',
     'Skill': r'Skill tool',
+    # Pinned narrow: a bare `monitor` matches prose ("monitors context") and a
+    # bare `push` is everywhere. Only the tool named as such is an instruction.
+    'Monitor': r'Monitor tool',
+    'PushNotification': r'PushNotification',
 }
 # Any MCP call named in a body, by server. Was hardcoded to the one MCP the
 # skills used to reach for; a public plugin should not know which MCP that is,

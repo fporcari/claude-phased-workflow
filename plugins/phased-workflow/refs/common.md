@@ -151,6 +151,20 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 
 `/repair-phase` always targets the FIRST `[!]` phase in the plan.
 
+## Notifications
+
+How a skill surfaces state depends on whether the user is at the keyboard:
+
+- **Local ping** — `osascript -e 'display notification …'` — when the user is
+  present. `/execute-phase` runs one chat at a time with the user watching, so
+  a desktop notification on each phase outcome is the right, cheap signal.
+- **PushNotification** — when the user may be away. `/run-workflow` launches a
+  background run they are meant to walk away from, and a push reaches the phone
+  through Remote Control. Reserve it for what is worth an interruption: the
+  **first** failure of a run, any blocked phase, and the run ending — routine
+  per-phase progress is not pushed. Each message leads with what the user would
+  act on, one line under 200 characters, no markdown.
+
 ## Auto-mode permission policy
 
 Sub-sessions launch with `--permission-mode auto`. The classifier that judges
