@@ -15,7 +15,7 @@ Execute the next uncompleted phase. **Semi-autonomous**: ONE approval gate up fr
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 ```
 
-No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work.
+No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work. If the plan lives in another checkout (or the user means a different workflow), resolve via `--plans` and anchor every command to that plan's root — `common.md` → *Plan location*.
 
 Act on `recommendation:` — `next: N` → proceed (a `unit: N,M,...` means a `group:N` runs together in this chat, the only case where one invocation spans several phases); `resume-candidate: N` → ask whether to take over a phase another chat left `[>]`; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop.
 

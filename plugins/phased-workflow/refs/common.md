@@ -49,6 +49,27 @@ are an anomaly to report to the user, never to guess at.
 `.phased/` is committed on the workflow branch and never reaches the parent:
 `/finalize-workflow` drops it from the squashed commit.
 
+## Plan location — operating from anywhere
+
+`--resolve` answers for the repository you are standing in. When it fails, or
+the user means a different workflow, list every reachable plan instead:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --plans
+```
+
+One pipe-separated line per plan: location (a filesystem path, or
+`branch:path` for a `wf/*` branch with no checkout), branch, checkout path
+(`-` when none), phase counts, state. Several plans → ask the user which one,
+never guess.
+
+Once a plan outside the current root is chosen, anchor every command to ITS
+root: `git -C <plan root>` for every git invocation, and every path (the plan
+file, `log/`, `.phased/`) resolved against that root, never against the cwd.
+A plan whose branch has no checkout cannot be operated on directly — attach
+or create its worktree first (`/run-workflow` does this itself; other skills
+say so and stop).
+
 ## Workflow branch
 
 Every plan gets a branch, so that everything belonging to the run is

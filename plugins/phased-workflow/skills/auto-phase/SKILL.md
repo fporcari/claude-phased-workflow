@@ -18,7 +18,7 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 
 ## Step 0: Read the plan
 
-Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`) and read it. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
+Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`; from outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*) and read it. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
 
 ## Step 0.2: Baseline check (before any edit)
 

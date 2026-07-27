@@ -11,7 +11,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
 ## Pre-flight review (MANDATORY — before running the script)
 
-1. **Read** the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`).
+1. **Read** the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from outside the plan's root, `--plans` per `common.md` → *Plan location* — the launcher itself attaches or creates the plan's workspace).
 
 2. For every remaining `[ ]` phase, check it is **autonomous-ready**:
    - **Concrete and verifiable**, not exploratory ("explore", "investigate", "decide", "evaluate options" → not ready).

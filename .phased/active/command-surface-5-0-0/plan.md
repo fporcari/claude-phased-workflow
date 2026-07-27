@@ -47,7 +47,9 @@ still commit one by one as `wf(phase N): <title>`.
   - Details: add `--plans` flag; helper enumerates the three sources, parses each plan's phase counts/states with the existing parse(); for branch-only plans parse the blob from `git show <branch>:<path>`. S22: temp repo with (a) an active plan in the root, (b) a worktree with its own plan, (c) an orphan wf/ branch with a plan — assert all three lines appear with correct branch/worktree fields.
   - Done: S22 green in both shells; flake8 clean on next-phase.py.
 
-- [ ] **Phase 5**: Skills operate on the plan's root (B)
+- [x] **Phase 5**: Skills operate on the plan's root (B)
+  > Done: "Plan location — operating from anywhere" section added to refs/common.md (single source); one pointer line in each of the 7 skills; finalize additionally pins Step 7 consolidation to the plan's branch. Suite 116/116.
+  > Files: plugins/phased-workflow/refs/common.md, plugins/phased-workflow/skills/{execute-phase,auto-phase,repair-phase,pull-request,resume-workflow,finalize-workflow,run-workflow}/SKILL.md
   - Pattern: `refs/common.md` "Plan directory" section (the shared prose all skills cite)
   - Files: plugins/phased-workflow/refs/common.md, plugins/phased-workflow/skills/{execute-phase,auto-phase,finalize-workflow,pull-request,repair-phase,run-workflow,resume-workflow}/SKILL.md
   - Decisions: the rule lives ONCE in refs/common.md (new "Plan location" paragraph): resolve via `--resolve`; when it fails or the user names another workflow, use `--plans`, disambiguate if several, and from then on every git command runs `git -C <plan root>` and every path is anchored there. Skills get one pointer line each, not restated prose (the anti-duplication lesson).
