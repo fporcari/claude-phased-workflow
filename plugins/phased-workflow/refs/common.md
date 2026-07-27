@@ -3,7 +3,7 @@
 Single source of truth for the blocks that used to be repeated in every
 phased-workflow command (`/write-workflow`, `/import-workflow`,
 `/execute-phase`, `/auto-phase`, `/run-all-phases`, `/finalize-workflow`,
-`/check-phase-context`, `/push-context-memory`). Skills point here instead
+`/resume-workflow`, `/push-context-memory`). Skills point here instead
 of restating them.
 
 ## Language
@@ -76,7 +76,7 @@ work that preceded it — `/finalize-workflow` consolidates from here, and
 without it the interleaving ambiguity comes straight back.
 
 **The plan is a tracked file**, so any skill that edits it dirties the tree.
-Edits made outside a phase — a `/check-phase-context` re-phasing, a
+Edits made outside a phase — a `/resume-workflow` re-phasing, a
 `/repair-phase` note, hand annotations in `notes.md` — get their own
 `wf: <what changed>` commit. Otherwise the "clean tree at phase start"
 invariant that `/auto-phase` relies on is false.

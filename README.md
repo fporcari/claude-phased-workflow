@@ -17,8 +17,8 @@ flowchart TD
     CONV --> WW["/write-workflow\nWrite the plan"]
     WW --> |"wf/ branch\n+ plan committed"| EP["/execute-phase\nExecute phase"]
     EP --> CHECK{More phases?}
-    CHECK --> |Yes| CPC["/check-phase-context\nVerify state"]
-    CPC --> EP
+    CHECK --> |Yes| RES["/resume-workflow\nWhere are we?"]
+    RES --> EP
     CHECK --> |No| FW["/finalize-workflow\nCommit + merge/PR"]
     FW --> PR{Delivery}
     PR --> |PR| PULL["/pull-request\nReview + create PR"]
@@ -28,7 +28,7 @@ flowchart TD
     style CONV fill:#9b59b6,color:#fff
     style WW fill:#f39c12,color:#fff
     style EP fill:#e8943a,color:#fff
-    style CPC fill:#7b68ee,color:#fff
+    style RES fill:#7b68ee,color:#fff
     style FW fill:#50c878,color:#fff
     style PULL fill:#2ecc71,color:#fff
     style START fill:#333,color:#fff
@@ -95,7 +95,7 @@ The plan is the coordination point between sessions, and it is committed on the 
 | `/write-workflow` | After discussing the plan | Opens the workflow branch and writes the plan from the conversation — pattern references and pre-made decisions per phase |
 | `/import-workflow` | You already have a plan or a handoff | Adapts an existing plan (including pre-4.0 `MEMORY.md`) into a workflow, preserving phase states and reporting the gaps |
 | `/execute-phase` | Executing a phase | Runs the next phase from the plan: one approval gate up front, then no interruptions |
-| `/check-phase-context` | Checking progress | Read-only analysis of plan vs git state |
+| `/resume-workflow` | Where are we? | Read-only audit of plan vs git state — drift, stale phases, next step; healthy plans just get the report |
 | `/finalize-workflow` | All phases done | Whole-diff pre-commit review + single clean commit + offers PR or merge |
 | `/pull-request` | Creating a PR | Rigorous code review + PR creation |
 
@@ -253,9 +253,9 @@ Key behaviors:
 
 Model tiers are guidance, not constraint: strong models go where judgment happens, the medium tier executes with an automatic verifier behind it. The `phase-verifier` is pinned to opus rather than inherited — on a sonnet phase an inherited verifier is as weak as the executor it is meant to check. Full map in [docs/loop-engineering.md](docs/loop-engineering.md).
 
-### `/check-phase-context` — Supervision
+### `/resume-workflow` — Supervision & Resume
 
-Read-only analysis of the plan vs actual code state. Detects drift, oversized phases, and proposes re-phasing. Does not touch source code.
+Read-only analysis of the plan vs actual code state: exact per-phase attribution from the phase commits, drift detection (files a commit touched but the plan does not list, uncommitted leftovers), stale `[>]` phases, oversized phases with a proposed re-phasing. Does not touch source code; the only file it may edit — on approval — is the plan, each edit with its own `wf:` commit. A healthy plan early-exits with the state report: "just tell me where we are" is a valid reason to run it.
 
 ### `/finalize-workflow` — Finalize
 
@@ -438,7 +438,7 @@ Two approaches:
 - **Without worktrees**: one plan per branch — switch branches to switch workflow.
 
 ### 6. Full Traceability
-Everything is traceable: plan in a versionable file, single clean commit per workflow, structured PR template, `/check-phase-context` reconstructs state at any time.
+Everything is traceable: plan in a versionable file, single clean commit per workflow, structured PR template, `/resume-workflow` reconstructs state at any time.
 
 ---
 
@@ -519,7 +519,7 @@ No. The command looks for an active plan under `.phased/active/` with phases to 
 `/execute-phase` monitors context proactively. It proposes a WIP safety commit and suggests a new chat.
 
 **Q: Can I skip or reorder phases?**
-Yes. The plan is Markdown — edit it. `/check-phase-context` verifies consistency.
+Yes. The plan is Markdown — edit it. `/resume-workflow` verifies consistency.
 
 **Q: Can I plan from any branch?**
 Yes. From a base branch `/write-workflow` opens `wf/<slug>`. From a feature branch it adopts the one you are on by default, and the commits already there stay outside the workflow — the run's base is the plan commit, not the branch point.

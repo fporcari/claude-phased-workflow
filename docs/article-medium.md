@@ -1,5 +1,11 @@
 # How I Structured a Workflow for Claude Code That Scales Beyond a Single Session
 
+> **Historical note (5.0.0).** This article describes the 1.x system it was written
+> about: `MEMORY.md` as shared state and the `create-context`/`close-context` worktree
+> commands. The current plugin keeps the idea but not those mechanics — the plan lives
+> in `.phased/` on a workflow branch, worktrees are plain git, supervision is
+> `/resume-workflow`. Kept as the origin story; see `README.md` for the present.
+
 Claude Code is incredibly capable — until you hit the context window wall. On a simple bug fix, it's perfect. On a multi-file, multi-phase feature? The conversation gets long, quality degrades, and eventually Claude forgets what it was doing three steps ago.
 
 I built a system of slash commands that solves this. It's open source, works with any project, and turns Claude Code into something closer to a structured development partner.

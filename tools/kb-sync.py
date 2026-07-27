@@ -60,7 +60,6 @@ MAPPING = {
     'plugins/phased-workflow/skills/repair-phase/SKILL.md': 'repair-phase',
     'plugins/phased-workflow/skills/resume-workflow/SKILL.md': 'resume-workflow',
     'plugins/phased-workflow/skills/finalize-workflow/SKILL.md': 'finalize-workflow',
-    'plugins/phased-workflow/skills/check-phase-context/SKILL.md': 'check-phase-context',
     'plugins/phased-workflow/skills/pull-request/SKILL.md': 'pull-request',
     'plugins/phased-workflow/skills/issue/SKILL.md': 'issue',
     'plugins/phased-workflow/refs/common.md': 'Phased Workflow — shared conventions (common.md)',
@@ -83,6 +82,8 @@ EMBEDDED = {
 # reports them as known rather than as a gap — an unexplained KB-only entry is
 # how drift starts.
 KB_ONLY = {
+    'check-phase-context': 'retired in 5.0.0 — absorbed into resume-workflow; '
+                           'KB entry kept as history',
     'Guida ai comandi — Phased Workflow': 'KB-authored command guide (Italian)',
     'Install Phased Workflow Plugin': 'KB-authored install instructions',
     'push-context-memory': 'Sourcerer-specific, internal machines only',
