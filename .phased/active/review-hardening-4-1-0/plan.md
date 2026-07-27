@@ -154,7 +154,20 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     returns 0; `bash -n plugins/phased-workflow/install.sh` clean and
     `grep -c 'cp "$SRC"' plugins/phased-workflow/install.sh` returns 0.
 
-- [ ] **Phase 3**: `next-phase.py --validate` and the launcher's pre-loop gate
+- [x] **Phase 3**: `next-phase.py --validate` and the launcher's pre-loop gate
+  > Done: next-phase.py gained a --validate mode reusing PHASE_RE/TAG_RE/parse()
+  > (no fourth parser); it emits `<path>:<line>: error|warning: <msg>` per finding
+  > plus a `validate: N error(s), M warning(s)` line, exit 0 clean/warnings-only,
+  > 1 on errors, 2 unreadable/unresolvable. Every error and warning rule from the
+  > Decisions is implemented. run-all-phases.sh runs the validator as a hard
+  > pre-loop gate (verbatim output, exit 1 on failure) and skips it with a NOTE
+  > when the selector is missing. S19 added: (a) healthy fixture3 passes and runs,
+  > (b) space-before-colon phase line rejected naming the line with no session
+  > launched, (c) autonomous plan with the table removed rejected, (d) bad Effort
+  > rejected, plus a direct-invocation unknown-note-field warning at exit 0.
+  > Verified: --validate on the benchmark fixture exits 0; bash and zsh suites
+  > exit 0 at 99 passed / 0 failed (>77) with S19 green; flake8 next-phase.py clean.
+  > Files: plugins/phased-workflow/scripts/next-phase.py, plugins/phased-workflow/scripts/run-all-phases.sh, tests/orchestration/run_tests.sh
   - Pattern reference: `plugins/phased-workflow/scripts/next-phase.py` — the
     `--resolve` flag in `main()` is the precedent for adding a mode to this script
     rather than writing a second one, and `PHASE_RE` / `TAG_RE` / `parse()` are

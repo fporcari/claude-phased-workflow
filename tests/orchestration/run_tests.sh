@@ -446,6 +446,104 @@ PYG
 [ -z "$GUARD_OUT" ] || echo "  offending: $GUARD_OUT"
 assert "S18: no phase-state grep bypasses the helpers" '[ -z "$GUARD_OUT" ]'
 
+echo "== S19: next-phase.py --validate gates the launcher before any session =="
+# The validator shares the selector's own regexes, so a plan it rejects is one
+# the loop could not drive correctly. The launcher runs it once before the loop
+# and stops on a non-zero result, printing it verbatim — no session spent.
+NEXTPHASE="$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py"
+
+# (a) a healthy plan validates clean and the run proceeds to completion
+setup S19a; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19a: healthy plan passes the gate" '! grep -q "Plan validation failed" out.log'
+assert "S19a: run proceeded and completed all phases" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 3 ]'
+
+# (b) a phase line with a space before the colon is rejected; NO session starts
+setup S19b
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1** : phase one
+  - Done: check one
+- [ ] **Phase 2**: phase two
+  - Done: check two
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | sonnet |
+| Phase 2 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19b: malformed phase line is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19b: the gate names the offending line" 'grep -q "Phase 1\*\* : phase one" out.log'
+assert "S19b: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (c) Mode: autonomous with the execution-config table removed is rejected
+setup S19c
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19c: missing config table is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19c: the gate names the missing table" 'grep -q "requires a .* Suggested execution config" out.log'
+assert "S19c: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (d) an Effort outside the supported set is rejected, naming the bad value
+setup S19d
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | turbo | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19d: bad Effort is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19d: the gate names the bad Effort value" 'grep -q "Effort .turbo. is not one of" out.log'
+assert "S19d: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# direct invocation: an unknown note field is a warning, not an error (exit 0)
+WARN_PLAN="$OT/warn-plan.md"
+cat > "$WARN_PLAN" <<'EOF'
+# Context: warn
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  > Foo: not a documented field
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+WARN_OUT="$(python3 "$NEXTPHASE" --validate "$WARN_PLAN" 2>&1)"; WARN_RC=$?
+assert "S19: an unknown note field warns but does not fail (exit 0)" '[ "$WARN_RC" = 0 ]'
+assert "S19: the warning names the unknown field" 'printf "%s" "$WARN_OUT" | grep -q "warning: unknown note field .> Foo:"'
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

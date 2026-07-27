@@ -42,6 +42,23 @@ PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
 mkdir -p "$PLAN_DIR/log"
 
+# Pre-loop validation gate. next-phase.py --validate shares the selector's own
+# regexes, so a plan it rejects is one the loop could not drive correctly. Print
+# its output verbatim (no re-wording) and stop before spending a single session.
+# If the selector is not beside us the install is broken elsewhere, but a missing
+# validator must not itself abort the run — skip the gate with a NOTE instead.
+if [ -f "$NEXT_PHASE_PY" ]; then
+  VALIDATE_OUT=$(python3 "$NEXT_PHASE_PY" --validate "$PLAN" 2>&1)
+  VALIDATE_RC=$?
+  if [ "$VALIDATE_RC" -ne 0 ]; then
+    echo "$VALIDATE_OUT"
+    echo "Plan validation failed — fix the plan under .phased/active/ and relaunch."
+    exit 1
+  fi
+else
+  echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
+fi
+
 # Phase-state matching lives in ONE place. A plain "- [!]" bullet in a
 # ## Notes section is prose, not a phase; before this was centralised such a
 # bullet launched a real fable repair session at cap $300 and stopped the run.

@@ -1,0 +1,17 @@
+✓ Phase 2 completed: Launcher and install.sh resolve their own paths
+
+**What happened**
+- **Launcher** (`run-all-phases.sh`): resolves its own directory via `SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)` and reads the selector from `NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"`; the `REC` invocation no longer references `$HOME/.claude` (grep count 0).
+- **install.sh**: stopped installing entirely — the `mkdir`/`cp`/`chmod` block is gone (`cp "$SRC"` count 0), replaced by a `SUPPORT_STALE` pass that *moves* the five orphaned support copies to `~/.claude/phased-workflow-superseded-support/`; header reframed as a 4.0.0-or-earlier migration tool.
+- **Test harness**: copies `next-phase.py` beside the runner, and S1 gained a `HOME=/nonexistent` re-run proving `$HOME`-independence.
+
+**Verification (all Done criteria met)**
+- bash & zsh suites: **86 passed / 0 failed**, both exit 0
+- `HOME=/nonexistent bash` suite: 86 passed, exit 0
+- `grep -c 'HOME/.claude'` launcher = 0; `grep -c 'cp "$SRC"'` install.sh = 0
+- `bash -n` clean on install.sh and launcher; `zsh -n` clean on launcher
+- flake8 clean
+
+**Note on a mid-phase correction:** my first round of edits accidentally targeted the main-repo checkout (on `main`) instead of this worktree — that also explains an early "stale Read." I reverted the main repo clean and reapplied all five edits to the worktree paths before testing, so the results above are genuinely from the worktree tree.
+
+Committed as `87b4efd`. One phase executed; stopping here as instructed.
