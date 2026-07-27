@@ -1,0 +1,39 @@
+Review complete. No `> Verify:` or `> Review:` notes exist in the plan, `notes.md` is empty, and I've re-run every phase's `Done:` criterion and read the whole diff for cross-phase issues. Here is the deliverable.
+
+---
+
+```
+STATE: wf/macro2-unattended-run | base 2b035a4 | tree clean (only my own log/finalize-workflow-agent.txt, untracked, expected) | phases 7 done / 7, no [!]/[~]/[>]
+```
+
+**Shape:** dedicated branch — `git rev-list --count BASE^..main` = 0, so the plan commit *is* the branch point. `main` takes it whole via `git merge --squash` at Step 7 (no adopted-branch reset needed).
+
+```
+DONE-CHECK: per phase — all met, all re-run (every Done: criterion is programmatic: suite / flake8 / bash -n / grep; nothing manual-only, nothing un-re-runnable)
+  Phase 1 — MET: suite 142/0, flake8 next-phase.py clean
+  Phase 2 — MET: suite green; grep "don't ask" → 0; grep "Confirm with the user" → 0
+  Phase 3 — MET: suite green; run-workflow has "Mode: interactive"; import-workflow has a Mode header
+  Phase 4 — MET: bash -n run-workflow.sh exit 0; suite carries S25 live
+  Phase 5 — MET: suite green; check_allowlists.py → 0 findings; grep "Remote Control" → OK
+  Phase 6 — MET: "never commits"+execute-phase → 0; version 5.1.0 (marketplace ×2, plugin.json ×1); "What changed in 5.1.0" OK; "DONE in 5.1.0" OK; suite green
+  Phase 7 — MET: review.md has 3 `## ` sections; flake8 clean; suite green
+  (baseline was 122 passed; now 142 passed / 0 failed — +20 from S24/S25, no regression)
+```
+
+```
+FINDINGS:
+  MECHANICAL: NONE
+    - EVENT contract coherent end-to-end: launcher emits exactly phase-failed / phase-blocked / run-end (run-workflow.sh:331,382,454); run-workflow/SKILL.md awk filter matches those three; S25 asserts all three live + static drift guard. No token drift.
+    - Phase-number extraction is sound: FAILED_PHASE/BLOCKED_PHASE grep on phase_re('!'|'~') → every matched line is `- [!] **Phase N**`, so the sed always has "Phase N" to capture; run-end counts come from phase_count/phase_lines, no second grep — matches Phase 4's stated contract.
+    - Fork chain closed, described once: derivation rule lives only in write-workflow Step 2; import-workflow cites "*Step 2: The automation fork*" (exact heading, no restated copy); run-workflow pre-flight reads the header with three branches; autonomous ref drops "Confirm with the user" and routes the Honesty check back through the fork; next-phase.py validates the value. No duplication, no dangling cross-reference (renumbered 2→6 refs all repointed: "pre-filled per Step 4", "Step 4: Open the branch").
+    - allowed-tools / TOOL_HINTS coupling correct: run-workflow declares Monitor + PushNotification, both pinned narrow in check_allowlists.py; 0 findings.
+
+  JUDGMENT: (no `> Review:` notes exist in the plan — nothing to confirm/dismiss; one item flagged for awareness only)
+    - next-phase.py:250 — MODE_RE = `^Mode:\s*(\S+)\s*$` is whole-line/single-token, tightening the old `^Mode:\s*autonomous\b`. A hypothetical legacy header like `Mode: autonomous <extra words>` would now match nothing and silently read as interactive instead of autonomous. This is a *deliberate* plan decision ("One match per plan … value is a single token"), no shipped template or plan writes a multi-token Mode line, and the suite covers unknown-value rejection — so no action needed. Noted only because it is a real behaviour change at the mode boundary the human should be aware of.
+```
+
+```
+VERIFY-NOTES: NONE — no `> Verify:` lines in the plan; notes.md is empty. Every phase's verification was programmatic (tests/lint/grep), all re-run green above.
+```
+
+The workflow is complete and clean; the only working-tree entry is this agent's own teed log. Every decision — squash, branch/worktree removal, commit wording — stays with you in the parent chat.

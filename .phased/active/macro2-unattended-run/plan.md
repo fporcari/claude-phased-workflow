@@ -109,7 +109,21 @@ at the end, and one line about Remote Control at the only moment it matters.
   - Details: convergence loop (max 3 cycles) of `flake8` scoped to the touched Python files → auto-fix → `flake8` → `bash tests/orchestration/run_tests.sh`; stop early if a cycle makes no progress. Then write `.phased/active/macro2-unattended-run/review.md` with three sections: **Auto-fixed** (file, what, tool), **Flagged for human** (file, description, suggested action), **Final state** (flake8 output, suite result, files reviewed).
   - Done: `review.md` exists in the plan directory with the three sections; `flake8` reports zero errors on the touched Python files; `bash tests/orchestration/run_tests.sh` exits 0 with no `FAIL` line.
 
+- [ ] **Phase 8**: Namespaced slash prompts for every sub-session launch
+  - Pattern reference: `plugins/phased-workflow/scripts/run-workflow.sh` — the prompt assignments and their pre-2.1.139 fallback arm (the two bare-slash strings), and `plugins/phased-workflow/scripts/agent-session.sh` — its `claude -p "/$SKILL"` line. Test idiom: S14 (extract the shipped assignments from the real file, assert on what was extracted) plus S23's guard-function-and-mutation shape.
+  - Files: plugins/phased-workflow/scripts/agent-session.sh, plugins/phased-workflow/scripts/run-workflow.sh, tests/orchestration/run_tests.sh, README.md
+  - Decisions:
+    - Root cause: a slash command in a headless `claude -p` session resolves only against `~/.claude/commands/<name>.md` or a plugin's namespaced id. Plugin-shipped skills register as `/<plugin>:<skill>`, so a bare `/<skill>` prompt dies at once with `Unknown command: /<skill>` and the sub-session does nothing. Reproduced on `agent-session.sh finalize-workflow-agent` during this workflow's own finalize; the fallback arm would kill every phase of a run on a pre-2.1.139 CLI.
+    - Same defect class as 4.1.0's `LIGHT_PROMPT: Never commit`: a shipped contract no test ever executes. The fix is only half the phase — the guard is the other half.
+    - Three sites: `agent-session.sh`'s `claude -p "/$SKILL"`, and `run-workflow.sh`'s fallback `PHASE_PROMPT='/execute-phase-agent'` and `REPAIR_PROMPT='/repair-phase'`.
+    - The prefix is **derived, not retyped**: each script reads the plugin's own `name` from `<plugin root>/.claude-plugin/plugin.json` (both already resolve their own directory via `SCRIPT_DIR`), with a literal `phased-workflow` fallback if that read yields nothing — a failed derivation must never reintroduce a bare slash.
+    - The `/goal` contracts are NOT touched: they name the skill in prose ("Use the execute-phase-agent skill"), which the session resolves through the Skill tool. This run proved that path works. Only slash-command prompts are broken.
+    - S7 asserts `-p /execute-phase-agent --model` on the fallback invocation and must be updated to the namespaced form; its companion assertion (`no /goal in calls`) stays as is.
+  - Details: add the plugin-name derivation to both scripts and use it at the three prompt sites; update S7's fallback assertion. Add S26 as a guard function over `plugins/phased-workflow/scripts/*.sh`: extract every prompt argument passed to `claude -p` and flag any that starts with `/` and carries no `:`; assert its output empty, then prove it by re-running the same function on a copy where `claude -p "/execute-phase-agent"` is reintroduced. Add S26 to the suite header comment. Add one bullet to README's *What changed in 5.1.0*: the defect, its class, and the guard that now covers it.
+  - Done: `bash -n plugins/phased-workflow/scripts/agent-session.sh` and `bash -n plugins/phased-workflow/scripts/run-workflow.sh` both exit 0; `bash tests/orchestration/run_tests.sh` exits 0 with no `FAIL` line and its output carries the S26 assertions; `grep -c 'claude -p "/$SKILL"' plugins/phased-workflow/scripts/agent-session.sh` prints 0; `grep -q "phased-workflow" plugins/phased-workflow/scripts/agent-session.sh` succeeds.
+
 ## Notes
+- **Phase 8 was added after Phase 7 closed**, so the coherence review did not cover it: its own `Done:` re-runs the whole suite, which carries every one of Phase 7's cross-checks. It exists because the finalize review's *launcher* failed to start — the defect was found by using the chain, not by reading the diff.
 - **Baseline at the plan commit:** `bash tests/orchestration/run_tests.sh` → `RESULT: 122 passed, 0 failed`; `flake8` clean. A phase that finds the suite already red before its own edits must attribute that, not absorb it.
 - **The run executes the installed plugin copy** (`~/.claude/plugins/cache/claude-phased-workflow/phased-workflow/5.0.0/`), not this repository's files. Rewriting `run-workflow.sh` and the skills during the run is therefore safe and has no effect on the run in progress — the changes take effect at the next plugin update.
 - **New test numbers:** S24 (the automation fork is not decorative — static, mutation-proven), S25 (the EVENT contract — live on the mock plus a static drift guard). S16 stays vacant.
@@ -127,3 +141,4 @@ at the end, and one line about Remote Control at the only moment it matters.
 | Phase 5 | high | opus |
 | Phase 6 | medium | opus |
 | Phase 7 | xhigh | opus |
+| Phase 8 | medium | opus |
