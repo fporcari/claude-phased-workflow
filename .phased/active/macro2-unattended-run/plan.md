@@ -12,7 +12,9 @@ background launch watched by a Monitor, a proactive notification on the first `[
 at the end, and one line about Remote Control at the only moment it matters.
 
 ## Work Plan
-- [ ] **Phase 1**: Mode header semantics in the plan validator
+- [x] **Phase 1**: Mode header semantics in the plan validator
+  > Done: `MODE_RE`/`MODES` added; `validate()` records the first `Mode:` value + lineno, derives `mode_autonomous`/`mode_interactive`, errors on an unknown value ("Mode: '<v>' is not one of: ...") and warns on interactive-plus-table; autonomous-without-table error unchanged, no header stays silent. S19 gained (f) live unknown-value rejection with empty invocations.log, (g) direct interactive-plus-table one-warning case, (h) direct no-header clean case; suite header updated. `bash tests/orchestration/run_tests.sh` exits 0, 130 passed / 0 failed, no FAIL line; `flake8 plugins/phased-workflow/scripts/next-phase.py` exits 0.
+  > Files: plugins/phased-workflow/scripts/next-phase.py, tests/orchestration/run_tests.sh
   - Pattern reference: `plugins/phased-workflow/scripts/next-phase.py:validate` — the `mode_autonomous` flag (its `^Mode:\s*autonomous\b` match) and the `Mode: autonomous requires a "## Suggested execution config" table` error are the two sites to generalise. Test idiom: `tests/orchestration/run_tests.sh` S19b/S19c (plan fixture, `finish_setup; run`, `assert` on `out.log`) plus that section's direct-invocation warning case (`WARN_PLAN`).
   - Files: plugins/phased-workflow/scripts/next-phase.py, tests/orchestration/run_tests.sh
   - Decisions:

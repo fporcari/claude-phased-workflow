@@ -6,8 +6,9 @@
 # the idempotent repair marker, fable->opus fallback, progress guard, baseline
 # attribution (reopen / [~]), inert Roadmap, and the pre-2.1.139 prompt
 # fallback. S19 exercises the --validate gate (and that warnings are printed,
-# not discarded); S20 the announced fallbacks (missing selector, unknown
-# model/effort). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
+# not discarded), including Mode: header semantics — unknown value rejected,
+# interactive-plus-table warned, no header reading as interactive; S20 the
+# announced fallbacks (missing selector, unknown model/effort). S18 is a hybrid: live (prose bullets in ## Notes stay inert)
 # plus a static guard (check_state_matches.py — every phase-state match goes
 # through the single-source helpers or carries the **Phase anchor), proven by
 # mutation.
@@ -581,6 +582,68 @@ finish_setup; run
 assert "S19e: warnings-only plan is not blocked" '! grep -q "Plan validation failed" out.log'
 assert "S19e: the warning lines are printed, not discarded" 'grep -q "warning: checkbox bullet outside" out.log'
 assert "S19e: the launcher flags them as non-blocking" 'grep -q "NOTE: plan validation reported warnings" out.log'
+
+# (f) a live run on a plan whose Mode: value is unknown is rejected, the gate
+# names the bad value, and NO session starts — a typo must not degrade silently
+# into the interactive default.
+setup S19f
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: robot
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19f: unknown Mode value is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19f: the gate names the bad Mode value" "grep -q \"Mode: 'robot' is not one of\" out.log"
+assert "S19f: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (g) direct --validate on a Mode: interactive plan carrying a config table
+# exits 0 with exactly one warning line naming the table — a half-converted plan
+# warns but never blocks.
+MODE_INT_PLAN="$OT/mode-interactive-plan.md"
+cat > "$MODE_INT_PLAN" <<'EOF'
+# Context: mode-int
+Parent: main
+Mode: interactive
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+MI_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_INT_PLAN" 2>&1)"; MI_RC=$?
+assert "S19g: interactive-plus-table is a warning, not an error (exit 0)" '[ "$MI_RC" = 0 ]'
+assert "S19g: exactly one warning line is printed" '[ "$(printf "%s\n" "$MI_OUT" | grep -c "warning:")" = 1 ]'
+assert "S19g: the warning names the execution-config table" 'printf "%s" "$MI_OUT" | grep -q "Suggested execution config"'
+
+# (h) direct --validate on a plan with no Mode: line and no table exits 0 with
+# no Mode finding at all — a legacy plan reads as interactive.
+MODE_NONE_PLAN="$OT/mode-none-plan.md"
+cat > "$MODE_NONE_PLAN" <<'EOF'
+# Context: mode-none
+Parent: main
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+EOF
+MN_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_NONE_PLAN" 2>&1)"; MN_RC=$?
+assert "S19h: no Mode: line and no table validates clean (exit 0)" '[ "$MN_RC" = 0 ]'
+assert "S19h: no Mode finding is emitted" '! printf "%s" "$MN_OUT" | grep -qi "Mode:"'
 
 echo "== S20: every silent fallback announces itself with a NOTE =="
 # Force the fallback path. After Phase 2 the launcher resolves its selector
