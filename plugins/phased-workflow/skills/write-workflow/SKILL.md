@@ -53,7 +53,7 @@ A phase carries at most one of `group:N` / `parallel:N`. Only the split-vs-`vast
 **Close the presentation with the branch line**, pre-filled per Step 3 and flippable — one line, not a separate question:
 
 ```
-Branch: <what will happen> · Worktree: <sì/no>   (dimmi se preferisci diversamente)
+Branch: <what will happen>   (dimmi se preferisci diversamente)
 ```
 
 ## Step 3: Open the branch
@@ -68,15 +68,7 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 Adoption is safe because the workflow's base is the plan commit, not the branch point (see `common.md`): whatever the branch already carried stays outside the workflow.
 
-**Worktree** — only on an autonomous plan (`Mode: autonomous`), where the run grinds elsewhere for a long time and leaves the main repo free. An interactive plan stays here: you drive `/execute-phase` from this session, and a worktree would only cost a `cd`. When it applies, and only when a new branch is being created:
-
-```bash
-git worktree add .claude/worktrees/<slug> -b wf/<slug> HEAD
-mkdir -p .claude/worktrees/<slug>/.claude
-[ -f .claude/settings.local.json ] && cp .claude/settings.local.json .claude/worktrees/<slug>/.claude/settings.local.json
-```
-
-One command creates branch and worktree together, and the main repo stays put — do NOT `git switch -c` first, a branch checked out in the main repo cannot be added as a worktree.
+**No worktree here.** Planning creates the branch and the plan, nothing else: the workspace belongs to execution. `/run-workflow` attaches or creates the worktree itself when the run needs one, and `/finalize-workflow` removes it — the user never manages it.
 
 ## Step 4: Write it
 
@@ -130,13 +122,6 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 ```
 Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch>.
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
-```
-
-On a worktree, append these two lines to that message — they are for the user to run, not for you:
-
-```
-Il worktree è in .claude/worktrees/<slug>. Lavora da lì:
-  cd .claude/worktrees/<slug> && claude
 ```
 
 (Autonomous plans use the closing message in the autonomous reference file.)

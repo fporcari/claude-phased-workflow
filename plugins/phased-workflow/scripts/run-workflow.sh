@@ -11,8 +11,6 @@
 # tests/benchmark/bench.sh extract them from here, so keep them as
 # single-quoted one-line assignments.
 
-REPO_ROOT=$(git rev-parse --show-toplevel)
-
 # The selector ships in the same plugin directory as this launcher, so it can
 # never be a different version than we expect. Resolve it relative to our own
 # location ($(dirname "$0"), never ${BASH_SOURCE[0]} — this runs under zsh too,
@@ -20,6 +18,42 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 # inside a script that can find itself.
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Workspace create-or-attach: the launcher runs from anywhere. If the current
+# root has no active plan, ask the selector for every reachable one (--plans).
+# One plan in another checkout -> operate there; one plan on a branch with no
+# checkout -> create its worktree under .claude/worktrees/ (announced: it is
+# the one git mechanic worth a line); several plans -> list them and stop.
+if ! find "$REPO_ROOT/.phased/active" -mindepth 2 -maxdepth 2 -name plan.md 2>/dev/null | grep -q . \
+   && [ -f "$NEXT_PHASE_PY" ]; then
+  PLANS=$(python3 "$NEXT_PHASE_PY" --plans 2>/dev/null | grep '^plan|')
+  PLANS_COUNT=$(printf '%s' "$PLANS" | grep -c .)
+  if [ "$PLANS_COUNT" -gt 1 ]; then
+    echo "Several workflows reachable from here — relaunch from the one you mean:"
+    printf '%s\n' "$PLANS"
+    exit 1
+  fi
+  if [ "$PLANS_COUNT" -eq 1 ]; then
+    PLAN_BRANCH=$(printf '%s' "$PLANS" | awk -F'|' '{print $4}')
+    PLAN_CHECKOUT=$(printf '%s' "$PLANS" | awk -F'|' '{print $6}')
+    if [ "$PLAN_CHECKOUT" = "-" ]; then
+      PLAN_SLUG=$(printf '%s' "$PLANS" | awk -F'|' '{print $2}' \
+        | sed 's|.*/\.phased/active/||; s|^[^:]*:\.phased/active/||; s|/plan\.md$||')
+      PLAN_CHECKOUT="$REPO_ROOT/.claude/worktrees/$PLAN_SLUG"
+      echo "NOTE: branch $PLAN_BRANCH has no checkout — creating its worktree at $PLAN_CHECKOUT."
+      git worktree add "$PLAN_CHECKOUT" "$PLAN_BRANCH" || exit 1
+      mkdir -p "$PLAN_CHECKOUT/.claude"
+      [ -f "$REPO_ROOT/.claude/settings.local.json" ] \
+        && cp "$REPO_ROOT/.claude/settings.local.json" "$PLAN_CHECKOUT/.claude/settings.local.json"
+    else
+      echo "NOTE: the active plan lives in $PLAN_CHECKOUT (branch $PLAN_BRANCH) — operating there."
+    fi
+    cd "$PLAN_CHECKOUT" || exit 1
+    REPO_ROOT="$PLAN_CHECKOUT"
+  fi
+fi
 
 # Resolve the active plan: exactly one .phased/active/<slug>/plan.md.
 # Done with `find` rather than a glob on purpose — an unmatched glob is left

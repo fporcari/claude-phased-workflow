@@ -56,7 +56,9 @@ still commit one by one as `wf(phase N): <title>`.
   - Details: write the common.md paragraph; adjust each skill's "Find the plan" step to cite it; finalize-workflow's git commands annotated with `git -C` where they assume cwd.
   - Done: every listed SKILL.md cites the common.md rule; S15 (allowed-tools) still green; suite green.
 
-- [ ] **Phase 6**: Workspace lifecycle (C)
+- [x] **Phase 6**: Workspace lifecycle (C)
+  > Done: write-workflow no longer creates worktrees (branch + plan only; worktree block and closing-message lines removed); run-workflow.sh gains create-or-attach via --plans (run here / cd to checkout / create .claude/worktrees/<slug> with settings.local.json cp, announced with a NOTE; several plans → list and stop). Smoke-tested the orphan-branch attach end-to-end; suites 116/116 bash+zsh.
+  > Files: plugins/phased-workflow/skills/write-workflow/SKILL.md, plugins/phased-workflow/scripts/run-workflow.sh
   - Pattern: `plugins/phased-workflow/skills/write-workflow/SKILL.md:71-79` (the worktree block being moved)
   - Files: plugins/phased-workflow/skills/write-workflow/SKILL.md, plugins/phased-workflow/scripts/run-workflow.sh, plugins/phased-workflow/skills/run-workflow/SKILL.md, plugins/phased-workflow/skills/finalize-workflow/SKILL.md
   - Decisions: write-workflow stops creating worktrees entirely (branch + plan only). run-workflow.sh gains create-or-attach: if the active plan's branch is checked out in the current root → run here (no worktree); if the plan lives on a branch with an existing worktree → cd there; if on a wf/* branch with neither → `git worktree add .claude/worktrees/<slug> <branch>` + cp settings.local.json, announce it in one line (D3), run there. Worktree location stays `.claude/worktrees/<slug>` (D4). finalize keeps offering removal (already does).
