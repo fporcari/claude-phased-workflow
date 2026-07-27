@@ -4,7 +4,7 @@
 Deterministic implementation of the phase-selection semantics used by
 the phased-workflow skills (/execute-phase, /auto-phase). The canonical
 description of the semantics lives in
-~/.claude/workflow-refs/common.md ("Phase selection").
+${CLAUDE_PLUGIN_ROOT}/refs/common.md ("Phase selection").
 
 Statuses: [ ] pending, [>] in execution, [x] done, [!] issue, [~] blocked.
 Tags (backticked at end of the phase line): parallel:N, group:N, vast.
@@ -26,6 +26,11 @@ Output: a "phases:" table plus one final "recommendation:" line:
   recommendation: attention: 5[!]       user must resolve before going on
   recommendation: done                  all phases [x]
   recommendation: blocked: <reason>     pending phases exist, none eligible
+
+--validate checks the plan structure instead of selecting a phase: one
+"<path>:<line>: error|warning: <message>" per finding, then a final
+"validate: N error(s), M warning(s)". Exit 0 when clean or warnings only,
+1 on validation errors, 2 when the plan is unreadable or unresolvable.
 """
 
 import argparse
@@ -184,6 +189,182 @@ def recommend(phases):
     return 'blocked: pending phases exist but none is eligible'
 
 
+# --- plan validation (--validate) -------------------------------------------
+# The validator shares PHASE_RE / TAG_RE / parse() with the selector on
+# purpose: a validator that disagreed with the selector about what a phase is
+# would be worse than none. Two severities: errors block the run (exit 1),
+# warnings never do (exit 0). Anything with a plausible false positive is a
+# warning by construction — rejecting a legitimate plan is worse than the
+# silent defaults the gate replaces.
+
+KNOWN_NOTE_FIELDS = (
+    'Done', 'Files', 'Issue', 'Attempted', 'Repaired', 'Repair attempted',
+    'Review', 'Blocked', 'WIP', 'In execution since',
+)
+EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
+MODELS = ('fable', 'sonnet', 'opus')
+CONFIG_HEADING = 'Suggested execution config'
+NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):')
+CHECKBOX_RE = re.compile(r'^- \[')
+BACKTICK_RE = re.compile(r'`([^`]+)`')
+
+
+def _is_separator(cells):
+    body = [c for c in cells if c]
+    return bool(body) and all(re.fullmatch(r':?-+:?', c) for c in body)
+
+
+def _taglike(tok):
+    """A backticked token that reads like an attempted tag but is not one.
+
+    Narrow on purpose: a phase title routinely carries backticked prose
+    (`next-phase.py --validate`), and flagging that would make the validator
+    cry wolf. Only `parallel`/`group`/`vast` prefixes and `word:number` shapes
+    qualify.
+    """
+    return bool(re.match(r'(parallel|group|vast)', tok)
+                or re.match(r'[a-z]+:\d+$', tok))
+
+
+def validate(path, phases, text):
+    """Return a list of (lineno, severity, message) for the plan at path."""
+    findings = []
+
+    def add(lineno, severity, msg):
+        findings.append((lineno, severity, msg))
+
+    lines = text.splitlines()
+    has_parent = False
+    mode_autonomous = False
+    heading = None
+    in_work_plan = False
+    work_plan_lineno = None
+    config_lineno = None
+    config_header = None        # (lineno, cells)
+    config_rows = []            # [(lineno, cells)]
+
+    for idx, line in enumerate(lines, 1):
+        if line.startswith('Parent:'):
+            has_parent = True
+        if re.match(r'^Mode:\s*autonomous\b', line):
+            mode_autonomous = True
+
+        if line.startswith('## '):
+            heading = line[3:].strip()
+            in_work_plan = (heading == 'Work Plan')
+            if heading == 'Work Plan' and work_plan_lineno is None:
+                work_plan_lineno = idx
+            if heading == CONFIG_HEADING and config_lineno is None:
+                config_lineno = idx
+            continue
+
+        if CHECKBOX_RE.match(line):
+            if in_work_plan:
+                if not PHASE_RE.match(line):
+                    add(idx, 'error',
+                        '"%s" in ## Work Plan is not a valid phase line '
+                        '(expected "- [ |x|!|~|>] **Phase N**: title")'
+                        % line.strip())
+            else:
+                add(idx, 'warning',
+                    'checkbox bullet outside ## Work Plan reads like a phase '
+                    'but is not one: "%s"' % line.strip())
+
+        m = PHASE_RE.match(line)
+        if m:
+            for tok in BACKTICK_RE.findall(m.group(3)):
+                if TAG_RE.fullmatch('`%s`' % tok):
+                    continue
+                if _taglike(tok):
+                    add(idx, 'warning',
+                        'backticked token `%s` on the phase line looks like a '
+                        'malformed tag (valid: parallel:N, group:N, vast)'
+                        % tok)
+
+        if in_work_plan:
+            nm = NOTE_RE.match(line)
+            if nm and nm.group(1).strip() not in KNOWN_NOTE_FIELDS:
+                add(idx, 'warning',
+                    'unknown note field "> %s:" (known: %s)'
+                    % (nm.group(1).strip(), ', '.join(KNOWN_NOTE_FIELDS)))
+
+        if heading == CONFIG_HEADING and line.startswith('|'):
+            cells = [c.strip() for c in line.split('|')]
+            if _is_separator(cells):
+                continue
+            if config_header is None:
+                config_header = (idx, cells)
+            else:
+                config_rows.append((idx, cells))
+
+    if work_plan_lineno is None:
+        add(1, 'error', 'no "## Work Plan" section')
+    if not has_parent:
+        add(1, 'error', 'no "Parent:" line')
+
+    if not phases:
+        add(work_plan_lineno or 1, 'error', 'no phases in ## Work Plan')
+    else:
+        numbers = [p.number for p in phases]
+        dups = sorted({n for n in numbers if numbers.count(n) > 1})
+        if dups:
+            add(work_plan_lineno or 1, 'error',
+                'duplicate phase number(s): %s'
+                % ', '.join(map(str, dups)))
+        elif numbers != list(range(1, len(numbers) + 1)):
+            add(work_plan_lineno or 1, 'error',
+                'phase numbers must be contiguous ascending from 1, found %s'
+                % numbers)
+
+    table_present = config_header is not None
+    if mode_autonomous and not table_present:
+        add(config_lineno or 1, 'error',
+            'Mode: autonomous requires a "## Suggested execution config" table')
+
+    if table_present:
+        hln, hcells = config_header
+        got = hcells[1:4] if len(hcells) >= 4 else hcells[1:]
+        if got != ['Phase', 'Effort', 'Model']:
+            add(hln, 'error',
+                'config table header must be "| Phase | Effort | Model |" in '
+                'that order, found %s' % got)
+        else:
+            phase_nums = {p.number for p in phases}
+            rowed = set()
+            for rln, cells in config_rows:
+                if len(cells) < 4:
+                    add(rln, 'error',
+                        'config table row has too few columns')
+                    continue
+                pm = re.match(r'^Phase (\d+)$', cells[1])
+                if not pm:
+                    add(rln, 'error',
+                        'config table row is not "| Phase N | ... |": "%s"'
+                        % cells[1])
+                    continue
+                num = int(pm.group(1))
+                rowed.add(num)
+                if num not in phase_nums:
+                    add(rln, 'error',
+                        'config table row references Phase %d, which has no '
+                        'phase in ## Work Plan' % num)
+                if cells[2].lower() not in EFFORTS:
+                    add(rln, 'error',
+                        'Phase %d Effort "%s" is not one of %s'
+                        % (num, cells[2], '|'.join(EFFORTS)))
+                if cells[3].lower() not in MODELS:
+                    add(rln, 'error',
+                        'Phase %d Model "%s" is not one of %s'
+                        % (num, cells[3], '|'.join(MODELS)))
+            for p in phases:
+                if p.number not in rowed:
+                    add(work_plan_lineno or 1, 'error',
+                        'Phase %d has no row in the execution config table'
+                        % p.number)
+
+    return findings
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -193,16 +374,34 @@ def main():
                          'under <git root>/.phased/active/)')
     ap.add_argument('--resolve', action='store_true',
                     help='print the active plan path and exit')
+    ap.add_argument('--validate', action='store_true',
+                    help='validate the plan structure and exit '
+                         '(0 clean/warnings, 1 errors, 2 unreadable)')
     args = ap.parse_args()
     path = args.plan
     if path is None:
         path, err = resolve_plan_path()
         if err:
             print(f'error: {err}')
-            return 1
+            return 2 if args.validate else 1
     if args.resolve:
         print(path)
         return 0
+    if args.validate:
+        try:
+            text = pathlib.Path(path).read_text(encoding='utf-8')
+            phases = parse(path)
+        except OSError as e:
+            print(f'error: cannot read {path}: {e}')
+            return 2
+        findings = validate(path, phases, text)
+        findings.sort(key=lambda f: (f[0], 0 if f[1] == 'error' else 1))
+        for lineno, sev, msg in findings:
+            print(f'{path}:{lineno}: {sev}: {msg}')
+        n_err = sum(1 for f in findings if f[1] == 'error')
+        n_warn = len(findings) - n_err
+        print(f'validate: {n_err} error(s), {n_warn} warning(s)')
+        return 1 if n_err else 0
     try:
         phases = parse(path)
     except OSError as e:

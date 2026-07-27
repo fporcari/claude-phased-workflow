@@ -7,7 +7,7 @@ Confirm with the user (in Italian) that the plan really targets autonomous execu
 ## Per-phase refinement
 
 1. **Pattern reference.** For non-trivial code, find 1–2 existing examples and propose them: *"Per la Phase X uso il pattern di `path/to/example.py:func`. Confermi?"* No clean candidate → ask the user; still nothing → propose 2–3 based on the phase description; still nothing → the phase is `new-pattern (flagged: higher risk)` and the user is told it is riskier autonomously. Library-standard work needs no reference.
-2. **Scope safety.** Sub-sessions run `--permission-mode auto`, which blocks the categories listed in `~/.claude/workflow-refs/common.md`. A phase needing one → surface it: *"Phase X richiede `<command>`, che auto mode blocca. Opzioni: (a) rifrasare la fase per fermarsi prima — lo fai tu dopo, (b) rimuovere la fase, (c) farla a mano fuori da `/run-all-phases`."* Never silently rewrite the phase to hide it.
+2. **Scope safety.** Sub-sessions run `--permission-mode auto`; the categories its classifier is expected to deny, and this plugin's own convention for writing phases, are listed in `${CLAUDE_PLUGIN_ROOT}/refs/common.md`. A phase needing one → surface it: *"Phase X richiede `<command>`, che auto mode blocca. Opzioni: (a) rifrasare la fase per fermarsi prima — lo fai tu dopo, (b) rimuovere la fase, (c) farla a mano fuori da `/run-all-phases`."* Never silently rewrite the phase to hide it.
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/auto-phase` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
@@ -86,7 +86,7 @@ Keep the column order exactly as above — `/run-all-phases` reads Effort and Mo
 - **Model**: `opus` is the default and the answer whenever in doubt.
   - `sonnet` — mechanical work only: renames, extractions, moves, header updates, and implementations that merely follow a cited pattern with a test-enforced `Done:`. **Never on UI or declarative phases — opus is the floor there.** Marking a phase `sonnet` is a commitment about the *plan*: its `Details:` and `Done:` must be written out until nothing is left to infer. Anything the skill no longer spells out, that phase must. If you can't write it that way, leave it `opus`.
   - `fable` — genuinely hard phases: architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference. Subject to credits.
-  - The final review phase is `opus` at `xhigh`: it needs judgment to separate minchiate-da-fixare from cose-da-segnalare.
+  - The final review phase is `opus` at `xhigh`: it needs judgment to separate the trivial fixes to apply from the findings worth flagging for a human.
 
 ## Closing message
 
@@ -94,6 +94,6 @@ Keep the column order exactly as above — `/run-all-phases` reads Effort and Mo
 Piano robottino-ready scritto in .phased/active/<slug>/plan.md (<N> fasi + review finale), committato su <branch>.
 Tutte le fasi hanno: pattern reference, files, decisions pre-fatte, done criterion misurabile.
 Ogni fase gira in loop auto-correttivo (3 tentativi test+lint, review indipendente, gate sul Done); su fase fallita parte UNA riparazione automatica a occhi freschi prima di fermarsi per te.
-La review finale corregge le minchiate e segnala il resto in .phased/active/<slug>/review.md.
+La review finale corregge le sviste banali e segnala il resto in .phased/active/<slug>/review.md.
 Per eseguire: /run-all-phases (passerà la pre-flight check senza domande).
 ```

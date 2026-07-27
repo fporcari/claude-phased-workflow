@@ -1,28 +1,48 @@
 #!/bin/bash
-# Install phased-workflow support files into ~/.claude
-# (shared conventions, autonomous-plan addendum, deterministic phase selector,
-#  phase loop launcher, phase-verifier subagent)
+# Migration tool for machines that ran phased-workflow 4.0.0 or earlier.
+# It is NOT part of the install path any more: the plugin now ships and resolves
+# its own support files (refs, scripts, phase-verifier subagent) from inside its
+# own directory, so there is nothing to copy into ~/.claude.
 #
-# Also detects the legacy flat install: before the plugin existed, the skills
-# were copied one file each into ~/.claude/commands/. Those files still take
-# precedence over the plugin's namespaced skills for the bare `/name` form, so
-# a stale copy keeps running silently after the plugin is installed. See the
-# "Legacy flat commands" block at the bottom.
+# This script does two clean-up jobs for an older machine:
+#   1. Supersede the orphaned support copies a previous install left under
+#      ~/.claude (see the "Stale support files" block just below).
+#   2. Supersede the legacy flat commands under ~/.claude/commands/ (see the
+#      "Legacy flat commands" block at the bottom). Before the plugin existed,
+#      the skills were copied one file each into ~/.claude/commands/, and those
+#      files still win the bare `/name` form over the plugin's namespaced skills.
 set -e
 SRC="$(cd "$(dirname "$0")" && pwd)"
-mkdir -p ~/.claude/workflow-refs ~/.claude/scripts ~/.claude/agents
-cp "$SRC/refs/common.md" ~/.claude/workflow-refs/common.md
-cp "$SRC/refs/write-workflow-autonomous.md" ~/.claude/workflow-refs/write-workflow-autonomous.md
-cp "$SRC/scripts/next-phase.py" ~/.claude/scripts/next-phase.py
-cp "$SRC/scripts/run-all-phases.sh" ~/.claude/scripts/run-all-phases.sh
-chmod +x ~/.claude/scripts/run-all-phases.sh
-cp "$SRC/agents/phase-verifier.md" ~/.claude/agents/phase-verifier.md
-echo "Support files installed:"
-echo "  ~/.claude/workflow-refs/common.md"
-echo "  ~/.claude/workflow-refs/write-workflow-autonomous.md"
-echo "  ~/.claude/scripts/next-phase.py"
-echo "  ~/.claude/scripts/run-all-phases.sh"
-echo "  ~/.claude/agents/phase-verifier.md"
+
+# --------------------------------------------------------- stale support files
+# The five files a 4.0.0-or-earlier install copied into ~/.claude. The plugin
+# carries these itself now, so the loose copies are orphans. The one that
+# actually matters is agents/phase-verifier.md: it is NOT namespaced, so it wins
+# over the plugin's phased-workflow:phase-verifier and keeps a stale verifier
+# running. Move, never delete, and never touch anything else in those dirs.
+SUPPORT_PATHS="workflow-refs/common.md workflow-refs/write-workflow-autonomous.md scripts/next-phase.py scripts/run-all-phases.sh agents/phase-verifier.md"
+SUPPORT_STALE=""
+for p in $SUPPORT_PATHS; do
+  [ -f "$HOME/.claude/$p" ] && SUPPORT_STALE="$SUPPORT_STALE $p"
+done
+
+if [ -n "$SUPPORT_STALE" ]; then
+  DEST="$HOME/.claude/phased-workflow-superseded-support"
+  mkdir -p "$DEST"
+  for p in $SUPPORT_STALE; do
+    mkdir -p "$DEST/$(dirname "$p")"
+    mv "$HOME/.claude/$p" "$DEST/$p"
+  done
+  echo "Stale support files superseded by the plugin (moved, not deleted):"
+  for p in $SUPPORT_STALE; do echo "  ~/.claude/$p -> $DEST/$p"; done
+  echo "The plugin now carries these files itself and resolves them from its own"
+  echo "directory; the loose copies under ~/.claude were orphans."
+  echo "agents/phase-verifier.md especially: un-namespaced, it shadowed the plugin's"
+  echo "phased-workflow:phase-verifier and kept a stale verifier running."
+  echo "Delete $DEST once you are satisfied nothing was lost."
+else
+  echo "No stale support files under ~/.claude — nothing to migrate."
+fi
 
 # ---------------------------------------------------------------- legacy flat
 # Only the names this plugin ships or used to ship — never touch anything else
@@ -61,6 +81,6 @@ else
   echo "  $STALE"
   echo "To move to the plugin (namespaced commands, no collisions with your other skills):"
   echo "  claude plugin marketplace add fporcari/claude-phased-workflow"
-  echo "  claude plugin install phased-workflow@fporcari/claude-phased-workflow"
+  echo "  claude plugin install phased-workflow@claude-phased-workflow"
   echo "then re-run this script — it will supersede the flat copies for you."
 fi

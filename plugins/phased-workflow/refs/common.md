@@ -38,7 +38,7 @@ git repository root:
 The active plan is `<git root>/.phased/active/*/plan.md`, resolved by:
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py --resolve
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve
 ```
 
 `active/` holds exactly ONE plan directory — one branch, one plan, no
@@ -91,7 +91,7 @@ actual fix.
 The next eligible phase is computed deterministically by:
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 ```
 
 Called with no argument it resolves the active plan itself; pass a path to
@@ -136,12 +136,18 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 
 `/repair-phase` always targets the FIRST `[!]` phase in the plan.
 
-## Auto-mode blocked categories
+## Auto-mode permission policy
 
-Sub-sessions launched with `--permission-mode auto` auto-concede routine
-local operations in project scope (git status/log/diff/show, edits in the
-working directory, push to the working branch, manifest-driven installs)
-and BLOCK these categories:
+Sub-sessions launch with `--permission-mode auto`. The classifier that judges
+each call is Claude Code's own — this plugin ships no hooks and no permission
+rules — so the list below is a *description* of what that mode is expected to
+deny plus the *convention* this plugin recommends when writing phases, not a
+guarantee the plugin itself can enforce.
+
+Under that mode, routine local operations in project scope (git
+status/log/diff/show, edits in the working directory, push to the working
+branch, manifest-driven installs) are auto-conceded, and these categories are
+expected to be denied:
 
 - `git push --force` or push to main/master/default branch — blocked
   (push to the working branch is fine)

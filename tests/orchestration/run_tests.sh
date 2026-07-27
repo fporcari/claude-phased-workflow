@@ -16,6 +16,10 @@ mkdir -p "$OT/bin"
 cp "$TESTDIR/mock-bin/claude" "$OT/bin/claude"
 cp "$TESTDIR/mockops.py" "$OT/mockops.py"
 cp "$RUNNER_SRC" "$OT/runner.sh"
+# The launcher now resolves its selector next to itself, so the suite must place
+# next-phase.py beside the copied runner — otherwise it exercises whatever is
+# installed on the machine (or the silent file-order fallback when nothing is).
+cp "$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py" "$OT/next-phase.py"
 bash -n "$OT/runner.sh" || { echo "runner syntax error"; exit 1; }
 export OPS="$OT/mockops.py"
 PASS=0; FAIL=0
@@ -101,6 +105,14 @@ assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permi
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
 assert "no repair launched" '! grep -q "repair-phase skill" .claude/invocations.log'
+# $HOME-independence: the launcher now resolves its selector beside itself, so a
+# run must no longer depend on $HOME. Re-run the happy path with HOME pointing at
+# a nonexistent dir and prove phases still complete and per-phase models still read.
+setup S1_nohome; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; HOME=/nonexistent PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "run completes with HOME=/nonexistent" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
+assert "per-phase model still read under HOME=/nonexistent" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 
 echo "== S2: phase fails -> fable repair succeeds -> loop continues =="
 setup S2; fixture2
@@ -263,6 +275,11 @@ assert "PHASE_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XP" ]'
 assert "LIGHT_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XL" ]'
 assert "light contract carries the baseline check" 'printf "%s" "$XL" | grep -q "run the tests and the linter"'
 assert "light contract carries the attribution/reopen clause" 'printf "%s" "$XL" | grep -q "reopen THAT phase"'
+# Guards the clause, NOT the model obeying it — same limitation as the other S14
+# contract checks. Until 4.1.0 the light contract ended 'Never commit.', so a
+# low-effort phase left its work uncommitted.
+assert "light contract no longer forbids committing" '! printf "%s" "$XL" | grep -q "Never commit"'
+assert "light contract carries the per-phase commit clause" 'printf "%s" "$XL" | grep -q "wf(phase"'
 assert "phase contract admits the Case A reopen outcome" 'printf "%s" "$XP" | grep -q "reopened from \[x\] to \[!\]"'
 assert "phase contract admits the Case B [~] outcome" 'printf "%s" "$XP" | grep -q "marked \[~\]"'
 assert "bench.sh holds NO frozen copy of a shipped contract" '! grep -qE "^(GOAL_CONTRACT|SLIM_GOAL_CONTRACT)=" "$BENCH"'
@@ -383,8 +400,255 @@ assert "skill still adopts the current branch on a source with [x] phases" \
   'grep -q "adopt the current branch" "$IMPORT_SKILL"'
 assert "skill still forbids rewriting history on that path" \
   'grep -q "no rebase, no reset" "$IMPORT_SKILL"'
+# Intent, not formatting: the skill must hand the source to the parser. Matching the
+# exact string "next-phase.py <source>" broke when the invocation was quoted for a
+# home directory containing a space — a legitimate refactor failing a test that
+# asserted a layout rather than a behaviour.
 assert "skill still classifies via the parser, not by eye" \
-  'grep -q "next-phase.py <source>" "$IMPORT_SKILL"'
+  'grep -qE "next-phase\.py\"? <source>" "$IMPORT_SKILL"'
+
+echo "== S18: prose bullets in ## Notes are inert; state greps are single-source =="
+# A column-0 "- [!]" / "- [~]" bullet in a Notes section used to launch a real
+# fable repair session (cap $300) or halt a healthy run. Every phase-state
+# match now goes through the phase_re/phase_count/phase_any/phase_lines helpers,
+# so such decoys are structurally invisible. Modelled on S8 (roadmap-inert).
+setup S18; fixture2
+cat >> .phased/active/toy/plan.md <<'EOF'
+
+## Notes
+- [x] decided to use sqlite
+- [!] the parser rewrite is open upstream
+- [~] waiting on the upstream release
+- [>] follow up later
+WIP: rewrite the tokenizer
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S18: both real phases reached [x]" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
+assert "S18: exactly 2 phase sessions ran" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 2 ]'
+assert "S18: the [!] decoy launched no repair" '! grep -q "repair-phase skill" .claude/invocations.log'
+assert "S18: the [!] decoy did not report a failed phase" '! grep -q "A phase failed" out.log'
+assert "S18: the [~] decoy did not block the run" '! grep -q "A phase is blocked" out.log'
+assert "S18: no false no-progress stop" '! grep -q "No progress in the last run" out.log'
+
+# Static regression guard: no unqualified phase-state grep may re-enter the
+# launcher. Every grep whose pattern carries a bracketed state (\[x\], \[ \],
+# \[!\], \[~\], \[>\], or the \[[ x!~>]\] class) must be one of the four
+# single-source helper definitions. Follows the S14 extract() heredoc idiom.
+GUARD_OUT="$(python3 - "$RUNNER_SRC" <<'PYG'
+import re, sys
+lines = open(sys.argv[1], encoding='utf-8').read().splitlines()
+helper = re.compile(r'^(phase_re|phase_count|phase_any|phase_lines)\(\)')
+state = re.compile(r'\\\[\[?[ x!~>]')   # a literal \[ opening a phase-state match
+bad = []
+for i, line in enumerate(lines, 1):
+    if 'grep' not in line:
+        continue
+    if not state.search(line):
+        continue
+    if helper.match(line.strip()):
+        continue
+    bad.append('%d: %s' % (i, line.strip()))
+sys.stdout.write('\n'.join(bad))
+PYG
+)"
+[ -z "$GUARD_OUT" ] || echo "  offending: $GUARD_OUT"
+assert "S18: no phase-state grep bypasses the helpers" '[ -z "$GUARD_OUT" ]'
+
+echo "== S19: next-phase.py --validate gates the launcher before any session =="
+# The validator shares the selector's own regexes, so a plan it rejects is one
+# the loop could not drive correctly. The launcher runs it once before the loop
+# and stops on a non-zero result, printing it verbatim — no session spent.
+NEXTPHASE="$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py"
+
+# (a) a healthy plan validates clean and the run proceeds to completion
+setup S19a; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19a: healthy plan passes the gate" '! grep -q "Plan validation failed" out.log'
+assert "S19a: run proceeded and completed all phases" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 3 ]'
+
+# (b) a phase line with a space before the colon is rejected; NO session starts
+setup S19b
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1** : phase one
+  - Done: check one
+- [ ] **Phase 2**: phase two
+  - Done: check two
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | sonnet |
+| Phase 2 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19b: malformed phase line is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19b: the gate names the offending line" 'grep -q "Phase 1\*\* : phase one" out.log'
+assert "S19b: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (c) Mode: autonomous with the execution-config table removed is rejected
+setup S19c
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19c: missing config table is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19c: the gate names the missing table" 'grep -q "requires a .* Suggested execution config" out.log'
+assert "S19c: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (d) an Effort outside the supported set is rejected, naming the bad value
+setup S19d
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | turbo | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S19d: bad Effort is rejected" 'grep -q "Plan validation failed" out.log'
+assert "S19d: the gate names the bad Effort value" 'grep -q "Effort .turbo. is not one of" out.log'
+assert "S19d: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# direct invocation: an unknown note field is a warning, not an error (exit 0)
+WARN_PLAN="$OT/warn-plan.md"
+cat > "$WARN_PLAN" <<'EOF'
+# Context: warn
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  > Foo: not a documented field
+  - Done: check one
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | low | opus |
+EOF
+WARN_OUT="$(python3 "$NEXTPHASE" --validate "$WARN_PLAN" 2>&1)"; WARN_RC=$?
+assert "S19: an unknown note field warns but does not fail (exit 0)" '[ "$WARN_RC" = 0 ]'
+assert "S19: the warning names the unknown field" 'printf "%s" "$WARN_OUT" | grep -q "warning: unknown note field .> Foo:"'
+
+echo "== S20: every silent fallback announces itself with a NOTE =="
+# Force the fallback path. After Phase 2 the launcher resolves its selector
+# beside itself, so a runner copied to a directory with no sibling next-phase.py
+# cannot run the selector and drops to file order — the exact path the NOTE must
+# make audible. The validation gate self-skips the same way (no selector), so
+# nothing stops the loop before the fallback fires.
+NOSEL="$OT/no-selector"
+mkdir -p "$NOSEL"
+cp "$OT/runner.sh" "$NOSEL/runner.sh"   # deliberately WITHOUT next-phase.py beside it
+run_nosel() { PATH="$OT/bin:$PATH" bash "$NOSEL/runner.sh" > out.log 2>&1; }
+
+# (a) selector missing -> file-order fallback, loud, naming the barrier cost
+setup S20a; fixture2
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run_nosel
+assert "S20a: the selector fallback prints a NOTE" 'grep -q "falling back to plan file order" out.log'
+assert "S20a: the NOTE names the barrier consequence" 'grep -q "parallel:N / group:N barriers" out.log'
+assert "S20a: both phases still complete on file order" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
+
+# (b) unsupported Model and Effort cells -> both NOTEs, safe defaults applied.
+# With no selector beside the runner the validation gate is skipped, so the bad
+# row reaches the case blocks that this phase made loud.
+setup S20b
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+- [ ] **Phase 2**: phase two
+  - Done: check two
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | turbo | banana |
+| Phase 2 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run_nosel
+assert "S20b: unrecognised Model warns loudly" 'grep -q "unrecognised Model .banana." out.log'
+assert "S20b: unrecognised Effort warns loudly" 'grep -q "unrecognised Effort .turbo." out.log'
+assert "S20b: the call still used the safe defaults" 'grep -q -- "--model opus --effort high" .claude/invocations.log'
+
+echo "== S21: skills and refs address the plugin, not ~/.claude =="
+# The plugin ships its own scripts/ and refs/; a skill or ref that still points a
+# reader at ~/.claude/ (or $HOME/.claude/) sends them to a path the plugin no
+# longer owns. The one legitimate mention is refs/common.md naming
+# ~/.claude/settings.json as a file auto mode must not self-modify — a different
+# file, and a description, not a path the plugin resolves. Static check, S18 idiom.
+S21_SKILLS="$TESTDIR/../../plugins/phased-workflow/skills"
+S21_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
+HOME_OUT="$(python3 - "$S21_SKILLS" "$S21_REFS" <<'PYH'
+import os, sys
+bad = []
+for root in sys.argv[1:]:
+    for dirpath, _, names in os.walk(root):
+        for name in names:
+            p = os.path.join(dirpath, name)
+            for i, line in enumerate(open(p, encoding='utf-8').read().splitlines(), 1):
+                if '~/.claude/' not in line and '$HOME/.claude/' not in line:
+                    continue
+                # documented exemption: the settings.json auto-mode mention
+                if line.count('~/.claude/') == 1 and '~/.claude/settings.json' in line \
+                        and '$HOME/.claude/' not in line:
+                    continue
+                bad.append('%s:%d: %s' % (p, i, line.strip()))
+sys.stdout.write('\n'.join(bad))
+PYH
+)"
+[ -z "$HOME_OUT" ] || echo "  offending: $HOME_OUT"
+assert "S21: no skill or ref addresses ~/.claude/ or \$HOME/.claude/" '[ -z "$HOME_OUT" ]'
+# The guard is only worth having if it fails on the defect it describes.
+S21_MUT="$(mktemp -d)"; cp -R "$S21_SKILLS" "$S21_MUT/skills"
+printf '\nSee `python3 ~/.claude/scripts/next-phase.py --resolve` for the plan.\n' \
+  >> "$S21_MUT/skills/auto-phase/SKILL.md"
+S21_MUT_OUT="$(python3 - "$S21_MUT/skills" <<'PYH'
+import os, sys
+bad = []
+for dirpath, _, names in os.walk(sys.argv[1]):
+    for name in names:
+        p = os.path.join(dirpath, name)
+        for i, line in enumerate(open(p, encoding='utf-8').read().splitlines(), 1):
+            if '~/.claude/' not in line and '$HOME/.claude/' not in line:
+                continue
+            if line.count('~/.claude/') == 1 and '~/.claude/settings.json' in line \
+                    and '$HOME/.claude/' not in line:
+                continue
+            bad.append('%s:%d' % (p, i))
+sys.stdout.write('\n'.join(bad))
+PYH
+)"
+rm -rf "$S21_MUT"
+assert "S21: the guard fails when a ~/.claude/ path is reintroduced" '[ -n "$S21_MUT_OUT" ]'
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

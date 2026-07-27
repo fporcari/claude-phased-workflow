@@ -8,7 +8,7 @@ allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Wr
 
 Turn an existing plan or a handoff document into a `.phased/` workflow. This is an **adapter, not a planner**: it maps what the source already says onto the plan format and reports what is missing. It never invents phases, and it never writes source code.
 
-**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
 Typical sources: a pre-4.0 `.claude/MEMORY.md`, a parallel `memory_<name>.md` from the same era, or a free-form handoff written by a previous session or another person.
 
@@ -23,7 +23,7 @@ Typical sources: a pre-4.0 `.claude/MEMORY.md`, a parallel `memory_<name>.md` fr
 One question decides Step 4: **does the source contain phases already marked `[x]`?** Getting it wrong is the one way this skill can destroy work, so do not eyeball the markers — ask the parser that already reads them:
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py <source>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" <source>
 ```
 
 It prints one line per phase with its state, and it works unchanged on a pre-4.0 `MEMORY.md` — the phase-line format did not change. It also fails loudly if the source is not a parsable plan, which is worth knowing before touching anything.

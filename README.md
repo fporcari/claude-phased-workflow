@@ -240,13 +240,13 @@ Key behaviors:
 
 1. **Baseline first.** Tests and linter run *before* the first edit. A phase that inherits someone else's breakage would otherwise attribute it to itself and spend its whole fix budget — plus a repair session — on a bug it did not cause.
 2. **Convergence loop.** Tests and lint, fix, repeat — **max 3 attempts**, with an early stop when the same failure signature (same failing test, same exception) appears twice. Iterating blindly against the same error is how naive loops burn budget.
-3. **Independent verification.** A read-only `phase-verifier` subagent, in its own context window, gets the `Done:` criterion and the pattern reference. Mechanical findings are fixed in-loop; judgment findings become `> Review:` notes for the human at finalize.
+3. **Independent verification, where it earns its keep.** Not every phase: a read-only `phase-verifier` subagent runs on a `sonnet` phase, a `new-pattern` phase, or a repair — see [why below](#3-model-flexibility). In its own context window it gets the `Done:` criterion and the pattern reference; mechanical findings are fixed in-loop, judgment findings become `> Review:` notes for the human at finalize.
 4. **`Done:` gate.** Every criterion from the plan is re-run literally. "Tests pass" is weaker than the plan's own `Done:`, and it is the `Done:` that closes the phase.
 
 `/run-all-phases` is the loop around it — a bash script, so it consumes no model itself:
 
 - **The `/goal` guard** (Claude Code ≥ 2.1.139). Each phase and repair session is launched as `claude -p "/goal <contract>"`. The native goal loop adds an independent per-turn evaluator: a fresh, lighter model reads the transcript and decides whether the exit is genuine, so a premature "I'm done" gets sent back to work. A 25-turn clause bounds the loop. Older CLIs are detected at runtime and fall back to the plain skill prompt — everything still works, without the evaluator.
-- **Light mode** for `Effort=low` phases: a slim `/goal` contract (~450 chars against the ~9.5KB skill body) carrying every chain invariant itself. Measured on the seeded fixture: same external outcomes, ~37% cheaper and ~60% of the wall time.
+- **Light mode** for `Effort=low` phases: a slim `/goal` contract (~450 chars against the ~9.5KB skill body) carrying every chain invariant itself, per-phase commit included. Measured on the seeded toy fixture (n=3): ~37% cheaper and ~60% of the wall time — but that figure is the `slim` hardcoded control, not the light mode that ships, whose "same external outcomes" was never benchmarked against the current contract. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each run actually measured.
 - **Repair is automatic, once.** A phase that exits `[!]` gets one fresh-eyes repair session (fable, opus fallback) launched by the loop; the run continues only if the repair turns the phase `[x]`. The `> Repair attempted:` note makes it idempotent — relaunching does not spend a second repair on the same phase. Delete that note to grant another round after intervening by hand.
 - **Red-baseline attribution.** When the baseline check finds tests or lint already red, the failure is matched against the `> Files:` notes of completed phases. *Case A* — a `[x]` phase owns those files: it regressed and was closed wrongly, so it is **reopened `[x] → [!]`** and the ordinary repair path handles it; the run continues. *Case B* — nobody owns it: it pre-dates the run, and the pending phase goes `[~]` for the human. Ambiguity resolves to Case B, because a wrong reopen spends a phase's only repair on the wrong bug.
 - **Bounded everywhere.** 3 fix attempts per phase, 1 repair per phase, 25 turns per contract, a notional dollar cap per session (doubled for fable, 250 for `xhigh`), and a no-progress guard that stops a run that is not moving.
@@ -320,7 +320,9 @@ Git worktrees create isolated working directories on separate branches. Each wor
 
 ### Why no commit during phases?
 
-`/execute-phase` never commits (except a WIP safety commit when context runs low). This gives `/finalize-workflow` full control over the final commit — one clean commit per workflow, with a proper message.
+`/execute-phase` (the interactive path) never commits (except a WIP safety commit when context runs low). This gives `/finalize-workflow` full control over the final commit — one clean commit per workflow, with a proper message.
+
+The autonomous chain works the other way: each phase session commits its own work as `wf(phase N): <title>` on the throwaway workflow branch, because repair needs the failing code in history and red-baseline attribution matches a failure against the `> Files:` of *committed* phases. `/finalize-workflow` then squashes those per-phase commits into the same single clean commit on the parent — so the parent branch still receives exactly one commit either way.
 
 ### Why a separate `/write-workflow` command?
 
@@ -428,7 +430,7 @@ Autonomous does not mean unsupervised — it means the supervision is concentrat
 - The macro-phase boundary on ambitious plans
 - `/finalize-workflow`, where the whole-diff review happens, and any phase left `[!]` or `[~]`
 
-Inside those edges the machine self-corrects. Outside them nothing is committed without you: `/finalize-workflow` is the only command that commits.
+Inside those edges the machine self-corrects. Nothing reaches the parent branch without you: on the interactive path `/finalize-workflow` is the only command that commits, and on the autonomous path the per-phase `wf(phase N)` commits land only on the throwaway workflow branch, which `/finalize-workflow` squashes into one clean commit you approve.
 
 ### 5. Parallel Workflows
 Two approaches:
@@ -446,7 +448,6 @@ Everything is traceable: plan in a versionable file, single clean commit per wor
 - [Claude Code](https://claude.com/claude-code) installed — **≥ 2.1.139** for the `/goal` guard and light mode on autonomous sessions (older versions are detected at runtime and fall back to plain skill prompts)
 - Git repository with remote configured
 - GitHub CLI (`gh`) installed and authenticated
-- (Optional) VS Code with `code` in PATH
 
 ### Installation
 
@@ -483,32 +484,17 @@ Add to your project's `.claude/settings.json`:
 git clone https://github.com/fporcari/claude-phased-workflow.git
 claude plugin marketplace add ./claude-phased-workflow
 claude plugin install phased-workflow@claude-phased-workflow
-bash claude-phased-workflow/plugins/phased-workflow/install.sh
 ```
+
+Installing the plugin is the whole install: the skills, the launcher, the phase selector, the reviewer subagent and the shared refs all ship inside the plugin and resolve themselves through `${CLAUDE_PLUGIN_ROOT}`. There is nothing to copy into `~/.claude` and no `install.sh` step to run.
 
 > **Do not copy the skills into `~/.claude/commands/`.** That was the pre-3.0 install and it is now actively harmful: personal commands are flat and unnamespaced, so they collide with your other skills — and worse, a stale `~/.claude/commands/write-workflow.md` wins the bare `/write-workflow` over the plugin's copy, so you keep running an old version without noticing. Installed as a plugin, the skills are namespaced `/phased-workflow:<name>` and *cannot* conflict with any other level; the bare `/<name>` also works whenever nothing else claims it.
 >
-> Coming from a flat install? Run `install.sh` **after** installing the plugin: it moves the superseded files to `~/.claude/phased-workflow-superseded-commands/` (moves, never deletes) and touches only the 13 names this plugin owns. Run before the plugin is installed, it detects the situation and leaves everything alone — those files are your only working copy until the plugin is there.
-
-**The support files are not optional.** Whichever option you pick, run the plugin's `install.sh` — marketplace installs do not run it for you:
-
-```bash
-bash ~/.claude/plugins/cache/claude-phased-workflow/phased-workflow/*/install.sh
-```
-
-(from a clone, it is `plugins/phased-workflow/install.sh`. In an installed plugin the plugin root *is* the plugin directory, so there is no `plugins/phased-workflow/` below it.) It places under `~/.claude`:
-
-| File | Role |
-|------|------|
-| `scripts/next-phase.py` | Deterministic phase selection — same inputs, same phase |
-| `scripts/run-all-phases.sh` | The autonomous phase loop — executed by the skill, never read into context |
-| `agents/phase-verifier.md` | Read-only subagent, for the phases where independent review still earns its keep |
-| `workflow-refs/common.md` | Shared conventions, single source of truth for the skills |
-| `workflow-refs/write-workflow-autonomous.md` | Autonomous-plan addendum (macro-phases, model tiers, `Done:` rules) |
-
-Without them the chain runs degraded: phase selection falls back to reading the plan by hand, and the independent reviewer to a generic read-only subagent.
-
-**Inside Softwell:** the same set is mirrored to a Sourcerer KB topic, which also carries a few internal entries with no counterpart here. As of 3.0.0 that mirror is **not** an install channel for these skills — it writes flat files into `~/.claude/commands/`, which is the channel this release retires. Install the plugin; use the KB only for the internal-only commands. The repo is the source of truth and `tools/kb-sync.py` keeps the mirror in step with it (`--audit` reports anything unmapped in either direction).
+> Coming from an older install? `install.sh` is no longer part of the install — as of 4.1.0 it is a one-time **migration** for machines that ran **4.0.0 or earlier**. It moves aside (moving, never deleting) two kinds of superseded copies: the pre-3.0 flat commands under `~/.claude/commands/` → `~/.claude/phased-workflow-superseded-commands/`, and the 4.0.0 support files that used to be copied under `~/.claude/` (`scripts/next-phase.py`, `scripts/run-all-phases.sh`, `agents/phase-verifier.md`, and the two refs) → `~/.claude/phased-workflow-superseded-support/`. The unnamespaced `agents/phase-verifier.md` is the one that matters: left in place it wins over the plugin's own copy and keeps a stale reviewer running. Run it only if you are migrating; on a fresh install it has nothing to do.
+>
+> ```bash
+> bash ~/.claude/plugins/cache/claude-phased-workflow/phased-workflow/*/install.sh   # only when migrating from ≤ 4.0.0
+> ```
 
 ### First Use
 
@@ -554,7 +540,7 @@ By itself, inside `/run-all-phases`: a phase that exits `[!]` gets one repair se
 The ones whose feedback signal is machine-checkable: a `Done:` you could re-run yourself, tests that exist, decisions already settled in the plan, and a pattern reference to copy-adapt. Everything verified by eye — UI, visual output, exploratory work — belongs to `/execute-phase`. The leash reflects the nature of the phase, not the quality of the model.
 
 **Q: Can it commit or push without me?**
-No. `/finalize-workflow` is the only command that commits, and it asks before doing so. Phase sessions never commit (except a WIP safety commit when context runs low).
+Nothing reaches the parent branch without you. On the interactive path `/finalize-workflow` is the only command that commits, and it asks first; `/execute-phase` never commits (except a WIP safety commit when context runs low). The autonomous chain does commit once per phase — `wf(phase N): <title>` — but only on the throwaway workflow branch, which `/finalize-workflow` squashes into the single clean commit you approve. It never pushes without you.
 
 **Q: How do I clean up old worktrees?**
 Plain git: `git worktree list` shows them all, `git worktree remove <path>` removes one, `git worktree prune` clears entries whose directory is already gone. `/finalize-workflow` offers to do it for the workflow it just closed.
@@ -567,15 +553,19 @@ Plain git: `git worktree list` shows them all, `git worktree remove <path>` remo
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**62 assertions over 16 scenarios.** S1–S13 extract the `/run-all-phases` bash script from its own `SKILL.md` and run it against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback.
+**109 assertions over 21 scenarios.** S1–S13 run the shipped `/run-all-phases` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S17 drives `/import-workflow`'s classification and its mid-run git sequence; S18 proves that prose bullets in a `## Notes` section stay inert and that every phase-state grep goes through a single-source helper; S19 checks that `next-phase.py --validate` gates the launcher before any session starts; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`.
 
 The suite runs the script under **both bash and zsh** (S9), which is not redundancy: the production invocation path is the user's shell, and an unbraced `$NEXT_PHASE[^0-9]` inside a grep pattern parses as an array subscript in zsh, silently emptying the config-table lookup and defaulting every phase's model, effort and cap. A bash-only harness cannot see it, and `zsh -n` does not either.
 
-S14–S16 are static checks on what the repo ships:
+S14–S16, S18 and S21 are static checks on what the repo ships:
 
-- **S14** — no frozen copy of a shipped `/goal` contract anywhere in the harness. The benchmark used to hold one, so it measured a previous version of the chain while reporting the current one.
+- **S14** — no frozen copy of a shipped `/goal` contract anywhere in the harness. The benchmark used to hold one, so it measured a previous version of the chain while reporting the current one. S14 also guards, both ways, that the light contract carries its per-phase-commit clause and no longer forbids committing.
 - **S15** — every skill stays inside its own `allowed-tools`, checked by reading its bash blocks and its prose ([check_allowlists.py](tests/orchestration/check_allowlists.py)). A skill can instruct a command its allowlist never pre-approves; nothing fails loudly, the step just stops to ask for a permission the author meant to grant — and where nobody can answer, it does not run.
 - **S16** — every skill is on the KB sync list, so a new command cannot be added here and silently never reach anyone else.
+- **S18** — the phase-state greps in the launcher are single-source: a regression that reintroduces an unqualified state grep (one that would read a prose `- [!]` bullet in `## Notes` as a phase) fails the check.
+- **S21** — every skill and ref addresses the plugin through `${CLAUDE_PLUGIN_ROOT}`, never `~/.claude/` (the one `settings.json` mention in `refs/common.md` is the documented exemption).
+
+A GitHub Actions workflow ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs `flake8`, both the bash and zsh suites, and `next-phase.py --validate` on the benchmark fixture on every push and pull request against `main`.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it.
 
@@ -612,6 +602,25 @@ gnr web serve sandboxpg --debug
 ```
 
 See [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md) for details.
+
+---
+
+## What changed in 4.1.0
+
+4.1.0 acts on an external review of 4.0.0 and on defects the chain surfaced by running on itself.
+
+- **The launcher and its selector now live entirely inside the plugin.** They resolve their own paths through `${CLAUDE_PLUGIN_ROOT}`, so a run never depends on stale copies under `~/.claude`. `install.sh` stops installing anything and becomes a one-time migration for machines that ran 4.0.0 or earlier (see the installation note above).
+- **Phase-state matching is single-source and strict.** Every state grep in the launcher goes through one anchored helper, so a prose `- [!]` bullet in a `## Notes` section can no longer be read as a phase and launch a spurious repair session (S18).
+- **Plans are validated before the loop starts.** `next-phase.py --validate` gates the launcher and rejects a malformed plan by line, instead of degrading silently (S19); and the three remaining silent fallbacks — unknown model, unknown effort, missing selector — now each announce themselves with a `NOTE:` (S20).
+- **The per-phase commit defect, found by running the chain on itself.** Before 4.1.0 the light-mode `/goal` contract used for `Effort=low` phases ended in `Never commit.`, a leftover from before one-commit-per-phase became the architecture. So a light phase did its work and reported `[x]` while leaving nothing committed — and the cascade was worse than a missing commit: a later full-skill phase, seeing predecessors with no commits, inferred a repo-wide "no-commit mode" and followed suit, so one mode's constraint propagated through the *observable state of the repo*. It silently broke red-baseline attribution, which matches a failure against the `> Files:` of committed phases and has no boundary to attribute to when phases fuse. The light contract now carries the commit requirement, and S14 guards the clause both ways.
+- **Documentation matches the evidence.** The benchmark figures keep their magnitude and gain their provenance in the same breath (n=3 toy fixture, `slim` control not the shipped light mode); the test counts are restated from the suite's own output; and the `--permission-mode auto` category list is reframed as what Claude Code's classifier is expected to deny plus this plugin's own convention — not a guarantee the plugin, which ships no hooks, can make.
+- **Continuous integration.** A GitHub Actions workflow runs flake8, both suites and the plan validator on every push and PR against `main`.
+
+---
+
+## Internal mirror (Softwell)
+
+*Only relevant inside Softwell; external users can ignore this.* The skill set is mirrored to an internal knowledge-base topic, which also carries a few internal-only entries with no counterpart here. That mirror is **not** an install channel for these skills — it writes flat files into `~/.claude/commands/`, the channel this line retires. Install the plugin; use the KB only for the internal-only commands. The repo is the source of truth, and `tools/kb-sync.py` keeps the mirror in step with it (`--audit` reports anything unmapped in either direction).
 
 ---
 

@@ -7,13 +7,13 @@ allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQues
 
 Supervision view of the work plan. **Read-only on source code** — the only file this command may modify is the plan, and only on an approved re-phasing.
 
-**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
 ## Step 1: Find the plan and the base
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py --resolve
-python3 ~/.claude/scripts/next-phase.py
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 git log -1 --diff-filter=A --format=%H -- <plan path>
 ```
 

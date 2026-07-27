@@ -13,6 +13,14 @@
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
+# The selector ships in the same plugin directory as this launcher, so it can
+# never be a different version than we expect. Resolve it relative to our own
+# location ($(dirname "$0"), never ${BASH_SOURCE[0]} — this runs under zsh too,
+# where BASH_SOURCE does not exist), and there is no need for ${CLAUDE_PLUGIN_ROOT}
+# inside a script that can find itself.
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
+
 # Resolve the active plan: exactly one .phased/active/<slug>/plan.md.
 # Done with `find` rather than a glob on purpose — an unmatched glob is left
 # literal by bash but ABORTS the script under zsh, which is the production
@@ -34,6 +42,34 @@ PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
 mkdir -p "$PLAN_DIR/log"
 
+# Pre-loop validation gate. next-phase.py --validate shares the selector's own
+# regexes, so a plan it rejects is one the loop could not drive correctly. Print
+# its output verbatim (no re-wording) and stop before spending a single session.
+# If the selector is not beside us the install is broken elsewhere, but a missing
+# validator must not itself abort the run — skip the gate with a NOTE instead.
+if [ -f "$NEXT_PHASE_PY" ]; then
+  VALIDATE_OUT=$(python3 "$NEXT_PHASE_PY" --validate "$PLAN" 2>&1)
+  VALIDATE_RC=$?
+  if [ "$VALIDATE_RC" -ne 0 ]; then
+    echo "$VALIDATE_OUT"
+    echo "Plan validation failed — fix the plan under .phased/active/ and relaunch."
+    exit 1
+  fi
+else
+  echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
+fi
+
+# Phase-state matching lives in ONE place. A plain "- [!]" bullet in a
+# ## Notes section is prose, not a phase; before this was centralised such a
+# bullet launched a real fable repair session at cap $300 and stopped the run.
+# Every state match — including the ones already strict — goes through these
+# helpers, so the "**Phase" anchor can never drift between call sites.
+# phase_re emits ^- \[<state>\] \*\*Phase; the redundant \- escape is dropped.
+phase_re()    { printf '^- \\[%s\\] \\*\\*Phase' "$1"; }
+phase_count() { grep -c "$(phase_re "$1")" "$PLAN" 2>/dev/null || true; }
+phase_any()   { grep -q "$(phase_re "$1")" "$PLAN" 2>/dev/null; }
+phase_lines() { grep -E '^- \[[ x!~>]\] \*\*Phase' "$PLAN" 2>/dev/null; }
+
 # /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
 # goal loop — an independent evaluator (small fast model) re-checks the exit
 # condition after every turn, so a session cannot declare itself done before
@@ -43,11 +79,18 @@ if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V 
   PHASE_PROMPT='/goal Use the auto-phase skill to execute exactly ONE phase of the active plan under .phased/active/. Condition: the plan gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
   REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
   # Light mode for Effort=low phases: no skill ritual — the goal contract
-  # carries every chain invariant itself (bookkeeping notes included: what
-  # the contract omits, the session silently drops). Measured on the seeded
-  # fixture: same external outcomes as the full skill, ~40% cheaper, half
-  # the wall time. Hard phases keep the full ritual.
-  LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. Never commit. Stop after 25 turns.'
+  # carries the chain invariants itself (bookkeeping notes included: what the
+  # contract omits, the session silently drops). The one invariant it did NOT
+  # carry was the per-phase commit: the clause used to forbid committing, so a
+  # light phase completed its work but left it uncommitted, and a later full-skill
+  # phase, seeing predecessors with no commits, inferred a repo-wide no-commit mode
+  # and followed suit. The commit instruction now lives in the contract; S14 guards
+  # the clause. Measured on the seeded toy fixture (n=3): ~37% cheaper and ~60% of
+  # the wall time. That figure is the `slim` hardcoded control vs `plain`, the two
+  # arms whose provenance survived the frozen-copy defect — not this shipped light
+  # contract, whose "same external outcomes" was never measured against it. See
+  # tests/benchmark/results/README.md. Hard phases keep the full ritual.
+  LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. When the phase is done, make exactly one commit for it -- the phase code and its own plan status update together, git add -A && git commit -m "wf(phase N): <title>" -- so the next phase starts from a clean tree. Stop after 25 turns.'
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
   PHASE_PROMPT='/auto-phase'
@@ -62,16 +105,16 @@ fi
 # stale marker belonging to a DIFFERENT [!] phase.
 first_bang_block() {
   awk '
-    /^- \[/ { if (seen) exit }
+    /^- \[[ x!~>]\] \*\*Phase/ { if (seen) exit }
     /^## /  { if (seen) exit }
-    /^- \[!\]/ { seen = 1 }
+    /^- \[!\] \*\*Phase/ { seen = 1 }
     seen { print }
   ' "$PLAN" 2>/dev/null
 }
 
 # Count only real phase lines: a stray "- [ ]" checkbox in Notes is not a phase.
 # NOTE: grep -c prints 0 itself on no match (exit 1) — do NOT add "|| echo 0", it would double the output
-REMAINING=$(grep -c '^\- \[ \] \*\*Phase' "$PLAN" 2>/dev/null || true)
+REMAINING=$(phase_count ' ')
 REMAINING=${REMAINING:-0}   # unreadable file → empty var → treat as 0
 
 if [ "$REMAINING" -eq 0 ]; then
@@ -84,7 +127,7 @@ echo ""
 
 for i in $(seq 1 $REMAINING); do
   # Re-read the plan to get current state
-  if ! grep -q '^\- \[ \] \*\*Phase' "$PLAN" 2>/dev/null; then
+  if ! phase_any ' '; then
     echo ""
     echo "All phases completed!"
     break
@@ -99,8 +142,11 @@ for i in $(seq 1 $REMAINING); do
   # uses (it honours parallel:N barriers, group:N units and [>] resumes). Using
   # plain file order here would pick a different phase than the one that
   # actually runs, and apply the wrong row's model/effort/cap to it.
-  REC=$(python3 "$HOME/.claude/scripts/next-phase.py" "$PLAN" 2>/dev/null \
-        | sed -n 's/^recommendation: //p')
+  # Keep stderr (2>&1, not 2>/dev/null): if the selector cannot run, the reason
+  # (missing file, syntax error, unreadable plan) must be visible in the NOTE
+  # the *) fallback arm prints, not swallowed.
+  REC_RAW=$(python3 "$NEXT_PHASE_PY" "$PLAN" 2>&1)
+  REC=$(printf '%s\n' "$REC_RAW" | sed -n 's/^recommendation: //p')
   case "$REC" in
     next:*)
       NEXT_PHASE=$(printf '%s' "$REC" | sed -n 's/^next: \([0-9]\{1,\}\).*/\1/p') ;;
@@ -126,7 +172,11 @@ for i in $(seq 1 $REMAINING); do
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
-      NEXT_PHASE=$(grep -n '^\- \[ \] \*\*Phase' "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
+      # This is the serious fallback and says so: file order ignores parallel:N
+      # and group:N barriers, so the launcher may apply one phase's model,
+      # effort and cap to a different phase than the sub-session actually runs.
+      echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores parallel:N / group:N barriers, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
+      NEXT_PHASE=$(grep -n "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 
   if [ "$RUN_PHASE" -eq 1 ] && [ -z "$NEXT_PHASE" ]; then
@@ -135,7 +185,7 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   # Snapshot completed-phase count BEFORE the run (progress guard)
-  BEFORE_DONE=$(grep -c '^\- \[x\]' "$PLAN" 2>/dev/null || true)
+  BEFORE_DONE=$(phase_count x)
   BEFORE_DONE=${BEFORE_DONE:-0}
 
   # Look up model and effort from the execution config table, by COLUMN
@@ -155,14 +205,16 @@ for i in $(seq 1 $REMAINING); do
   MODEL=$(col 4)
 
   # Validate against what this launcher actually supports; anything else
-  # (empty row, no table, typo) falls back to the safe default.
+  # falls back to the safe default. An empty cell is a validation error as of
+  # the --validate gate above, so by the time we reach here the cause is a
+  # value this launcher does not support, not a missing table row.
   case "$MODEL" in
     fable|sonnet|opus) ;;
-    *) MODEL="opus" ;;
+    *) echo "NOTE: unrecognised Model '${MODEL:-<empty>}' from the config table — using 'opus'."; MODEL="opus" ;;
   esac
   case "$EFFORT" in
     low|medium|high|xhigh|max) ;;
-    *) EFFORT="high" ;;
+    *) echo "NOTE: unrecognised Effort '${EFFORT:-<empty>}' from the config table — using 'high'."; EFFORT="high" ;;
   esac
 
   # Cap per phase (runaway-loop safety net, NOT a real spend limit on subscription plans).
@@ -229,7 +281,7 @@ for i in $(seq 1 $REMAINING); do
   fi
 
   # Check for issues — one fresh-eyes repair attempt before stopping
-  if grep -q '^\- \[!\]' "$PLAN" 2>/dev/null; then
+  if phase_any '!'; then
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
@@ -268,7 +320,7 @@ for i in $(seq 1 $REMAINING); do
         "${REPAIR_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
     fi
 
-    if grep -q '^\- \[!\]' "$PLAN" 2>/dev/null; then
+    if phase_any '!'; then
       echo ""
       echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
       break
@@ -277,7 +329,7 @@ for i in $(seq 1 $REMAINING); do
     REPAIRED_THIS_ROUND=1
   fi
 
-  if grep -q '^\- \[~\]' "$PLAN" 2>/dev/null; then
+  if phase_any '~'; then
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
     break
@@ -286,7 +338,7 @@ for i in $(seq 1 $REMAINING); do
   # Progress guard: a successful run must either complete a phase ([x] count
   # grows) or leave a resumable WIP ([>] + WIP note). Anything else means the
   # session died leaving the phase stuck — looping again would burn runs.
-  AFTER_DONE=$(grep -c '^\- \[x\]' "$PLAN" 2>/dev/null || true)
+  AFTER_DONE=$(phase_count x)
   AFTER_DONE=${AFTER_DONE:-0}
   # A Case A reopen (a completed phase sent back to [!] by a later phase's
   # baseline check) makes the [x] count DROP, so a successful repair only
@@ -294,7 +346,7 @@ for i in $(seq 1 $REMAINING); do
   # guard when a repair landed this round, or the run would stop on a
   # misleading "no progress".
   if [ "$AFTER_DONE" -le "$BEFORE_DONE" ] && [ "$REPAIRED_THIS_ROUND" -eq 0 ]; then
-    if grep -q '^\- \[>\]' "$PLAN" 2>/dev/null && grep -q 'WIP:' "$PLAN" 2>/dev/null; then
+    if phase_any '>' && grep -q '^[[:space:]]*> WIP:' "$PLAN" 2>/dev/null; then
       echo "Phase left in WIP state — next session will resume it."
     else
       echo ""
@@ -312,7 +364,7 @@ echo "========================================="
 echo "Summary"
 echo "========================================="
 echo ""
-grep '^\- \[' "$PLAN" | head -20
+phase_lines | head -20
 echo ""
 # One commit per phase now, so the run's output is history, not a dirty tree.
 # The base is the commit that ADDED the plan — on an adopted branch it is what

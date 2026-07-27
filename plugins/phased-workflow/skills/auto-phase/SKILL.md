@@ -1,5 +1,5 @@
 ---
-description: Execute the next phase autonomously — no confirmations, auto-test, no commit
+description: Execute the next phase autonomously — no confirmations, auto-test, one commit per phase
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 ---
 
@@ -18,7 +18,7 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 
 ## Step 0: Read the plan
 
-Resolve the active plan (`python3 ~/.claude/scripts/next-phase.py --resolve`, see `common.md`) and read it. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
+Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`) and read it. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
 
 ## Step 0.2: Baseline check (before any edit)
 
@@ -55,10 +55,10 @@ A **dirty tree means something is wrong** — a previous session died mid-phase,
 ## Step 1: Select the phase
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 ```
 
-Act on `recommendation:` — `next: N` → take it; `resume-candidate: N` → resume if it has `wip: yes`, else take over if older than 2h, else exit reporting it busy; `attention: ...` → mark the pending phase `[~] Blocked` and exit; `done` → exit; `blocked: ...` → exit with the reason. Script unavailable → apply the semantics in `~/.claude/workflow-refs/common.md`.
+Act on `recommendation:` — `next: N` → take it; `resume-candidate: N` → resume if it has `wip: yes`, else take over if older than 2h, else exit reporting it busy; `attention: ...` → mark the pending phase `[~] Blocked` and exit; `done` → exit; `blocked: ...` → exit with the reason. Script unavailable → apply the semantics in `${CLAUDE_PLUGIN_ROOT}/refs/common.md`.
 
 Mark the selected phase `[>]` immediately.
 
