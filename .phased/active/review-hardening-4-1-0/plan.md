@@ -484,7 +484,21 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     step for zsh and a `git config --global user.email` step; and every shell command
     the workflow runs, executed locally in sequence, exits 0.
 
-- [ ] **Phase 8**: Every phase commits — remove `Never commit` from the light contract
+- [x] **Phase 8**: Every phase commits — remove `Never commit` from the light contract
+  > Done: LIGHT_PROMPT's trailing `Never commit.` is replaced by the per-phase
+  > commit requirement worded as auto-phase words it — exactly one commit for the
+  > phase, its code and its own plan status update together, `git add -A && git
+  > commit -m "wf(phase N): <title>"`, leaving the tree clean. The assignment stays
+  > a single-quoted one-liner. The light-mode comment now records that the per-phase
+  > commit was the one invariant the contract did not carry, that a low phase
+  > therefore left its work uncommitted (and a later full-skill phase inferred a
+  > repo-wide no-commit mode from it), and that S14 guards the clause. PHASE_PROMPT
+  > and REPAIR_PROMPT untouched. S14 gained two assertions: the contract must NOT
+  > contain `Never commit` and must contain the `wf(phase` clause. Verified:
+  > `grep -c 'Never commit'` on the launcher = 0; the LIGHT_PROMPT line carries
+  > `wf(phase`; bash and zsh suites exit 0 at 109 passed / 0 failed (>77) with the
+  > two new S14 assertions green; bash -n and zsh -n clean on the launcher.
+  > Files: plugins/phased-workflow/scripts/run-all-phases.sh, tests/orchestration/run_tests.sh
   - Pattern reference: `plugins/phased-workflow/scripts/run-all-phases.sh` — `PHASE_PROMPT`
     (the full contract) and the commit step of
     `plugins/phased-workflow/skills/auto-phase/SKILL.md` already express the requirement

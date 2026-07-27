@@ -275,6 +275,11 @@ assert "PHASE_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XP" ]'
 assert "LIGHT_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XL" ]'
 assert "light contract carries the baseline check" 'printf "%s" "$XL" | grep -q "run the tests and the linter"'
 assert "light contract carries the attribution/reopen clause" 'printf "%s" "$XL" | grep -q "reopen THAT phase"'
+# Guards the clause, NOT the model obeying it — same limitation as the other S14
+# contract checks. Until 4.1.0 the light contract ended 'Never commit.', so a
+# low-effort phase left its work uncommitted.
+assert "light contract no longer forbids committing" '! printf "%s" "$XL" | grep -q "Never commit"'
+assert "light contract carries the per-phase commit clause" 'printf "%s" "$XL" | grep -q "wf(phase"'
 assert "phase contract admits the Case A reopen outcome" 'printf "%s" "$XP" | grep -q "reopened from \[x\] to \[!\]"'
 assert "phase contract admits the Case B [~] outcome" 'printf "%s" "$XP" | grep -q "marked \[~\]"'
 assert "bench.sh holds NO frozen copy of a shipped contract" '! grep -qE "^(GOAL_CONTRACT|SLIM_GOAL_CONTRACT)=" "$BENCH"'
