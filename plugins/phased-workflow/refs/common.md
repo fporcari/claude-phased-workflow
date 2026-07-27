@@ -144,6 +144,10 @@ Note fields the autonomous chain writes on phases, and what consumes them:
   repair round after manual intervention.
 - `> Review:` — judgment-level findings from the per-phase independent
   verification, flagged for the human at finalize; they never block `[x]`.
+- `> Verify:` — manual checks left to the human, written by `/execute-phase`
+  on untested UI work; `/finalize-workflow` collects them before closing.
+- `> Verified:` — optional record of the verification evidence a phase ran
+  (which test, which check, what confirmed the `Done:`).
 
 `/repair-phase` always targets the FIRST `[!]` phase in the plan.
 

@@ -89,6 +89,12 @@ if [ -f "$NEXT_PHASE_PY" ]; then
     echo "Plan validation failed — fix the plan under .phased/active/ and relaunch."
     exit 1
   fi
+  # Warnings never block, but computing them and discarding them would leave
+  # the two-severity design half-mute — print every warning line.
+  if printf '%s\n' "$VALIDATE_OUT" | grep -q 'warning:'; then
+    printf '%s\n' "$VALIDATE_OUT" | grep 'warning:'
+    echo "NOTE: plan validation reported warnings (non-blocking) — see above."
+  fi
 else
   echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
 fi

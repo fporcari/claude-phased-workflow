@@ -235,11 +235,15 @@ def recommend(phases):
 
 KNOWN_NOTE_FIELDS = (
     'Done', 'Files', 'Issue', 'Attempted', 'Repaired', 'Repair attempted',
-    'Review', 'Blocked', 'WIP', 'In execution since',
+    'Review', 'Blocked', 'WIP', 'In execution since', 'Verify', 'Verified',
 )
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')
 CONFIG_HEADING = 'Suggested execution config'
+# Known limitation: NOTE_RE cannot distinguish a new note field from a
+# wrapped continuation line of a previous note that happens to begin
+# "Capitalised:" — such a line draws the unknown-field warning. Accepted by
+# design: it is a warning, and a warning never blocks.
 NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):')
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
