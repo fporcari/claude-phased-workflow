@@ -32,21 +32,18 @@ This same fork decides the branch in Step 4 — remember which side you are on.
 
 ## Step 2: Build the plan
 
-Extract from the conversation: objective, phases, files per phase, pattern references, decisions, parallel groups, sizing, notes.
+Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
 **Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase instead of searching serially, and reason over what they return.
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
-**Parallel groups.** Rare bonus, not the default. `parallel:N` only when the phases touch **completely different files**, exchange no data, share no state, and live in different areas of the codebase. Any doubt → sequential (a wrong tag causes git conflicts between chats). Propose it to the user unless they already said the phases are independent.
-
 **Sizing.** Size each phase:
-1. **Standard** (no tag) — one concern, ~6-8 files, testable alone. The common case.
-2. **`group:N`** — too small to test alone (a model half, a migration, a schema): consecutive phases run together in one chat, verified by a single end-to-end test written in the **last** one's `Details:`. Combined they must still fit one chat.
-3. **Split** — two concerns in one phase: just write more phases, no tag.
-4. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the ~6-8 file ceiling is lifted for it only.
+1. **Standard** (no tag) — one concern, ~6-8 files, testable alone. The common case. Too small to test alone (a model half, a migration, a schema)? Merge it into the phase that makes it testable — a phase boundary the user cannot verify is a boundary in the wrong place.
+2. **Split** — two concerns in one phase: just write more phases, no tag.
+3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the ~6-8 file ceiling is lifted for it only.
 
-A phase carries at most one of `group:N` / `parallel:N`. Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions; grouping just gets shown in the plan review.
+Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
 
 **Present the plan in Italian** and iterate until the user approves.
 
@@ -87,17 +84,10 @@ Parent: <parent-branch> | Issue: #<number> (if present)
   - Files: <involved files, if known>
   - Decisions: <choices already settled — omit if none>
   - Details: <what to do concretely>
-- [ ] **Phase 2**: <concise title>  `parallel:1`
-  - Pattern: ...
-  - Files: ...
-  - Details: ...
-- [ ] **Phase 3**: create table foo (model)  `group:1`
-  - Files: packages/foo/model/foo.py
-  - Details: table + columns + relations. No standalone test (tested with Phase 4).
-- [ ] **Phase 4**: TH UI to manage foo  `group:1`
-  - Files: packages/foo/webpages/foo.py
-  - Details: TableHandler view + form on foo. Group end-to-end test: create a row via the form, assert it persists and reloads in the grid.
-- [ ] **Phase 5**: rename legacyAmount → amount across the web layer  `vast`
+- [ ] **Phase 2**: table foo with its TH UI (model + webpage)
+  - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
+  - Details: table + columns + relations, then TableHandler view + form. End-to-end test: create a row via the form, assert it persists and reloads in the grid.
+- [ ] **Phase 3**: rename legacyAmount → amount across the web layer  `vast`
   - Files: discovery rule — all references to `legacyAmount` under packages/foo/ and gnr/web/
   - Details: rename + deprecated alias.
 
@@ -105,7 +95,7 @@ Parent: <parent-branch> | Issue: #<number> (if present)
 [Attention points, dependencies, breaking changes]
 ```
 
-Phases sharing a `parallel:N` can run from separate chats; a phase without the tag is a **synchronization barrier** — every phase above it must be `[x]` first.
+Phases run strictly in order: a phase starts only when every phase above it is `[x]`.
 
 No "Suggested execution config" table on interactive plans: nothing reads it. The one useful per-phase hint is `Model hint: sonnet`, and it is deliberately rare — mechanical work only (renames, extractions, moves), **never on UI or declarative phases**, and only when that phase's `Details:` is spelled out to the point where nothing is left to infer. If you can't write it that way, leave the hint off. No hint means opus.
 

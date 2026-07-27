@@ -173,9 +173,9 @@ for i in $(seq 1 $REMAINING); do
   RUN_PHASE=1
 
   # Ask next-phase.py which phase is next — the SAME selector the sub-session
-  # uses (it honours parallel:N barriers, group:N units and [>] resumes). Using
-  # plain file order here would pick a different phase than the one that
-  # actually runs, and apply the wrong row's model/effort/cap to it.
+  # uses (it honours the strict phase order and [>] resumes). Using plain
+  # file order here would pick a different phase than the one that actually
+  # runs, and apply the wrong row's model/effort/cap to it.
   # Keep stderr (2>&1, not 2>/dev/null): if the selector cannot run, the reason
   # (missing file, syntax error, unreadable plan) must be visible in the NOTE
   # the *) fallback arm prints, not swallowed.
@@ -206,10 +206,11 @@ for i in $(seq 1 $REMAINING); do
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
-      # This is the serious fallback and says so: file order ignores parallel:N
-      # and group:N barriers, so the launcher may apply one phase's model,
-      # effort and cap to a different phase than the sub-session actually runs.
-      echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores parallel:N / group:N barriers, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
+      # This is the serious fallback and says so: file order ignores [>]
+      # resumes and the attention/blocked handling, so the launcher may apply
+      # one phase's model, effort and cap to a different phase than the
+      # sub-session actually runs.
+      echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores [>] resumes and attention/blocked handling, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
       NEXT_PHASE=$(grep -n "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 

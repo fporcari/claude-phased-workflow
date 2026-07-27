@@ -7,21 +7,17 @@ description of the semantics lives in
 ${CLAUDE_PLUGIN_ROOT}/refs/common.md ("Phase selection").
 
 Statuses: [ ] pending, [>] in execution, [x] done, [!] issue, [~] blocked.
-Tags (backticked at end of the phase line): parallel:N, group:N, vast.
+Tags (backticked at end of the phase line): vast.
 
 Rules:
 - [x] phases are complete; every other status counts as "not complete".
-- A pending phase is blocked while any preceding phase outside its own
-  parallel:N group is not complete. A phase without parallel:N is a
-  synchronization barrier: all preceding phases must be [x].
-- A selected group:N phase pulls in its whole consecutive run of the
-  same tag as one unit.
+- Phases run strictly in order: a pending phase is blocked while any
+  preceding phase is not [x].
 - [>] phases are reported as resume candidates only when no pending
   phase is eligible.
 
 Output: a "phases:" table plus one final "recommendation:" line:
   recommendation: next: 3               execute Phase 3
-  recommendation: next: 3 unit: 3,4     group unit, phases run together
   recommendation: resume-candidate: 2 (age: 3.4h, wip: yes)
   recommendation: attention: 5[!]       user must resolve before going on
   recommendation: done                  all phases [x]
@@ -47,7 +43,7 @@ import sys
 from datetime import datetime
 
 PHASE_RE = re.compile(r'^- \[([ x!~>])\] \*\*Phase (\d+)\*\*:\s*(.*)$')
-TAG_RE = re.compile(r'`(parallel:\d+|group:\d+|vast)`')
+TAG_RE = re.compile(r'`(vast)`')
 EXEC_RE = re.compile(r'In execution since\s+(\S+)')
 
 
@@ -59,20 +55,6 @@ class Phase:
         self.title = TAG_RE.sub('', rest).strip()
         self.since = None
         self.wip = False
-
-    def _tag(self, prefix):
-        for t in self.tags:
-            if t.startswith(prefix):
-                return t
-        return None
-
-    @property
-    def parallel(self):
-        return self._tag('parallel:')
-
-    @property
-    def group(self):
-        return self._tag('group:')
 
     @property
     def age_hours(self):
@@ -108,24 +90,7 @@ def parse(path):
 
 def blockers(phases, i):
     """Numbers of preceding phases that block phases[i]."""
-    p = phases[i]
-    return [q.number for q in phases[:i]
-            if q.status != 'x'
-            and not (p.parallel and q.parallel == p.parallel)]
-
-
-def group_unit(phases, i):
-    """Numbers of the maximal consecutive run sharing phases[i]'s group tag."""
-    tag = phases[i].group
-    if not tag:
-        return None
-    lo = i
-    while lo > 0 and phases[lo - 1].group == tag:
-        lo -= 1
-    hi = i
-    while hi + 1 < len(phases) and phases[hi + 1].group == tag:
-        hi += 1
-    return [p.number for p in phases[lo:hi + 1]]
+    return [q.number for q in phases[:i] if q.status != 'x']
 
 
 def repo_root():
@@ -240,9 +205,6 @@ def describe(phases, i):
 def recommend(phases):
     for i, p in enumerate(phases):
         if p.status == ' ' and not blockers(phases, i):
-            unit = group_unit(phases, i)
-            if unit and len(unit) > 1:
-                return f'next: {p.number} unit: {",".join(map(str, unit))}'
             return f'next: {p.number}'
     candidates = [p for p in phases if p.status == '>']
     if candidates:
@@ -294,7 +256,8 @@ def _taglike(tok):
     Narrow on purpose: a phase title routinely carries backticked prose
     (`next-phase.py --validate`), and flagging that would make the validator
     cry wolf. Only `parallel`/`group`/`vast` prefixes and `word:number` shapes
-    qualify.
+    qualify — which also makes the retired `parallel:N` / `group:N` tags on
+    a pre-5.0 plan surface as warnings instead of being silently ignored.
     """
     return bool(re.match(r'(parallel|group|vast)', tok)
                 or re.match(r'[a-z]+:\d+$', tok))
@@ -352,8 +315,7 @@ def validate(path, phases, text):
                 if _taglike(tok):
                     add(idx, 'warning',
                         'backticked token `%s` on the phase line looks like a '
-                        'malformed tag (valid: parallel:N, group:N, vast)'
-                        % tok)
+                        'malformed or retired tag (valid: vast)' % tok)
 
         if in_work_plan:
             nm = NOTE_RE.match(line)

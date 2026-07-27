@@ -569,7 +569,7 @@ setup S20a; fixture2
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run_nosel
 assert "S20a: the selector fallback prints a NOTE" 'grep -q "falling back to plan file order" out.log'
-assert "S20a: the NOTE names the barrier consequence" 'grep -q "parallel:N / group:N barriers" out.log'
+assert "S20a: the NOTE names the fallback's consequence" 'grep -q "resumes and attention/blocked handling" out.log'
 assert "S20a: both phases still complete on file order" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
 
 # (b) unsupported Model and Effort cells -> both NOTEs, safe defaults applied.

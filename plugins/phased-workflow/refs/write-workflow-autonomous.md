@@ -40,7 +40,7 @@ The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff)
 
 ## Plan format
 
-`group:N` is interactive-only here (the launcher tests each phase alone) — prefer splitting. `vast` is fine.
+`vast` is the only tag; every phase is tested alone, in order.
 
 ```
 # Context: <branch-name>

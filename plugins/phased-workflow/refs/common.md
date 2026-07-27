@@ -102,11 +102,6 @@ Edits made outside a phase — a `/resume-workflow` re-phasing, a
 `wf: <what changed>` commit. Otherwise the "clean tree at phase start"
 invariant that `/auto-phase` relies on is false.
 
-**Concurrency caveat.** Phases sharing a `parallel:N` run from separate
-chats and now commit to the same branch: expect the occasional `index.lock`
-collision and retry. Running parallel phases in separate worktrees is the
-actual fix.
-
 ## Phase selection
 
 The next eligible phase is computed deterministically by:
@@ -119,19 +114,14 @@ Called with no argument it resolves the active plan itself; pass a path to
 point it at a specific one.
 
 It prints a status table for all phases plus one `recommendation:` line
-(`next: N` / `next: N unit: N,M` / `resume-candidate: N` / `attention: ...`
-/ `done` / `blocked: ...`). The semantics it implements — also the manual
-fallback if the script is unavailable — are:
+(`next: N` / `resume-candidate: N` / `attention: ...` / `done` /
+`blocked: ...`). The semantics it implements — also the manual fallback if
+the script is unavailable — are:
 
 - `[x]` done → skip; `[!]` issue / `[~]` blocked → skip (the user must
   resolve them); like any non-completed phase, they block what follows.
-- A `[ ]` phase is blocked while any preceding phase NOT in its same
-  `parallel:N` group is not `[x]`. A phase without `parallel:N` is a
-  synchronization barrier: it requires ALL preceding phases `[x]`.
-- A `[>]` phase with a free `[ ]` alternative in the same `parallel:N`
-  group → take the alternative.
-- A selected `group:N` phase pulls in its whole consecutive run of the
-  same `N` as one unit (one chat, single end-to-end test on the last).
+- Phases run strictly in order: a `[ ]` phase is blocked while ANY
+  preceding phase is not `[x]`.
 - `[>]` phases are resume candidates only when nothing else is eligible;
   the script reports their age and whether a `> WIP:` note exists — what
   to do with that is the calling skill's decision.
