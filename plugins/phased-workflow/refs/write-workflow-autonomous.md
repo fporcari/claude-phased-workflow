@@ -1,13 +1,13 @@
 # Write Workflow — Autonomous (robottino) addendum
 
-Loaded by `/write-workflow` only when the user explicitly asks for a plan to run via `/run-all-phases`. Everything in the main skill still applies; this adds a stricter refinement and format, because the plan must pass the launcher's pre-flight without a single question.
+Loaded by `/write-workflow` only when the user explicitly asks for a plan to run via `/run-workflow`. Everything in the main skill still applies; this adds a stricter refinement and format, because the plan must pass the launcher's pre-flight without a single question.
 
 Confirm with the user (in Italian) that the plan really targets autonomous execution before starting.
 
 ## Per-phase refinement
 
 1. **Pattern reference.** For non-trivial code, find 1–2 existing examples and propose them: *"Per la Phase X uso il pattern di `path/to/example.py:func`. Confermi?"* No clean candidate → ask the user; still nothing → propose 2–3 based on the phase description; still nothing → the phase is `new-pattern (flagged: higher risk)` and the user is told it is riskier autonomously. Library-standard work needs no reference.
-2. **Scope safety.** Sub-sessions run `--permission-mode auto`; the categories its classifier is expected to deny, and this plugin's own convention for writing phases, are listed in `${CLAUDE_PLUGIN_ROOT}/refs/common.md`. A phase needing one → surface it: *"Phase X richiede `<command>`, che auto mode blocca. Opzioni: (a) rifrasare la fase per fermarsi prima — lo fai tu dopo, (b) rimuovere la fase, (c) farla a mano fuori da `/run-all-phases`."* Never silently rewrite the phase to hide it.
+2. **Scope safety.** Sub-sessions run `--permission-mode auto`; the categories its classifier is expected to deny, and this plugin's own convention for writing phases, are listed in `${CLAUDE_PLUGIN_ROOT}/refs/common.md`. A phase needing one → surface it: *"Phase X richiede `<command>`, che auto mode blocca. Opzioni: (a) rifrasare la fase per fermarsi prima — lo fai tu dopo, (b) rimuovere la fase, (c) farla a mano fuori da `/run-workflow`."* Never silently rewrite the phase to hide it.
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/auto-phase` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
@@ -36,7 +36,7 @@ Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phas
 
 Keeping it out of `plan.md` also means the launcher cannot mistake a roadmap bullet for a phase line: the separation is structural, not a matter of formatting.
 
-The cycle: `/run-all-phases` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
+The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
 
 ## Plan format
 
@@ -79,7 +79,7 @@ Mode: autonomous
 | Phase N+1 (review) | xhigh | opus |
 ```
 
-Keep the column order exactly as above — `/run-all-phases` reads Effort and Model **by column position**.
+Keep the column order exactly as above — `/run-workflow` reads Effort and Model **by column position**.
 
 - **Effort**: sets `--effort` and the runaway cap. **Start low and climb only for a reason.** An autonomous phase is by construction well-specified — `Details:`, `Done:` and `Pattern:` leave nothing to invent — and that is exactly where high effort buys least: the model spends it re-exploring and re-verifying decisions the plan already made. So `low` for mechanical work, `medium` for the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` for wide multi-file agentic work, `max` practically never (prone to overthinking, diminishing returns). Do not carry over effort levels from older plans — defaults tuned on a previous model rarely transfer.
   `low` phases run in **light mode** — a slim `/goal` contract, no auto-phase skill — so their `Details:`/`Done:` must be fully self-contained.
@@ -95,5 +95,5 @@ Piano robottino-ready scritto in .phased/active/<slug>/plan.md (<N> fasi + revie
 Tutte le fasi hanno: pattern reference, files, decisions pre-fatte, done criterion misurabile.
 Ogni fase gira in loop auto-correttivo (3 tentativi test+lint, review indipendente, gate sul Done); su fase fallita parte UNA riparazione automatica a occhi freschi prima di fermarsi per te.
 La review finale corregge le sviste banali e segnala il resto in .phased/active/<slug>/review.md.
-Per eseguire: /run-all-phases (passerà la pre-flight check senza domande).
+Per eseguire: /run-workflow (passerà la pre-flight check senza domande).
 ```

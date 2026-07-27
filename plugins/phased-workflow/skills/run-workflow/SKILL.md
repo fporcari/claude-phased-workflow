@@ -5,9 +5,9 @@ allowed-tools: Bash, Read
 
 # Run All Phases
 
-Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh`, which launches one fresh `claude` session per remaining phase (`/auto-phase` under a `/goal` contract, `--permission-mode auto`, model and effort from the plan's execution config table). Your job before that: the pre-flight review below.
+Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `claude` session per remaining phase (`/auto-phase` under a `/goal` contract, `--permission-mode auto`, model and effort from the plan's execution config table). Your job before that: the pre-flight review below.
 
-**Usage:** `/run-all-phases`
+**Usage:** `/run-workflow`
 
 ## Pre-flight review (MANDATORY — before running the script)
 
@@ -44,12 +44,12 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh`, which launches one fresh
 After confirmation:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh"
 ```
 
 The script owns the loop; do not reimplement it. Report its output to the user.
 
-**Runaway cap:** `--max-budget-usd` is a bugged-loop safety net, not a spend limit — on a subscription plan quota is the 5-hour window, not dollars. Caps come from effort ($50 low → $300 max, doubled for fable). A phase that actually trips its cap is a signal to investigate, not to raise it. `RUN_ALL_PHASES_NO_BUDGET=1` removes the flag entirely.
+**Runaway cap:** `--max-budget-usd` is a bugged-loop safety net, not a spend limit — on a subscription plan quota is the 5-hour window, not dollars. Caps come from effort ($50 low → $300 max, doubled for fable). A phase that actually trips its cap is a signal to investigate, not to raise it. `RUN_WORKFLOW_NO_BUDGET=1` removes the flag entirely.
 
 **Stop conditions:** all phases `[x]`; a `[!]` phase after its one repair attempt (marker `> Repair attempted:` — delete it to grant another round); a `[~]` blocked phase (unattributable red baseline); `claude` exiting non-zero; no progress. An *attributable* red baseline does not stop the run — the culprit phase is reopened `[x] → [!]` and repaired.
 

@@ -7,9 +7,9 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 Fresh-eyes repair of a phase `/auto-phase` left `[!]`. It runs in a new context on purpose: **the previous session's diagnosis may itself be the problem — question it, don't continue it.**
 
-**Usage:** launched by `/run-all-phases` (at most once per phase), or `claude -p '/repair-phase'`.
+**Usage:** launched by `/run-workflow` (at most once per phase), or `claude -p '/repair-phase'`.
 
-**Non-negotiables:** no questions, ONE commit at the end (Step 4), one phase per invocation, everything written in English, and always leave a machine-readable outcome — `[x]` + `> Repaired:`, or `[!]` + `> Repair attempted:`. Under `/run-all-phases` that outcome is the session's exit condition, checked by an independent evaluator.
+**Non-negotiables:** no questions, ONE commit at the end (Step 4), one phase per invocation, everything written in English, and always leave a machine-readable outcome — `[x]` + `> Repaired:`, or `[!]` + `> Repair attempted:`. Under `/run-workflow` that outcome is the session's exit condition, checked by an independent evaluator.
 
 ## Step 1: Locate and read the failure
 
@@ -20,7 +20,7 @@ Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" 
 
 Read its `> Issue:`, `> Attempted:` and `> Files:`. **Hard rule: never repeat an attempt listed in `> Attempted:`.** If your diagnosis leads to essentially one of those fixes, the diagnosis is wrong — dig deeper.
 
-Under `/run-all-phases` there is one more source, and it is the richest: `log/phase-N.txt` next to the plan holds the failing session's actual transcript. The `> Attempted:` notes are that session's summary of itself — the log is what it really did.
+Under `/run-workflow` there is one more source, and it is the richest: `log/phase-N.txt` next to the plan holds the failing session's actual transcript. The `> Attempted:` notes are that session's summary of itself — the log is what it really did.
 
 ## Step 2: Diagnose from scratch
 

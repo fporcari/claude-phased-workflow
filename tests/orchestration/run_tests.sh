@@ -1,6 +1,6 @@
 #!/bin/bash
 # Regression tests for the phased-workflow chain.
-# S1-S13 run the real shipped run-all-phases.sh
+# S1-S13 run the real shipped run-workflow.sh
 # against a mock `claude` binary: model/effort/cap selection under the /goal
 # guard, repair success and failure, the idempotent repair marker, fable->opus
 # fallback, progress guard, baseline attribution (reopen / [~]), inert Roadmap,
@@ -8,7 +8,7 @@
 # repo ships: no frozen copies of the shipped contracts (S14), every skill
 # inside its own allowed-tools (S15), every skill on the KB sync list (S16).
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
-RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-all-phases.sh"
+RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 OT="$WORK"

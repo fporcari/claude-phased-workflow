@@ -43,7 +43,7 @@ Produce the plan in the `/write-workflow` format — same `Pattern:` / `Files:` 
 
 A handoff document has no phases yet: derive them from what it describes, and say plainly that you did — this is the one case where the import is also an act of planning, and the user should review it as such.
 
-**Then report the gaps, don't fill them.** Check every remaining `[ ]` phase against the autonomous-ready bar (`/run-all-phases` pre-flight): concrete and verifiable, bounded scope, measurable `Done:`, decisions pre-made, `Pattern:` cited for non-trivial code. Present what is missing, per phase, in Italian:
+**Then report the gaps, don't fill them.** Check every remaining `[ ]` phase against the autonomous-ready bar (`/run-workflow` pre-flight): concrete and verifiable, bounded scope, measurable `Done:`, decisions pre-made, `Pattern:` cited for non-trivial code. Present what is missing, per phase, in Italian:
 
 ```
 Phase 3 — manca Done: misurabile ("funziona bene" non è verificabile)

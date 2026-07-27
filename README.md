@@ -5,7 +5,7 @@ A slash command system for Claude Code that structures development work into pla
 It runs in two modes, and the choice is about **who the verifier is**:
 
 - **Supervised** — `/execute-phase`, one phase per chat, you verify. For UI work, exploration, decisions that only emerge while doing.
-- **Autonomous** — `/run-all-phases` loops one fresh session per phase, each under a native `/goal` contract, with a convergence loop, an independent read-only reviewer, and one fresh-eyes repair attempt on failure. For phases whose feedback signal is machine-checkable: measurable `Done:`, runnable tests, decisions already made in the plan.
+- **Autonomous** — `/run-workflow` loops one fresh session per phase, each under a native `/goal` contract, with a convergence loop, an independent read-only reviewer, and one fresh-eyes repair attempt on failure. For phases whose feedback signal is machine-checkable: measurable `Done:`, runnable tests, decisions already made in the plan.
 
 A vague phase fails autonomously on the best model in the world; a well-specified phase runs autonomously even on sonnet. See [docs/loop-engineering.md](docs/loop-engineering.md) for why the commands are shaped the way they are.
 
@@ -42,7 +42,7 @@ The autonomous path replaces the middle of that diagram with a loop that runs un
 
 ```mermaid
 flowchart TD
-    WW2["/write-workflow<br/>autonomous plan"] --> PRE["/run-all-phases<br/>pre-flight review — you confirm here"]
+    WW2["/write-workflow<br/>autonomous plan"] --> PRE["/run-workflow<br/>pre-flight review — you confirm here"]
     PRE --> LOOP{"pending phases left?"}
     LOOP --> |yes| SESS["fresh session per phase<br/>claude -p '/goal contract'"]
     SESS --> OUT{outcome}
@@ -104,7 +104,7 @@ The plan is the coordination point between sessions, and it is committed on the 
 | Command | When to use | What it does |
 |---------|------------|--------------|
 | `/auto-phase` | One phase, unattended | Like `/execute-phase` with no confirmations: convergence loop (3 attempts against tests + lint, no-progress detector), independent review, `Done:` gate |
-| `/run-all-phases` | The whole plan, unattended | Pre-flight review, then one fresh `/goal`-guarded session per phase; light mode for `Effort=low`; one repair attempt on failure before stopping |
+| `/run-workflow` | The whole plan, unattended | Pre-flight review, then one fresh `/goal`-guarded session per phase; light mode for `Effort=low`; one repair attempt on failure before stopping |
 | `/repair-phase` | A phase came back failed | Fresh-eyes repair: reads the `> Issue:` and `> Attempted:` notes, may not repeat a listed attempt, restarts from the diagnosis |
 
 ### Auxiliary
@@ -165,7 +165,7 @@ Ask `/write-workflow` for an autonomous plan: it applies stricter rules — meas
 claude
 # Discuss the work, then:
 > /write-workflow          # say you want an autonomous plan
-> /run-all-phases          # pre-flight review, you confirm, then it runs
+> /run-workflow          # pre-flight review, you confirm, then it runs
 
 # Come back later:
 #   every phase [x]        -> /finalize-workflow
@@ -175,7 +175,7 @@ claude
 #   a phase left [~]       -> a red baseline nobody owns: fix it, then relaunch
 ```
 
-For plans beyond ~8-10 phases, or when a phase's shape depends on an earlier phase's *outcome*, `/write-workflow` splits the work into macro-phases: only the first is detailed, the rest stay as inert bullets in `.phased/roadmap.md`. Each macro gets its own `/run-all-phases` + `/finalize-workflow`, and the next `/write-workflow` re-plans with hindsight. The macro loop is deliberately manual — its boundary is where human judgment pays most, before errors compound.
+For plans beyond ~8-10 phases, or when a phase's shape depends on an earlier phase's *outcome*, `/write-workflow` splits the work into macro-phases: only the first is detailed, the rest stay as inert bullets in `.phased/roadmap.md`. Each macro gets its own `/run-workflow` + `/finalize-workflow`, and the next `/write-workflow` re-plans with hindsight. The macro loop is deliberately manual — its boundary is where human judgment pays most, before errors compound.
 
 ---
 
@@ -234,7 +234,7 @@ Key behaviors:
 - **Human verification** — waits for the user to confirm before marking done
 - **Records modified files** in the `> Files:` line — source of truth for finalize
 
-### `/auto-phase`, `/run-all-phases`, `/repair-phase` — Unattended Execution
+### `/auto-phase`, `/run-workflow`, `/repair-phase` — Unattended Execution
 
 `/auto-phase` is `/execute-phase` with the confirmations removed and the verification loops turned up:
 
@@ -243,7 +243,7 @@ Key behaviors:
 3. **Independent verification, where it earns its keep.** Not every phase: a read-only `phase-verifier` subagent runs on a `sonnet` phase, a `new-pattern` phase, or a repair — see [why below](#3-model-flexibility). In its own context window it gets the `Done:` criterion and the pattern reference; mechanical findings are fixed in-loop, judgment findings become `> Review:` notes for the human at finalize.
 4. **`Done:` gate.** Every criterion from the plan is re-run literally. "Tests pass" is weaker than the plan's own `Done:`, and it is the `Done:` that closes the phase.
 
-`/run-all-phases` is the loop around it — a bash script, so it consumes no model itself:
+`/run-workflow` is the loop around it — a bash script, so it consumes no model itself:
 
 - **The `/goal` guard** (Claude Code ≥ 2.1.139). Each phase and repair session is launched as `claude -p "/goal <contract>"`. The native goal loop adds an independent per-turn evaluator: a fresh, lighter model reads the transcript and decides whether the exit is genuine, so a premature "I'm done" gets sent back to work. A 25-turn clause bounds the loop. Older CLIs are detected at runtime and fall back to the plain skill prompt — everything still works, without the evaluator.
 - **Light mode** for `Effort=low` phases: a slim `/goal` contract (~450 chars against the ~9.5KB skill body) carrying every chain invariant itself, per-phase commit included. Measured on the seeded toy fixture (n=3): ~37% cheaper and ~60% of the wall time — but that figure is the `slim` hardcoded control, not the light mode that ships, whose "same external outcomes" was never benchmarked against the current contract. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each run actually measured.
@@ -344,7 +344,7 @@ The plan lives in `.phased/`, at the repository root, and is committed on the wo
   active/<slug>/              # exactly one at a time
     plan.md                   # the work plan
     notes.md                  # free-form annotations
-    log/phase-N.txt           # stdout of each /run-all-phases sub-session
+    log/phase-N.txt           # stdout of each /run-workflow sub-session
   done/<slug>/                # moved here by /finalize-workflow
 ```
 
@@ -426,7 +426,7 @@ The same reasoning removed a step: `/auto-phase` no longer sends every phase to 
 ### 4. The Human Moves to the Edges
 Autonomous does not mean unsupervised — it means the supervision is concentrated where it pays:
 - Plan approval (`/write-workflow`) — the plan is the loop's contract
-- Pre-flight confirmation (`/run-all-phases`) — before any session starts
+- Pre-flight confirmation (`/run-workflow`) — before any session starts
 - The macro-phase boundary on ambitious plans
 - `/finalize-workflow`, where the whole-diff review happens, and any phase left `[!]` or `[~]`
 
@@ -534,7 +534,7 @@ No. It is offered only for autonomous plans, where the run occupies a checkout f
 Run `/import-workflow`. It maps the old plan onto the new layout, preserving phase states and notes, and reports which phases fall short of the autonomous-ready bar instead of quietly filling the gaps. A plan with phases already `[x]` is imported in place, on the branch you are on, with no history rewritten.
 
 **Q: Does the repair run by itself, or do I launch it?**
-By itself, inside `/run-all-phases`: a phase that exits `[!]` gets one repair session automatically, and the loop continues if it succeeds. You launch `/repair-phase` by hand only when the run already stopped (the automatic repair failed), when you are using `/auto-phase` on its own without the launcher, or when you want a different model or effort than the launcher would pick.
+By itself, inside `/run-workflow`: a phase that exits `[!]` gets one repair session automatically, and the loop continues if it succeeds. You launch `/repair-phase` by hand only when the run already stopped (the automatic repair failed), when you are using `/auto-phase` on its own without the launcher, or when you want a different model or effort than the launcher would pick.
 
 **Q: Which phases can actually run unattended?**
 The ones whose feedback signal is machine-checkable: a `Done:` you could re-run yourself, tests that exist, decisions already settled in the plan, and a pattern reference to copy-adapt. Everything verified by eye — UI, visual output, exploratory work — belongs to `/execute-phase`. The leash reflects the nature of the phase, not the quality of the model.
@@ -553,7 +553,7 @@ Plain git: `git worktree list` shows them all, `git worktree remove <path>` remo
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**109 assertions over 21 scenarios.** S1–S13 run the shipped `/run-all-phases` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S17 drives `/import-workflow`'s classification and its mid-run git sequence; S18 proves that prose bullets in a `## Notes` section stay inert and that every phase-state grep goes through a single-source helper; S19 checks that `next-phase.py --validate` gates the launcher before any session starts; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`.
+**109 assertions over 21 scenarios.** S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S17 drives `/import-workflow`'s classification and its mid-run git sequence; S18 proves that prose bullets in a `## Notes` section stay inert and that every phase-state grep goes through a single-source helper; S19 checks that `next-phase.py --validate` gates the launcher before any session starts; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`.
 
 The suite runs the script under **both bash and zsh** (S9), which is not redundancy: the production invocation path is the user's shell, and an unbraced `$NEXT_PHASE[^0-9]` inside a grep pattern parses as an array subscript in zsh, silently emptying the config-table lookup and defaulting every phase's model, effort and cap. A bash-only harness cannot see it, and `zsh -n` does not either.
 

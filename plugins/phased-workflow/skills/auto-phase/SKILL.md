@@ -7,13 +7,13 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 Execute ONE phase of the active plan unattended: implement, test, record the outcome, commit, exit.
 
-**Usage:** `claude -p '/auto-phase'` — or `/run-all-phases` for the whole plan.
+**Usage:** `claude -p '/auto-phase'` — or `/run-workflow` for the whole plan.
 
 **Non-negotiables:**
 - **No questions.** Never AskUserQuestion. Decide, and document the decision in the plan.
 - **One commit, at the end, for your own phase** (Step 6) — and nothing else. `/finalize-workflow` consolidates them all later.
 - **One phase per invocation.** Never start the next one.
-- **The outcome in the plan is the exit condition**, not bookkeeping — under `/run-all-phases` an independent evaluator re-checks it every turn.
+- **The outcome in the plan is the exit condition**, not bookkeeping — under `/run-workflow` an independent evaluator re-checks it every turn.
 - All written content in English.
 
 ## Step 0: Read the plan

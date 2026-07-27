@@ -2,7 +2,7 @@
 
 Single source of truth for the blocks that used to be repeated in every
 phased-workflow command (`/write-workflow`, `/import-workflow`,
-`/execute-phase`, `/auto-phase`, `/run-all-phases`, `/finalize-workflow`,
+`/execute-phase`, `/auto-phase`, `/run-workflow`, `/finalize-workflow`,
 `/resume-workflow`, `/push-context-memory`). Skills point here instead
 of restating them.
 
@@ -29,7 +29,7 @@ git repository root:
   active/<slug>/          # exactly one at a time
     plan.md               # the work plan
     notes.md              # free-form annotations
-    log/phase-N.txt       # stdout of each /run-all-phases sub-session (.txt,
+    log/phase-N.txt       # stdout of each /run-workflow sub-session (.txt,
                           #   not .log: `*.log` sits in most global gitignores
                           #   and these are meant to be committed)
   done/<slug>/            # moved here by /finalize-workflow
@@ -128,7 +128,7 @@ Note fields the autonomous chain writes on phases, and what consumes them:
   root cause and why the previous attempts missed it.
 - `> Repair attempted: <ISO timestamp> — <diagnosis>` — appended by
   `/repair-phase` when the repair fails. It is the idempotent marker:
-  `/run-all-phases` launches at most ONE repair per phase and stops for
+  `/run-workflow` launches at most ONE repair per phase and stops for
   human review when this note exists. Deleting the note grants another
   repair round after manual intervention.
 - `> Review:` — judgment-level findings from the per-phase independent

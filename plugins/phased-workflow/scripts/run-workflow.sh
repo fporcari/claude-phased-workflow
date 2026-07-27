@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase loop for /run-all-phases: one fresh `claude` session per phase.
+# Phase loop for /run-workflow: one fresh `claude` session per phase.
 #
 # Resolves the active plan under .phased/, asks next-phase.py which phase is
 # next, looks up its model/effort/cap in the execution config table, launches
@@ -243,11 +243,11 @@ for i in $(seq 1 $REMAINING); do
 
   # Budget flag assembled once; empty array = no cap (raw subscription mode)
   BUDGET_ARGS=()
-  if [ -z "$RUN_ALL_PHASES_NO_BUDGET" ]; then
+  if [ -z "$RUN_WORKFLOW_NO_BUDGET" ]; then
     BUDGET_ARGS=(--max-budget-usd "$BUDGET")
     CAP_LABEL="runaway-cap: \$$BUDGET"
   else
-    CAP_LABEL="cap: none (RUN_ALL_PHASES_NO_BUDGET=1)"
+    CAP_LABEL="cap: none (RUN_WORKFLOW_NO_BUDGET=1)"
   fi
 
   # RUN_PHASE=0 means the selector found no startable phase (a [!]/[~] blocks
@@ -285,7 +285,7 @@ for i in $(seq 1 $REMAINING); do
     if first_bang_block | grep -q 'Repair attempted:'; then
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
-      echo "Fix the issue (or delete its 'Repair attempted:' note to grant another repair round), then run /run-all-phases again."
+      echo "Fix the issue (or delete its 'Repair attempted:' note to grant another repair round), then run /run-workflow again."
       break
     fi
 
@@ -296,7 +296,7 @@ for i in $(seq 1 $REMAINING); do
     echo ""
     echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
     REPAIR_BUDGET_ARGS=()
-    [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
+    [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
     set -o pipefail
     claude -p "$REPAIR_PROMPT" \
       --model fable \
@@ -312,7 +312,7 @@ for i in $(seq 1 $REMAINING); do
     if [ "$REPAIR_EXIT" -ne 0 ] && ! first_bang_block | grep -q 'Repair attempted:'; then
       echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
       REPAIR_BUDGET_ARGS=()
-      [ -z "$RUN_ALL_PHASES_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+      [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
       claude -p "$REPAIR_PROMPT" \
         --model opus \
         --effort max \

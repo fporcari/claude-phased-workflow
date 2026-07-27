@@ -49,7 +49,7 @@ fi
 # in commands/. The retired ones matter for the same reason as the current ones:
 # dropping a skill does not remove the flat file a previous install left behind,
 # so it keeps answering `/<name>` with instructions for a command that is gone.
-RETIRED_NAMES="create-context close-context clean-contexts clean-memories check-phase-context"
+RETIRED_NAMES="create-context close-context clean-contexts clean-memories check-phase-context run-all-phases"
 SKILL_NAMES=$(ls -d "$SRC"/skills/*/ | xargs -n1 basename)
 STALE=""
 for n in $SKILL_NAMES $RETIRED_NAMES; do
@@ -74,6 +74,7 @@ if grep -q '"phased-workflow@' "$HOME/.claude/plugins/installed_plugins.json" 2>
   echo "Retired names among them have no same-name successor:"
   echo "  create-context close-context clean-contexts clean-memories (3.0.2 — worktrees are plain git now)"
   echo "  check-phase-context (5.0.0 — absorbed into /resume-workflow)"
+  echo "  run-all-phases (5.0.0 — renamed to /run-workflow)"
   echo "Delete that directory once you are satisfied nothing was lost."
 else
   echo ""

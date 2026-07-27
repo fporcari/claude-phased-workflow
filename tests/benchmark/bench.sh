@@ -12,7 +12,7 @@
 #     slimgoal = discipline carried ONLY by the goal contract   (shipped LIGHT_PROMPT)
 #   effort defaults to the fixture's own declared Effort for Phase 1, else high.
 #   The goal/slimgoal contracts are EXTRACTED LIVE from the shipped
-#   run-all-phases.sh, so the benchmark cannot silently measure a stale version.
+#   run-workflow.sh, so the benchmark cannot silently measure a stale version.
 #   default: 1 run each of sonnet-plain|sonnet|plain and sonnet-goal|sonnet|goal
 set -u
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,7 +27,7 @@ fi
 # the pre-2.5.0 text, so the guarded and slim-goal arms measured the previous
 # version while the harness reported the current one. Extract live instead —
 # there is then no copy that can drift.
-SKILL_RAP="$TESTDIR/../../plugins/phased-workflow/scripts/run-all-phases.sh"
+SKILL_RAP="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 extract_contract() {  # $1 = variable name as assigned in the launcher script
   python3 - "$SKILL_RAP" "$1" <<'PYEOF'
 import re, sys
