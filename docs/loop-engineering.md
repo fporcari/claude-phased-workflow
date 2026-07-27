@@ -199,13 +199,15 @@ Five test tiers cover the chain (2026-07):
    checkout-less branch (S22). *Static, on what the repo ships*: no frozen
    copy of a shipped contract anywhere in the harness and the light
    contract's per-phase-commit clause intact (S14), every skill inside its
-   own `allowed-tools` (S15), every skill on the KB sync list (S16), the
-   phase-state matches single-source — S18's static half, proven by mutation
-   —, no skill or ref still addressing `~/.claude/` (S21, proven by
-   mutation), and every `-agent` skill a thin variant citing its base (S23,
-   proven by mutation).
+   own `allowed-tools` (S15), the phase-state matches single-source — S18's
+   static half, proven by mutation —, no skill or ref still addressing
+   `~/.claude/` (S21, proven by mutation), and every `-agent` skill a thin
+   variant citing its base (S23, proven by mutation). **122 assertions over
+   22 scenarios** (S16, the KB-sync coverage check, was retired with the KB
+   mirror in 5.0.0 — the plugin is the single distribution road, so there is
+   no mirror left to drift; the number stays vacant).
 
-   S15 and S16 exist because both gaps are quiet by construction. A skill can
+   S15 exists because its gap is quiet by construction. A skill can
    instruct a command its allowlist never pre-approves — `write-workflow` called
    `gh issue view` and an internal knowledge-base MCP without permission for
    either, the worktree
@@ -214,10 +216,7 @@ Five test tiers cover the chain (2026-07):
    for a permission the author meant to grant, and where nobody can answer it
    does not run. Autonomous sessions are gated by `--permission-mode auto`
    rather than by the command's allowlist, so this is a defect of the
-   interactive path, which is where all four of those commands live. A
-   skill can be added to the repo and forgotten in `tools/kb-sync.py`, which
-   means `/update-skills` never delivers it to anyone else; that is how
-   `pull-request` and `issue` went missing from the KB topic.
+   interactive path, which is where all four of those commands live.
 
    **The suite runs the script under both bash and zsh** (S9). This is not
    redundancy: the production invocation path is the user's shell — zsh on

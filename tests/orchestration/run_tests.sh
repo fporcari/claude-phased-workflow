@@ -18,10 +18,10 @@
 #
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
-# every skill inside its own allowed-tools (S15), every skill on the KB sync
-# list (S16), no skill or ref addressing ~/.claude/ (S21, check_home_paths.py,
-# proven by mutation), and every -agent skill a thin variant citing its base
-# (S23, proven by mutation).
+# every skill inside its own allowed-tools (S15), no skill or ref addressing
+# ~/.claude/ (S21, check_home_paths.py, proven by mutation), and every -agent
+# skill a thin variant citing its base (S23, proven by mutation). S16 retired
+# with the KB mirror in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -348,16 +348,9 @@ python3 "$CHECKER" "$MUT3" >/dev/null 2>&1; MUT3_RC=$?
 rm -rf "$MUT3"
 assert "a bare command name in prose is not read as an instruction" '[ "$MUT3_RC" = 0 ]'
 
-echo "== S16: every repo skill is on the KB sync list =="
-# `/update-skills` delivers what the KB holds. A skill added to the repo and
-# forgotten in tools/kb-sync.py MAPPING never reaches another machine — that is
-# how `pull-request` and `issue` went missing from the topic.
-KBSYNC="$TESTDIR/../../tools/kb-sync.py"
-UNMAPPED="$(for d in "$SKILLS_DIR"/*/; do n="$(basename "$d")"; \
-  grep -q "skills/$n/SKILL.md" "$KBSYNC" || echo "$n"; done)"
-[ -z "$UNMAPPED" ] || echo "  unmapped: $(echo "$UNMAPPED" | tr '\n' ' ')"
-assert "no repo skill is absent from kb-sync MAPPING" '[ -z "$UNMAPPED" ]'
-assert "kb-sync exposes an audit mode for KB-only entries" 'grep -q -- "--audit" "$KBSYNC"'
+# S16 (every skill on the KB sync list) was retired with tools/kb-sync.py:
+# as of 5.0.0 the KB holds only the install guide — the plugin is the single
+# distribution road, so there is no mirror left to drift. Number kept vacant.
 
 echo "== S17: /import-workflow — classification and the mid-run git sequence =="
 # /import-workflow is a prompt, so a mock `claude` would only test the mock.
