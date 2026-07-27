@@ -1,0 +1,17 @@
+✓ Phase 8 completed: Namespaced slash prompts for every sub-session launch
+
+**Baseline** was green before any edit (suite 142/0, flake8 0); tree effectively clean (the empty `log/phase-8.txt` was the harness's own run log, now committed alongside the phase as the prior phase logs were).
+
+**What I did.** Both launchers now derive `PLUGIN_NAME` from their own `plugin.json` via `SCRIPT_DIR` (with a literal `phased-workflow` fallback so a failed read can't reintroduce a bare slash) and namespace all three prompt sites:
+- `agent-session.sh`: `claude -p "/$PLUGIN_NAME:$SKILL"`
+- `run-workflow.sh` pre-2.1.139 fallback: `PHASE_PROMPT` / `REPAIR_PROMPT` → `/$PLUGIN_NAME:…`
+
+Root cause fixed: a bare `/<skill>` in a headless `claude -p` session resolves only against `~/.claude/commands/`, so a plugin-shipped skill died with "Unknown command" — the same "shipped contract no test executes" class as 4.1.0's `Never commit`. The guard (S26) is the other half: it flags any literal `claude -p "/…"` argument that starts with `/` and carries no `:`, is asserted empty, and is mutation-proven. S7's fallback assertion was updated to the namespaced form; README gained the changelog bullet.
+
+**Done criteria — all demonstrated in this conversation:**
+- `bash -n` on both scripts → exit 0
+- `bash tests/orchestration/run_tests.sh` → exit 0, **145 passed / 0 failed**, no FAIL line, S26 assertions present (was 142; +3 from S26)
+- `grep -c 'claude -p "/$SKILL"' agent-session.sh` → **0**
+- `grep -q "phased-workflow" agent-session.sh` → exit 0
+
+The verifier was skipped correctly (phase is `opus`, Pattern is not `new-pattern`). Committed as `90389e0 wf(phase 8): …`. Exactly one phase changed state, `[ ]` → `[x]`. This was the last pending phase — the plan is now ready for `/finalize-workflow`.
