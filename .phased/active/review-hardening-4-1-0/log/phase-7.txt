@@ -1,0 +1,12 @@
+Phase 7 (Continuous integration) is complete.
+
+**What I did**
+- Baseline was green before editing: `flake8 .` exit 0, bash suite 107 passed / 0 failed.
+- Created `.github/workflows/ci.yml` exactly per the phase's Decisions and Details: `name: ci`, `push`/`pull_request` on `main`, one `test` job on `ubuntu-latest`, `actions/checkout@v4` + `actions/setup-python@v5` (3.12), then steps in order — install zsh, install flake8, `flake8 .`, git identity, bash suite, zsh suite, benchmark `--validate`. No claude-CLI install, no `install.sh` step, no benchmark run, bash/zsh as separate steps.
+
+**Done criterion demonstrated**
+- `yaml.safe_load` succeeds → `YAML_OK`.
+- File contains the required steps: zsh suite (1), flake8 (3), `apt-get install -y zsh` (1), `git config --global user.email` (1).
+- Every shell command the workflow runs, executed locally in sequence, exits 0: `flake8 .` clean, bash 107/0, zsh 107/0, `--validate` 0 errors/0 warnings.
+
+Plan updated: Phase 7 marked `[x]` with `> Done:` and `> Files:` notes. No commit made, as instructed.

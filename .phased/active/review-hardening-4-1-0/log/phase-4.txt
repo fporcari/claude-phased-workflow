@@ -1,0 +1,17 @@
+Phase 4 is complete.
+
+**Phase 4: Make every silent fallback loud — done ✓**
+
+What changed:
+- **`run-all-phases.sh`** — three silent fallbacks now announce themselves:
+  - Model `*)` arm: `NOTE:` naming the raw value read (`${MODEL:-<empty>}`) and the `opus` substitution.
+  - Effort `*)` arm: same, naming `high`. Both comments note that an empty cell is now a Phase-3 validation error, so the surviving cause is an *unsupported* value.
+  - Selector: `2>/dev/null` replaced with `2>&1` captured into `REC_RAW`; the file-order `*)` arm prints a `NOTE:` naming the fallback, the `parallel:N`/`group:N` barrier consequence, and the first line of `REC_RAW` as the reason.
+- **`run_tests.sh`** — S20 (two cases): missing sibling selector → loud file-order fallback with both phases still completing; a `turbo | banana` row → both Model and Effort NOTEs, call still uses `--model opus --effort high`.
+
+Verification (all green):
+- `bash` and `zsh` suites both exit 0 — **105 passed / 0 failed** (>77), S20 green.
+- `grep -c '…2>/dev/null'` on the selector invocation line = **0**.
+- `bash -n` and `zsh -n` clean on the launcher.
+
+Plan updated: Phase 4 marked `[x]` with `> Done:` and `> Files:` notes. No commit made, as instructed. Next pending phase is Phase 5.

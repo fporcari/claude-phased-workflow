@@ -38,7 +38,7 @@ git repository root:
 The active plan is `<git root>/.phased/active/*/plan.md`, resolved by:
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py --resolve
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve
 ```
 
 `active/` holds exactly ONE plan directory — one branch, one plan, no
@@ -91,7 +91,7 @@ actual fix.
 The next eligible phase is computed deterministically by:
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py
 ```
 
 Called with no argument it resolves the active plan itself; pass a path to

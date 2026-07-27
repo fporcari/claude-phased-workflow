@@ -1,6 +1,6 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(command:*), Bash(cp:*), Bash(code:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent
 ---
 
 # Write Workflow
@@ -10,9 +10,9 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
 2. **Do not implement.** The user runs `/execute-phase` afterwards.
 
-**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
-**Mode:** plans are **interactive** by default; don't ask. Only if the user explicitly asks for an autonomous/robottino plan (for `/run-all-phases`), read `~/.claude/workflow-refs/write-workflow-autonomous.md` and apply its stricter format on top of this.
+**Mode:** plans are **interactive** by default; don't ask. Only if the user explicitly asks for an autonomous/robottino plan (for `/run-all-phases`), read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter format on top of this.
 
 ## Step 1: Where are we
 
@@ -72,29 +72,11 @@ Adoption is safe because the workflow's base is the plan commit, not the branch 
 
 ```bash
 git worktree add .claude/worktrees/<slug> -b wf/<slug> HEAD
-mkdir -p .claude/worktrees/<slug>/.claude .claude/worktrees/<slug>/.vscode
+mkdir -p .claude/worktrees/<slug>/.claude
 [ -f .claude/settings.local.json ] && cp .claude/settings.local.json .claude/worktrees/<slug>/.claude/settings.local.json
-command -v code >/dev/null 2>&1 && code .claude/worktrees/<slug>
 ```
 
-One command creates branch and worktree together, and the main repo stays put — do NOT `git switch -c` first, a branch checked out in the main repo cannot be added as a worktree. Give the window its own identity by hashing the branch name to a hue (0-360) at 65% saturation / 35% lightness, merged into the worktree's `.vscode/settings.json` (usually already present, so merge rather than overwrite):
-
-```bash
-python3 - <<'PY'
-import json, pathlib
-p = pathlib.Path(".claude/worktrees/<slug>/.vscode/settings.json")
-p.parent.mkdir(parents=True, exist_ok=True)
-data = json.loads(p.read_text()) if p.exists() else {}
-data["workbench.colorCustomizations"] = {
-    "titleBar.activeBackground": "<color>",
-    "titleBar.activeForeground": "#ffffff",
-}
-p.write_text(json.dumps(data, indent=4) + "\n")
-PY
-git -C .claude/worktrees/<slug> update-index --assume-unchanged .vscode/settings.json
-```
-
-That file is tracked, so the local colour would otherwise show up in `git status` — the last line hides it, reversibly (`--no-assume-unchanged`).
+One command creates branch and worktree together, and the main repo stays put — do NOT `git switch -c` first, a branch checked out in the main repo cannot be added as a worktree.
 
 ## Step 4: Write it
 

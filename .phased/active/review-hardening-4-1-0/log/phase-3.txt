@@ -1,0 +1,13 @@
+✓ Phase 3 completed: `next-phase.py --validate` and the launcher's pre-loop gate
+
+**What shipped**
+- **`next-phase.py --validate`** — a new mode reusing the existing `PHASE_RE`/`TAG_RE`/`parse()` (no second parser). Emits `<path>:<line>: error|warning: <msg>` per finding plus a `validate: N error(s), M warning(s)` summary. Exit 0 clean/warnings-only, 1 on errors, 2 unreadable/unresolvable. All error rules (missing `## Work Plan`/`Parent:`, malformed phase lines, zero/duplicate/non-contiguous numbers, missing or malformed config table, bad Effort/Model) and all warning rules (unknown note fields, stray checkbox bullets, malformed tags, `group`+`parallel` conflict) are implemented, with warnings kept non-blocking by construction.
+- **Launcher pre-loop gate** in `run-all-phases.sh` — runs the validator once before the loop, prints its output verbatim and `exit 1` on failure; skips with a `NOTE:` if the selector isn't beside it.
+- **Scenario S19** — 13 new assertions covering the four gate cases plus the direct-invocation warning path.
+
+**Verified** (all in this conversation):
+- `--validate` on the benchmark fixture → exit 0
+- `bash` and `zsh` suites → both exit 0, **99 passed / 0 failed** (>77), S19 green
+- `flake8 plugins/phased-workflow/scripts/next-phase.py` → 0 errors
+
+The baseline was green before I started (86/86, flake8 clean), so no attribution case applied. Exactly one phase changed state — Phase 3 `[ ] → [x]` — and the work is committed as `9a9af30`. Stopping here per the one-phase-per-invocation rule.

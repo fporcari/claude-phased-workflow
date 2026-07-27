@@ -1,0 +1,10 @@
+Phase 5 complete.
+
+**Phase 5 — Retire the VS Code worktree ritual from `/write-workflow`** — done and marked `[x]`.
+
+- Baseline was green before editing (bash 105/0, allowlist 0, flake8 0) — no pre-existing red.
+- Removed from `write-workflow/SKILL.md`: the `code` invocation, the hue-hashing sentence, the `colorCustomizations` python heredoc, the `update-index --assume-unchanged` line and its explanation, and `.vscode` from the `mkdir -p`.
+- Kept `git worktree add`, the `.claude` mkdir, the `settings.local.json` cp, and the `git switch -c` warning.
+- Frontmatter dropped `Bash(command:*)` and `Bash(code:*)`.
+
+Done criteria all verified: ritual grep = 0, `Bash(code|command)` grep = 0, `git worktree add` grep = 1, `check_allowlists.py` on skills = 0 findings, bash + zsh suites exit 0 at 105/0 with S15 green. No commit made.

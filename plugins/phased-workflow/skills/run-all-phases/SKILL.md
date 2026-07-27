@@ -5,13 +5,13 @@ allowed-tools: Bash, Read
 
 # Run All Phases
 
-Runs `~/.claude/scripts/run-all-phases.sh`, which launches one fresh `claude` session per remaining phase (`/auto-phase` under a `/goal` contract, `--permission-mode auto`, model and effort from the plan's execution config table). Your job before that: the pre-flight review below.
+Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh`, which launches one fresh `claude` session per remaining phase (`/auto-phase` under a `/goal` contract, `--permission-mode auto`, model and effort from the plan's execution config table). Your job before that: the pre-flight review below.
 
 **Usage:** `/run-all-phases`
 
 ## Pre-flight review (MANDATORY — before running the script)
 
-1. **Read** the active plan (`python3 ~/.claude/scripts/next-phase.py --resolve`).
+1. **Read** the active plan (`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve`).
 
 2. For every remaining `[ ]` phase, check it is **autonomous-ready**:
    - **Concrete and verifiable**, not exploratory ("explore", "investigate", "decide", "evaluate options" → not ready).
@@ -20,11 +20,11 @@ Runs `~/.claude/scripts/run-all-phases.sh`, which launches one fresh `claude` se
    - **Decisions pre-made**: no library / API / naming choice left to the run.
    - **`Pattern:` cited** for non-trivial code (1–2 existing examples to copy-adapt), or `library-standard`.
 
-   **Macro-split check**: more than ~10 phases, or a phase unspecifiable because it depends on an *earlier phase's outcome* → don't refine blindly, propose macro-phases (see `~/.claude/workflow-refs/write-workflow-autonomous.md`): detail the first macro as the Work Plan, the rest as `## Roadmap` bullets (inert for the script).
+   **Macro-split check**: more than ~10 phases, or a phase unspecifiable because it depends on an *earlier phase's outcome* → don't refine blindly, propose macro-phases (see `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md`): detail the first macro as the Work Plan, the rest as `## Roadmap` bullets (inert for the script).
 
 3. Any phase failing the check → **stop and refine interactively**, one targeted question at a time, confirming each rewritten phase before the next. When the gap is a missing `Pattern:`, ask the user for an example; if they don't have one, propose 2–3 candidates from the repo to confirm.
 
-4. **Permission scope**: sub-sessions run `--permission-mode auto`, which blocks the categories listed in `~/.claude/workflow-refs/common.md`. For each phase needing one, report it and let the user choose: rephrase to stop before it, drop the phase, or run it by hand. Never silently rewrite a phase to hide a blocked operation.
+4. **Permission scope**: sub-sessions run `--permission-mode auto`, which blocks the categories listed in `${CLAUDE_PLUGIN_ROOT}/refs/common.md`. For each phase needing one, report it and let the user choose: rephrase to stop before it, drop the phase, or run it by hand. Never silently rewrite a phase to hide a blocked operation.
 
 5. **Fill the execution config table** (create it if the plan has none — it drives model, effort and cap per phase).
 
@@ -44,7 +44,7 @@ Runs `~/.claude/scripts/run-all-phases.sh`, which launches one fresh `claude` se
 After confirmation:
 
 ```bash
-bash ~/.claude/scripts/run-all-phases.sh
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh"
 ```
 
 The script owns the loop; do not reimplement it. Report its output to the user.
@@ -55,5 +55,5 @@ The script owns the loop; do not reimplement it. Report its output to the user.
 
 ## After completion
 
-- `grep '^\- \[' "$(python3 ~/.claude/scripts/next-phase.py --resolve)"` — phase status
+- `grep '^\- \[' "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve)"` — phase status
 - all `[x]` → `/finalize-workflow`; any `[!]` → read its `> Issue:`/`> Attempted:` notes first

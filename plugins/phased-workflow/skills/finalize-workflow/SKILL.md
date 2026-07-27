@@ -7,12 +7,12 @@ allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), B
 
 Verify the work plan is complete and turn the working tree into one clean commit. **Never edit source code here** — findings get reported and delegated.
 
-**Shared conventions:** read `~/.claude/workflow-refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
 ## Step 1: Find the plan and the base
 
 ```bash
-python3 ~/.claude/scripts/next-phase.py --resolve
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve
 git branch --show-current
 git worktree list --porcelain
 ```

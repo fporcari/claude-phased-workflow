@@ -1,0 +1,35 @@
+**Phase 6: Skills and refs address the plugin, not `~/.claude` — done ✓**
+
+Baseline was green before editing (bash 105/0, flake8 0) — no pre-existing red.
+Working tree already carried the uncommitted, attributable output of Phases 4
+and 5 (their logs record "No commit made, as instructed."); this repo is driven
+in no-commit mode, so the dirty tree is expected, not a died-mid-phase state.
+
+What changed:
+- Two substitutions applied file by file (not repo-wide sed) across nine skills,
+  both refs and next-phase.py's docstring:
+  - `~/.claude/scripts/` → `${CLAUDE_PLUGIN_ROOT}/scripts/`
+  - `~/.claude/workflow-refs/` → `${CLAUDE_PLUGIN_ROOT}/refs/` (dir rename to refs/)
+- All four exclusions preserved: refs/common.md's `~/.claude/settings.json`
+  auto-mode mention, install.sh's legacy `$HOME/.claude/commands/`, tools/kb-sync.py,
+  and the deliberate S15 fixture line in run_tests.sh.
+- run-all-phases/SKILL.md's launcher invocation quoted:
+  `bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh"` (path may carry a
+  version directory). Prose backtick references left unquoted.
+- allowed-tools frontmatter untouched — the placeholder expands to an absolute path.
+- **run_tests.sh** — S21 added: static guard (S18 heredoc idiom) that no file
+  under skills/ or refs/ carries `~/.claude/` or `$HOME/.claude/` except the
+  settings.json exemption, plus a mutation asserting the guard fails when a
+  `~/.claude/` path is reintroduced.
+
+Verification (all green):
+- `bash` and `zsh` suites both exit 0 — **107 passed / 0 failed** (>77), S21 and S15 green.
+- Done grep `~/.claude/|$HOME/.claude/` over skills/ + refs/ returns only the
+  refs/common.md settings.json line.
+- `flake8 plugins/phased-workflow/scripts/next-phase.py` clean.
+- `check_allowlists.py` on skills = 0 findings — the placeholder does not read as
+  a new command to the inline scanner.
+
+Plan updated: Phase 6 marked `[x]` with `> Done:` and `> Files:` notes. No commit
+made, following the no-commit mode this run has used for Phases 4 and 5. Next
+pending phase is Phase 7.

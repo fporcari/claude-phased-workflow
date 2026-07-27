@@ -13,7 +13,7 @@ Fresh-eyes repair of a phase `/auto-phase` left `[!]`. It runs in a new context 
 
 ## Step 1: Locate and read the failure
 
-Resolve the active plan (`python3 ~/.claude/scripts/next-phase.py --resolve`, see `common.md`) and take the **first** `[!]` phase.
+Resolve the active plan (`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve`, see `common.md`) and take the **first** `[!]` phase.
 
 - No `[!]` → print "No failed phases to repair." and exit.
 - It already has `> Repair attempted:` → print "Repair already attempted for Phase N — human review required." and exit. Never loop repairs.

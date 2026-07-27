@@ -235,7 +235,23 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     both exit 0 with `S19` green; `flake8 plugins/phased-workflow/scripts/next-phase.py`
     reports zero errors.
 
-- [ ] **Phase 4**: Make every silent fallback loud
+- [x] **Phase 4**: Make every silent fallback loud
+  > Done: The three silent fallbacks in run-all-phases.sh now each print a NOTE.
+  > The Model `*)` arm names the raw value (`${MODEL:-<empty>}`) and the 'opus'
+  > substitution; the Effort `*)` arm does the same for 'high'; both comments
+  > note that an empty cell is a Phase-3 validation error, so the surviving cause
+  > is an unsupported value. The selector invocation keeps stderr
+  > (`REC_RAW=$(python3 "$NEXT_PHASE_PY" "$PLAN" 2>&1)`, REC extracted from it),
+  > and its `*)` fallback arm prints a NOTE naming file order, the parallel:N /
+  > group:N barrier consequence, and the first line of REC_RAW as the reason.
+  > S20 added: (a) a runner copied to a directory with no sibling selector drops
+  > to file order — asserts the NOTE, the barrier phrasing and that both phases
+  > still complete; (b) a `turbo | banana` row bypassing the (self-skipped) gate
+  > raises both Model and Effort NOTEs and the call still used
+  > `--model opus --effort high`. Verified: bash and zsh suites exit 0 at 105
+  > passed / 0 failed (>77) with S20 green; the selector invocation line carries
+  > no `2>/dev/null` (grep -c = 0); bash -n and zsh -n clean on the launcher.
+  > Files: plugins/phased-workflow/scripts/run-all-phases.sh, tests/orchestration/run_tests.sh
   - Pattern reference: `plugins/phased-workflow/scripts/run-all-phases.sh` — the
     `echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable,
     using plain skill prompts."` line is the in-repo precedent for a fallback that
@@ -279,7 +295,18 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     `plugins/phased-workflow/scripts/run-all-phases.sh` returns 0; `bash -n` and
     `zsh -n` clean on that file.
 
-- [ ] **Phase 5**: Retire the VS Code worktree ritual from `/write-workflow`
+- [x] **Phase 5**: Retire the VS Code worktree ritual from `/write-workflow`
+  > Done: The VS Code identity ritual is gone from write-workflow/SKILL.md — the
+  > `command -v code ... && code` line, the hue-hashing sentence, the
+  > colorCustomizations python heredoc, the `update-index --assume-unchanged` line
+  > and its trailing explanation are all removed; `.vscode` dropped from the
+  > `mkdir -p`. `git worktree add`, the `.claude` mkdir and the settings.local.json
+  > `cp` stay, as does the `git switch -c` warning sentence. Frontmatter lost
+  > `Bash(command:*)` and `Bash(code:*)`. Verified: the colorCustomizations/titleBar/
+  > assume-unchanged/command-v-code/hashing grep = 0, the Bash(code|command) grep = 0,
+  > `git worktree add` grep = 1, check_allowlists.py on skills = 0 findings, bash and
+  > zsh suites exit 0 at 105 passed / 0 failed with S15 green.
+  > Files: plugins/phased-workflow/skills/write-workflow/SKILL.md
   - Pattern reference: `plugins/phased-workflow/install.sh` — its `RETIRED_NAMES`
     block is the in-repo precedent for the principle at stake: a retired feature must
     not leave a working remnant behind. This is the same defect one level down, inside
@@ -327,7 +354,23 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     plugins/phased-workflow/skills` exits 0; `bash tests/orchestration/run_tests.sh`
     exits 0 with `S15` green.
 
-- [ ] **Phase 6**: Skills and refs address the plugin, not `~/.claude`
+- [x] **Phase 6**: Skills and refs address the plugin, not `~/.claude`
+  > Done: The two documented substitutions applied file by file across the nine
+  > skills, both refs and next-phase.py's docstring: `~/.claude/scripts/` →
+  > `${CLAUDE_PLUGIN_ROOT}/scripts/` and `~/.claude/workflow-refs/` →
+  > `${CLAUDE_PLUGIN_ROOT}/refs/` (note the refs/ rename). All four exclusions
+  > preserved: refs/common.md's `~/.claude/settings.json` mention, install.sh,
+  > tools/kb-sync.py and the S15 fixture line in run_tests.sh are untouched.
+  > run-all-phases/SKILL.md's launcher invocation is quoted
+  > (`bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh"`). allowed-tools
+  > frontmatter untouched. S21 added: a static guard (S18 heredoc idiom) that no
+  > file under skills/ or refs/ carries `~/.claude/` or `$HOME/.claude/` bar the
+  > settings.json exemption, plus a mutation proving the guard fails when a
+  > ~/.claude/ path is reintroduced. Verified: bash and zsh suites exit 0 at
+  > 107 passed / 0 failed (>77) with S21 and S15 green; the Done grep returns
+  > only the refs/common.md settings.json line; flake8 next-phase.py clean;
+  > check_allowlists.py on skills reports 0 findings.
+  > Files: plugins/phased-workflow/skills/auto-phase/SKILL.md, plugins/phased-workflow/skills/check-phase-context/SKILL.md, plugins/phased-workflow/skills/execute-phase/SKILL.md, plugins/phased-workflow/skills/finalize-workflow/SKILL.md, plugins/phased-workflow/skills/import-workflow/SKILL.md, plugins/phased-workflow/skills/pull-request/SKILL.md, plugins/phased-workflow/skills/repair-phase/SKILL.md, plugins/phased-workflow/skills/run-all-phases/SKILL.md, plugins/phased-workflow/skills/write-workflow/SKILL.md, plugins/phased-workflow/refs/common.md, plugins/phased-workflow/refs/write-workflow-autonomous.md, plugins/phased-workflow/scripts/next-phase.py, tests/orchestration/run_tests.sh
   - Pattern reference: `library-standard` — documented platform behaviour. The
     plugins reference states that `${CLAUDE_PLUGIN_ROOT}` substitutes in "Skill and
     agent content — anywhere the placeholder appears"
@@ -390,7 +433,20 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     plugins/phased-workflow/refs/` returns only the `refs/common.md`
     `settings.json` line.
 
-- [ ] **Phase 7**: Continuous integration
+- [x] **Phase 7**: Continuous integration
+  > Done: Created .github/workflows/ci.yml (name: ci) triggering on push and
+  > pull_request against main, one `test` job on ubuntu-latest with
+  > actions/checkout@v4 and actions/setup-python@v5 (Python 3.12). Steps in the
+  > decided order, each named for what it guards: install zsh via apt-get, pip
+  > install flake8, `flake8 .`, git identity via `git config --global`, bash suite,
+  > zsh suite, `--validate` on the benchmark fixture. No claude-CLI install, no
+  > install.sh step, no benchmark run, bash/zsh as separate steps not a matrix.
+  > Verified: YAML parses (yaml.safe_load ok); the file carries the zsh suite step,
+  > a flake8 step, an `apt-get install -y zsh` step and a `git config --global
+  > user.email` step; every shell command run locally in sequence exits 0 —
+  > `flake8 .` clean, bash suite 107 passed/0 failed, zsh suite 107 passed/0
+  > failed, `--validate` on the benchmark fixture 0 errors/0 warnings.
+  > Files: .github/workflows/ci.yml
   - Pattern reference: `new-pattern (flagged: higher risk)` — the repo has no
     `.github/` at all, and a workflow file cannot be executed locally, so the `Done:`
     below verifies the YAML and runs every command the workflow will run, not the
@@ -428,7 +484,18 @@ CI gaps, and two are documentation claims that outrun their evidence. Ship as
     step for zsh and a `git config --global user.email` step; and every shell command
     the workflow runs, executed locally in sequence, exits 0.
 
-- [ ] **Phase 8**: Align the documentation with the evidence, and release 4.1.0
+- [~] **Phase 8**: Align the documentation with the evidence, and release 4.1.0
+  > Blocked: dirty working tree at the Step 0.4 restore-point check — HEAD is not a
+  > clean restore point. Phases 4–7 are marked [x] in this plan with full Done notes,
+  > but git log stops at Phase 3: their work sits uncommitted. Stray uncommitted files:
+  > plugins/phased-workflow/scripts/run-all-phases.sh (Phase 4 NOTE arms),
+  > plugins/phased-workflow/scripts/next-phase.py + refs/common.md +
+  > refs/write-workflow-autonomous.md + the nine skills/*/SKILL.md (Phases 5–6),
+  > .github/workflows/ci.yml (Phase 7, untracked), tests/orchestration/run_tests.sh
+  > (S18–S21), plan.md itself and the log/phase-*.txt files. Not committed as mine:
+  > per Step 0.4 a later phase must not absorb earlier phases' uncommitted work.
+  > Recovery: commit Phases 4–7 as their own wf(phase N) commits (the plan already
+  > documents them [x] with Files:), then re-run to execute Phase 8 from a clean tree.
   - Pattern reference: `tests/benchmark/results/README.md` — the one document in this
     repo that already does honest provenance: it states what each run measured, which
     conclusions survive, and which are superseded. Match its register and its habit

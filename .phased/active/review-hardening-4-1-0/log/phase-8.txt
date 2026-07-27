@@ -1,0 +1,28 @@
+⚠ Phase 8 blocked — I'm exiting here without executing it, per the auto-phase skill's Step 0.4 restore-point check.
+
+## What happened
+
+- **Baseline check (Step 0.2): green.** `flake8 .` clean; `bash tests/orchestration/run_tests.sh` → 107 passed / 0 failed.
+- **Restore point (Step 0.4): dirty tree — HEAD is not clean.** This is the blocker. Git log stops at `wf(phase 3)`, yet the plan marks Phases 4–7 `[x]` with full Done notes. Their work is present in the working tree but **never committed**:
+  - `run-all-phases.sh` — Phase 4 (7 `NOTE:` arms present)
+  - `next-phase.py`, `refs/common.md`, `refs/write-workflow-autonomous.md`, nine `skills/*/SKILL.md` — Phases 5–6 (VS Code ritual gone, `${CLAUDE_PLUGIN_ROOT}` in place)
+  - `.github/workflows/ci.yml` — Phase 7 (untracked)
+  - `tests/orchestration/run_tests.sh` (S18–S21), `plan.md`, `log/phase-*.txt`
+- **Phase 8 itself has not started** — none of its targets (`README.md`, `docs/`, `plugin.json`, `marketplace.json`, `article-medium.md`) are touched, and `phase-8.txt` is empty.
+
+## Why I didn't just proceed
+
+The skill is explicit: a dirty tree means a previous session died mid-phase or work went uncommitted, and **a later phase must not absorb earlier phases' uncommitted work into its own commit**. Building Phase 8's release commit on top of 4–7's unverified, uncommitted changes would conflate four phases' work into one Phase 8 commit — exactly what Step 0.4 forbids. So I marked Phase 8 `[~]` with a `> Blocked:` note naming the stray files and stopped. No other phase state changed, and I committed nothing.
+
+## Recommended recovery
+
+Phases 4–7 are already documented `[x]` with their `Files:` lists, so the missing commits can be reconstructed faithfully:
+
+```
+git add -A && git commit -m "wf(phase 4): Make every silent fallback loud"        # run-all-phases.sh, run_tests.sh (S20)
+# …split per phase using each phase's Files: list…
+```
+
+Once Phases 4–7 have their own `wf(phase N)` commits and the tree is clean, re-run `/auto-phase` and Phase 8 will execute from a proper restore point.
+
+I'd rather not reconstruct those four commits unilaterally — that's splitting a mixed working tree across four phases' `Files:` boundaries, and if the split is imperfect it corrupts the history. Tell me **"procedi"** and I'll reconstruct the Phase 4–7 commits, or you can commit them yourself; either way the next `/auto-phase` run will then do Phase 8.

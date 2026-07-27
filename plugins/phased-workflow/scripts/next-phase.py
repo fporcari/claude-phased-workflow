@@ -4,7 +4,7 @@
 Deterministic implementation of the phase-selection semantics used by
 the phased-workflow skills (/execute-phase, /auto-phase). The canonical
 description of the semantics lives in
-~/.claude/workflow-refs/common.md ("Phase selection").
+${CLAUDE_PLUGIN_ROOT}/refs/common.md ("Phase selection").
 
 Statuses: [ ] pending, [>] in execution, [x] done, [!] issue, [~] blocked.
 Tags (backticked at end of the phase line): parallel:N, group:N, vast.

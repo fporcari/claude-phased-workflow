@@ -544,6 +544,103 @@ WARN_OUT="$(python3 "$NEXTPHASE" --validate "$WARN_PLAN" 2>&1)"; WARN_RC=$?
 assert "S19: an unknown note field warns but does not fail (exit 0)" '[ "$WARN_RC" = 0 ]'
 assert "S19: the warning names the unknown field" 'printf "%s" "$WARN_OUT" | grep -q "warning: unknown note field .> Foo:"'
 
+echo "== S20: every silent fallback announces itself with a NOTE =="
+# Force the fallback path. After Phase 2 the launcher resolves its selector
+# beside itself, so a runner copied to a directory with no sibling next-phase.py
+# cannot run the selector and drops to file order — the exact path the NOTE must
+# make audible. The validation gate self-skips the same way (no selector), so
+# nothing stops the loop before the fallback fires.
+NOSEL="$OT/no-selector"
+mkdir -p "$NOSEL"
+cp "$OT/runner.sh" "$NOSEL/runner.sh"   # deliberately WITHOUT next-phase.py beside it
+run_nosel() { PATH="$OT/bin:$PATH" bash "$NOSEL/runner.sh" > out.log 2>&1; }
+
+# (a) selector missing -> file-order fallback, loud, naming the barrier cost
+setup S20a; fixture2
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run_nosel
+assert "S20a: the selector fallback prints a NOTE" 'grep -q "falling back to plan file order" out.log'
+assert "S20a: the NOTE names the barrier consequence" 'grep -q "parallel:N / group:N barriers" out.log'
+assert "S20a: both phases still complete on file order" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
+
+# (b) unsupported Model and Effort cells -> both NOTEs, safe defaults applied.
+# With no selector beside the runner the validation gate is skipped, so the bad
+# row reaches the case blocks that this phase made loud.
+setup S20b
+cat > .phased/active/toy/plan.md <<'EOF'
+# Context: orch-test
+Parent: main
+Mode: autonomous
+
+## Work Plan
+- [ ] **Phase 1**: phase one
+  - Done: check one
+- [ ] **Phase 2**: phase two
+  - Done: check two
+
+## Suggested execution config
+| Phase | Effort | Model |
+|-------|--------|-------|
+| Phase 1 | turbo | banana |
+| Phase 2 | low | opus |
+EOF
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run_nosel
+assert "S20b: unrecognised Model warns loudly" 'grep -q "unrecognised Model .banana." out.log'
+assert "S20b: unrecognised Effort warns loudly" 'grep -q "unrecognised Effort .turbo." out.log'
+assert "S20b: the call still used the safe defaults" 'grep -q -- "--model opus --effort high" .claude/invocations.log'
+
+echo "== S21: skills and refs address the plugin, not ~/.claude =="
+# The plugin ships its own scripts/ and refs/; a skill or ref that still points a
+# reader at ~/.claude/ (or $HOME/.claude/) sends them to a path the plugin no
+# longer owns. The one legitimate mention is refs/common.md naming
+# ~/.claude/settings.json as a file auto mode must not self-modify — a different
+# file, and a description, not a path the plugin resolves. Static check, S18 idiom.
+S21_SKILLS="$TESTDIR/../../plugins/phased-workflow/skills"
+S21_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
+HOME_OUT="$(python3 - "$S21_SKILLS" "$S21_REFS" <<'PYH'
+import os, sys
+bad = []
+for root in sys.argv[1:]:
+    for dirpath, _, names in os.walk(root):
+        for name in names:
+            p = os.path.join(dirpath, name)
+            for i, line in enumerate(open(p, encoding='utf-8').read().splitlines(), 1):
+                if '~/.claude/' not in line and '$HOME/.claude/' not in line:
+                    continue
+                # documented exemption: the settings.json auto-mode mention
+                if line.count('~/.claude/') == 1 and '~/.claude/settings.json' in line \
+                        and '$HOME/.claude/' not in line:
+                    continue
+                bad.append('%s:%d: %s' % (p, i, line.strip()))
+sys.stdout.write('\n'.join(bad))
+PYH
+)"
+[ -z "$HOME_OUT" ] || echo "  offending: $HOME_OUT"
+assert "S21: no skill or ref addresses ~/.claude/ or \$HOME/.claude/" '[ -z "$HOME_OUT" ]'
+# The guard is only worth having if it fails on the defect it describes.
+S21_MUT="$(mktemp -d)"; cp -R "$S21_SKILLS" "$S21_MUT/skills"
+printf '\nSee `python3 ~/.claude/scripts/next-phase.py --resolve` for the plan.\n' \
+  >> "$S21_MUT/skills/auto-phase/SKILL.md"
+S21_MUT_OUT="$(python3 - "$S21_MUT/skills" <<'PYH'
+import os, sys
+bad = []
+for dirpath, _, names in os.walk(sys.argv[1]):
+    for name in names:
+        p = os.path.join(dirpath, name)
+        for i, line in enumerate(open(p, encoding='utf-8').read().splitlines(), 1):
+            if '~/.claude/' not in line and '$HOME/.claude/' not in line:
+                continue
+            if line.count('~/.claude/') == 1 and '~/.claude/settings.json' in line \
+                    and '$HOME/.claude/' not in line:
+                continue
+            bad.append('%s:%d' % (p, i))
+sys.stdout.write('\n'.join(bad))
+PYH
+)"
+rm -rf "$S21_MUT"
+assert "S21: the guard fails when a ~/.claude/ path is reintroduced" '[ -n "$S21_MUT_OUT" ]'
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

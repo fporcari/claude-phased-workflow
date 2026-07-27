@@ -135,8 +135,11 @@ for i in $(seq 1 $REMAINING); do
   # uses (it honours parallel:N barriers, group:N units and [>] resumes). Using
   # plain file order here would pick a different phase than the one that
   # actually runs, and apply the wrong row's model/effort/cap to it.
-  REC=$(python3 "$NEXT_PHASE_PY" "$PLAN" 2>/dev/null \
-        | sed -n 's/^recommendation: //p')
+  # Keep stderr (2>&1, not 2>/dev/null): if the selector cannot run, the reason
+  # (missing file, syntax error, unreadable plan) must be visible in the NOTE
+  # the *) fallback arm prints, not swallowed.
+  REC_RAW=$(python3 "$NEXT_PHASE_PY" "$PLAN" 2>&1)
+  REC=$(printf '%s\n' "$REC_RAW" | sed -n 's/^recommendation: //p')
   case "$REC" in
     next:*)
       NEXT_PHASE=$(printf '%s' "$REC" | sed -n 's/^next: \([0-9]\{1,\}\).*/\1/p') ;;
@@ -162,6 +165,10 @@ for i in $(seq 1 $REMAINING); do
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
+      # This is the serious fallback and says so: file order ignores parallel:N
+      # and group:N barriers, so the launcher may apply one phase's model,
+      # effort and cap to a different phase than the sub-session actually runs.
+      echo "NOTE: next-phase.py returned nothing usable ('$(printf '%s' "$REC_RAW" | head -1)') — falling back to plan file order. This ignores parallel:N / group:N barriers, so the model, effort and cap picked here may belong to a different phase than the sub-session executes."
       NEXT_PHASE=$(grep -n "$(phase_re ' ')" "$PLAN" | head -1 | sed 's/.*Phase \([0-9]\{1,\}\).*/\1/') ;;
   esac
 
@@ -191,14 +198,16 @@ for i in $(seq 1 $REMAINING); do
   MODEL=$(col 4)
 
   # Validate against what this launcher actually supports; anything else
-  # (empty row, no table, typo) falls back to the safe default.
+  # falls back to the safe default. An empty cell is a validation error as of
+  # the --validate gate above, so by the time we reach here the cause is a
+  # value this launcher does not support, not a missing table row.
   case "$MODEL" in
     fable|sonnet|opus) ;;
-    *) MODEL="opus" ;;
+    *) echo "NOTE: unrecognised Model '${MODEL:-<empty>}' from the config table — using 'opus'."; MODEL="opus" ;;
   esac
   case "$EFFORT" in
     low|medium|high|xhigh|max) ;;
-    *) EFFORT="high" ;;
+    *) echo "NOTE: unrecognised Effort '${EFFORT:-<empty>}' from the config table — using 'high'."; EFFORT="high" ;;
   esac
 
   # Cap per phase (runaway-loop safety net, NOT a real spend limit on subscription plans).
