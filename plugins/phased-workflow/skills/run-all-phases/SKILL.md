@@ -11,7 +11,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-all-phases.sh`, which launches one fresh
 
 ## Pre-flight review (MANDATORY — before running the script)
 
-1. **Read** the active plan (`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve`).
+1. **Read** the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`).
 
 2. For every remaining `[ ]` phase, check it is **autonomous-ready**:
    - **Concrete and verifiable**, not exploratory ("explore", "investigate", "decide", "evaluate options" → not ready).
@@ -55,5 +55,5 @@ The script owns the loop; do not reimplement it. Report its output to the user.
 
 ## After completion
 
-- `grep '^\- \[' "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve)"` — phase status
+- `grep '^\- \[' "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve)"` — phase status
 - all `[x]` → `/finalize-workflow`; any `[!]` → read its `> Issue:`/`> Attempted:` notes first

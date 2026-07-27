@@ -12,7 +12,7 @@ Execute the next uncompleted phase. **Semi-autonomous**: ONE approval gate up fr
 ## Step 1: Find the plan and the phase
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 ```
 
 No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work.

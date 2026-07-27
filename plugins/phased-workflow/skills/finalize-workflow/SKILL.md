@@ -12,7 +12,7 @@ Verify the work plan is complete and turn the working tree into one clean commit
 ## Step 1: Find the plan and the base
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve
 git branch --show-current
 git worktree list --porcelain
 ```

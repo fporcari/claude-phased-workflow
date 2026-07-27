@@ -12,8 +12,8 @@ Supervision view of the work plan. **Read-only on source code** — the only fil
 ## Step 1: Find the plan and the base
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py --resolve
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 git log -1 --diff-filter=A --format=%H -- <plan path>
 ```
 

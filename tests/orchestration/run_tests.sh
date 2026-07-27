@@ -400,8 +400,12 @@ assert "skill still adopts the current branch on a source with [x] phases" \
   'grep -q "adopt the current branch" "$IMPORT_SKILL"'
 assert "skill still forbids rewriting history on that path" \
   'grep -q "no rebase, no reset" "$IMPORT_SKILL"'
+# Intent, not formatting: the skill must hand the source to the parser. Matching the
+# exact string "next-phase.py <source>" broke when the invocation was quoted for a
+# home directory containing a space — a legitimate refactor failing a test that
+# asserted a layout rather than a behaviour.
 assert "skill still classifies via the parser, not by eye" \
-  'grep -q "next-phase.py <source>" "$IMPORT_SKILL"'
+  'grep -qE "next-phase\.py\"? <source>" "$IMPORT_SKILL"'
 
 echo "== S18: prose bullets in ## Notes are inert; state greps are single-source =="
 # A column-0 "- [!]" / "- [~]" bullet in a Notes section used to launch a real

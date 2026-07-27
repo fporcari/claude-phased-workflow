@@ -448,7 +448,6 @@ Everything is traceable: plan in a versionable file, single clean commit per wor
 - [Claude Code](https://claude.com/claude-code) installed — **≥ 2.1.139** for the `/goal` guard and light mode on autonomous sessions (older versions are detected at runtime and fall back to plain skill prompts)
 - Git repository with remote configured
 - GitHub CLI (`gh`) installed and authenticated
-- (Optional) VS Code with `code` in PATH
 
 ### Installation
 
