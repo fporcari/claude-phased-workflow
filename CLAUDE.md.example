@@ -9,7 +9,7 @@ This is an example of global rules you can place in your `~/.claude/CLAUDE.md` t
 ## Imports
 - NEVER import inside functions or methods
 - All imports at module level (top of file)
-- Enforced by the PostToolUse hook (included in this plugin)
+- Enforced by a PostToolUse hook (configure your own — this plugin ships no hooks)
 
 ## Language
 - Follow the language convention of the existing codebase
