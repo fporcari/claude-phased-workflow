@@ -13,6 +13,7 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 
 **Non-negotiables:**
 - **No questions.** Never AskUserQuestion — there is nobody here who can answer. Decide, and document the decision in the plan.
+- **Output is a log.** Nobody reads this session live; every word of narration is token spend with no reader. Silence between tool calls — one short line only on a load-bearing finding, a change of direction, or a blocker — and a closing report of the ✓/⚠ line plus at most three sentences. Never restate the plan or the phase text.
 - **The outcome in the plan is the exit condition**, not bookkeeping — under `/run-workflow` an independent evaluator re-checks it every turn.
 - One phase, one commit at the end, everything written in English — per the shared core.
 

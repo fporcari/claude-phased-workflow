@@ -37,8 +37,11 @@
 # and every shipped `claude -p` sub-session prompt — call sites AND prompt
 # assignments alike — carrying a `/<plugin>:<skill>` namespace rather than a
 # bare slash that dies with "Unknown command" (S26, proven by mutation, plus
-# the S7b live repair run on the pre-2.1.139 path). S16 retired with the KB
-# mirror in 5.0.0; the number stays vacant.
+# the S7b live repair run on the pre-2.1.139 path). S28 checks the per-model
+# --append-system-prompt steering: live (each phase session carries the common
+# steer plus its own model's line, never another's) and static (both repair
+# call sites append one too). S16 retired with the KB mirror in 5.0.0; the
+# number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -1189,6 +1192,29 @@ sed -i.bak '/verify\.md/d' "$S27_MUT/finalize-workflow-agent/SKILL.md" \
 assert "S27: the guard fails when the finalize agent stops collecting verify.md" \
   '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
 rm -rf "$S27_MUT"
+
+echo "== S28: per-model steering reaches every sub-session =="
+# The launcher appends a model-matched --append-system-prompt to each session:
+# a common token-discipline steer (headless output is a log nobody reads live)
+# plus one line damping the chosen model's known drift. Live half: on the
+# happy path each phase carries the common steer AND its own model's line,
+# never another model's. Static half: the repair call sites (fable, and the
+# opus fallback) append a steer too, so no session is ever launched bare.
+setup S28; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S28: every phase session carries the common steer" \
+  '[ "$(grep -c -- "--append-system-prompt You run unattended" .claude/invocations.log)" = 3 ]'
+assert "S28: sonnet phase carries the literal-execution steer" \
+  'grep -- "--model sonnet" .claude/invocations.log | grep -q "close the phase \[!\]"'
+assert "S28: opus phase carries the no-over-verification steer" \
+  'grep -- "--model opus" .claude/invocations.log | grep -q "Do not verify beyond the Done criteria"'
+assert "S28: fable phase carries the act-not-replan steer" \
+  'grep -- "--model fable" .claude/invocations.log | grep -q "do not re-derive decisions"'
+assert "S28: the sonnet phase does not carry the fable steer" \
+  '! grep -- "--model sonnet" .claude/invocations.log | grep -q "re-derive decisions"'
+assert "S28: both repair call sites append a steer" \
+  '[ "$(grep -c -- "--append-system-prompt \"\$STEER_COMMON" "$RUNNER_SRC")" = 2 ]'
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

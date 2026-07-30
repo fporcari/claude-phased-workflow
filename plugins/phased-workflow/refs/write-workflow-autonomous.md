@@ -88,6 +88,7 @@ Keep the column order exactly as above — `/run-workflow` reads Effort and Mode
   - `sonnet` — mechanical work only: renames, extractions, moves, header updates, and implementations that merely follow a cited pattern with a test-enforced `Done:`. **Never on UI or declarative phases — opus is the floor there.** Marking a phase `sonnet` is a commitment about the *plan*: its `Details:` and `Done:` must be written out until nothing is left to infer. Anything the skill no longer spells out, that phase must. If you can't write it that way, leave it `opus`.
   - `fable` — genuinely hard phases: architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference. Subject to credits.
   - The final review phase is `opus` at `xhigh`: it needs judgment to separate the trivial fixes to apply from the findings worth flagging for a human.
+  - **Do not write style or verbosity rules into phases.** The launcher injects per-model steering at session start (silent log-style output; sonnet runs the `Details:` literally and closes `[!]` on a real spec gap instead of inventing a design) — a phase restating them just spends plan tokens twice. The flip side for `sonnet` rows: the spec-gap rule makes under-specified phases fail fast, which is the point.
 
 ## Closing message
 

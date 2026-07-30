@@ -181,6 +181,18 @@ else
   LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
 
+# Per-model steering, injected via --append-system-prompt so the goal
+# contracts above stay byte-stable (the tests extract those assignments).
+# Grounded in Anthropic's model-specific prompting guidance: a headless
+# session's output is a log nobody reads live, so narration between tool
+# calls is pure token spend; the per-model line damps each model's known
+# drift (opus: scope creep, over-verification, eager subagents; sonnet:
+# inventing what the spec left open; fable: re-deriving settled decisions).
+STEER_COMMON='You run unattended: nobody reads your output live, it is stored as a log. Default to silence between tool calls -- one short line only when you find something load-bearing, change direction, or hit a blocker. Close with the required status line plus at most three sentences; never restate the plan or the phase text.'
+STEER_OPUS='Deliver exactly the phase scope -- no extra features, refactors, or abstractions beyond what the phase asks. Do not verify beyond the Done criteria: one pass, no extra review rounds. Work directly; delegate to a subagent only for genuinely wide, independent exploration.'
+STEER_SONNET='Execute the Details literally and completely. Make minor calls (naming, formatting) yourself and note them; if the phase leaves a real design decision unspecified, do not invent one -- close the phase [!] with an Issue note naming the gap.'
+STEER_FABLE='When you have enough information to act, act -- do not re-derive decisions the plan already settled or survey alternatives you will not pursue. Base every progress or completion claim on a tool result from this session.'
+
 # Notes block of the FIRST [!] phase only, however long it is. Used for the
 # idempotency marker: a fixed `grep -A<n>` window is unreliable, because
 # /repair-phase extends `> Attempted:` on every round and pushes
@@ -325,6 +337,13 @@ for i in $(seq 1 $REMAINING); do
     MODE_LABEL="light"
   fi
 
+  # Steering for the model this phase runs on (see the STEER_* block above).
+  case "$MODEL" in
+    fable)  STEER="$STEER_COMMON $STEER_FABLE" ;;
+    sonnet) STEER="$STEER_COMMON $STEER_SONNET" ;;
+    *)      STEER="$STEER_COMMON $STEER_OPUS" ;;
+  esac
+
   # Budget flag assembled once; empty array = no cap (raw subscription mode)
   BUDGET_ARGS=()
   if [ -z "$RUN_WORKFLOW_NO_BUDGET" ]; then
@@ -348,11 +367,14 @@ for i in $(seq 1 $REMAINING); do
     # Without it $? would be tee's status and every non-zero claude exit would
     # be read as success.
     set -o pipefail
+    # --append-system-prompt LAST: the orchestration tests assert the
+    # model/effort/permission/cap sequence contiguously.
     claude -p "$RUN_PROMPT" \
       --model "$MODEL" \
       --effort "$EFFORT" \
       --permission-mode auto \
-      "${BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/phase-$NEXT_PHASE.txt"
+      "${BUDGET_ARGS[@]}" \
+      --append-system-prompt "$STEER" 2>&1 | tee "$PLAN_DIR/log/phase-$NEXT_PHASE.txt"
 
     CLAUDE_EXIT=$?
     set +o pipefail
@@ -393,7 +415,8 @@ for i in $(seq 1 $REMAINING); do
       --model fable \
       --effort max \
       --permission-mode auto \
-      "${REPAIR_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/repair-fable.txt"
+      "${REPAIR_BUDGET_ARGS[@]}" \
+      --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-fable.txt"
     REPAIR_EXIT=$?
     set +o pipefail
 
@@ -408,7 +431,8 @@ for i in $(seq 1 $REMAINING); do
         --model opus \
         --effort max \
         --permission-mode auto \
-        "${REPAIR_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
+        "${REPAIR_BUDGET_ARGS[@]}" \
+        --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
     fi
 
     if phase_any '!'; then
