@@ -98,7 +98,7 @@ Cosa scriverci, formulato **al positivo** — Anthropic è esplicita che gli ese
 
 Nota che l'`effort` non è la leva: alzarlo o abbassarlo non accorcia in modo affidabile l'output visibile. Anthropic suggerisce anche un promemoria corto a fine prompt, tipo `<tone_preference>Keep outputs reasonably concise.</tone_preference>`.
 
-Nel plugin l'aggiornamento 5.4.0 arriva con uno stile di riferimento (`asciutto`) da copiare e adattare, e con `/grill` — la disciplina gemella sul *chiedere*: una domanda per volta, con la risposta consigliata, i fatti cercati e non chiesti.
+Nel plugin l'aggiornamento 5.4.0 arriva con uno stile di riferimento (`asciutto`) da copiare e adattare, e con `/scope-workflow` — la disciplina gemella sul *chiedere*: una domanda per volta, con la risposta consigliata, i fatti cercati e non chiesti.
 
 ### L'effort è la leva costo/qualità, ma non quella della verbosità
 
