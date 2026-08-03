@@ -76,6 +76,19 @@
     font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
     color: var(--muted); margin-bottom: .2rem;
   }
+  .dialog { margin: 1.1rem 0; }
+  .dialog > div {
+    padding: .7rem 1rem; border-radius: 8px; margin: .45rem 0;
+    border: 1px solid var(--border); background: var(--card);
+  }
+  .dialog .you { border-left: 4px solid var(--muted); }
+  .dialog .cc { border-left: 4px solid var(--accent); background: var(--quote-bg); }
+  .dialog .who {
+    display: block; font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin-bottom: .25rem;
+  }
+  .dialog .aside { color: var(--muted); font-style: italic; font-size: .9em; }
   footer {
     margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
     font-size: .9rem; color: var(--muted);
@@ -119,28 +132,78 @@
   Digitare <code>/finalize-workflow</code> funziona come prima. Dire <em>"finalizza il workflow"</em> in prosa non lo fa più partire. L'unico innesco in prosa che resta è <em>"dove siamo?"</em> → <code>resume-workflow</code>, che poi ti dice quale comando digitare. I launcher non sono toccati: <code>claude -p "/phased-workflow:&lt;skill&gt;"</code> funziona anche su una skill user-invoked (verificato).
 </div>
 
-<h3><code>/scope-workflow</code> — la skill nuova</h3>
-<p><code>/write-workflow</code> pretende già che ogni scelta di giudizio sia chiusa prima dell'esecuzione — <em>"A phase containing 'decide later' is not ready"</em> — ma applica la regola <strong>leggendo la conversazione</strong>. Se la conversazione era vaga non c'è niente da leggere: o inventa le decisioni, o scrive fasi con "decidere poi", violando la sua stessa regola.</p>
-<p><code>/scope-workflow</code> riempie quel buco. User-invoked, e produce <strong>solo comprensione</strong>: niente branch, niente file, niente codice. Un pre-flight guarda l'ingresso: se un piano esiste già sotto <code>.phased/active/</code> si ferma e ti manda su <code>/resume-workflow</code> o <code>/execute-phase</code>.</p>
-<pre><code>/scope-workflow "gestione listini"  →  /write-workflow  →  /run-workflow o /execute-phase
-       chiude le decisioni              le mette nel piano       esegue</code></pre>
-<p>Il passaggio non costa niente: <code>/write-workflow</code> legge dalla conversazione corrente, quindi definire il perimetro nella stessa chat gli lascia l'albero già risolto davanti. Quattro proprietà fanno il lavoro:</p>
-<ul>
-  <li><strong>Ogni domanda riempie un campo del piano.</strong> <code>Mode:</code>, <code>Decisions:</code>, <code>Pattern:</code>, <code>Files:</code>, <code>Done:</code> — la skill sa quale prima di chiedere, e questo rende le domande più strette di un interrogatorio nel vuoto. Un ramo senza campo e senza fase dove atterrare non è chiuso.</li>
-  <li><strong>Il fork del modo viene per primo.</strong> Interattivo o autonomo rimodella tutto quello che sta sotto: lo stesso lavoro si spezza in fasi diverse nei due casi. Deciderlo qui, con un consiglio derivato dal lavoro, evita che <code>/write-workflow</code> lo riscopra al suo Step 2.</li>
-  <li><strong>Un fatto si cerca, non si chiede.</strong> Cosa esiste oggi, dove sta, chi lo chiama: trovato con Grep/Read/<code>git log</code>/<code>gh issue view</code> e riportato con i path concreti, così una premessa sbagliata si corregge prima di costare un ramo intero di domande. All'utente vanno solo le <em>decisioni</em>, ordinate per cosa sbloccano — e l'albero cresce durante l'interrogatorio, non è fissato all'inizio.</li>
-  <li><strong>Chiusura nel vocabolario del piano.</strong> Ogni ramo finisce <em>deciso</em>, oppure rinviato come <code>Verify: deferred: needs Phase M</code>. <em>"Vediamo poi"</em> senza trigger non conta.</li>
-</ul>
-<p>Una variante che scrive ADR e glossario mentre interroga è stata valutata e scartata: il campo <code>Decisions:</code> già presente su ogni fase è lo stesso artefatto, messo dove l'esecutore lo legge davvero.</p>
-
 <h3>Razionale fuori dal runtime</h3>
 <p>Le skill contenevano passaggi che spiegano <em>perché</em> una cosa è così, o perché una cosa deliberatamente non c'è. L'agente li legge all'inizio di ogni fase e non cambiano niente di quello che fa. Ora stanno in <code>docs/design-notes.md</code>, che a runtime non viene mai letto.</p>
 
 <h3><code>refs/auto-mode-scope.md</code></h3>
 <p>La lista dei permessi di auto mode erano 30 righe dentro <code>refs/common.md</code>, che otto skill leggono all'avvio — ma solo due la consumano. Spostata in un file suo, citato da quelle due. <code>common.md</code>: 256 → 229 righe.</p>
 
-<h2><span class="num">2.</span>Guida al prompting</h2>
-<p>Il commit aggiunge i due file interi perché erano untracked, ma <strong>di oggi sono ~30 righe</strong>: la sottosezione §2 <em>"Le tue regole di stile stanno quasi sempre nel posto sbagliato"</em> (righe 74-102 del <code>.md</code>) più una voce nella checklist anti-pattern.</p>
+<h2><span class="num">2.</span><code>/scope-workflow</code> — la skill nuova</h2>
+
+<h3>Il buco che riempie</h3>
+<p><code>/write-workflow</code> pretende già che ogni scelta di giudizio sia chiusa prima dell'esecuzione — <em>"A phase containing 'decide later' is not ready"</em> — ma applica la regola <strong>leggendo la conversazione</strong>. Se la conversazione era vaga non c'è niente da leggere: o inventa le decisioni, o scrive fasi con "decidere poi", violando la sua stessa regola.</p>
+<p><code>/scope-workflow</code> è il passo che rende la conversazione non vaga. Produce <strong>solo comprensione</strong>: niente branch, niente file, niente codice. Il passaggio non costa niente — <code>/write-workflow</code> legge dalla conversazione corrente, quindi si lancia <strong>nella stessa chat</strong> e trova l'albero già risolto davanti.</p>
+<pre><code>/scope-workflow "gestione listini"  →  /write-workflow  →  /run-workflow o /execute-phase
+       chiude le decisioni              le mette nel piano       esegue</code></pre>
+
+<h3>Quando lanciarla</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Situazione</th><th>Cosa fare</th></tr></thead>
+  <tbody>
+    <tr><td>Idea in testa, mai scomposta</td><td><code>/scope-workflow</code>, poi <code>/write-workflow</code></td></tr>
+    <tr><td>Avete già discusso tutto in chat</td><td>Direttamente <code>/write-workflow</code> — non serve</td></tr>
+    <tr><td>Issue GitHub da capire</td><td><code>/issue &lt;n&gt;</code> per l'analisi, poi <code>/scope-workflow</code> se restano scelte aperte</td></tr>
+    <tr><td>Un piano è già attivo</td><td>Si ferma da sola: un branch, un piano</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Come si comporta — esempio</h3>
+<p>Punto di partenza: hai <em>"gestione listini prezzi"</em> in testa e non l'hai mai scomposta.</p>
+<div class="dialog">
+  <div class="you"><span class="who">Tu</span><code>/scope-workflow</code> gestione listini prezzi per il pacchetto vendite</div>
+  <div class="cc"><span class="who">Claude — prima cerca, non chiede</span>Legge <code>packages/vendite/model/</code>, trova <code>articolo.py</code> e <code>cliente.py</code>, nessuna tabella listino, e una colonna <code>prezzo</code> su <code>articolo</code>.<br><br>Trovato: <code>prezzo</code> è oggi una colonna su <code>articolo</code>, usata in 3 punti (<code>ordine_riga.py:88</code>, <code>fattura_riga.py:112</code>, <code>webpages/articolo.py:41</code>).</div>
+  <div class="cc"><span class="who">Domanda 1 — riempie <code>Mode:</code></span><strong>Interattivo o autonomo?</strong><br>Consiglio: <strong>interattivo</strong>. Motivo: c'è una UI da guardare, e "il form si legge bene" non è un test. Le fasi si chiuderanno dove esiste qualcosa di apribile.<br><span class="aside">decide come si spezzano tutte le fasi — la faccio prima</span></div>
+  <div class="you"><span class="who">Tu</span>interattivo</div>
+  <div class="cc"><span class="who">Domanda 2 — riempie <code>Decisions:</code></span><strong>Il prezzo resta su <code>articolo</code> o si sposta sul listino?</strong><br>Consiglio: <strong>si sposta</strong>, e <code>articolo.prezzo</code> diventa un alias deprecato che legge dal listino di default. Motivo: se resta, hai due fonti di verità e il primo bug è "quale vince".</div>
+  <div class="you"><span class="who">Tu</span>si sposta</div>
+  <div class="cc"><span class="who">Domanda 3</span><strong>Un listino per cliente, o listini condivisi con assegnazione?</strong><br>Consiglio: <strong>condivisi</strong> (<code>listino</code> ↔ <code>cliente</code> many-to-one). Motivo: 200 clienti con 3 fasce prezzo diventano 200 listini duplicati.</div>
+  <div class="you"><span class="who">Tu</span>condivisi, ma serve anche l'override sul singolo cliente</div>
+  <div class="cc"><span class="who">Domanda 4 — l'albero è appena cresciuto</span>Allora sono <strong>due</strong> meccanismi, e devo sapere quale vince. <strong>Validità temporale: la vuoi ora o dopo?</strong><br>Consiglio: <strong>ora</strong>, ma solo su <code>listino</code> (date da/a), non sull'override. Motivo: aggiungerla dopo significa migrare le righe esistenti.<br><span class="aside">se dici "dopo", la domanda 5 sull'indice di lookup cambia</span></div>
+</div>
+<p>Guarda cosa succede alla Domanda 3: la tua risposta apre un terreno che non era mappato — due meccanismi e una regola di precedenza — e l'albero cresce di un sottoalbero. <strong>Un blocco di quattro domande fatte insieme non poteva scoprirlo</strong>: non sapeva ancora che quella domanda sarebbe esistita.</p>
+
+<h3>Come chiude</h3>
+<p>Finisce con un recap in italiano, nella forma che <code>/write-workflow</code> si aspetta di leggere, e aspetta la tua conferma:</p>
+<pre><code>Mode: interattivo — c'e una UI da guardare, il "done" si riconosce a vista
+
+Deciso:
+- prezzo → si sposta su listino, articolo.prezzo alias deprecato   [Decisions:]
+- listini → condivisi, con override per cliente; vince l'override  [Decisions:]
+- pattern per il model → `packages/vendite/model/articolo.py`      [Pattern:]
+- fase modello finita quando → pytest tests/test_listino.py passa  [Done:]
+
+Rinviato:
+- allineamento colonna importo nella griglia
+  → Verify: deferred: needs Phase 3
+
+Fatti su cui poggia:
+- prezzo oggi su articolo, 3 usi (ordine_riga.py:88, fattura_riga.py:112,
+  webpages/articolo.py:41)</code></pre>
+<p>Confermato, ti dice di lanciare <code>/write-workflow</code> nella stessa chat. Non fa altro: niente branch, niente file, niente codice.</p>
+
+<h3>Le quattro proprietà, in breve</h3>
+<ul>
+  <li><strong>Ogni domanda riempie un campo del piano.</strong> <code>Mode:</code>, <code>Decisions:</code>, <code>Pattern:</code>, <code>Files:</code>, <code>Done:</code> — la skill sa quale prima di chiedere, e questo rende le domande più strette di un interrogatorio nel vuoto. Un ramo senza campo e senza fase dove atterrare non è chiuso.</li>
+  <li><strong>Il fork del modo viene per primo.</strong> Interattivo o autonomo rimodella tutto quello che sta sotto: lo stesso lavoro si spezza in fasi diverse nei due casi.</li>
+  <li><strong>Un fatto si cerca, non si chiede.</strong> Cosa esiste oggi, dove sta, chi lo chiama: trovato con Grep/Read/<code>git log</code>/<code>gh issue view</code> e riportato con i path concreti, così una premessa sbagliata si corregge prima di costare un ramo intero di domande. A te vanno solo le <em>decisioni</em>, ordinate per cosa sbloccano.</li>
+  <li><strong>Chiusura nel vocabolario del piano.</strong> Ogni ramo finisce <em>deciso</em>, oppure rinviato come <code>Verify: deferred: needs Phase M</code>. <em>"Vediamo poi"</em> senza trigger non conta.</li>
+</ul>
+<p>Una variante che scrive ADR e glossario mentre interroga è stata valutata e scartata: il campo <code>Decisions:</code> già presente su ogni fase è lo stesso artefatto, messo dove l'esecutore lo legge davvero.</p>
+
+<h2><span class="num">3.</span>Guida al prompting</h2>
+<p>Il commit aggiunge i due file interi perché erano untracked, ma <strong>di oggi sono ~30 righe</strong>: la sottosezione <em>"Le tue regole di stile stanno quasi sempre nel posto sbagliato"</em> (righe 74-102 del <code>.md</code>) più una voce nella checklist anti-pattern.</p>
 <p>Il punto della sezione: quasi tutti scrivono le regole di stile in <code>CLAUDE.md</code>, che è il posto più debole dei tre — tecnicamente un messaggio utente dopo il system prompt, che nelle conversazioni lunghe si diluisce.</p>
 <div class="table-wrap">
 <table>
@@ -153,7 +216,7 @@
 </table>
 </div>
 
-<h2><span class="num">3.</span>Fuori dal repo — configurazione personale</h2>
+<h2><span class="num">4.</span>Fuori dal repo — configurazione personale</h2>
 <p>Tre file sotto <code>~/.claude/</code>, non versionati e non parte del plugin.</p>
 <ul>
   <li><strong><code>output-styles/asciutto.md</code></strong> (nuovo) — consegna lo scope chiesto, esito in prima riga, spiegazioni come riassunti salvo richiesta, e la risposta finisce dove finisce. Ha un blocco di persistenza (attivo turno uno e turno cinquanta), un confine sugli artefatti persistiti (commit e docs restano in prosa normale) e una sezione <em>"dove aprirsi"</em>, la cui prima voce è: <em>domanda ripetuta → la versione corta non è arrivata, spiega esteso, e trattala come un dato sulla risposta precedente, non su chi legge</em>.</li>
@@ -162,7 +225,7 @@
 </ul>
 <p>La divisione dei compiti: <code>/scope-workflow</code> è disciplina sul <strong>chiedere</strong>, <code>asciutto</code> è disciplina sul <strong>rispondere</strong>. Deliberatamente non uniti — dentro <code>/scope-workflow</code> lo stile stringato varrebbe solo durante una sessione di scoping, cioè l'unico momento in cui è già stringato.</p>
 
-<h2><span class="num">4.</span>Come aggiornare</h2>
+<h2><span class="num">5.</span>Come aggiornare</h2>
 <p>I commit sono locali, non ancora su GitHub. Il plugin arriva dal marketplace <code>fporcari/claude-phased-workflow</code>, quindi prima il push:</p>
 <pre><code>git push origin main</code></pre>
 <pre><code>claude plugin marketplace update claude-phased-workflow
