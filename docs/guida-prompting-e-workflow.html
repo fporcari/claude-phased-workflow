@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guida al prompting e all'impostazione di un workflow</title>
+<style>
+  :root {
+    --bg: #faf8f4;
+    --ink: #2b2722;
+    --muted: #6b6459;
+    --accent: #b4552d;
+    --accent-soft: #f3e3d9;
+    --card: #ffffff;
+    --border: #e5ded2;
+    --code-bg: #f0ece3;
+    --quote-bg: #f5f1e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1d1b18;
+      --ink: #e8e3da;
+      --muted: #a39b8d;
+      --accent: #e08d5f;
+      --accent-soft: #3a2c22;
+      --card: #26231f;
+      --border: #3a362f;
+      --code-bg: #2e2a24;
+      --quote-bg: #282420;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.65;
+  }
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  header { margin-bottom: 3rem; }
+  h1 {
+    font-size: 2.1rem;
+    line-height: 1.2;
+    margin: 0 0 .8rem;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-style: italic;
+    margin: 0;
+  }
+  h2 {
+    font-size: 1.45rem;
+    margin: 3rem 0 1rem;
+    padding-bottom: .4rem;
+    border-bottom: 2px solid var(--accent);
+    letter-spacing: -0.01em;
+  }
+  h2 .num {
+    color: var(--accent);
+    font-weight: normal;
+    margin-right: .5rem;
+  }
+  h3 {
+    font-size: 1.12rem;
+    margin: 1.8rem 0 .6rem;
+  }
+  p { margin: .7rem 0; }
+  a { color: var(--accent); }
+  strong { font-weight: 700; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: .85em;
+    background: var(--code-bg);
+    padding: .1em .35em;
+    border-radius: 4px;
+  }
+  blockquote {
+    margin: 1rem 0;
+    padding: .8rem 1.1rem;
+    background: var(--quote-bg);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+  }
+  blockquote p { margin: 0; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: .35rem 0; }
+  .vs {
+    display: grid;
+    gap: .6rem;
+    margin: 1rem 0;
+  }
+  .vs > div {
+    padding: .7rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .vs .bad  { border-left: 4px solid #b0483f; }
+  .vs .good { border-left: 4px solid #4d7c4a; }
+  .vs .label {
+    display: block;
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    margin-bottom: .2rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2rem 0;
+    font-size: .92rem;
+  }
+  .table-wrap { overflow-x: auto; }
+  th, td {
+    text-align: left;
+    padding: .55rem .7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+  }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+  .checklist { list-style: none; padding-left: 0; }
+  .checklist li {
+    padding: .45rem .8rem .45rem 2.2rem;
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: .4rem 0;
+  }
+  .checklist li::before {
+    content: "✗";
+    position: absolute;
+    left: .8rem;
+    color: #b0483f;
+    font-weight: 700;
+  }
+  .plugin-note {
+    font-size: .9rem;
+    color: var(--muted);
+    background: var(--accent-soft);
+    padding: .5rem .9rem;
+    border-radius: 8px;
+    margin: .6rem 0 1.2rem;
+  }
+  .plugin-note::before {
+    content: "Nel plugin: ";
+    font-weight: 700;
+    color: var(--accent);
+  }
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  @media print {
+    body { background: #fff; color: #000; font-size: 11pt; }
+    .page { max-width: none; padding: 0; }
+    h2 { break-after: avoid; }
+    blockquote, .vs > div, .checklist li { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>Guida al prompting e all'impostazione di un workflow</h1>
+  <p class="subtitle">Distillato in italiano di <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">Prompting best practices</a> (Anthropic) e dell'esperienza fatta con il plugin <code>phased-workflow</code>. Per chi lavora con Claude tutti i giorni e vuole interazioni più efficaci — e meno costose.</p>
+</header>
+
+<h2><span class="num">0.</span>Prima del prompt</h2>
+<p>La guida ufficiale apre con un punto che quasi tutti saltano: <strong>il prompt engineering inizia quando hai già tre cose</strong> —</p>
+<ol>
+  <li>un criterio di successo chiaro (<em>"come riconosco un buon risultato?"</em>);</li>
+  <li>un modo empirico di verificarlo (un test, un check, un confronto);</li>
+  <li>una prima bozza di prompt da migliorare.</li>
+</ol>
+<p>Se manca il punto 1, nessuna tecnica ti salva: stai chiedendo al modello di indovinare cosa vuoi. È lo stesso principio del campo <code>Done:</code> nei piani del plugin — se non sai scrivere il criterio di uscita, la fase non è pronta.</p>
+
+<h2><span class="num">1.</span>Le regole fondamentali (valide per tutti i modelli)</h2>
+
+<h3>Chiaro e diretto — la regola del collega</h3>
+<blockquote><p>Mostra il tuo prompt a un collega che non conosce il task e chiedigli di eseguirlo. Se lui sarebbe confuso, Claude lo sarà.</p></blockquote>
+<p>Claude va trattato come un collega brillante ma <strong>appena assunto</strong>: non conosce le tue norme, le tue convenzioni, i tuoi sottintesi. Più precisamente spieghi cosa vuoi, migliore è il risultato. Se vuoi che "faccia di più" (più feature, più cura, più completezza), <strong>chiedilo esplicitamente</strong> — non contare sul fatto che lo inferisca.</p>
+<div class="vs">
+  <div class="bad"><span class="label">Meno efficace</span>Crea una dashboard di analytics</div>
+  <div class="good"><span class="label">Più efficace</span>Crea una dashboard di analytics. Includi tutte le feature e interazioni rilevanti. Vai oltre le basi: implementazione completa.</div>
+</div>
+
+<h3>Dai il perché, non solo il cosa</h3>
+<p>Il modello generalizza dalla motivazione. Un vincolo nudo viene applicato meccanicamente (o dimenticato); un vincolo motivato viene applicato con giudizio.</p>
+<div class="vs">
+  <div class="bad"><span class="label">Meno efficace</span>MAI usare i puntini di sospensione</div>
+  <div class="good"><span class="label">Più efficace</span>La risposta verrà letta da un motore text-to-speech, quindi niente puntini di sospensione: non saprebbe pronunciarli.</div>
+</div>
+<p>Vale anche per i task: <em>"Sto lavorando a X per Y, gli serve Z. Con questo in mente: [richiesta]"</em> rende ogni scelta intermedia più allineata.</p>
+
+<h3>Esempi &gt; descrizioni</h3>
+<p>3–5 esempi ben scelti (few-shot) sono il modo più affidabile di controllare formato, tono e struttura. Devono essere <strong>rilevanti</strong> (simili al caso reale), <strong>diversi</strong> (coprire i casi limite), <strong>delimitati</strong> (dentro tag <code>&lt;example&gt;</code>). Un esempio positivo di ciò che vuoi batte dieci istruzioni su ciò che non vuoi.</p>
+
+<h3>Struttura con tag XML</h3>
+<p>Quando il prompt mescola istruzioni, contesto, esempi e input variabili, delimita ogni parte con un tag (<code>&lt;instructions&gt;</code>, <code>&lt;context&gt;</code>, <code>&lt;input&gt;</code>). Elimina l'ambiguità su "questo è un ordine o un dato?".</p>
+
+<h3>Documenti lunghi in alto, domanda in fondo</h3>
+<p>Con input oltre ~20k token: <strong>prima i documenti, poi la domanda</strong>. Nei test la domanda in fondo migliora la qualità fino al 30%. Per compiti su documenti lunghi, chiedi prima le <strong>citazioni pertinenti</strong> (in <code>&lt;quotes&gt;</code>) e poi l'elaborazione: costringe il modello ad ancorarsi al testo.</p>
+
+<h3>Dì cosa fare, non cosa non fare</h3>
+<div class="vs">
+  <div class="bad"><span class="label">Meno efficace</span>Non usare markdown</div>
+  <div class="good"><span class="label">Più efficace</span>Scrivi in prosa fluida, paragrafi completi</div>
+</div>
+
+<h3>Azione esplicita, non allusa</h3>
+<p><em>"Puoi suggerirmi delle modifiche?"</em> produce suggerimenti. <em>"Modifica questa funzione per migliorare le prestazioni"</em> produce modifiche. I modelli recenti seguono le istruzioni <strong>alla lettera</strong>: se vuoi l'azione, ordina l'azione.</p>
+
+<h2><span class="num">2.</span>Token e verbosità — dove si spreca davvero</h2>
+<p>Questa è la parte che ha motivato la revisione 5.3.0 del plugin.</p>
+
+<h3>La narrazione agentica è spesa pura</h3>
+<p>In una sessione autonoma (<code>claude -p</code>, un run notturno, un subagent) <strong>nessuno legge la cronaca in tempo reale</strong>. Ogni "Ora leggo il file X…", "Procedo con…", riepilogo intermedio è token di output pagato senza lettore. La contromisura è una riga di system prompt:</p>
+<blockquote><p>Default to silence between tool calls. Only write text when you find something, change direction, or hit a blocker — one sentence each. When done: one or two sentences on the outcome.</p></blockquote>
+<p class="plugin-note">questa riga viene ora iniettata automaticamente dal launcher (<code>--append-system-prompt</code>) in ogni sotto-sessione.</p>
+<p>Il principio generale: <strong>calibra la verbosità sul lettore reale</strong>. Umano che guarda → aggiornamenti utili; log → silenzio.</p>
+
+<h3>Le tue regole di stile stanno quasi sempre nel posto sbagliato</h3>
+<p>Il gemello interattivo del problema precedente: le risposte <em>a te</em> troppo lunghe, che rispondono a domande che non hai fatto e si chiudono con una scelta da prendere. Il costo non sono i token del modello, sono <strong>i tuoi giri</strong>: ogni risposta che non chiude ti costa un altro turno per chiedere la stessa cosa in modo più stretto.</p>
+<p>Quasi tutti scrivono la contromisura in <code>CLAUDE.md</code>. È il posto più debole dei tre: tecnicamente è un messaggio utente inserito dopo il system prompt, e nelle conversazioni lunghe viene sepolto. Su un'issue di Claude Code lo si legge senza giri di parole:</p>
+<blockquote><p>The narration form appears regardless of <code>CLAUDE.md</code> instructions asking for terse output. <code>CLAUDE.md</code> helps but does not fully eliminate the pattern.</p></blockquote>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Dove</th><th>Come agisce</th><th>Tenuta</th></tr></thead>
+  <tbody>
+    <tr><td>CLAUDE.md</td><td>Messaggio utente dopo il system prompt</td><td>Debole: aiuta, non elimina — si diluisce col crescere della conversazione</td></tr>
+    <tr><td>Output style</td><td>Modifica il <strong>system prompt</strong>, e Claude Code re-inietta promemoria durante la conversazione</td><td>La più solida documentata. È qui che vanno messe</td></tr>
+    <tr><td>Hook <code>UserPromptSubmit</code></td><td>Re-inietta la regola a ogni turno come system-reminder</td><td>In teoria la più forte, in pratica ha bug aperti (accumulo di contesto, non iniettato in VSCode)</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Quindi: un file in <code>~/.claude/output-styles/&lt;nome&gt;.md</code>, attivato con <code>/output-style</code>, e <code>keep-coding-instructions: true</code> nel frontmatter per non perdere il comportamento di coding. Le regole di stile <strong>escono</strong> da <code>CLAUDE.md</code>, che resta per le regole di dominio (git, convenzioni di codice, gate di approvazione).</p>
+<p>Cosa scriverci, formulato <strong>al positivo</strong> — Anthropic è esplicita che gli esempi di ciò che vuoi rendono più delle proibizioni:</p>
+<ul>
+  <li><strong>Consegna lo scope chiesto.</strong> Una domanda su <em>cosa è</em> una cosa riceve la descrizione di quella cosa: consigli di integrazione, confronti con le alternative e prossimi passi sono domande separate, che si consegnano quando vengono fatte. È la contromisura documentata da Anthropic per Opus 5, di cui scrivono che <em>"can expand the scope of a task, adding steps that weren't requested"</em>.</li>
+  <li><strong>Esito in prima riga.</strong> Chi si ferma dopo una riga ha già la risposta.</li>
+  <li><strong>Le spiegazioni sono riassunti, salvo richiesta.</strong> Testuale dalla guida: <em>"When asked to explain something, give a high-level summary unless an in-depth explanation is specifically requested."</em></li>
+  <li><strong>La risposta finisce dove finisce.</strong> L'ultima riga è parte della risposta, non un invito. Se resta del lavoro aperto, si enuncia piatto — <em>"resta da fare X"</em> — così chi legge legge un fatto e decide con i suoi tempi, invece di ricevere un compito.</li>
+  <li><strong>Un termine nuovo si definisce in mezza riga</strong> alla prima occorrenza, e si preferisce il vocabolario di chi legge a quello della fonte.</li>
+  <li><strong>Ambiguità vera → una domanda da una riga</strong>, invece di rispondere a entrambe le letture. È lì che il risparmio è grosso: una riga contro sessanta.</li>
+</ul>
+<p>Nota che l'<code>effort</code> non è la leva: alzarlo o abbassarlo non accorcia in modo affidabile l'output visibile. Anthropic suggerisce anche un promemoria corto a fine prompt, tipo <code>&lt;tone_preference&gt;Keep outputs reasonably concise.&lt;/tone_preference&gt;</code>.</p>
+<p class="plugin-note">l'aggiornamento 5.4.0 arriva con uno stile di riferimento (<code>asciutto</code>) da copiare e adattare, e con <code>/grill</code> — la disciplina gemella sul <em>chiedere</em>: una domanda per volta, con la risposta consigliata, i fatti cercati e non chiesti.</p>
+
+<h3>L'effort è la leva costo/qualità, ma non quella della verbosità</h3>
+<p><code>effort</code> (low/medium/high/xhigh/max) governa quanto il modello pensa ed esplora. Regole pratiche:</p>
+<ul>
+  <li><strong>Parti basso e sali solo per una ragione.</strong> Un task ben specificato è dove l'effort alto rende meno: viene speso a ri-esplorare e ri-verificare decisioni già prese. <code>low</code>/<code>medium</code> sui modelli recenti rendono molto più di quanto ci si aspetti.</li>
+  <li><strong><code>max</code> quasi mai</strong>: tende all'overthinking, rendimenti decrescenti.</li>
+  <li>Su Opus 5 l'effort <strong>non</strong> accorcia in modo affidabile l'output visibile: la verbosità si governa col prompt, non col parametro.</li>
+</ul>
+
+<h3>Non chiedere di "ricontrollare il lavoro" (inversione di una vecchia best practice)</h3>
+<p>"Chiedi al modello di auto-verificarsi" era un consiglio standard. Sui modelli recenti (Opus 5 in particolare) è <strong>controproducente</strong>: si verificano già da soli, e l'istruzione esplicita produce over-verification — passaggi extra, token, latenza, zero qualità in più. Se hai prompt storici con <em>"double-check your answer"</em>, <em>"verify before responding"</em>: <strong>cancellali</strong>, non riscriverli.</p>
+
+<h3>De-prescrivere: obiettivo e vincoli, non passi</h3>
+<p>Prompt scritti per modelli vecchi sono spesso troppo prescrittivi per quelli nuovi e ne <strong>riducono</strong> la qualità. Preferisci enunciare l'obiettivo e i vincoli all'enumerare i passi. Stesso discorso per il linguaggio aggressivo: <em>"CRITICAL: you MUST use this tool"</em> oggi produce overtriggering — basta <em>"Use this tool when…"</em>. E <em>"if in doubt, use X"</em> va proprio eliminato.</p>
+
+<h3>Ancorare le affermazioni di progresso</h3>
+<p>Nei run lunghi, chiedi che ogni claim di avanzamento sia verificabile:</p>
+<blockquote><p>Before reporting progress, audit each claim against a tool result from this session. If something is not yet verified, say so explicitly.</p></blockquote>
+<p class="plugin-note">vive nel gate sul <code>Done:</code> (rieseguito letteralmente prima di chiudere la fase) e nello steering fable.</p>
+
+<h2><span class="num">3.</span>Le personalità dei modelli (in breve)</h2>
+<p>Ogni modello ha derive note; una riga di prompt le smorza. È il motivo per cui la scelta del modello va fatta <strong>in pianificazione</strong>, quando sai che tipo di lavoro è ogni fase.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Modello</th><th>Punto di forza</th><th>Deriva nota</th><th>Contromisura</th></tr></thead>
+  <tbody>
+    <tr><td>Opus</td><td>Default per quasi tutto; agentico e coding</td><td>Scope creep, over-verification, delega facile ai subagent, output lungo</td><td>Perimetro esplicito, niente istruzioni di verifica, tetto ai subagent, istruzione di concisione</td></tr>
+    <tr><td>Sonnet</td><td>Veloce ed economico sul ben specificato</td><td>Segue <strong>alla lettera</strong>: un buco di specifica → design inventato</td><td>Solo lavoro meccanico con spec completa; un gap deve fermare, non far improvvisare</td></tr>
+    <tr><td>Fable</td><td>I problemi davvero difficili: architettura, debugging ostico, design senza pattern</td><td>Overplanning, ri-derivare decisioni già prese; turni lunghi</td><td><em>"When you have enough information to act, act"</em>; decisioni del piano dichiarate chiuse</td></tr>
+    <tr><td>Haiku</td><td>Classificazioni, task semplici e veloci</td><td>Capacità limitata</td><td>Non usarlo dove serve giudizio</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Regola del plugin, generalizzabile: <strong>in dubbio → opus</strong>. Una fase sonnet fallita costa una riparazione fable: il risparmio si fa sulla specifica, non sulla scelta ottimistica del modello.</p>
+
+<h2><span class="num">4.</span>Impostare un workflow</h2>
+<p>Qui prompting e processo si incontrano. I principi valgono con o senza il plugin; in calce a ciascuno il pezzo del plugin che li incarna.</p>
+
+<h3>Specifica completa upfront, non a goccia</h3>
+<p>La guida ufficiale è netta: task, intento e vincoli <strong>tutti nel primo turno</strong> massimizzano autonomia e intelligenza; le richieste ambigue rivelate progressivamente su più turni riducono efficienza e a volte qualità. Il modello ragiona (e spende) dopo ogni turno umano: dieci turni di chiarimento sono dieci ripartenze.</p>
+<p class="plugin-note">la conversazione di <code>/write-workflow</code> esiste proprio per condensare tutto nel piano, una volta.</p>
+
+<h3>Le decisioni si prendono in pianificazione</h3>
+<p>Naming, librerie, firme, forme di API, trade-off: tutto ciò che richiede il giudizio umano va deciso <strong>prima</strong> dell'esecuzione e scritto nel piano. Una fase con "decidere poi" non è pronta. Perché: in esecuzione la domanda o blocca il run (autonomo) o interrompe il flusso (interattivo) — e un modello senza risposta inventa.</p>
+<p class="plugin-note">campo <code>Decisions:</code>, domande batchate in pianificazione.</p>
+
+<h3>Ogni unità di lavoro ha un'uscita misurabile</h3>
+<p><em>"Tests pass"</em>, <em>"il file X esiste con le sezioni Y"</em>, <em>"flake8 zero errori sui file toccati"</em> — rieseguibile da chiunque, macchina inclusa. Mai <em>"looks good"</em>. Il criterio misurabile è ciò che permette a un loop autonomo di fermarsi da solo e a te di fidarti del risultato senza rileggere tutto.</p>
+<p class="plugin-note"><code>Done:</code> come exit condition letterale, ri-verificata da un valutatore indipendente sotto <code>/goal</code>.</p>
+
+<h3>Dai un pattern da copiare</h3>
+<p>Per codice non banale, indica 1–2 esempi esistenti nel repo da copia-adattare (<code>Pattern:</code>). È la forma più densa di prompt che esista: un file reale comunica convenzioni, stile e API più di qualunque descrizione — e costa zero token di spiegazione. Niente di comparabile → dichiaralo (<code>new-pattern</code>): è un rischio da conoscere, non da nascondere.</p>
+
+<h3>Interattivo o autonomo? Decidilo, non subirlo</h3>
+<p>La domanda giusta è: <strong>il successo si misura o si riconosce a vista?</strong></p>
+<ul>
+  <li><em>"Lo riconosco quando lo vedo"</em> (UI, lavoro visuale/dichiarativo, UX) → <strong>interattivo</strong>: un'iterazione per fase con occhio umano; le fasi si chiudono dove esiste qualcosa di guardabile.</li>
+  <li>Misurabile (refactor, migrazioni, avvio progetto ben specificato) → <strong>autonomo</strong>: fasi piccole (una concern, <code>Done:</code> rieseguibile), run non presidiato, checkpoint umano alla fine.</li>
+</ul>
+<p>Forzare un task esplorativo nel modo autonomo è il modo più costoso di scoprire che serviva una conversazione.</p>
+<p class="plugin-note">il fork di Step 2 in <code>/write-workflow</code>, con l'honesty check che fa marcia indietro quando sente attrito.</p>
+
+<h3>Contesto fresco batte contesto lungo</h3>
+<p>Ogni fase in una sessione nuova, con <strong>stato su file</strong> (il piano, le note, git) invece che in chat: i modelli recenti sono ottimi a ricostruire lo stato dal filesystem, e un contesto corto e pertinente rende più di uno lungo e sporco — oltre a costare meno. Git è memoria gratuita: un commit per fase = checkpoint, cronologia, attribuzione delle regressioni.</p>
+<p class="plugin-note">una chat per fase, un commit per fase, <code>&gt; Files:</code> per attribuire i guasti.</p>
+
+<h3>Checkpoint umani ai confini giusti</h3>
+<p>Non dentro le fasi (lì il loop si auto-corregge), ma <strong>tra i blocchi di lavoro</strong>: a fine run, prima del merge, tra un macro e il successivo. È dove il giudizio umano rende di più per minuto speso.</p>
+<p class="plugin-note"><code>/finalize-workflow</code>, <code>review.md</code> per i finding che meritano un umano, <code>verify.md</code> per ciò che solo un umano può esercitare, il confine tra macro-fasi deliberatamente manuale.</p>
+
+<h2><span class="num">5.</span>Anti-pattern — checklist rapida</h2>
+<ul class="checklist">
+  <li>Prompt senza criterio di successo ("fammi qualcosa di carino")</li>
+  <li>Contesto rivelato a goccia su dieci turni</li>
+  <li><em>"CRITICAL: YOU MUST…"</em>, <em>"if in doubt, use X"</em> (overtriggering sui modelli recenti)</li>
+  <li><em>"Double-check your answer"</em> su Opus 5 (over-verification: cancellare, non riscrivere)</li>
+  <li>Vincoli senza motivazione (il modello non può generalizzare)</li>
+  <li>Dire cosa NON fare invece di cosa fare</li>
+  <li>Effort <code>max</code> di default "per sicurezza"</li>
+  <li>Prompt passo-passo dettagliati dove bastano obiettivo e vincoli</li>
+  <li>Modello economico su lavoro sotto-specificato (il fallimento costa più del risparmio)</li>
+  <li>Decisioni di design lasciate all'esecuzione</li>
+  <li>"Done" non misurabile (<em>"looks good"</em>, <em>"should work"</em>)</li>
+  <li>Stile e verbosità ripetuti in ogni fase del piano (una volta, nel posto giusto — o mai, se il launcher li inietta)</li>
+  <li>Regole di stile scritte in <code>CLAUDE.md</code> e mai passate a un output style (si diluiscono, poi si ri-chiede la stessa cosa a mano)</li>
+</ul>
+
+<footer>
+  <p><strong>Riferimenti</strong></p>
+  <ul>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">Prompting best practices</a> — il riferimento vivo, con le pagine per-modello (Fable 5, Opus 5, Sonnet 5, Opus 4.8)</li>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview">Prompt engineering overview</a> — quando il prompt engineering è la soluzione giusta (e quando no)</li>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/effort">Effort</a> e <a href="https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking">Adaptive thinking</a> — le leve costo/qualità</li>
+    <li>Repo <code>claude-phased-workflow</code>, <code>plugins/phased-workflow/</code> — l'implementazione operativa dei principi della sezione 4</li>
+  </ul>
+</footer>
+
+</div>
+</body>
+</html>
