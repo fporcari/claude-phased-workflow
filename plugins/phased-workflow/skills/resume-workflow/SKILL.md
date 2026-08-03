@@ -17,7 +17,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 
 | Skill | Reach for it when |
 |---|---|
-| `/grill` | the work is still vague — settle the decisions before planning |
+| `/scope-workflow` | the work is still vague — settle the decisions before planning |
 | `/write-workflow` | there is no plan yet, and the work was just discussed |
 | `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
 | `/issue` | the work starts from a GitHub issue (analysis only) |

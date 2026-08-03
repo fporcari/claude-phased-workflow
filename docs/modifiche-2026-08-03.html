@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modifiche del 3 agosto 2026</title>
+<style>
+  :root {
+    --bg: #faf8f4; --ink: #2b2722; --muted: #6b6459; --accent: #b4552d;
+    --accent-soft: #f3e3d9; --card: #ffffff; --border: #e5ded2;
+    --code-bg: #f0ece3; --quote-bg: #f5f1e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1d1b18; --ink: #e8e3da; --muted: #a39b8d; --accent: #e08d5f;
+      --accent-soft: #3a2c22; --card: #26231f; --border: #3a362f;
+      --code-bg: #2e2a24; --quote-bg: #282420;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif; font-size: 17px; line-height: 1.65;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .8rem; letter-spacing: -0.01em; }
+  .subtitle { color: var(--muted); font-style: italic; margin: 0; }
+  h2 {
+    font-size: 1.35rem; margin: 2.6rem 0 1rem; padding-bottom: .4rem;
+    border-bottom: 2px solid var(--accent); letter-spacing: -0.01em;
+  }
+  h2 .num { color: var(--accent); font-weight: normal; margin-right: .5rem; }
+  h3 { font-size: 1.08rem; margin: 1.6rem 0 .5rem; }
+  p { margin: .7rem 0; }
+  a { color: var(--accent); }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .85em;
+    background: var(--code-bg); padding: .1em .35em; border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg); padding: .8rem 1rem; border-radius: 8px;
+    overflow-x: auto; font-size: .82rem; line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  blockquote {
+    margin: 1rem 0; padding: .8rem 1.1rem; background: var(--quote-bg);
+    border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; font-style: italic;
+  }
+  blockquote p { margin: 0; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: .35rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem; }
+  .table-wrap { overflow-x: auto; }
+  th, td {
+    text-align: left; padding: .55rem .7rem;
+    border-bottom: 1px solid var(--border); vertical-align: top;
+  }
+  th {
+    font-family: -apple-system, "Segoe UI", sans-serif; font-size: .76rem;
+    text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+  }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+  .note {
+    font-size: .9rem; color: var(--muted); background: var(--accent-soft);
+    padding: .5rem .9rem; border-radius: 8px; margin: .8rem 0 1.2rem;
+  }
+  .note::before { content: "Perché: "; font-weight: 700; color: var(--accent); }
+  .breaking {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid #b0483f; padding: .7rem 1rem;
+    border-radius: 8px; margin: 1rem 0;
+  }
+  .breaking .label {
+    display: block; font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin-bottom: .2rem;
+  }
+  footer {
+    margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+    font-size: .9rem; color: var(--muted);
+  }
+  @media print {
+    body { background: #fff; color: #000; font-size: 11pt; }
+    .page { max-width: none; padding: 0; }
+    h2 { break-after: avoid; }
+    blockquote, pre, .breaking { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>Modifiche del 3 agosto 2026</h1>
+  <p class="subtitle">Solo quello che è cambiato oggi: plugin <code>phased-workflow</code> 5.3.0 → 5.4.0, una sezione nuova nella guida, e la configurazione dello stile di risposta fuori dal repo.</p>
+</header>
+
+<h2><span class="num">1.</span>Plugin — 5.3.0 → 5.4.0</h2>
+<p>Nato da un audit di come sono scritte le skill del plugin stesso.</p>
+
+<h3>Le skill non partono più da sole</h3>
+<p>Una skill con una <code>description</code> nel frontmatter è <strong>model-invoked</strong>: l'agente può lanciarla di sua iniziativa. Con <code>disable-model-invocation: true</code> è <strong>user-invoked</strong>: ci arriva solo un <code>/nome</code> digitato.</p>
+<p>Erano model-invoked tutte e undici. Nove si digitano a mano, quindi nove ora sono user-invoked.</p>
+<p class="note">non è un risparmio di token — quello è rumore, ~190 token per turno in un system prompt in cache. È controllo. <code>/write-workflow</code> apre un branch e committa, <code>/finalize-workflow</code> riscrive la storia con uno squash: model-invoked, potevano partire da una frase di passaggio in chat, senza comando digitato e senza gate di approvazione.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Resta model-invoked</th><th>Perché deve restarlo</th></tr></thead>
+  <tbody>
+    <tr><td>execute-phase-agent</td><td><code>run-workflow.sh:163</code> la raggiunge da dentro un contratto <code>/goal</code> il cui corpo è prosa — <em>"Use the execute-phase-agent skill…"</em>. Quella è invocazione da modello.</td></tr>
+    <tr><td>repair-phase</td><td>Stesso meccanismo, via <code>REPAIR_PROMPT</code>.</td></tr>
+    <tr><td>resume-workflow</td><td>Il punto d'ingresso: l'unica che l'agente deve poter raggiungere da sé quando chiedi dove sta il lavoro. Ora porta una tabella <code>## The map</code> che nomina tutte le altre.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Applicare l'interruttore a tappeto — la mossa ovvia — avrebbe rotto la catena autonoma <strong>in silenzio</strong> su ogni CLI ≥ 2.1.139.</p>
+<div class="breaking">
+  <span class="label">Cambia per te</span>
+  Digitare <code>/finalize-workflow</code> funziona come prima. Dire <em>"finalizza il workflow"</em> in prosa non lo fa più partire. L'unico innesco in prosa che resta è <em>"dove siamo?"</em> → <code>resume-workflow</code>, che poi ti dice quale comando digitare. I launcher non sono toccati: <code>claude -p "/phased-workflow:&lt;skill&gt;"</code> funziona anche su una skill user-invoked (verificato).
+</div>
+
+<h3><code>/scope-workflow</code> — la skill nuova</h3>
+<p><code>/write-workflow</code> pretende già che ogni scelta di giudizio sia chiusa prima dell'esecuzione — <em>"A phase containing 'decide later' is not ready"</em> — ma applica la regola <strong>leggendo la conversazione</strong>. Se la conversazione era vaga non c'è niente da leggere: o inventa le decisioni, o scrive fasi con "decidere poi", violando la sua stessa regola.</p>
+<p><code>/scope-workflow</code> riempie quel buco. User-invoked, e produce <strong>solo comprensione</strong>: niente branch, niente file, niente codice. Un pre-flight guarda l'ingresso: se un piano esiste già sotto <code>.phased/active/</code> si ferma e ti manda su <code>/resume-workflow</code> o <code>/execute-phase</code>.</p>
+<pre><code>/scope-workflow "gestione listini"  →  /write-workflow  →  /run-workflow o /execute-phase
+       chiude le decisioni              le mette nel piano       esegue</code></pre>
+<p>Il passaggio non costa niente: <code>/write-workflow</code> legge dalla conversazione corrente, quindi definire il perimetro nella stessa chat gli lascia l'albero già risolto davanti. Quattro proprietà fanno il lavoro:</p>
+<ul>
+  <li><strong>Ogni domanda riempie un campo del piano.</strong> <code>Mode:</code>, <code>Decisions:</code>, <code>Pattern:</code>, <code>Files:</code>, <code>Done:</code> — la skill sa quale prima di chiedere, e questo rende le domande più strette di un interrogatorio nel vuoto. Un ramo senza campo e senza fase dove atterrare non è chiuso.</li>
+  <li><strong>Il fork del modo viene per primo.</strong> Interattivo o autonomo rimodella tutto quello che sta sotto: lo stesso lavoro si spezza in fasi diverse nei due casi. Deciderlo qui, con un consiglio derivato dal lavoro, evita che <code>/write-workflow</code> lo riscopra al suo Step 2.</li>
+  <li><strong>Un fatto si cerca, non si chiede.</strong> Cosa esiste oggi, dove sta, chi lo chiama: trovato con Grep/Read/<code>git log</code>/<code>gh issue view</code> e riportato con i path concreti, così una premessa sbagliata si corregge prima di costare un ramo intero di domande. All'utente vanno solo le <em>decisioni</em>, ordinate per cosa sbloccano — e l'albero cresce durante l'interrogatorio, non è fissato all'inizio.</li>
+  <li><strong>Chiusura nel vocabolario del piano.</strong> Ogni ramo finisce <em>deciso</em>, oppure rinviato come <code>Verify: deferred: needs Phase M</code>. <em>"Vediamo poi"</em> senza trigger non conta.</li>
+</ul>
+<p>Una variante che scrive ADR e glossario mentre interroga è stata valutata e scartata: il campo <code>Decisions:</code> già presente su ogni fase è lo stesso artefatto, messo dove l'esecutore lo legge davvero.</p>
+
+<h3>Razionale fuori dal runtime</h3>
+<p>Le skill contenevano passaggi che spiegano <em>perché</em> una cosa è così, o perché una cosa deliberatamente non c'è. L'agente li legge all'inizio di ogni fase e non cambiano niente di quello che fa. Ora stanno in <code>docs/design-notes.md</code>, che a runtime non viene mai letto.</p>
+
+<h3><code>refs/auto-mode-scope.md</code></h3>
+<p>La lista dei permessi di auto mode erano 30 righe dentro <code>refs/common.md</code>, che otto skill leggono all'avvio — ma solo due la consumano. Spostata in un file suo, citato da quelle due. <code>common.md</code>: 256 → 229 righe.</p>
+
+<h2><span class="num">2.</span>Guida al prompting</h2>
+<p>Il commit aggiunge i due file interi perché erano untracked, ma <strong>di oggi sono ~30 righe</strong>: la sottosezione §2 <em>"Le tue regole di stile stanno quasi sempre nel posto sbagliato"</em> (righe 74-102 del <code>.md</code>) più una voce nella checklist anti-pattern.</p>
+<p>Il punto della sezione: quasi tutti scrivono le regole di stile in <code>CLAUDE.md</code>, che è il posto più debole dei tre — tecnicamente un messaggio utente dopo il system prompt, che nelle conversazioni lunghe si diluisce.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Dove</th><th>Come agisce</th><th>Tenuta</th></tr></thead>
+  <tbody>
+    <tr><td>CLAUDE.md</td><td>Messaggio utente dopo il system prompt</td><td>Debole: aiuta, non elimina</td></tr>
+    <tr><td>Output style</td><td>Modifica il <strong>system prompt</strong>, con promemoria re-iniettati durante la conversazione</td><td>La più solida documentata</td></tr>
+    <tr><td>Hook <code>UserPromptSubmit</code></td><td>Re-inietta a ogni turno come system-reminder</td><td>Forte in teoria, bug aperti in pratica</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="num">3.</span>Fuori dal repo — configurazione personale</h2>
+<p>Tre file sotto <code>~/.claude/</code>, non versionati e non parte del plugin.</p>
+<ul>
+  <li><strong><code>output-styles/asciutto.md</code></strong> (nuovo) — consegna lo scope chiesto, esito in prima riga, spiegazioni come riassunti salvo richiesta, e la risposta finisce dove finisce. Ha un blocco di persistenza (attivo turno uno e turno cinquanta), un confine sugli artefatti persistiti (commit e docs restano in prosa normale) e una sezione <em>"dove aprirsi"</em>, la cui prima voce è: <em>domanda ripetuta → la versione corta non è arrivata, spiega esteso, e trattala come un dato sulla risposta precedente, non su chi legge</em>.</li>
+  <li><strong><code>CLAUDE.md</code></strong> — la sezione <code>## Output</code> è diventata un puntatore di tre righe allo stile. Le regole vivevano in due posti, ora in uno.</li>
+  <li><strong><code>settings.json</code></strong> — aggiunta <code>"outputStyle": "asciutto"</code>, così vale in ogni progetto senza riattivarlo a mano. <code>/output-style</code> da sessione interattiva salverebbe invece nel <code>settings.local.json</code> del singolo repo.</li>
+</ul>
+<p>La divisione dei compiti: <code>/scope-workflow</code> è disciplina sul <strong>chiedere</strong>, <code>asciutto</code> è disciplina sul <strong>rispondere</strong>. Deliberatamente non uniti — dentro <code>/scope-workflow</code> lo stile stringato varrebbe solo durante una sessione di scoping, cioè l'unico momento in cui è già stringato.</p>
+
+<h2><span class="num">4.</span>Come aggiornare</h2>
+<p>I commit sono locali, non ancora su GitHub. Il plugin arriva dal marketplace <code>fporcari/claude-phased-workflow</code>, quindi prima il push:</p>
+<pre><code>git push origin main</code></pre>
+<pre><code>claude plugin marketplace update claude-phased-workflow
+claude plugin update phased-workflow@claude-phased-workflow</code></pre>
+<p>Poi <strong>riavvia Claude Code</strong> — l'update lo dice esplicitamente, <em>"restart required to apply"</em>. Verifica con:</p>
+<pre><code>claude plugin details phased-workflow@claude-phased-workflow</code></pre>
+<p>Deve riportare 5.4.0 e dodici skill, <code>scope-workflow</code> inclusa. Lo stile di risposta invece è già attivo dalla prossima sessione, senza aggiornare niente: sta in <code>~/.claude/</code>.</p>
+
+<footer>
+  <p><strong>File toccati oggi</strong></p>
+  <ul>
+    <li>Nel repo: <code>plugins/phased-workflow/</code> (12 file), <code>docs/design-notes.md</code>, <code>docs/release-5.4.0.md</code>, <code>docs/guida-prompting-e-workflow.{md,html}</code></li>
+    <li>Fuori: <code>~/.claude/output-styles/asciutto.md</code>, <code>~/.claude/CLAUDE.md</code>, <code>~/.claude/settings.json</code></li>
+    <li>Dettaglio esteso del plugin: <code>docs/release-5.4.0.md</code></li>
+  </ul>
+</footer>
+
+</div>
+</body>
+</html>

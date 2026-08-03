@@ -1,10 +1,8 @@
-# 5.4.0 — invocation discipline, and `/grill`
+# 5.4.0 — invocation discipline, and `/scope-workflow`
 
-Two changes, from an audit of the plugin against Matt Pocock's
-[`writing-great-skills`](https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-great-skills/SKILL.md):
-the skills stop being reachable by the model when only a human should reach them,
-and the interrogation step that was missing in front of `/write-workflow` now
-exists.
+Two changes, from an audit of how the plugin's own skills are written: they stop
+being reachable by the model when only a human should reach them, and the
+interrogation step that was missing in front of `/write-workflow` now exists.
 
 ## 1. Invocation: 9 of 12 skills are now user-invoked
 
@@ -69,7 +67,7 @@ cited by those two. `common.md`: 256 → 229 lines.
 Correction to the first audit pass, which called this section a no-op: it is real
 reference with real consumers. It needed disclosing one rung down, not deleting.
 
-## 4. `/grill` — the interrogation before the plan
+## 4. `/scope-workflow` — the interrogation before the plan
 
 `/write-workflow` already requires every judgment call to be settled before
 execution:
@@ -82,37 +80,48 @@ Good rule, but it applies it by **reading the conversation**. When the conversat
 was vague there is nothing to read: it either invents the decisions or writes phases
 with "decide later", violating its own rule.
 
-`/grill` fills that gap. It is user-invoked, generic (runs on any idea, needs no
-workflow), and produces **understanding only** — no branch, no file, no code. The
-handoff costs nothing: `/write-workflow` reads from the current conversation, so
-grilling in the same chat leaves the tree already resolved in front of it.
+`/scope-workflow` fills that gap. It is user-invoked and produces **understanding
+only** — no branch, no file, no code. The handoff costs nothing: `/write-workflow`
+reads from the current conversation, so scoping in the same chat leaves the tree
+already resolved in front of it.
 
 ```
-/grill "gestione listini"  →  /write-workflow  →  /run-workflow or /execute-phase
-   settles the decisions       records them          executes
+/scope-workflow "gestione listini"  →  /write-workflow  →  /run-workflow or /execute-phase
+        settles the decisions            records them          executes
 ```
 
-Three properties do the work:
+Four properties do the work:
 
+- **Every question fills a field of the plan.** `Mode:`, `Decisions:`, `Pattern:`,
+  `Files:`, `Done:` — the skill knows which one before it asks, which makes the
+  questions narrower than interrogating in the abstract. A branch with no field and
+  no phase to land in is not settled.
+- **The mode fork leads.** Interactive or autonomous reshapes everything below it:
+  the same work splits into different phases under the two. Settling it first, with
+  a recommendation derived from the work, means `/write-workflow` no longer
+  rediscovers it at its own Step 2.
 - **A fact is looked up, never asked.** What exists today, where it lives, who
   calls it — found with Grep/Read/`git log`/`gh issue view`, and reported with
   concrete paths so a wrong premise gets corrected before it costs a whole branch
-  of questions. Only *decisions* go to the user.
-- **Ordered by what they unlock.** A decision that reshapes the ones below it comes
-  first. A batch of questions cannot do this: it does not yet know which later
-  question depends on which answer. The tree also grows during the interrogation
-  rather than being fixed up front.
-- **A checkable close.** Every branch ends **decided** or **dated** — deferred with
-  the concrete thing that will settle it. *"Vediamo poi"* with no trigger does not
-  count as settled, the same standard by which `/write-workflow` rejects
+  of questions. Only *decisions* go to the user, ordered by what they unlock: a
+  decision that reshapes the ones below it comes first. A batch of questions cannot
+  do that — it does not yet know which later question depends on which answer — and
+  the tree grows during the interrogation rather than being fixed up front.
+- **A close in the plan's own vocabulary.** Every branch ends **decided**, or
+  deferred as a `Verify: deferred: needs Phase M`. *"Vediamo poi"* with no trigger
+  does not count, the same standard by which `/write-workflow` rejects
   "decide later".
+
+A pre-flight guards the entry: if a plan already resolves under `.phased/active/`,
+scoping stops and points at `/resume-workflow` or `/execute-phase`. One branch, one
+plan.
 
 ### Worked example
 
 Starting point: you have "gestione listini prezzi" in your head and have never
 decomposed it.
 
-> **You:** `/grill` gestione listini prezzi per il pacchetto vendite
+> **You:** `/scope-workflow` gestione listini prezzi per il pacchetto vendite
 
 > **Claude** — Step 1, looks up rather than asks: reads `packages/vendite/model/`,
 > finds `articolo.py` and `cliente.py`, no listino table, and a `prezzo` column on
@@ -121,15 +130,23 @@ decomposed it.
 > Trovato: `prezzo` è oggi una colonna su `articolo`, usata in 3 punti
 > (`ordine_riga.py:88`, `fattura_riga.py:112`, `webpages/articolo.py:41`).
 >
-> **Domanda 1 — il prezzo resta su `articolo` o si sposta sul listino?**
+> **Domanda 1 — interattivo o autonomo?**
+> Consiglio: **interattivo**. Motivo: c'è una UI di gestione listini da guardare, e
+> "il form si legge bene" non è un test. Le fasi si chiuderanno dove esiste qualcosa
+> di apribile.
+> *(decide come si spezzano tutte le fasi — la faccio prima)*
+
+> **You:** interattivo
+
+> **Claude — Domanda 2 — il prezzo resta su `articolo` o si sposta sul listino?**
 > Consiglio: **si sposta**, e `articolo.prezzo` diventa un alias deprecato che legge
 > dal listino di default. Motivo: se resta, hai due fonti di verità e il primo bug è
 > "quale vince".
-> *(questa decide tutte le altre — la faccio prima)*
+> *(questa decide tutte quelle sul modello — la faccio prima)*
 
 > **You:** si sposta
 
-> **Claude — Domanda 2 — un listino per cliente, o listini condivisi con
+> **Claude — Domanda 3 — un listino per cliente, o listini condivisi con
 > assegnazione?**
 > Consiglio: **listini condivisi** (`listino` ↔ `cliente` many-to-one). Motivo: 200
 > clienti con 3 fasce prezzo diventano 200 listini duplicati.
@@ -137,26 +154,26 @@ decomposed it.
 > **You:** condivisi, ma serve anche l'override sul singolo cliente
 
 > **Claude:** Allora sono **due** meccanismi, e devo sapere quale vince.
-> **Domanda 3 — validità temporale: la vuoi ora o dopo?**
+> **Domanda 4 — validità temporale: la vuoi ora o dopo?**
 > Consiglio: **ora**, ma solo su `listino` (date da/a), non sull'override. Motivo:
 > aggiungerla dopo significa migrare le righe esistenti.
-> *(se dici "dopo", la domanda 4 sull'indice di lookup cambia)*
+> *(se dici "dopo", la domanda 5 sull'indice di lookup cambia)*
 
-Note what happened at Domanda 2: the answer opened ground that was not mapped
+Note what happened at Domanda 3: the answer opened ground that was not mapped
 (two mechanisms, one precedence rule), so the tree grew a subtree. A parallel batch
 of four questions could not have discovered that.
 
 It closes on a recap in Italian — *Deciso / Rinviato / Fatti su cui poggia* — and
 waits for you to confirm the shared understanding before anything else happens.
 
-### `grill-with-docs`, not taken
+### Writing ADRs as it goes, not taken
 
-Matt's variant writes ADRs and a glossary as it interrogates. Skipped: the
-`Decisions:` field already on every phase is the same artifact, placed where the
-executor actually reads it, and `/finalize-workflow` Step 5 already captures the
-durable lessons. Decisions the grilling cannot close because they need eyes on
-something that does not exist yet have a home too — `Verify: deferred: needs
-Phase M`.
+A variant that writes ADRs and a glossary while it interrogates was considered and
+skipped: the `Decisions:` field already on every phase is the same artifact, placed
+where the executor actually reads it, and `/finalize-workflow` Step 5 already
+captures the durable lessons. Decisions the interrogation cannot close because they
+need eyes on something that does not exist yet have a home too — `Verify: deferred:
+needs Phase M`.
 
 ## Companion, outside this repo
 
@@ -166,7 +183,7 @@ explanations as summaries by default, and end when the answer ends. It is not pa
 of the plugin: verbosity happens on every turn, so the fix belongs in the system
 prompt, not in a skill you would have to invoke first.
 
-The division of labour: `/grill` is discipline about **asking** (one question at a
+The division of labour: `/scope-workflow` is discipline about **asking** (one question at a
 time, recommendation included, facts looked up), `asciutto` is discipline about
-**answering**. Siblings, deliberately not merged — inside `/grill` the terse style
-would apply only during a grilling, which is the one moment it is already terse.
+**answering**. Siblings, deliberately not merged — inside `/scope-workflow` the terse style
+would apply only during a scoping session, which is the one moment it is already terse.
