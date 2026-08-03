@@ -1,5 +1,6 @@
 ---
 description: Run all remaining phases autonomously — launches a new claude session per phase with correct model
+disable-model-invocation: true
 allowed-tools: Bash, Read, Monitor, PushNotification
 ---
 
@@ -27,7 +28,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
 3. Any phase failing the check → **stop and refine interactively**, one targeted question at a time, confirming each rewritten phase before the next. When the gap is a missing `Pattern:`, ask the user for an example; if they don't have one, propose 2–3 candidates from the repo to confirm.
 
-4. **Permission scope**: sub-sessions run `--permission-mode auto`; `${CLAUDE_PLUGIN_ROOT}/refs/common.md` lists the categories its classifier is expected to deny, together with this plugin's own convention for writing phases. For each phase needing one, report it and let the user choose: rephrase to stop before it, drop the phase, or run it by hand. Never silently rewrite a phase to hide a blocked operation.
+4. **Permission scope**: sub-sessions run `--permission-mode auto`; `${CLAUDE_PLUGIN_ROOT}/refs/auto-mode-scope.md` lists the categories its classifier is expected to deny, together with this plugin's own convention for writing phases. For each phase needing one, report it and let the user choose: rephrase to stop before it, drop the phase, or run it by hand. Never silently rewrite a phase to hide a blocked operation.
 
 5. **Fill the execution config table** (create it if the plan has none — it drives model, effort and cap per phase).
 

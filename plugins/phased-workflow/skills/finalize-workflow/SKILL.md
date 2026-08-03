@@ -1,5 +1,6 @@
 ---
 description: Finalize the workflow - verify all phases, prepare final commit
+disable-model-invocation: true
 allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent
 ---
 

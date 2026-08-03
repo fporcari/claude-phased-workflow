@@ -1,5 +1,6 @@
 ---
 description: Execute the next phase from the active work plan
+disable-model-invocation: true
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill
 ---
 

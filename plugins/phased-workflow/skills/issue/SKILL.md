@@ -1,6 +1,7 @@
 ---
 description: Load and analyze a GitHub issue — analysis only, the work plan is created via /write-workflow
 argument-hint: <issue-number>
+disable-model-invocation: true
 allowed-tools: Bash(gh:*), Read, Grep, Glob
 ---
 

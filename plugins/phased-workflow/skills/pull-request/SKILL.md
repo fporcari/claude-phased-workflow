@@ -1,6 +1,7 @@
 ---
 description: Create a Pull Request after thorough review as a meticulous maintainer
 argument-hint: [issue-number]
+disable-model-invocation: true
 allowed-tools: Bash(gh:*), Bash(git:*), Bash(cat:*), Bash(python3:*), Read, Grep, Glob, AskUserQuestion, Skill
 ---
 

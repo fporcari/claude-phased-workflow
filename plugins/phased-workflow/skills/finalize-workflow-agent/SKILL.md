@@ -1,5 +1,6 @@
 ---
-description: Read-only finalize verification in a clean sub-session — verify every phase's Done:, review the whole workflow diff, return classified findings. Never touches history.
+description: Read-only finalize verification in a clean sub-session — returns classified findings, never touches history
+disable-model-invocation: true
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Grep, Glob
 ---
 

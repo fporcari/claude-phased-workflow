@@ -1,5 +1,6 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
+disable-model-invocation: true
 allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent
 ---
 
@@ -47,8 +48,6 @@ The answer routes the rest of this skill:
 - **Autonomous** → read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
 - **Interactive** → continue with this file's format; the plan carries `Mode: interactive`.
 
-A plan with no `Mode:` header stays legal and reads as interactive, but a plan written here always states its header explicitly.
-
 ## Step 3: Build the plan
 
 Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
@@ -70,8 +69,6 @@ Either way:
 
 Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
 
-*The cost of the interactive boundary, chosen deliberately:* a big phase runs in one chat, whose context can fill. `/execute-phase` offers the WIP escape hatch (`[>]` plus a `> WIP:` note) and a new chat resumes from it — which makes that path load-bearing rather than theoretical.
-
 **Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list.
 
 **Present the plan in Italian** and iterate until the user approves.
@@ -91,8 +88,6 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 **On the base branch** → `git switch -c wf/<slug>`, no question asked.
 
 **On a feature branch** → the default is to **adopt it** as the workflow branch: `.phased/` goes there, no new branch, and `Parent:` is that branch's own base. You created that branch on purpose; nesting another inside it buys nothing. The alternative, offered in the branch line above, is `wf/<slug>` off it — take it when the workflow is a distinct chunk the user may want to merge or drop on its own; the current branch then becomes the `Parent:`.
-
-Adoption is safe because the workflow's base is the plan commit, not the branch point (see `common.md`): whatever the branch already carried stays outside the workflow.
 
 **No worktree here.** Planning creates the branch and the plan, nothing else: the workspace belongs to execution. `/run-workflow` attaches or creates the worktree itself when the run needs one, and `/finalize-workflow` removes it — the user never manages it.
 
@@ -130,7 +125,7 @@ Mode: interactive
 
 Phases run strictly in order: a phase starts only when every phase above it is `[x]`.
 
-No "Suggested execution config" table on interactive plans: nothing reads it. No per-phase model hints either — interactive execution follows `/execute-phase`'s own rule (`opus` floor, never `sonnet`), so a hint could only repeat it or contradict it. A phase mechanical enough to tempt a `sonnet` hint is a phase that belongs on the autonomous side of the Step 2 fork.
+Write no execution config table and no per-phase model hints on an interactive plan.
 
 ## Step 6: Commit and close
 

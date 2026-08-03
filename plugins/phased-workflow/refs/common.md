@@ -31,9 +31,7 @@ git repository root:
     notes.md              # free-form annotations
     verify.md             # human checks a phase deferred to a wider context
                           #   (see "Verification: Done: and Verify:" below)
-    log/phase-N.txt       # stdout of each /run-workflow sub-session (.txt,
-                          #   not .log: `*.log` sits in most global gitignores
-                          #   and these are meant to be committed)
+    log/phase-N.txt       # stdout of each /run-workflow sub-session, committed
   done/<slug>/            # moved here by /finalize-workflow
 ```
 
@@ -95,8 +93,7 @@ git log -1 --diff-filter=A --format=%H -- .phased/active/<slug>/plan.md
 
 On a dedicated `wf/` branch the two coincide. On an adopted branch that
 already carried commits, only this marker separates the workflow from the
-work that preceded it — `/finalize-workflow` consolidates from here, and
-without it the interleaving ambiguity comes straight back.
+work that preceded it, and `/finalize-workflow` consolidates from here.
 
 **The plan is a tracked file**, so any skill that edits it dirties the tree.
 Edits made outside a phase — a `/resume-workflow` re-phasing, a
@@ -175,7 +172,6 @@ instead of scattering checks the user cannot yet perform.
 
 The mechanism is **thick in interactive mode and thin in autonomous, never
 absent**: an autonomous project startup still wants human eyes on the result.
-One mechanism in two thicknesses beats two that drift apart.
 
 `verify.md` and `review.md` are siblings, not duplicates: `review.md` says
 *"here is what I noticed and will not decide for you"* — the user reads and
@@ -224,33 +220,10 @@ How a skill surfaces state depends on whether the user is at the keyboard:
   per-phase progress is not pushed. Each message leads with what the user would
   act on, one line under 200 characters, no markdown.
 
-## Auto-mode permission policy
+## Auto-mode permission scope
 
-Sub-sessions launch with `--permission-mode auto`. The classifier that judges
-each call is Claude Code's own — this plugin ships no hooks and no permission
-rules — so the list below is a *description* of what that mode is expected to
-deny plus the *convention* this plugin recommends when writing phases, not a
-guarantee the plugin itself can enforce.
-
-Under that mode, routine local operations in project scope (git
-status/log/diff/show, edits in the working directory, push to the working
-branch, manifest-driven installs) are auto-conceded, and these categories are
-expected to be denied:
-
-- `git push --force` or push to main/master/default branch — blocked
-  (push to the working branch is fine)
-- `pip install <pkg>` / `npm install <pkg>` / `brew install <pkg>` for
-  agent-chosen packages (typosquat risk) — blocked. Manifest-driven
-  installs (`pip install -r requirements.txt`, `npm install` without
-  args) are auto-allowed.
-- `rm -rf` / `git reset --hard` / `git clean -fdx` / `mv` / `cp` onto
-  **pre-existing** files — blocked. Files the agent itself created in the
-  session are fine.
-- Production deploys, prod db migrations, `kubectl exec` / `ssh`
-  targeting prod hosts — blocked
-- `curl | bash` / `iex (iwr ...)` / running code from external sources —
-  blocked
-- Self-modification of `~/.claude/settings.json` or other agent config —
-  blocked
-- Data exfiltration, public repo creation, writing to external systems
-  (Jira/Linear/Slack/PagerDuty/…) — blocked
+What `--permission-mode auto` is expected to deny, and the convention for
+writing phases around it, live in
+`${CLAUDE_PLUGIN_ROOT}/refs/auto-mode-scope.md` — read it only when deciding
+whether a phase can run unattended (`/run-workflow` pre-flight,
+`/write-workflow` on the autonomous branch).

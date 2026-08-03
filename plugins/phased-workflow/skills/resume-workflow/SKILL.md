@@ -1,5 +1,5 @@
 ---
-description: Locate the active workflow and report where it stands — audit plan vs git state, detect drift and stale phases, apply approved plan repairs. Also the "just tell me where we are" report when nothing is broken.
+description: Locate the active phased workflow and report where it stands, then name the skill that takes it forward. The entry point of the phased-workflow plugin, and the only skill in it the agent may reach on its own. Use when the user asks where the work stands, what the next phase is, whether a workflow is running, why a phase is stuck or failed, how to resume after an interrupted session, or mentions `.phased/` or a `wf/` branch.
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQuestion
 ---
 
@@ -10,6 +10,22 @@ Supervision and resume view of the work plan. **Read-only on source code** — t
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+
+## The map
+
+Every other skill in this plugin is **user-invoked**: only the user typing its name reaches it. Naming the right one is part of this skill's job — in Step 3's *Prossimo passo*, and whenever the user asks what to run.
+
+| Skill | Reach for it when |
+|---|---|
+| `/grill` | the work is still vague — settle the decisions before planning |
+| `/write-workflow` | there is no plan yet, and the work was just discussed |
+| `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
+| `/issue` | the work starts from a GitHub issue (analysis only) |
+| `/execute-phase` | run the next phase in this chat, with an approval gate |
+| `/run-workflow` | run every remaining phase unattended (`Mode: autonomous` plans) |
+| `/repair-phase` | a phase is `[!]` and needs fresh eyes |
+| `/finalize-workflow` | every phase is `[x]` — consolidate into one commit |
+| `/pull-request` | the branch is ready to open a PR |
 
 ## Step 1: Find the plan and the base
 
