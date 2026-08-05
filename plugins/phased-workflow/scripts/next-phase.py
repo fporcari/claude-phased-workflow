@@ -45,6 +45,7 @@ from datetime import datetime
 PHASE_RE = re.compile(r'^- \[([ x!~>])\] \*\*Phase (\d+)\*\*:\s*(.*)$')
 TAG_RE = re.compile(r'`(vast)`')
 EXEC_RE = re.compile(r'In execution since\s+(\S+)')
+WIP_COMMIT_RE = re.compile(r'commit:\s*([0-9a-f]{7,40})\b')
 
 
 class Phase:
@@ -55,6 +56,7 @@ class Phase:
         self.title = TAG_RE.sub('', rest).strip()
         self.since = None
         self.wip = False
+        self.wip_commit = None
 
     @property
     def age_hours(self):
@@ -80,12 +82,25 @@ def parse_lines(lines):
                 phases[-1].since = m.group(1)
             if 'WIP:' in line:
                 phases[-1].wip = True
+                cm = WIP_COMMIT_RE.search(line)
+                if cm:
+                    phases[-1].wip_commit = cm.group(1)
     return phases
 
 
 def parse(path):
     with open(path, encoding='utf-8') as f:
         return parse_lines(f)
+
+
+def wip_desc(p):
+    """Human line for a [>] phase's WIP evidence — commit ref included,
+    because the resume session diffs from it instead of trusting prose."""
+    if not p.wip:
+        return 'wip: no'
+    if p.wip_commit:
+        return f'wip: yes, wip-commit: {p.wip_commit}'
+    return 'wip: yes (no commit ref)'
 
 
 def blockers(phases, i):
@@ -194,7 +209,7 @@ def describe(phases, i):
         age = p.age_hours
         age_s = f'{age:.1f}h' if age is not None else 'unknown'
         parts.append(f'(since: {p.since or "?"}, age: {age_s}, '
-                     f'wip: {"yes" if p.wip else "no"})')
+                     f'{wip_desc(p)})')
     if p.status == ' ':
         blocked_by = blockers(phases, i)
         parts.append(f'[blocked by: {",".join(map(str, blocked_by))}]'
@@ -212,7 +227,7 @@ def recommend(phases):
         age = p.age_hours
         age_s = f'{age:.1f}h' if age is not None else 'unknown'
         return (f'resume-candidate: {p.number} '
-                f'(age: {age_s}, wip: {"yes" if p.wip else "no"})')
+                f'(age: {age_s}, {wip_desc(p)})')
     stuck = [p for p in phases if p.status in '!~']
     if stuck and any(p.status == ' ' for p in phases):
         nums = ' '.join(f'{p.number}[{p.status}]' for p in stuck)
@@ -281,6 +296,7 @@ def validate(path, phases, text):
     mode_value = None
     mode_lineno = None
     heading = None
+    phase_linenos = {}
     in_work_plan = False
     work_plan_lineno = None
     config_lineno = None
@@ -327,6 +343,7 @@ def validate(path, phases, text):
 
         m = PHASE_RE.match(line)
         if m:
+            phase_linenos.setdefault(int(m.group(2)), idx)
             for tok in BACKTICK_RE.findall(m.group(3)):
                 if TAG_RE.fullmatch('`%s`' % tok):
                     continue
@@ -355,6 +372,24 @@ def validate(path, phases, text):
         add(1, 'error', 'no "## Work Plan" section')
     if not has_parent:
         add(1, 'error', 'no "Parent:" line')
+
+    in_exec = [p for p in phases if p.status == '>']
+    if len(in_exec) > 1:
+        add(work_plan_lineno or 1, 'warning',
+            'several phases in execution ([>]): %s — one chat, one phase; '
+            'the extras are likely dead sessions to reset'
+            % ', '.join(str(p.number) for p in in_exec))
+    for p in in_exec:
+        ln = phase_linenos.get(p.number, work_plan_lineno or 1)
+        if not p.since:
+            add(ln, 'warning',
+                'phase %d is [>] with no "> In execution since" note — '
+                'its age cannot be reported' % p.number)
+        if p.wip and not p.wip_commit:
+            add(ln, 'warning',
+                'phase %d has a "> WIP:" note with no commit: ref — resume '
+                'will trust prose instead of a diff (format: done: ... | '
+                'missing: ... | next: ... | commit: <hash>)' % p.number)
 
     if not phases:
         add(work_plan_lineno or 1, 'error', 'no phases in ## Work Plan')

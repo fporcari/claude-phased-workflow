@@ -25,7 +25,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 
 No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work. If the plan lives in another checkout (or the user means a different workflow), resolve via `--plans` and anchor every command to that plan's root — `common.md` → *Plan location*.
 
-Act on `recommendation:` — `next: N` → proceed; `resume-candidate: N` → ask whether to take over a phase another chat left `[>]`; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop.
+Act on `recommendation:` — `next: N` → proceed; `resume-candidate: N` → ask whether to take over a phase another chat left `[>]` — on yes, resume per the shared core (`refs/phase-execution.md` → *WIP checkpoints*): the `> WIP:` note and its `commit:` are the evidence, the diff decides what is already done; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop.
 
 Mark the phase `[>]` with `> In execution since <ISO timestamp>`.
 
@@ -45,7 +45,7 @@ Present in ONE message: what the phase will do, the files to create/modify/delet
 
 ## Step 4: Execute
 
-Implement only this phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it.
+Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it.
 
 ## Step 5: Verify
 
@@ -67,12 +67,12 @@ Then summarise in Italian: what was done, test results, and the manual checks le
 
 ## Context window
 
-The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ Il contesto si sta riempiendo. Apri una nuova chat e rilancia /execute-phase. Salvo il lavoro parziale in un commit prima?"* On yes: `git add -A && git commit -m "wf(phase N): partial — <title>"`, then keep `[>]` and add `> WIP: <what is done, what remains>`.
+The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ Il contesto si sta riempiendo. Apri una nuova chat e rilancia /execute-phase. Salvo il lavoro parziale in un commit prima?"* On yes: checkpoint exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
 
 ## Rules
 
 - NEVER edit before the Step 3 approval; the `vast` fan-out never bypasses it
 - ONE phase per invocation; no out-of-scope refactoring
 - After approval, no further questions except the Step 4 blocker policy
-- ONE commit per phase, at Step 6 and nowhere else
-- If the session dies with the plan still writable, reset `[>]` to `[ ]` with `> Execution interrupted, phase available for retry` — and commit that reset as `wf: reset phase N` (the plan is tracked)
+- ONE phase commit per phase, at Step 6 — WIP checkpoints (shared core) are `partial` commits, not phase commits
+- If the session dies with the plan still writable and NO checkpoint exists, reset `[>]` to `[ ]` with `> Execution interrupted, phase available for retry` — and commit that reset as `wf: reset phase N` (the plan is tracked). With a checkpoint, leave `[>]` and its `> WIP:` note in place: they are the handoff

@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 Execute ONE phase of the active plan unattended: implement, test, record the outcome, commit, exit.
 
-**Base skill: execute-phase** — the same work with nobody to answer a question. This variant states only the unattended constraints; the mechanics shared by both modes (phase selection, implementation discipline, outcome formats, the phase commit, the WIP escape hatch) live in `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` and are not restated here.
+**Base skill: execute-phase** — the same work with nobody to answer a question. This variant states only the unattended constraints; the mechanics shared by both modes (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` and are not restated here.
 
 **Usage:** `claude -p '/execute-phase-agent'` — or `/run-workflow` for the whole plan.
 

@@ -40,8 +40,14 @@
 # the S7b live repair run on the pre-2.1.139 path). S28 checks the per-model
 # --append-system-prompt steering: live (each phase session carries the common
 # steer plus its own model's line, never another's) and static (both repair
-# call sites append one too). S16 retired with the KB mirror in 5.0.0; the
-# number stays vacant.
+# call sites append one too). S29 checks the resume evidence:
+# live via direct invocation (the selector reports the WIP commit ref, the
+# validator warns — never blocks — on the three states that leave a resume
+# session blind: several [>], a [>] with no "In execution since", a WIP note
+# with no commit: ref; a healthy [>] draws zero warnings) and static (the
+# structured > WIP: format is single-source in refs/phase-execution.md,
+# cited by /execute-phase, never restated). S16 retired with the KB mirror
+# in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
@@ -1215,6 +1221,69 @@ assert "S28: the sonnet phase does not carry the fable steer" \
   '! grep -- "--model sonnet" .claude/invocations.log | grep -q "re-derive decisions"'
 assert "S28: both repair call sites append a steer" \
   '[ "$(grep -c -- "--append-system-prompt \"\$STEER_COMMON" "$RUNNER_SRC")" = 2 ]'
+
+echo "== S29: the resume path leaves machine-readable evidence =="
+# A [>] phase is resumed by a session that was not there: the > WIP: note's
+# commit: ref is the hash it diffs from instead of trusting prose. Live half:
+# the selector surfaces that ref, and the validator warns — never blocks — on
+# the three states that leave a resume blind. Static half: the structured
+# format lives once, in refs/phase-execution.md, and /execute-phase cites it.
+NEXTPHASE="$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py"
+S29_DIR="$OT/s29"; mkdir -p "$S29_DIR"
+
+cat > "$S29_DIR/healthy.md" <<'EOF'
+# Context: s29
+Parent: main
+Mode: interactive
+
+## Work Plan
+- [x] **Phase 1**: done phase
+  > Done: it works
+  > Files: a.py
+- [>] **Phase 2**: big phase
+  > In execution since 2026-01-01T10:00:00
+  > WIP: done: schema landed | missing: the grid | next: wire the store | commit: abc1234
+EOF
+S29_OUT="$(python3 "$NEXTPHASE" "$S29_DIR/healthy.md" 2>&1)"
+assert "S29a: the resume-candidate line carries the WIP commit ref" \
+  'printf "%s" "$S29_OUT" | grep -q "resume-candidate: 2 (age: .*wip: yes, wip-commit: abc1234)"'
+S29_VOUT="$(python3 "$NEXTPHASE" --validate "$S29_DIR/healthy.md" 2>&1)"; S29_VRC=$?
+assert "S29b: healthy [>] evidence draws zero warnings (exit 0)" \
+  '[ "$S29_VRC" = 0 ] && printf "%s" "$S29_VOUT" | grep -q "0 error(s), 0 warning(s)"'
+
+cat > "$S29_DIR/blind.md" <<'EOF'
+# Context: s29
+Parent: main
+Mode: interactive
+
+## Work Plan
+- [>] **Phase 1**: no since note
+  > WIP: did some stuff, dunno
+- [>] **Phase 2**: second in-exec
+  > In execution since 2026-01-01T10:00:00
+EOF
+S29_BOUT="$(python3 "$NEXTPHASE" --validate "$S29_DIR/blind.md" 2>&1)"; S29_BRC=$?
+assert "S29c: several [>] phases draw the dead-session warning" \
+  'printf "%s" "$S29_BOUT" | grep -q "several phases in execution (\[>\]): 1, 2"'
+assert "S29d: a [>] with no In-execution-since note is named" \
+  'printf "%s" "$S29_BOUT" | grep -q "phase 1 is \[>\] with no .> In execution since."'
+assert "S29e: a WIP note with no commit: ref is named, with the format" \
+  'printf "%s" "$S29_BOUT" | grep -q "phase 1 has a .> WIP:. note with no commit: ref" && printf "%s" "$S29_BOUT" | grep -q "commit: <hash>"'
+assert "S29f: resume-evidence findings warn but never block (exit 0)" \
+  '[ "$S29_BRC" = 0 ]'
+S29_SOUT="$(python3 "$NEXTPHASE" "$S29_DIR/blind.md" 2>&1)"
+assert "S29g: the status line says out loud that the commit ref is missing" \
+  'printf "%s" "$S29_SOUT" | grep -q "wip: yes (no commit ref)"'
+
+# Static half: the format is single-source and cited, not restated.
+S29_REF="$TESTDIR/../../plugins/phased-workflow/refs/phase-execution.md"
+S29_SKILL="$TESTDIR/../../plugins/phased-workflow/skills/execute-phase/SKILL.md"
+assert "S29h: the structured > WIP: format lives in phase-execution.md" \
+  'grep -q "> WIP: done: .*| missing: .*| next: .*| commit: " "$S29_REF"'
+assert "S29h: phase-execution.md declares itself the single source" \
+  'grep -q "single source of its format" "$S29_REF"'
+assert "S29i: /execute-phase cites WIP checkpoints and restates no format" \
+  'grep -q "WIP checkpoints" "$S29_SKILL" && ! grep -q "> WIP: <" "$S29_SKILL" && ! grep -q "> WIP: done:" "$S29_SKILL"'
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
