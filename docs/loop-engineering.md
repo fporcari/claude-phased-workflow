@@ -183,7 +183,7 @@ mediocrity.
 Five test tiers cover the chain (2026-07):
 
 1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`),
-   **124 assertions over 23 scenarios**, in three kinds. *Mock-driven* (a mock
+   **171 assertions over 27 scenarios**, in three kinds. *Mock-driven* (a mock
    `claude` binary drives the run-workflow script, a shipped file since
    4.0.0): /goal call shape, model/effort/cap selection (fable cap doubled,
    `xhigh` → 250), repair success resuming the loop, repair failure stopping
@@ -202,11 +202,17 @@ Five test tiers cover the chain (2026-07):
    contract's per-phase-commit clause intact (S14), every skill inside its
    own `allowed-tools` (S15), the phase-state matches single-source — S18's
    static half, proven by mutation —, no skill or ref still addressing
-   `~/.claude/` (S21, proven by mutation), and every `-agent` skill a thin
-   variant citing its base (S23, proven by mutation). **122 assertions over
-   22 scenarios** (S16, the KB-sync coverage check, was retired with the KB
-   mirror in 5.0.0 — the plugin is the single distribution road, so there is
-   no mirror left to drift; the number stays vacant).
+   `~/.claude/` (S21, proven by mutation), every `-agent` skill a thin
+   variant citing its base (S23, proven by mutation), the automation fork
+   real rather than decorative (S24), the `EVENT` contract a parent `Monitor`
+   watches emitted exactly once — all-`[x]` early exit and validation failure
+   included (S25), every `claude -p` prompt namespaced (S26), the
+   `Done:`/`Verify:` contract single-source and cited (S27), and the
+   per-model steer reaching every sub-session without a `sonnet` phase
+   receiving fable's (S28). S16, the KB-sync coverage check, was retired with
+   the KB mirror in 5.0.0 — the plugin is the single distribution road, so
+   there is no mirror left to drift; the number stays vacant, which is why 28
+   scenario numbers make 27 scenarios.
 
    S15 exists because its gap is quiet by construction. A skill can
    instruct a command its allowlist never pre-approves — `write-workflow` called

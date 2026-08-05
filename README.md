@@ -92,6 +92,7 @@ The plan is the coordination point between sessions, and it is committed on the 
 
 | Command | When to use | What it does |
 |---------|------------|--------------|
+| `/scope-workflow <what>` | The work is still vague | Interrogates you one question at a time until every decision the plan needs is settled — facts looked up, not asked; no branch, no file, no code |
 | `/write-workflow` | After discussing the plan | Opens the workflow branch and writes the plan from the conversation — pattern references and pre-made decisions per phase |
 | `/import-workflow` | You already have a plan or a handoff | Adapts an existing plan (including pre-4.0 `MEMORY.md`) into a workflow, preserving phase states and reporting the gaps |
 | `/execute-phase` | Executing a phase | Runs the next phase from the plan: one approval gate up front, then no interruptions |
@@ -191,6 +192,45 @@ claude
 ```
 
 Talk to Claude naturally: describe what you want, explore the code together, discuss approaches. No required format, no special commands — just a normal chat.
+
+### `/scope-workflow` — Settle the Decisions First
+
+`/write-workflow` settles decisions **by reading the conversation**. When the conversation was vague there is nothing to read, and the plan comes out with "decide later" phases — which that skill's own rules forbid. This is the command that makes the conversation not vague, and it produces understanding only: no branch, no plan file, no code.
+
+Four rules carry it:
+
+- **A fact is looked up, never asked.** What exists today, where it lives, who calls it, what the issue says — Grep, Read, `git log`, `gh issue view`. Asking you something the filesystem can answer spends your attention on its legwork. It reports the ground first, with paths, so a wrong premise is corrected before it costs a whole branch of questions.
+- **One question per turn**, each carrying its recommended answer and the reason in one line — you often just confirm, which is the point. Asking several at once destroys the tree: you cannot branch on an answer you requested in parallel.
+- **Every question fills a field of the plan** — `Mode:`, `Decisions:`, `Pattern:`, `Files:`, `Done:` — and it knows which one before asking. The mode fork goes first, because interactive and autonomous split the same work into different phases.
+- **A decision belongs to you when either answer leads to materially different work.** Everything else it decides itself, says so, and moves on.
+
+A question in the loop looks like this — recommendation first, and what the answer unlocks:
+
+```
+Il totale scontato: lo calcola il modello o la pagina?
+  ▸ Nel modello (consigliato) — un punto solo, e l'export lo eredita
+    Nella pagina — più rapido ora, due punti da tenere allineati poi
+  (se rispondi "nel modello", la domanda dopo sull'export non serve più)
+```
+
+It ends by handing over in the shape `/write-workflow` reads, and waits for you to confirm it:
+
+```
+Mode: interactive — la resa a schermo si giudica guardandola
+
+Deciso:
+- sconto → calcolato nel modello (un punto solo, l'export lo eredita)   [Decisions:]
+- pattern per la form → `packages/sales/webpages/order.py:orderForm`    [Pattern:]
+- fase 2 è finita quando il test crea una riga dalla form e la rilegge  [Done:]
+
+Rinviato:
+- allineamento colonne nel grid → Verify: deferred: needs Phase 3
+
+Fatti su cui poggia:
+- lo sconto oggi vive in due punti (packages/sales/webpages/order.py, .../export.py)
+```
+
+Then: *"Lancia `/write-workflow` in questa chat: legge le decisioni da qui."* A plan that already exists stops it — scoping is for work that has none.
 
 ### `/write-workflow` — Crystallize the Plan
 
@@ -586,7 +626,9 @@ Plain git: `git worktree list` shows them all, `git worktree remove <path>` remo
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**122 assertions over 22 scenarios** (S16 retired with the KB mirror; its number stays vacant). S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S19 checks that `next-phase.py --validate` gates the launcher before any session starts — and that warning lines are printed, not computed and discarded; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`. Two scenarios build real git repos instead of driving the mock: S17 (`/import-workflow`'s classification and its mid-run git sequence) and S22 (the `--plans` location service: root plan, worktree plan, orphan-branch plan read without checkout). S18 is a hybrid: it proves live that prose bullets in a `## Notes` section stay inert, and statically that every phase-state match is single-source.
+**171 assertions over 27 scenarios** — S1 through S28, with S16 retired along with the KB mirror and its number left vacant. S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S19 checks that `next-phase.py --validate` gates the launcher before any session starts — and that warning lines are printed, not computed and discarded; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`. Two scenarios build real git repos instead of driving the mock: S17 (`/import-workflow`'s classification and its mid-run git sequence) and S22 (the `--plans` location service: root plan, worktree plan, orphan-branch plan read without checkout). S18 is a hybrid: it proves live that prose bullets in a `## Notes` section stay inert, and statically that every phase-state match is single-source.
+
+The rest guard invariants that live in prose, each proven by mutation — break the clause and the assert must fail: S21 (skills and refs address the plugin, never `~/.claude`), S23 (`-agent` skills are thin variants citing their base, not second copies), S24 (the automation fork is real, not decorative), S25 (the `EVENT` contract — the stable lines a parent `Monitor` watches, emitted exactly once, including on an all-`[x]` early exit and on a validation failure), S26 (every `claude -p` sub-session prompt carries a `plugin:` namespace), S27 (the `Done:`/`Verify:` contract lives once in `common.md` and is cited, not restated), S28 (the per-model steer reaches every sub-session, and a `sonnet` phase does not receive fable's).
 
 The suite runs the script under **both bash and zsh** (S9), which is not redundancy: the production invocation path is the user's shell, and an unbraced `$NEXT_PHASE[^0-9]` inside a grep pattern parses as an array subscript in zsh, silently emptying the config-table lookup and defaulting every phase's model, effort and cap. A bash-only harness cannot see it, and `zsh -n` does not either.
 
