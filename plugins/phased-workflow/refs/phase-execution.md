@@ -64,9 +64,51 @@ git add -A && git commit -q -m "wf(phase N): <title>"
 A phase closing `[!]` commits too, as `wf(phase N): FAILED — <title>`, and
 leaves the failing code **in place**: repair has to see it.
 
-## Context escape hatch
+## WIP checkpoints
 
-Context running out mid-phase with substantial work left: commit what
-exists as `wf(phase N): partial — <title>`, keep `[>]`, add
-`> WIP: <what is done, what remains>`, and exit — the next invocation
-resumes from a clean tree.
+A phase big enough to die halfway must leave evidence along the way. Two
+triggers, one mechanic:
+
+- **Coherent sub-result** — the phase reaches something demonstrable (the
+  schema exists, the logic passes its test) with substantial work still
+  ahead: checkpoint it, without asking. In practice this concerns
+  interactive phases, sized to "something a human can look at"; an
+  autonomous phase rarely lives long enough to need one.
+- **Context running out** — the same mechanic, forced: checkpoint what
+  exists and exit; the next invocation resumes from a clean tree.
+
+Commit and note travel together — never one without the other, so the
+note's `commit:` always points at code that exists:
+
+```bash
+git add -A && git commit -q -m "wf(phase N): partial — <sub-result>"
+```
+
+Keep the phase `[>]` and write (or replace) the structured `> WIP:` note.
+**This is the single source of its format** — the skills cite it, they
+never restate it:
+
+```
+> WIP: done: <demonstrable so far> | missing: <what remains of Done:> | next: <first concrete action> | commit: <short hash>
+```
+
+Each key earns its place at resume time: `done:` is what a fresh session
+must not redo, `missing:` is what remains of the phase's own `Done:`,
+`next:` is where it starts, `commit:` is the hash it diffs from instead of
+trusting the story. Free prose is what made resume unreliable: a fresh
+session reading vague prose reinterprets, and reinterpretation is how work
+gets redone or contradicted.
+
+**Resuming a `[>]` phase** — the calling skill decides *whether* to take
+it over; this is *how*: read the `> WIP:` note, run
+`git log --oneline` over the phase's `partial` commits and
+`git diff <commit>..HEAD`, and continue from `next:` toward the phase's
+own `Done:`. What `done:` claims and the diff confirms is not redone. A
+`[>]` phase with no `> WIP:` note and no `partial` commit carries no
+evidence — reset it to `[ ]` with
+`> Execution interrupted, phase available for retry` rather than guessing
+what a dead session did.
+
+Checkpoints are not phase commits: `/finalize-workflow` squashes them with
+everything else, and red-baseline attribution keeps matching against the
+`> Files:` of *completed* phases, which a `[>]` phase does not yet have.
