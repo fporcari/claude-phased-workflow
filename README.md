@@ -237,7 +237,7 @@ Key behaviors:
 - **One phase per chat** — always-fresh context
 - **One commit per phase** — `wf(phase N): <title>` on the workflow branch (a WIP safety commit if context runs low); `/finalize-workflow` squashes them into one clean commit on the parent
 - **Bigger phases** — an interactive phase ends where *something a human can look at exists*, so it cannot close on half a button
-- **`opus` floor** — never `sonnet`, the standing rule for UI and declarative work
+- **Per-phase `Run: <model> / <effort>` hint** — `opus` floor and default, never `sonnet` (the standing rule for UI and declarative work), `fable` where inventive work survives the gate; the effort scales how wide the phase looks before it asks. Advice, not enforcement: both are chosen when you open the chat, which is why `/write-workflow` and `/resume-workflow` quote it beforehand
 - **Two verification fields** — `Done:` stays machine-re-runnable; `Verify:` carries the human steps, each with a *when* (`now`, or `deferred: needs Phase M`). What a browser agent can assert goes to the `ui-test` skill, never onto the human's list (`ui-test` ships separately — when it is not installed those checks fall to the human as `Verify: now` steps, declared, never dropped); deferred steps accumulate in `verify.md` and finalize presents them as one QA pass
 - **Records modified files** in the `> Files:` line — source of truth for finalize
 
@@ -264,6 +264,10 @@ Model tiers are guidance, not constraint: strong models go where judgment happen
 ### `/resume-workflow` — Supervision & Resume
 
 Read-only analysis of the plan vs actual code state: exact per-phase attribution from the phase commits, drift detection (files a commit touched but the plan does not list, uncommitted leftovers), stale `[>]` phases, oversized phases with a proposed re-phasing. Does not touch source code; the only file it may edit — on approval — is the plan, each edit with its own `wf:` commit. A healthy plan early-exits with the state report: "just tell me where we are" is a valid reason to run it.
+
+**The board.** Where the `visualize` MCP server is present, the state of the plan and the next step render as an inline grid — one row per phase with its state, its `Run:` hint and its files — while coverage, drift and oversizing stay prose, because a grid shows a position well and argues a finding badly. Two controls sit on it: **refresh**, which re-runs this skill rather than redrawing the widget (a printed message is immutable, so the recomputed report prints below — press it on returning from a phase chat that just committed), and **open the phase**, a chip whose click opens a *session of its own*, one chip for the eligible phase only since phases run strictly in order. No server → the plain text report, with the launch command spelled out.
+
+**Actualising an older plan.** A plan written before a format existed runs on invisible defaults, so this command offers to write them down on pending phases: the `Mode:` header when absent, the per-phase `Run:` line on an interactive plan. Defaults only — a missing `Done:` or `Pattern:` is a question its author never settled, and it gets reported, never invented (the rule `/import-workflow` already applies to gaps).
 
 ### `/finalize-workflow` — Finalize
 
@@ -367,6 +371,7 @@ Parent: <parent-branch> | Issue: #<number>
 
 ## Work Plan
 - [ ] **Phase 1**: <title>
+  - Run: opus / medium          # interactive plans only — a hint, not a constraint
   - Pattern reference: <existing file:symbol to copy-adapt>
   - Decisions: <the calls settled during planning>
   - Details: <what to do>
@@ -385,7 +390,7 @@ Parent: <parent-branch> | Issue: #<number>
 | Phase 1 | medium | sonnet |
 ```
 
-The automation fork writes an explicit `Mode:` header: `Mode: autonomous` on autonomous plans, `Mode: interactive` on interactive ones. A plan with **no** header stays legal and reads as interactive, so pre-5.1.0 plans keep working; the validator rejects any other value by name, and warns if an interactive plan still carries an execution-config table nothing will read. Ambitious autonomous plans also add a `## Roadmap` section whose bullets are inert — the launcher never executes them, it only reminds you they are pending.
+The automation fork writes an explicit `Mode:` header: `Mode: autonomous` on autonomous plans, `Mode: interactive` on interactive ones. A plan with **no** header stays legal and reads as interactive, so pre-5.1.0 plans keep working; the validator rejects any other value by name, and warns if an interactive plan still carries an execution-config table nothing will read. The two modes carry the model/effort choice differently: the table on autonomous plans, a per-phase `Run:` line on interactive ones (see [Model Flexibility](#3-model-flexibility)) — and `Run:` is a plain sub-bullet, so the validator neither requires nor rejects it. Ambitious autonomous plans also add a `## Roadmap` section whose bullets are inert — the launcher never executes them, it only reminds you they are pending.
 
 ### Phase States
 
@@ -422,7 +427,7 @@ Each phase starts with a new chat. No degradation, no compaction, no "forgot wha
 Each finalized workflow = a clean commit. You can `git log` to reconstruct what happened, rollback, or resume from any point.
 
 ### 3. Model Flexibility
-The `Suggested execution config` table sets model and effort per phase, decided by the pre-flight review rather than by a blanket rule:
+On an **autonomous** plan the `Suggested execution config` table sets model and effort per phase, decided by the pre-flight review rather than by a blanket rule:
 - **opus** is the default and the answer whenever in doubt — and the **floor for anything touching UI or declarative code**, where the output is poorly testable and the loops can't catch much
 - **sonnet** is the rare exception: mechanical work only — renames, extractions, moves — or an implementation that merely follows a cited pattern with a test-enforced `Done:`. Marking a phase `sonnet` is a commitment about the *plan*, not the model: whatever the skill no longer spells out, that phase must. If you can't write it that way, leave it opus
 - **fable** for genuinely hard phases, and for repair — by definition the phase's own model already failed once, and nobody is watching
@@ -430,6 +435,8 @@ The `Suggested execution config` table sets model and effort per phase, decided 
 The stronger the verification loops, the cheaper the executor can be. The economics still bite, though: a sonnet phase that fails costs a fable repair, so sonnet pays only where first-pass success is likely.
 
 Effort follows the same logic, with a twist specific to this chain. Anthropic's guidance is to stop reaching for `xhigh` reflexively and sweep downward, because `low` and `medium` punch well above their weight on current models — and here that applies harder than usual: a phase that passed the pre-flight is *well-specified by construction*, so high effort gets spent re-exploring and re-verifying decisions the plan already settled. Start low, climb only where real design judgment survives inside the phase, and treat `max` as practically never (it overthinks). Effort levels copied from an older plan rarely transfer.
+
+On an **interactive** plan the same choice is a per-phase `Run: <model> / <effort>` line in the plan body — advice, not enforcement, since you pick both when you open the chat. Two values only: `opus`, the floor and the default; `fable` where inventive work survives *past* the approval gate. `sonnet` never — a phase mechanical enough for it belongs on the autonomous side of the fork. Fable's usual case is also halved here: it earns its premium where nobody is watching, and interactive work is watched by construction, so "the user will say whether it looks right" is an `opus` phase. Because the choice happens before any skill reads the plan, `/write-workflow` and `/resume-workflow` both quote the hint *before* the chat is opened, and `/execute-phase` scales how wide it explores to the effort it finds.
 
 The same reasoning removed a step: `/execute-phase-agent` no longer sends every phase to an independent verifier. Current models verify their own work as they go, and telling them to verify again produces re-litigation rather than findings. The verifier now runs only where it earns its keep — a `sonnet` phase, a `new-pattern` phase, or a repair, where the code already failed once. The `Done:` gate still runs on every phase: that is a contract check against a criterion the executor did not write, which is a different thing from re-reading your own work.
 

@@ -71,7 +71,12 @@ Only the split-vs-`vast` call materially changes execution — batch it into the
 
 **Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list.
 
-**Present the plan in Italian** and iterate until the user approves.
+**Run hint.** Every phase carries a `Run: <model> / <effort>` line: advice for the human who opens that chat, never something the plan enforces — the model is picked when the session starts, before any skill has read the plan. That is also why it is written down instead of only said here: the chat that needs it is opened days later, and by then this conversation is gone.
+
+- **Effort** — start low and climb only for a reason. A phase whose `Decisions:` and `Pattern:` are settled is where high effort buys least: it gets spent re-exploring what planning already decided. `low` mechanical, `medium` the standard phase, `high` where real design judgment survives inside the phase, `xhigh` a wide multi-file surface, `max` practically never (overthinking, diminishing returns). Levels copied from an older plan rarely transfer — decide them here, for this plan.
+- **Model** — `opus` is the floor and the default; `sonnet` never, the standing rule for UI and declarative work (a phase mechanical enough for it belongs on the autonomous side of the fork). `fable` only where inventive work survives *after* the approval gate: architecture to invent, an unknown surface, no obvious decomposition. Half of its usual case is absent here — fable also earns its premium where nobody is watching, and interactive work is watched by construction — so a phase whose ambiguity is "the user will say whether it looks right" is `opus`, not `fable`.
+
+**Present the plan in Italian**, each phase with its `Run:` line, and iterate until the user approves.
 
 **Close the presentation with the branch line**, pre-filled per Step 4 and flippable — one line, not a separate question:
 
@@ -105,17 +110,20 @@ Mode: interactive
 
 ## Work Plan
 - [ ] **Phase 1**: <concise title>
+  - Run: opus / medium
   - Pattern: `path/to/example.py:func` (or `library-standard` / `new-pattern`)
   - Files: <involved files, if known>
   - Decisions: <choices already settled — omit if none>
   - Details: <what to do concretely>
 - [ ] **Phase 2**: table foo with its TH UI (model + webpage)
+  - Run: opus / low
   - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
   - Details: table + columns + relations, then TableHandler view + form.
   - Done: end-to-end test — create a row via the form, assert it persists and reloads in the grid
   - Verify: now — the form reads well: field order, labels, nothing cramped
   - Verify: deferred: needs Phase 3 — the renamed amount column still lines up in the grid
 - [ ] **Phase 3**: rename legacyAmount → amount across the web layer  `vast`
+  - Run: opus / xhigh
   - Files: discovery rule — all references to `legacyAmount` under packages/foo/ and gnr/web/
   - Details: rename + deprecated alias.
 
@@ -125,7 +133,7 @@ Mode: interactive
 
 Phases run strictly in order: a phase starts only when every phase above it is `[x]`.
 
-Write no execution config table and no per-phase model hints on an interactive plan.
+Write no `## Suggested execution config` table on an interactive plan: nothing reads one here, and the validator warns about it. The per-phase `Run:` line is the interactive equivalent — a suggestion in the plan body, `opus`|`fable` only, read by `/execute-phase` to scale its exploration and reported by `/resume-workflow` before the next chat is opened.
 
 ## Step 6: Commit and close
 
@@ -140,6 +148,9 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 ```
 Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch>.
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
+Fase 1 — suggerito: <model>, effort <effort>.
 ```
+
+The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
 
 (Autonomous plans use the closing message in the autonomous reference file.)

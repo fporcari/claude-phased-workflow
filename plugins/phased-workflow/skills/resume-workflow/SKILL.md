@@ -1,6 +1,6 @@
 ---
 description: Locate the active phased workflow and report where it stands, then name the skill that takes it forward. The entry point of the phased-workflow plugin, and the only skill in it the agent may reach on its own. Use when the user asks where the work stands, what the next phase is, whether a workflow is running, why a phase is stuck or failed, how to resume after an interrupted session, or mentions `.phased/` or a `wf/` branch.
-allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQuestion
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQuestion, mcp__visualize__read_me, mcp__visualize__show_widget, mcp__ccd_session__spawn_task
 ---
 
 # Resume Workflow
@@ -66,7 +66,16 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 3. **Copertura** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
 5. **Fasi sovradimensionate** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
-6. **Prossimo passo** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, finalize, or clean up drift.
+6. **Prossimo passo** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
+
+**The board.** Where the `visualize` MCP server is available, render point 1 and point 6 as an inline widget instead of a list: one row per phase with its state, its `Run:` hint, its file count, and — on the eligible phase — the launch command. Everything that is a *judgment* stays prose in the reply, where it can be read: coverage, drift, oversizing, and why a phase is `[!]`. A grid is good at showing where the plan stands and bad at arguing.
+
+Two controls belong on it, and neither is decorative:
+
+- **Refresh** — `sendPrompt('/phased-workflow:resume-workflow')`. It does not redraw the widget in place (nothing can: a widget is the output of a message, and a finished message is immutable). It re-runs this skill, so what you get is the whole report recomputed and printed below — the right thing to press on returning from a phase chat that has just committed.
+- **Open the phase** — a `spawn_task` chip carrying `/phased-workflow:execute-phase Phase N — <title>`, because one click there opens a **session of its own**, which is the entire point of interactive mode. A `sendPrompt` button would run the phase in *this* chat, on top of a context already full of supervision — exactly the fresh-context guarantee this chain exists to keep. **One chip, for the eligible phase only:** phases run strictly in order, so a chip per pending phase would be a row of invitations to break that order.
+
+No server, or no chip tool → the plain text report of today, with the launch command spelled out to copy. Declare the fallback, never fail silently; same rule as `ui-test` in `/execute-phase`.
 
 **Healthy plan → stop here.** No `[!]`/`[~]`, no stale `[>]`, no drift: the report ends with the next step and nothing to resume — no questions asked.
 
@@ -76,6 +85,9 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
+- **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent, and on an interactive plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
+
+  **Fill in defaults, never gaps.** A missing `Run:` is a default made explicit (`opus` / `high`), which is why proposing it is legitimate. A missing `Done:`, `Pattern:` or `Decisions:` is something its author never settled: report it and stop there, exactly as `/import-workflow` Step 3 does. Inventing a plausible `Done:` makes an open question look closed, and nobody checks it twice.
 
 The plan is a tracked file, so each edit needs its own commit — it belongs to no phase:
 

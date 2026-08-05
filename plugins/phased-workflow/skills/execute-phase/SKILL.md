@@ -10,6 +10,11 @@ Execute the next uncompleted phase. **This is the heart of interactive mode**, n
 
 Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on a strong model — `opus` floor, never `sonnet`, which is also the standing rule for UI and declarative work.
 
+**The phase's `Run: <model> / <effort>` line** is the plan's advice for this session, decided during planning. Neither value can be changed from inside the session, so read it rather than reconsider it:
+
+- **Effort** governs how wide you look before the gate — the scale is in Step 3. Missing line → treat as `high`.
+- **`fable`** means the phase kept inventive work of its own. Read this file as a contract on the *output* — the approval gate, one phase, one commit, the outcome format — not as a procedure to walk step by step, since a prescriptive step list is exactly what degrades that model. The settled `Decisions:` are input, not something to re-derive.
+
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch, phase-selection semantics. **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` — selection, implementation discipline, outcome formats, the phase commit; `/execute-phase-agent` is this same skill with the gate replaced by unattended constraints.
 
 ## Step 1: Find the plan and the phase
@@ -31,6 +36,8 @@ Skip unless the phase is tagged `vast`. Partition its `Files:` list (or run its 
 ## Step 3: The approval gate (the only planned interruption)
 
 Read the phase's `Pattern:` example first — don't re-explore what planning already recorded.
+
+**Scale the exploration to the phase's `Run:` effort** (missing → `high`): `low` only the listed `Files:`; `medium` + their immediate references; `high` up to 2 read-only Explore subagents and the surrounding package; `xhigh`/`max` up to 3 plus a cross-package consistency pass. Same scale as `/execute-phase-agent` Step 2 — what differs is only that here it ends in a question instead of a decision.
 
 Present in ONE message: what the phase will do, the files to create/modify/delete with their key changes, and **every open question batched** (anything `Decisions:`/`Details:` leave unsettled). Then ONE AskUserQuestion carrying approval plus those questions.
 

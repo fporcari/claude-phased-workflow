@@ -170,6 +170,7 @@ degrades fable's output, and most of these skills are exactly that.
 | `/write-workflow` (planning) | fable if the work is introspective/inventive, else opus `xhigh` | The plan is the loop's contract, so quality multiplies — but this skill is a dense template, so on fable read its steps as a contract on the output, not a procedure |
 | `/run-workflow` pre-flight | opus `xhigh` | Judgment work, but it ends in an explicit human confirmation, so a misjudgement is caught before the loop starts |
 | Autonomous phases | opus default; sonnet when well-specified + solid pattern reference + testable logic; fable for genuinely hard phases | Decided per phase by the pre-flight |
+| Interactive phases (`/execute-phase`) | opus default; fable where inventive work survives the approval gate; never sonnet | Suggested per phase by the plan's `Run:` line. Fable's case is halved here — it also earns its premium where nobody is watching, and this path is watched by construction |
 | `/repair-phase` | fable at `--effort max` (opus fallback) | By definition the phase's own model already failed once, and nobody is watching |
 | `/finalize-workflow` | opus `xhigh` | Most of it is git plumbing; the judgment is concentrated in the whole-diff review, where opus is high-precision *and* high-recall. On a large autonomous diff a reviewer panel beats upgrading the single pass |
 | `phase-verifier` subagent | opus (pinned, not inherited) | On a `sonnet` phase an inherited verifier is as weak as the executor it is meant to check — that defeats the independence |
