@@ -1,5 +1,7 @@
 # Claude Code Phased Workflow
 
+**Version 5.7.1** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
+
 A slash command system for Claude Code that structures development work into planned phases, executable in independent sessions, with shared state on the file system.
 
 It runs in two modes, and the choice is about **who the verifier is**:
@@ -680,63 +682,24 @@ See [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md) for
 
 ---
 
-## What changed in 5.2.1
+## Changelog
 
-An adversarial review of the 5.1.0–5.2.0 range — guards mutation-tested, shipped contracts actually executed — found the defects below. All are fixed, and every fix ships with the test that would have caught it. Suite 148 → 165.
+One note per release, in [docs/](docs/):
 
-- **`run-end` on every exit path.** The launcher emitted its terminal `EVENT: run-end` only through the loop: an all-`[x]` plan or a validation failure exited with no event, so the monitor the skill prescribed could never self-terminate — and that `tail -f | awk '… exit'` pipeline also hung by construction even when `run-end` did arrive (the log goes quiet after the launcher's last word, so `tail` never gets its SIGPIPE). `run-end` now comes from an EXIT trap on every path — status `ok` only when the launcher exits 0 *and* every phase is `[x]` — and the skill's watch loop is a poll that provably terminates. S25 covers the early exits live and the token drift guard runs in **both** directions.
-- **The bare-slash guard covers prompt assignments.** S26 scanned only literal `claude -p "…"` call sites, while both 5.1.0 regressions lived in the `PHASE_PROMPT`/`REPAIR_PROMPT` *assignments* — a bare `/repair-phase` reintroduced in the pre-2.1.139 fallback left the whole suite green. The guard now scans the assignments too, and S7b runs the repair path live on the old-CLI fallback.
-- **The autonomous side of `Verify:` exists now.** `common.md` promised the mechanism "thin in autonomous, never absent" and nothing implemented it. `/execute-phase-agent` now carries the phase's authored `Verify:` fields — plus what only human eyes can judge — into `> Verify:` notes and `verify.md`; the autonomous refinement names the field. S27 guards the `-agent` consumers too and pins the *when* vocabulary verbatim in every consumer: a paraphrase is drift and fails the suite.
-- **Authored `Verify:` fields reach the QA pass.** The contract says explicitly that plan-authored `Verify:` fields and execution-surfaced `> Verify:` notes are ONE list: the executing skill transcribes the authored ones, finalize collects both syntaxes.
-- **`ui-test` is declared external.** The plugin does not ship it; where it is not installed, the browser-assertable checks fall to the human as *declared* `Verify: now` steps instead of vanishing between "never on the human list" and a skill that does not exist.
-- **`Model hint: sonnet` retired from interactive plans.** It contradicted `/execute-phase`'s `opus` floor and nothing read it; a phase mechanical enough for sonnet belongs on the autonomous side of the fork.
-- **Validator:** a malformed `Mode:` line (`Mode: autonomous (robottino)`) is an error naming it, not a silent fall-through to the interactive default (S19i).
-- **Smaller fixes:** the `EVENT:` phase number is read with an anchored sed, so a title containing "Phase 10" no longer hijacks it (S25d); `/import-workflow` points at `/write-workflow`'s renumbered *Step 4: Open the branch*; the plugin name is extracted from `plugin.json` in match order, safe on minified JSON; `/execute-phase` Step 6 stops speaking the pre-5.2.0 "untested UI work" language; `docs/target-workflow.md` no longer names any notification transport anywhere — where a notification lands is the user's own setup, full stop.
-
-## What changed in 5.2.0
-
-5.2.0 implements Macro 2b of [docs/target-workflow.md](docs/target-workflow.md) — interactive mode as a first-class mode rather than "autonomous minus the robot". No command changes; the interactive branch of the 5.1.0 fork gets its own shape.
-
-- **Two verification fields, one contract.** `Done:` stays the machine's re-runnable exit condition; `Verify:` carries the steps a person performs, each with a *when* — `now`, or `deferred: needs Phase M`, so a check that only makes sense later is **dated, not skipped**. Deferred steps accumulate in `verify.md` in the plan directory, and `/finalize-workflow` presents them as one QA pass, sibling to `review.md` (what you must *exercise* vs what you must *judge*).
-- **The human list carries only human judgment.** What a browser agent can assert — the flow works, the record persists, the grid reloads — goes to the `ui-test` skill inside the phase. Aesthetics, "is this interaction right?", UX ambiguity are what reach the user. Without that split the list fills with automatable work and stops being read.
-- **The interactive phase boundary is "something a human can look at exists".** Phases come out bigger as a consequence, not as a goal — and the point is what it makes impossible: a phase cannot close on half a button, so a trivial "try this for me" interruption cannot arise. Master tables *with their UI* are one phase, not two.
-- **`/execute-phase` asks live.** A doubt needing a decision is asked in the chat and execution resumes with the answer; being asked to try something trivial is a sizing defect, not a question. `opus` floor, never `sonnet`.
-- **The contract is single-source and guarded.** It lives in `refs/common.md` → *Verification*; `write-workflow`, `execute-phase` and `finalize-workflow` cite it instead of restating it, and S27 fails (proven by mutation) if a consumer stops writing `verify.md` or if `common.md` stops owning the section. `execute-phase` gained the `Skill` tool it needs to run `ui-test` — instructing a tool a skill cannot use is the defect S15 exists to catch.
-- **Left for Macro 3:** bigger interactive phases make the resume path (`[>]` plus `> WIP:`) load-bearing, and it still has no real test coverage. That hardening pairs with recovery, and is deliberately not claimed here.
-
-## What changed in 5.1.0
-
-5.1.0 implements Macro 2 of [docs/target-workflow.md](docs/target-workflow.md) — the unattended run. Two items, no breaking change: pre-5.1.0 plans with no `Mode:` header keep running as interactive.
-
-- **The automation fork (item D).** `/write-workflow` now asks once, explicitly, *before* the plan is written: autonomous (`/run-workflow` runs it unattended) or interactive (one chat per phase). It recommends one from the work just discussed, and the answer writes an explicit `Mode:` header — `Mode: autonomous` / `Mode: interactive` — that selects the plan format. `/run-workflow`'s pre-flight and `/import-workflow` honour that header: an interactive plan is offered a conversion, never silently rewritten. The validator rejects an unknown `Mode:` value by name. Guarded by S24 (the fork is not decorative — static, mutation-proven) and S19's `Mode:` checks.
-- **Notification while the run is live (item E).** The launcher emits three stable `EVENT:` lines on stdout — `phase-failed`, `phase-blocked`, `run-end` — and nothing else becomes an event. `/run-workflow` launches the run in the background, watches those lines with a Monitor, and pushes a proactive notification on the first `[!]` and once at the end, without waiting for the whole run; where those pushes land is the user's own notification setup. The run stays attached to the session (D2 — no detachment, so there is a session to notify from), and the parent never writes to the repo while the run owns the working tree. Guarded by S25 (the EVENT contract — live on the mock plus a static drift guard).
-- **The stale claim that the interactive path never commits is corrected.** Both execution paths have committed once per phase since 5.0.0 — the mechanics live once in `refs/phase-execution.md` — so the *Why one commit per phase* design note and the FAQ now say so instead of repeating the pre-5.0.0 claim.
-- **Sub-session slash prompts are namespaced.** A shipped skill registers as `/<plugin>:<skill>`, so a headless `claude -p "/<skill>"` prompt died with "Unknown command" and the sub-session did nothing — the same "shipped contract no test executes" defect class as 4.1.0's `LIGHT_PROMPT: Never commit`. `run-workflow.sh` and `agent-session.sh` now derive the plugin name from their own `plugin.json` and namespace every launch prompt (literal `phased-workflow` fallback so a failed read can never reintroduce a bare slash). Guarded by S26, proven by mutation.
-
-## What changed in 5.0.0
-
-5.0.0 implements Macro 1 of [docs/target-workflow.md](docs/target-workflow.md) — the command surface, plan location and workspace lifecycle. Breaking: two commands renamed, one retired, two tags removed.
-
-- **`/resume-workflow` replaces `/check-phase-context`.** Same read-only audit (per-phase attribution from the phase commits, the two kinds of drift, oversized phases), plus an explicit healthy path: "just tell me where we are" early-exits with the state report. `install.sh` supersedes the stale flat command.
-- **`/run-all-phases` is now `/run-workflow`, `/auto-phase` is now `/execute-phase-agent`.** The lifecycle commands act on the workflow (`write` → `run` → `resume` → `finalize`), the phase commands on one phase — and the `-agent` suffix names the environment, not a behaviour: *there is nobody in here who can answer you*. The env var is now `RUN_WORKFLOW_NO_BUDGET`.
-- **`-agent` variants are structurally thin.** The shared execution mechanics live once, in `refs/phase-execution.md`; `execute-phase-agent` states only the unattended constraints and cites its base skill. S23 enforces it (base citation + line ceiling, proven by mutation) — the 4.1.0 `Never commit` defect was exactly a sibling copy nobody updated, and this makes that shape fail the suite.
-- **Plans are reachable from anywhere.** `next-phase.py --plans` lists every workflow the repo can see — current root, linked worktrees, and `wf/*` branches with no checkout, read without checking them out (S22). Skills anchor to the plan's root (`git -C`) per the shared *Plan location* rule.
-- **The workspace lifecycle moved to execution.** `/write-workflow` creates branch + plan only; `/run-workflow` attaches or creates the worktree (announced in one line) and copies `settings.local.json` into it; `/finalize-workflow` removes it.
-- **Finalize can verify in a clean sub-session.** `agent-session.sh` runs a shipped skill via `claude -p` at the plan's root; `finalize-workflow-agent` is the read-only reviewer it launches when the plan lives in a worktree — findings come back to the chat where the decisions (base, wording, squash) stay with you.
-- **`parallel:N` and `group:N` are retired; `vast` survives.** Parallel never produced concurrency in autonomous runs, and grouped phases were a symptom of boundaries a human cannot verify. Phases run strictly in order; pre-5.0 plans degrade gracefully (the retired tags surface as validator warnings, never errors).
-- **4.1.0's carried defects are closed.** The launcher prints validator warnings instead of discarding them (S19e); the S18 guard covers the awk block and is proven by mutation against the real check (`check_state_matches.py`), as is S21 (`check_home_paths.py`); `> Verify:`/`> Verified:` are documented note fields; the suite header and these test counts match the suite's own output.
-- **One distribution road.** The internal KB stops mirroring the skills — it keeps only the install guide and the internal-only commands — so `tools/kb-sync.py` and test S16 are retired. The plugin marketplace is the single way these skills reach a machine.
-
-## What changed in 4.1.0
-
-4.1.0 acts on an external review of 4.0.0 and on defects the chain surfaced by running on itself.
-
-- **The launcher and its selector now live entirely inside the plugin.** They resolve their own paths through `${CLAUDE_PLUGIN_ROOT}`, so a run never depends on stale copies under `~/.claude`. `install.sh` stops installing anything and becomes a one-time migration for machines that ran 4.0.0 or earlier (see the installation note above).
-- **Phase-state matching is single-source and strict.** Every state grep in the launcher goes through one anchored helper, so a prose `- [!]` bullet in a `## Notes` section can no longer be read as a phase and launch a spurious repair session (S18).
-- **Plans are validated before the loop starts.** `next-phase.py --validate` gates the launcher and rejects a malformed plan by line, instead of degrading silently (S19); and the three remaining silent fallbacks — unknown model, unknown effort, missing selector — now each announce themselves with a `NOTE:` (S20).
-- **The per-phase commit defect, found by running the chain on itself.** Before 4.1.0 the light-mode `/goal` contract used for `Effort=low` phases ended in `Never commit.`, a leftover from before one-commit-per-phase became the architecture. So a light phase did its work and reported `[x]` while leaving nothing committed — and the cascade was worse than a missing commit: a later full-skill phase, seeing predecessors with no commits, inferred a repo-wide "no-commit mode" and followed suit, so one mode's constraint propagated through the *observable state of the repo*. It silently broke red-baseline attribution, which matches a failure against the `> Files:` of committed phases and has no boundary to attribute to when phases fuse. The light contract now carries the commit requirement, and S14 guards the clause both ways.
-- **Documentation matches the evidence.** The benchmark figures keep their magnitude and gain their provenance in the same breath (n=3 toy fixture, `slim` control not the shipped light mode); the test counts are restated from the suite's own output; and the `--permission-mode auto` category list is reframed as what Claude Code's classifier is expected to deny plus this plugin's own convention — not a guarantee the plugin, which ships no hooks, can make.
-- **Continuous integration.** A GitHub Actions workflow runs flake8, both suites and the plan validator on every push and PR against `main`.
+| Version | In one line |
+|---|---|
+| [5.7.1](docs/release-5.7.1.md) | `problema` is two things, and only one of them is repairable |
+| [5.7.0](docs/release-5.7.0.md) | the board becomes a working view, shared by planning and supervision |
+| [5.6.1](docs/release-5.6.1.md) | the board's controls become mandatory, and the chip opens in the plan's root |
+| [5.6.0](docs/release-5.6.0.md) | `Run:` hint on interactive plans, and a board in `/resume-workflow` |
+| [5.5.0](docs/release-5.5.0.md) | the rename reaches the guide, and busts the plugin cache |
+| [5.4.0](docs/release-5.4.0.md) | invocation discipline, and `/scope-workflow` |
+| [5.3.0](docs/release-5.3.0.md) | per-model prompt steering for autonomous sessions |
+| [5.2.1](docs/release-5.2.1.md) | act on the adversarial review of 5.1.0–5.2.0 |
+| [5.2.0](docs/release-5.2.0.md) | interactive mode as a first-class mode (target-workflow Macro 2b) |
+| [5.1.0](docs/release-5.1.0.md) | the unattended run (target-workflow Macro 2) |
+| [5.0.0](docs/release-5.0.0.md) | command surface, plan location, workspace lifecycle (Macro 1; breaking) |
+| [4.1.0](docs/release-4.1.0.md) | acting on the external review of 4.0.0 |
 
 ---
 

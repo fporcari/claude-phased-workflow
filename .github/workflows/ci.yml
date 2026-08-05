@@ -27,6 +27,18 @@ jobs:
       - name: Lint (scope and excludes come from setup.cfg)
         run: flake8 .
 
+      - name: Version drift guard (README vs plugin.json vs marketplace.json)
+        # A version claim that survives in a document longer than in the code
+        # is the 4.1.0 "Never commit" defect wearing a different hat. The
+        # README's opening line, plugin.json and marketplace.json must agree.
+        run: |
+          set -e
+          readme=$(grep -m1 -oP '(?<=\*\*Version )[0-9]+\.[0-9]+\.[0-9]+(?=\*\*)' README.md)
+          plugin=$(python3 -c "import json; print(json.load(open('plugins/phased-workflow/.claude-plugin/plugin.json'))['version'])")
+          market=$(python3 -c "import json; d=json.load(open('.claude-plugin/marketplace.json')); print(d['plugins'][0]['version'])")
+          echo "README=$readme plugin.json=$plugin marketplace.json=$market"
+          [ "$readme" = "$plugin" ] && [ "$plugin" = "$market" ] || { echo "version drift"; exit 1; }
+
       - name: Configure git identity (S17 creates real commits)
         run: |
           git config --global user.email "ci@example.com"
