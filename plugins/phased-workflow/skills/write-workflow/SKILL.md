@@ -1,7 +1,7 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__visualize__read_me, mcp__visualize__show_widget
 ---
 
 # Write Workflow
@@ -11,7 +11,7 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
 2. **Do not implement.** The user runs `/execute-phase` afterwards.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch. **The board** an interactive plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
 
 ## Step 1: Where are we
 
@@ -152,5 +152,12 @@ Fase 1 — suggerito: <model>, effort <effort>.
 ```
 
 The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
+
+**Then draw the board**, as specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — the same widget `/resume-workflow` draws, one source for both. Two things are this skill's own:
+
+- **Every state select starts on `da fare`**: the plan was just written, so there is no history to seed from. Phase 1 is the first unfinished phase, hence the only one with `copia comando`.
+- **No notes and no export** (the ref's *supervision only* section): nothing has run yet, so there is nothing to annotate, and an export with nothing in it is furniture.
+
+**Only after the commit, never during Step 3's presentation.** The plan is iterated in prose, and a board offering a command for a branch that does not exist yet is a trap. On an autonomous plan, no board at all.
 
 (Autonomous plans use the closing message in the autonomous reference file.)

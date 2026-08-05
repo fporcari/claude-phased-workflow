@@ -1,6 +1,6 @@
 ---
 description: Locate the active phased workflow and report where it stands, then name the skill that takes it forward. The entry point of the phased-workflow plugin, and the only skill in it the agent may reach on its own. Use when the user asks where the work stands, what the next phase is, whether a workflow is running, why a phase is stuck or failed, how to resume after an interrupted session, or mentions `.phased/` or a `wf/` branch.
-allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQuestion, mcp__visualize__read_me, mcp__visualize__show_widget, mcp__ccd_session__spawn_task
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQuestion, mcp__visualize__read_me, mcp__visualize__show_widget
 ---
 
 # Resume Workflow
@@ -68,18 +68,17 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 5. **Fasi sovradimensionate** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
 6. **Prossimo passo** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
 
-**The board.** Where the `visualize` MCP server is available, render point 1 and point 6 as an inline widget instead of a list: one row per phase with its state, its `Run:` hint, its file count, and — on the eligible phase — the launch command. Everything that is a *judgment* stays prose in the reply, where it can be read: coverage, drift, oversizing, and why a phase is `[!]`. A grid is good at showing where the plan stands and bad at arguing.
+**The board.** On a `Mode: interactive` plan, render points 1 and 6 as the inline widget specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the layout; it is the single source of the board's shape, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a grid argues badly.
 
-**The board is the grid plus its two controls — a grid without them is not the board, it is the old text report set in a table.** Their positions are fixed, because a table has no natural cell for a button and a free hand omits them:
+What is this skill's own, on top of that file:
 
-- **Refresh — in the header row, next to the phase count.** `sendPrompt('/phased-workflow:resume-workflow')`. It does not redraw the widget in place (nothing can: a widget is the output of a message, and a finished message is immutable). It re-runs this skill, so what you get is the whole report recomputed and printed below — the right thing to press on returning from a phase chat that has just committed.
-- **The launch command — in the eligible phase's own row**, with a copy button, spelled out in full.
+- **Seed every state select from the plan**, since here the plan has a history: `[x]` → `fatta`, `[>]` → `in esecuzione`, `[!]` → `problema`, the rest → `da fare`. The board is then the user's working view, re-seeded on the next run.
+- **Notes and export are on**, per the ref's *supervision only* section: this is the command that runs over work already done, so there is something to annotate and something to export.
+- On an autonomous plan, no board at all — the report stays text, as the ref says.
 
-Then, **always with the grid and never at your discretion, one `spawn_task` chip** carrying `/phased-workflow:execute-phase Phase N — <title>`: one click there opens a **session of its own**, which is the entire point of interactive mode. It cannot live inside the widget — it is an app-level element beside the message — and a `sendPrompt` button in its place would run the phase in *this* chat, on top of a context already full of supervision, throwing away the fresh-context guarantee this chain exists to keep. **One chip, for the eligible phase only:** phases run strictly in order, so a chip per pending phase would be a row of invitations to break that order.
+**No `spawn_task` chip.** A chip does open a session of its own, which is why 5.6.0 reached for it, but its own UI decides how — including starting a *new worktree* for a plan that already has a branch and a checkout — and `spawn_task` exposes no parameter to prevent it. A suggestion popup that forks the tree is worse than a button that is honest about running here.
 
-**The chip is born in the plan's own root, not in yours.** Pass `cwd` = the plan root resolved in Step 1 — the same anchoring rule every command here follows (`common.md` → *Plan location*). A chip that opens in this checkout while the plan lives in a worktree starts the phase in the wrong tree, and the session's first act is to offer to re-anchor it: a repair for damage the chip itself caused. **A plan whose branch has no checkout at all gets no chip** — say the worktree has to exist first, and leave the command in the row.
-
-No server, or no chip tool → the plain text report of today, with the launch command spelled out to copy. Declare the fallback, never fail silently; same rule as `ui-test` in `/execute-phase`.
+No `visualize` server → the plain text report of today, with the launch command spelled out to copy. Declare the fallback, never fail silently; same rule as `ui-test` in `/execute-phase`.
 
 **Healthy plan → stop here.** No `[!]`/`[~]`, no stale `[>]`, no drift: the report ends with the next step and nothing to resume — no questions asked.
 
