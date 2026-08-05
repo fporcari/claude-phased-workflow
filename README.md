@@ -1,6 +1,6 @@
 # Claude Code Phased Workflow
 
-**Version 5.7.1** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
+**Version 5.8.0** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
 
 A slash command system for Claude Code that structures development work into planned phases, executable in independent sessions, with shared state on the file system.
 
@@ -688,6 +688,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [5.8.0](docs/release-5.8.0.md) | the resume path leaves evidence a fresh session can diff, and the version claim is checked |
 | [5.7.1](docs/release-5.7.1.md) | `problema` is two things, and only one of them is repairable |
 | [5.7.0](docs/release-5.7.0.md) | the board becomes a working view, shared by planning and supervision |
 | [5.6.1](docs/release-5.6.1.md) | the board's controls become mandatory, and the chip opens in the plan's root |
