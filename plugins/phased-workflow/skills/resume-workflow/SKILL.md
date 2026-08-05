@@ -66,7 +66,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 3. **Copertura** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
 5. **Fasi sovradimensionate** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
-6. **Prossimo passo** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
+6. **Prossimo passo** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
 
 **The board.** On a `Mode: interactive` plan, render points 1 and 6 as the inline widget specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the layout; it is the single source of the board's shape, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a grid argues badly.
 
@@ -88,6 +88,12 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
+- **Adding phases for work that surfaced** — the answer to *"this phase passed and is still wrong"*. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (typically the board's `annotazioni e problemi`, or its export).
+
+  **In the tail, never in the middle**, even when the work logically belongs at Phase 2. Phase numbers must be contiguous ascending from 1, so an insertion renumbers everything after it — while the commits already made say `wf(phase 3)`, `wf(phase 4)` with the old numbers, and the correspondence between the plan and the history breaks silently. Execution order stays the numeric order; the new phase's text says what it remedies.
+
+  **A closed phase is not reopened.** Its `[x]` and its `> Files:` are the record of what happened and stay as they are; what it lacks becomes new work with its own phase and its own commit. Write the new phases to the same bar as `/write-workflow` — `Files:`, `Details:`, a re-runnable `Done:`, a `Pattern:` where the code is non-trivial, and a `Run:` line — and present them for approval before writing.
+
 - **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent, and on an interactive plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
 
   **Fill in defaults, never gaps.** A missing `Run:` is a default made explicit (`opus` / `high`), which is why proposing it is legitimate. A missing `Done:`, `Pattern:` or `Decisions:` is something its author never settled: report it and stop there, exactly as `/import-workflow` Step 3 does. Inventing a plausible `Done:` makes an open question look closed, and nobody checks it twice.

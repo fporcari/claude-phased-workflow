@@ -51,8 +51,22 @@ suggestion popup that forks the tree is worse than a copied command.
 | State | Command on the card |
 |---|---|
 | unfinished (`da fare` / `in esecuzione`) | `/phased-workflow:execute-phase Phase N — <title>` |
-| `problema` (a `[!]` phase) | `/phased-workflow:repair-phase` |
+| `problema`, **and the plan has that phase `[!]`** | `/phased-workflow:repair-phase` |
+| `problema` on a phase the plan has `[x]` | **none** — annotate and export |
 | a `[~]` phase | none: a red baseline nobody owns is the human's |
+
+**`problema` means two different things, and only one of them is repairable.** A phase
+the plan marks `[!]` failed its own `Done:` — tests red, with `> Issue:` and
+`> Attempted:` written by whoever ran it — and `/repair-phase` exists precisely for that:
+it re-diagnoses from scratch and pushes that code back to green.
+
+The other case is the one interactive mode produces most: the phase passed, and *you*
+looking at the result judge it wrong — a logical or structural problem whose answer is
+not to repair that phase but to **add phases to the plan**. `/repair-phase` would not
+even start there (it takes the first `[!]`, finds none, and says so), and if it did it
+would do the wrong thing: it is built to make a `Done:` green again, not to reopen a
+decomposition. So the card offers no command; the note and the export are the path, and
+the plan grows through `/resume-workflow`.
 
 Every unfinished phase shows its command, not just the one whose turn it is —
 reading it is how you see what is coming.
@@ -102,19 +116,31 @@ The exported prompt has a fixed shape, so it can be pasted into a fresh chat and
 acted on:
 
 ```
-Correzioni post-produzione — <slug> (branch <branch>, piano .phased/active/<slug>/plan.md)
+Revisione post-fase — <slug> (branch <branch>, piano .phased/active/<slug>/plan.md)
 
 Phase 2 — table foo with its TH UI  [fatta]
   la form salva ma il grid non si ricarica dopo il save
 
 Phase 4 — pdf export endpoint  [problema]
-  il totale in fondo non torna quando l'ordine ha uno sconto
+  lo sconto e' calcolato nella pagina: va nel modello, e serve un punto solo
+  che lo applichi anche all'export
 
-Per ciascuna: individua la causa e proponi la correzione prima di applicarla.
-Una fase gia' chiusa si corregge come lavoro nuovo, non riaprendo la sua fase.
+Per ciascuna, decidi quale dei due casi e' e dillo prima di toccare niente:
+
+1. correzione puntuale — individua la causa e proponi la modifica;
+2. problema di impostazione — non si ripara dentro la fase: proponi le fasi
+   NUOVE che lo risolvono, nel formato del piano (titolo, Files:, Details:,
+   Done:, Run:), da aggiungere IN CODA. Le scrive /resume-workflow, con il suo
+   commit.
+
+Una fase gia' chiusa non si riapre: quello che le manca diventa lavoro nuovo.
 ```
 
 Phases with no note are left out — an export listing every phase says nothing about
-which ones need attention. The two closing lines are part of the shape: without them
-the prompt is a list of complaints, and whoever receives it starts editing before
-diagnosing.
+which ones need attention.
+
+**The two-case fork is the load-bearing part of the shape.** Most of what a human
+notices in interactive mode is not a bug in a phase but a phase cut in the wrong place,
+and a prompt that only asks for a fix gets a patch where the plan needed another phase.
+The closing lines matter for the same reason: without them the prompt is a list of
+complaints, and whoever receives it starts editing before diagnosing.
