@@ -78,11 +78,12 @@ Only the split-vs-`vast` call materially changes execution — batch it into the
 
 **Present the plan in Italian**, each phase with its `Run:` line, and iterate until the user approves.
 
-**Close the presentation with the branch line**, pre-filled per Step 4 and flippable — one line, not a separate question:
+**Close the presentation with the branch line and the gate line** (`common.md` → *The gate line*):
 
-```
-Branch: <what will happen>   (dimmi se preferisci diversamente)
-```
+> Branch: \<what will happen\>   (dimmi se preferisci diversamente)
+> **Procedo?** Al tuo ok creo il branch e scrivo `.phased/active/<slug>/plan.md`.
+
+The branch line is pre-filled per Step 4 and flippable.
 
 ## Step 4: Open the branch
 

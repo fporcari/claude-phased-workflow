@@ -18,6 +18,21 @@ default exists, put the recommended option FIRST and append
 "(Recommended)" to its label (the tool has no default-answer parameter).
 For multiple-choice lists, one option per line, checkbox style.
 
+## The gate line
+
+A skill that stops to wait for the user must say so — an implicit wait
+reads as hesitation, and only someone who knows the flow by heart guesses
+that a reply is expected. Every presentation that ends in a wait closes
+with ONE line, plain text, **never inside a code fence** (fenced text
+reads as log output, not as a question addressed to the user):
+
+> **Procedo?** Al tuo ok \<exactly what happens next\>.
+
+The verb can change (*Confermi?* / *Lancio?*), the shape cannot: a bold
+one-word question, then what the ok unlocks. Multi-way choices go through
+`AskUserQuestion` instead (style above); the gate line is for the binary
+"go" that unblocks the skill.
+
 ## Plan directory
 
 Every workflow keeps its plan and its working notes in `.phased/`, at the

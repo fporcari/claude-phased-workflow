@@ -103,15 +103,13 @@ Build the commit message from the objective, the completed phases, the actual di
 [Fixes #N]
 ```
 
-Present it, get approval (default: yes), allow edits. Then:
+Present it, then ask ONE `AskUserQuestion` — choosing a path approves the message as shown, so say right above the question that edits to the message are welcome before choosing:
 
-```
-Come vuoi procedere?
+- **Pull request** (Recommended) — branch pulito dal parent, squash, PR verso `<parent-branch>`
+- **Merge sul parent** — squash direttamente su `<parent-branch>` e push
+- **Solo commit** — lascia il branch com'è, decido dopo
 
-[ ] Pull request — branch pulito dal parent, squash, PR verso <parent-branch> (consigliato)
-[ ] Merge sul parent — squash direttamente su <parent-branch> e push
-[ ] Solo commit — lascia il branch com'è, decido dopo
-```
+One gate, not two: approving the commit message separately was a second round-trip that bought nothing.
 
 **Merge sul parent** → from the main repo (`git worktree list --porcelain | head -1 | sed 's/worktree //'`): switch to the parent, pull, then
 

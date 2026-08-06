@@ -115,7 +115,9 @@ Fatti su cui poggia:
 - <fatto> (<path>)
 ```
 
-Not confirmed → keep going on the parts they push back on.
+Close the block with the gate line (`common.md` → *The gate line*): *"**Confermi?**
+Al tuo ok qui è finito: lancia `/write-workflow` in questa chat, legge le decisioni
+da qui."*
 
-Confirmed → *"Deciso. Lancia `/write-workflow` in questa chat: legge le decisioni da
-qui."* Nothing else happens here: no branch, no file, no code.
+Not confirmed → keep going on the parts they push back on. Nothing else happens
+here: no branch, no file, no code.

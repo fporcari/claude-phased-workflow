@@ -57,7 +57,7 @@ Inventing a plausible `Done:` for a phase whose author never wrote one is worse 
 
 ## Step 4: Land it
 
-Show the plan and get approval. Then, depending on Step 2:
+Show the plan and close with the gate line (`common.md` → *The gate line*): *"**Procedo?** Al tuo ok creo/adotto il branch e committo il piano."* Then, depending on Step 2:
 
 **Fresh import** → same branch rules as `/write-workflow` Step 4 (*Open the branch*): on a base branch, `git switch -c wf/<slug>`; on a feature branch, adopt it by default, with `wf/<slug>` off it as the alternative.
 

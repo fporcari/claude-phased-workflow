@@ -42,7 +42,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
    It sets `--effort`, the runaway cap, and light mode: `low` phases run a slim `/goal` contract *without* the execute-phase-agent skill, so their `Details:`/`Done:` must be fully self-contained.
 
-6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), show the user the final phase list with the model chosen for each, and get explicit confirmation before launching. The run stays attached to this session, so leave the app open.
+6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), then show the user the final phase list with the model chosen for each and close with the gate line (`common.md` → *The gate line*): *"**Lancio?** Al tuo ok parte il run in background su tutte le \<N\> fasi; tieni l'app aperta."* This skill carries no AskUserQuestion — the line is the gate.
 
 ## Execution
 

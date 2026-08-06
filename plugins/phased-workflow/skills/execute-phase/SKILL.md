@@ -63,7 +63,7 @@ Record the outcome and make the phase commit exactly as the shared core (`refs/p
 osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'
 ```
 
-Then summarise in Italian: what was done, test results, and the manual checks left to the user.
+Then summarise in Italian: what was done, test results, the manual checks left to the user — **and the next step, always**: the next phase with its `Run:` hint quoted (*"prossima: Phase N+1 — nuova chat, `/execute-phase` (suggerito: \<model\> / \<effort\>)"*), or `/finalize-workflow` when this was the last. The user must never need to know the flow by heart to keep moving.
 
 ## Context window
 

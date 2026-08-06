@@ -30,9 +30,9 @@ Present to the user (in Italian) a summary of:
 - Which files/components are involved
 - Estimated complexity
 
-Then suggest: *"Vuoi che proceda con `/write-workflow` per creare il piano di lavoro?"*
+Then close flat, with no question — this command cannot create the plan itself, so asking *"vuoi che proceda?"* promises something it cannot do:
 
-If the user confirms, inform them to run `/write-workflow` in this or a new session — this command does not create the plan itself.
+*"Prossimo passo: lancia `/write-workflow` per creare il piano di lavoro (in questa chat o in una nuova — l'analisi resta leggibile qui)."*
 
 ## Additional Context
 
