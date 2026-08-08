@@ -278,7 +278,19 @@ header line first:
 [wf:<slug>] phase N blocked — <one line>.
 [wf:<slug>] plan changed at phase N — <one-line summary of the approved deviation>.
 [wf:<slug>] workflow finalized — <consolidation outcome, one line>.
+[wf:<slug>] stop-work? — <what looks wrong, one line; the run keeps burning until answered>.
 ```
+
+**Stop-work (fermo lavori).** `stop-work?` is the one message that is a
+question, not a report: `/run-workflow`'s inspector sends it when continuing
+looks like wasted tokens. A foreman receiving it does not judge on its own —
+it puts ONE AskUserQuestion to its user immediately (*Fermo lavori* /
+*Continua*, with the inspector's reason) and replies with the decision on
+the message's own reply path: `stop-work: granted` or `stop-work: denied —
+continue`. No reply reaching the inspector → the run's own stop conditions
+govern, as if nothing was asked. After a granted stop the flow is human:
+chiacchierata, plan correction (`/resume-workflow` re-phasing or hand
+edits), then a fresh `/run-workflow` is the ripresa lavori.
 
 **Best-effort, always, in both directions.** No `foreman.json`, no way to
 reach sessions (the desktop session-management tools are absent in unattended

@@ -459,6 +459,13 @@ for i in $(seq 1 $REMAINING); do
   # session died leaving the phase stuck — looping again would burn runs.
   AFTER_DONE=$(phase_count x)
   AFTER_DONE=${AFTER_DONE:-0}
+  # Stable event line (see phase-failed above): a grown [x] count means the
+  # launched phase landed. Routine progress the parent Monitor can relay to
+  # the foreman chat — it is NOT pushed as a notification.
+  if [ "$AFTER_DONE" -gt "$BEFORE_DONE" ]; then
+    TOTAL_NOW=$(phase_lines | grep -c .); TOTAL_NOW=${TOTAL_NOW:-0}
+    echo "EVENT: phase-done $NEXT_PHASE $AFTER_DONE/$TOTAL_NOW"
+  fi
   # A Case A reopen (a completed phase sent back to [!] by a later phase's
   # baseline check) makes the [x] count DROP, so a successful repair only
   # restores it — real work happened, but the count did not grow. Skip the

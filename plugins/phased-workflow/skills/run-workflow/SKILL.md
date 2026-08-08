@@ -1,7 +1,7 @@
 ---
 description: Run all remaining phases autonomously — launches a new claude session per phase with correct model
 disable-model-invocation: true
-allowed-tools: Bash, Read, Monitor, PushNotification
+allowed-tools: Bash, Read, Edit, Monitor, PushNotification, AskUserQuestion, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Run Workflow
@@ -42,7 +42,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
    It sets `--effort`, the runaway cap, and light mode: `low` phases run a slim `/goal` contract *without* the execute-phase-agent skill, so their `Details:`/`Done:` must be fully self-contained.
 
-6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), then show the user the final phase list with the model chosen for each and close with the gate line (`common.md` → *The gate line*): *"**Lancio?** Al tuo ok parte il run in background su tutte le \<N\> fasi; tieni l'app aperta."* This skill carries no AskUserQuestion — the line is the gate.
+6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), then show the user the final phase list with the model chosen for each and close with the gate line (`common.md` → *The gate line*): *"**Lancio?** Al tuo ok parte il run in background su tutte le \<N\> fasi; tieni l'app aperta."* The line is the gate — AskUserQuestion exists in this skill solely for the stop-work question below, never for the launch.
 
 ## Execution
 
@@ -56,7 +56,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh" 2>&1 \
 
 The script owns the loop; do not reimplement it.
 
-**Watch it with the Monitor tool** — one persistent monitor on that log, filtered to the `EVENT:` lines the launcher emits (`phase-failed`, `phase-blocked`, `run-end`). The launcher emits `run-end` on **every** exit path, so the loop below always terminates — never `tail -f | awk '… exit'` here: when the log goes quiet after `run-end` (it always does — `run-end` is the launcher's last word), `tail` never gets its SIGPIPE and the pipeline hangs forever:
+**Watch it with the Monitor tool** — one persistent monitor on that log, filtered to the `EVENT:` lines the launcher emits (`phase-done`, `phase-failed`, `phase-blocked`, `run-end`). The launcher emits `run-end` on **every** exit path, so the loop below always terminates — never `tail -f | awk '… exit'` here: when the log goes quiet after `run-end` (it always does — `run-end` is the launcher's last word), `tail` never gets its SIGPIPE and the pipeline hangs forever:
 
 ```bash
 LOG="${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log"; SEEN=0
@@ -75,6 +75,10 @@ If the launcher is killed outright (`kill -9`, machine shutdown) even `run-end` 
 
 **Push policy** (see `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Notifications*): send a **PushNotification** on the **first** `phase-failed` of the run, on **any** `phase-blocked`, and once when the run ends — the end push comes from the background command's own completion, not from the `run-end` event, so there is exactly one source per notification and no duplicate. At most one failure push per run. Nothing else is pushed: routine per-phase progress is not worth an interruption. Each message leads with what the user would act on, one line under 200 characters with no markdown — e.g. `run stopped: phase 4 [!] after repair, 3/7 done — see its > Issue: note`.
 
+**Relay to the foreman — this session is the run's site inspector.** The `-p` sub-sessions cannot reach desktop chats, but this chat can: on each Monitor wake-up, relay every new `EVENT:` line to the foreman in the corresponding message format of `common.md` → *The foreman* (`phase-done` → the done line, `phase-failed` → the FAILED line with the phase's `> Issue:` in one line, `phase-blocked` → the blocked line, `run-end` → the run outcome). Best-effort as always — and when this chat IS the foreman the title lookup finds nothing and the relay skips itself. Unlike the push, the relay carries routine progress: the foreman is a board, not a pager.
+
+**Stop-work (fermo lavori).** The inspector's judgment, not a checklist: when what it sees makes *continuing* look like wasted tokens — a repair cascade (a reopen after a repair, a second `phase-failed`), a budget cap tripped, phases closing suspiciously instantly, log content that contradicts the plan — send the foreman the `stop-work?` question per `common.md` → *The foreman* and keep watching: the run is NOT paused by the question. On `stop-work: granted` (the reply path): kill the background run now (TaskStop / kill the launcher's process group), accept that a phase may die `[>]` mid-flight — the WIP evidence and the stale-`[>]` reset exist for exactly this — write the *Run inspection* notes immediately (the run no longer owns the tree), and close telling the user the resume path: correct the plan (chiacchierata + `/resume-workflow`), then a fresh `/run-workflow` is the ripresa lavori. On `stop-work: denied` or no reply, the run's own stop conditions govern. When this chat IS the foreman there is nobody to ask upward: put the same *Fermo lavori / Continua* question to the user here, directly.
+
 **While the run is in the background, this session does NOT write to the repository.** The run owns the working tree; a parent-side edit breaks the clean-tree invariant every phase session checks at its start.
 
 **Degradation is declared, not silent.** Without the Monitor tool or PushNotification available, run the script in the foreground exactly as before and report once at the end — and say that the early `[!]` notification needs the background path.
@@ -86,6 +90,10 @@ Report the launcher's output to the user.
 **Stop conditions:** all phases `[x]`; a `[!]` phase after its one repair attempt (marker `> Repair attempted:` — delete it to grant another round); a `[~]` blocked phase (unattributable red baseline); `claude` exiting non-zero; no progress. An *attributable* red baseline does not stop the run — the culprit phase is reopened `[x] → [!]` and repaired.
 
 ## After completion
+
+**Inspection notes — only now, never mid-run** (the run owned the tree until `run-end`; writing earlier breaks the clean-tree invariant). Append to the plan's `notes.md` a `## Run inspection` section: one bullet per noteworthy fact of the run, read from the EVENT stream and the phase logs — which phase failed and was repaired, which came back blocked, anomalies (a phase that tripped its budget cap, a no-progress stop, a session that died), and nothing when the run was uneventful (write `- uneventful run, N/N phases` and stop there). Commit it as `wf: run inspection notes`. This is what `/finalize-workflow` reads: its pre-commit review takes these bullets as focus points, and its lessons pass (Step 5) scans the same file.
+
+Then:
 
 - `grep '^\- \[' "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve)"` — phase status
 - all `[x]` → `/finalize-workflow`; any `[!]` → read its `> Issue:`/`> Attempted:` notes first

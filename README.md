@@ -1,6 +1,6 @@
 # Claude Code Phased Workflow
 
-**Version 5.10.1** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
+**Version 5.11.0** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
 
 A slash command system for Claude Code that structures development work into planned phases, executable in independent sessions, with shared state on the file system.
 
@@ -107,7 +107,7 @@ The plan is the coordination point between sessions, and it is committed on the 
 | Command | When to use | What it does |
 |---------|------------|--------------|
 | `/execute-phase-agent` | One phase, unattended | Like `/execute-phase` with no confirmations: convergence loop (3 attempts against tests + lint, no-progress detector), independent review, `Done:` gate |
-| `/run-workflow` | The whole plan, unattended | Pre-flight review, then one fresh `/goal`-guarded session per phase; light mode for `Effort=low`; one repair attempt on failure before stopping |
+| `/run-workflow` | The whole plan, unattended | Pre-flight review, then one fresh `/goal`-guarded session per phase; light mode for `Effort=low`; one repair attempt on failure before stopping. The launching chat is the run's inspector: it relays every event to the foreman and can raise the stop-work question |
 | `/repair-phase` | A phase came back failed | Fresh-eyes repair: reads the `> Issue:` and `> Attempted:` notes, may not repeat a listed attempt, restarts from the diagnosis |
 
 ### Auxiliary
@@ -629,7 +629,7 @@ Plain git: `git worktree list` shows them all, `git worktree remove <path>` remo
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**186 assertions over 29 scenarios** — S1 through S30, with S16 retired along with the KB mirror and its number left vacant. S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S19 checks that `next-phase.py --validate` gates the launcher before any session starts — and that warning lines are printed, not computed and discarded; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`. Two scenarios build real git repos instead of driving the mock: S17 (`/import-workflow`'s classification and its mid-run git sequence) and S22 (the `--plans` location service: root plan, worktree plan, orphan-branch plan read without checkout). S18 is a hybrid: it proves live that prose bullets in a `## Notes` section stay inert, and statically that every phase-state match is single-source.
+**187 assertions over 29 scenarios** — S1 through S30, with S16 retired along with the KB mirror and its number left vacant. S1–S13 run the shipped `/run-workflow` bash script against a mock `claude` binary: `/goal` call shape, model/effort/cap selection, repair succeeding and resuming the loop, repair failing and stopping it, the idempotent repair marker, relaunch on a `[!]` *without* that marker, attribution Case A (a reopened phase drops the done-count without tripping the progress guard) and Case B (`[~]` stops the run), fable→opus fallback on a session crash, the no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt fallback. S19 checks that `next-phase.py --validate` gates the launcher before any session starts — and that warning lines are printed, not computed and discarded; S20 checks that every silent fallback (unknown model, unknown effort, missing selector) announces itself with a `NOTE:`. Two scenarios build real git repos instead of driving the mock: S17 (`/import-workflow`'s classification and its mid-run git sequence) and S22 (the `--plans` location service: root plan, worktree plan, orphan-branch plan read without checkout). S18 is a hybrid: it proves live that prose bullets in a `## Notes` section stay inert, and statically that every phase-state match is single-source.
 
 The rest guard invariants that live in prose, each proven by mutation — break the clause and the assert must fail: S21 (skills and refs address the plugin, never `~/.claude`), S23 (`-agent` skills are thin variants citing their base, not second copies), S24 (the automation fork is real, not decorative), S25 (the `EVENT` contract — the stable lines a parent `Monitor` watches, emitted exactly once, including on an all-`[x]` early exit and on a validation failure), S26 (every `claude -p` sub-session prompt carries a `plugin:` namespace), S27 (the `Done:`/`Verify:` contract lives once in `common.md` and is cited, not restated), S28 (the per-model steer reaches every sub-session, and a `sonnet` phase does not receive fable's), S29 (the resume path leaves machine-readable evidence: the selector surfaces the `> WIP:` note's `commit:` ref, the validator warns — never blocks — on the states that leave a resume blind, and the structured `> WIP:` format is single-source in `refs/phase-execution.md`), S30 (the foreman protocol lives once in `common.md`, the shared core carries the one *Notify the foreman* step, every taking/deposing/notifying skill cites it, and `/resume-workflow` keeps the assume-command migration).
 
@@ -689,6 +689,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [5.11.0](docs/release-5.11.0.md) | the run inspector: per-phase events relayed to the foreman, and the stop-work question |
 | [5.10.1](docs/release-5.10.1.md) | the foreman field-tested: the title is the address, the user's rename is the one manual step |
 | [5.10.0](docs/release-5.10.0.md) | the foreman: one chat commands the workflow, phase chats report to it over cross-session messaging |
 | [5.9.0](docs/release-5.9.0.md) | a skill that waits says so: the gate line, one gate at finalize, no fake questions |

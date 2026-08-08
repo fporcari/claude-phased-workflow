@@ -10,7 +10,7 @@
 # malformed line rejected, interactive-plus-table warned, no header reading as
 # interactive; S20 the announced fallbacks (missing selector, unknown
 # model/effort); S25 the EVENT contract — the stable EVENT: lines the parent
-# Monitor watches (phase-failed, phase-blocked, run-end), each emitted verbatim
+# Monitor watches (phase-done, phase-failed, phase-blocked, run-end), each emitted verbatim
 # at its site, run-end on EVERY exit path (early exits included) with the phase
 # number read by an anchored sed (live), plus a static drift guard coupling
 # those tokens to run-workflow/SKILL.md in BOTH directions, proven by
@@ -944,6 +944,8 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup; run
 assert "S25: a clean run emits 'EVENT: run-end ok 3/3'" 'grep -q "^EVENT: run-end ok 3/3$" out.log'
 assert "S25: run-end is emitted exactly once" '[ "$(grep -c "^EVENT: run-end" out.log)" = 1 ]'
+assert "S25: each completed phase emits its 'EVENT: phase-done' with progress" \
+  '[ "$(grep -c "^EVENT: phase-done" out.log)" = 3 ] && grep -q "^EVENT: phase-done 1 1/3$" out.log && grep -q "^EVENT: phase-done 3 3/3$" out.log'
 # Static drift guard: every EVENT token the launcher emits must be named in the
 # skill that tells the parent which lines to watch. Tokens are extracted live
 # from the shipped launcher (the S14 idiom — measure what ships, not a copy).
@@ -957,7 +959,7 @@ S25_SKILL="$SKILLS_DIR/run-workflow/SKILL.md"
 S25_STATIC_OUT="$(s25_static_guard "$S25_SKILL")"
 [ -z "$S25_STATIC_OUT" ] || echo "  offending: $S25_STATIC_OUT"
 assert "S25: run-workflow/SKILL.md names every EVENT token the launcher emits" '[ -z "$S25_STATIC_OUT" ]'
-assert "S25: token extraction found all three events" '[ "$(s25_tokens | wc -l | tr -d " ")" = 3 ]'
+assert "S25: token extraction found all four events" '[ "$(s25_tokens | wc -l | tr -d " ")" = 4 ]'
 # Mutation re-runs the SAME guard on a copy with the phase-failed token dropped.
 S25_MUT="$(mktemp -d)"
 cp "$S25_SKILL" "$S25_MUT/SKILL.md"
@@ -1312,7 +1314,7 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # Every skill that takes command, deposes, notifies or reads the rationale
   # cites the section instead of re-deriving it.
   for S30_S in write-workflow import-workflow resume-workflow execute-phase \
-               execute-phase-agent finalize-workflow; do
+               execute-phase-agent finalize-workflow run-workflow; do
     S30_F="$1/$S30_S/SKILL.md"
     grep -qi 'foreman' "$S30_F" 2>/dev/null \
       || echo "$S30_F: does not cite common.md's The foreman section"
@@ -1322,7 +1324,7 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$1/resume-workflow/SKILL.md: lost the assume-command migration path"
   # Nobody but common.md carries the foreman.json body or the message formats.
   for S30_S in write-workflow import-workflow resume-workflow execute-phase \
-               execute-phase-agent finalize-workflow; do
+               execute-phase-agent finalize-workflow run-workflow; do
     S30_F="$1/$S30_S/SKILL.md"
     if grep -qE '"foreman":|"since":|\[wf:' "$S30_F" 2>/dev/null; then
       echo "$S30_F: restates the foreman.json body or message format (single source: common.md)"
