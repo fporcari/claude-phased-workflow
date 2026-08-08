@@ -64,6 +64,19 @@ git add -A && git commit -q -m "wf(phase N): <title>"
 A phase closing `[!]` commits too, as `wf(phase N): FAILED — <title>`, and
 leaves the failing code **in place**: repair has to see it.
 
+A choice the phase made that the plan did not settle — why this way, what was
+rejected — goes into `notes.md` under a `## Phase N` heading before the
+commit, per `refs/common.md` → *The foreman* (per-phase rationale): finalize
+reads the file, not the memory of a chat that no longer exists.
+
+## Notify the foreman
+
+After the phase commit, send the workflow's foreman chat one message with the
+outcome — done, FAILED, or blocked — in the exact format and by the exact
+mechanics of `refs/common.md` → *The foreman*. Best-effort: no
+`foreman.json`, no messaging tool, delivery refused → skip in silence. The
+notification never fails a phase and is never worth a retry loop.
+
 ## WIP checkpoints
 
 A phase big enough to die halfway must leave evidence along the way. Two

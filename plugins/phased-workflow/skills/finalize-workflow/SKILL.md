@@ -1,7 +1,7 @@
 ---
 description: Finalize the workflow - verify all phases, prepare final commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Finalize Workflow
@@ -74,7 +74,9 @@ This step is the only whole-diff review on the "Merge sul parent" and "Solo comm
 
 **This step is mandatory and runs before anything is archived or removed.** `.phased/` never reaches the parent, and the workflow branch is deletable at Step 7 — so this is the only path by which anything learned during the run outlives it. Skipping it silently is how the loop stops learning across runs.
 
-Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
+Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`common.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
+
+A rationale question the notes leave open, on an interactive plan, may additionally be put to the phase's own chat by message — best-effort, per `common.md` → *The foreman*: those chats are often gone, and the file remains the mechanism.
 
 One bar: **would this have saved a future session real work, in a way the repo and git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" → yes. Bugs specific to this diff, anything visible by opening the file → no.
 
@@ -147,6 +149,8 @@ git push -u origin <type>/<slug>
 Then: *"Branch pushato. Lancia `/pull-request` per creare la PR verso `<parent>`."*
 
 **Solo commit** → nothing else happens; the workflow branch holds everything.
+
+Whichever path ran: if `foreman.json` names a session other than this one, send it the closing `workflow finalized` message per `common.md` → *The foreman* — best-effort, so the father's board learns the run is over.
 
 After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"La roadmap ha altre macrofasi. Prossimo passo: nuova chat e `/write-workflow` per dettagliare la prossima — col senno di poi di quella appena committata."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
 

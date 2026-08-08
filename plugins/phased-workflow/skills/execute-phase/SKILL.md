@@ -1,7 +1,7 @@
 ---
 description: Execute the next phase from the active work plan
 disable-model-invocation: true
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Execute Phase
@@ -47,6 +47,8 @@ Present in ONE message: what the phase will do, the files to create/modify/delet
 
 Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it.
 
+**When an answer changes the plan itself** — a phase reshaped, a decision reversed, scope moved — the plan edit gets committed as usual, and the foreman chat is told: one `plan changed at phase N` message per the protocol in `common.md` → *The foreman*, best-effort. The father must not discover a deviation at finalize.
+
 ## Step 5: Verify
 
 - Testable logic → write/update tests in the repo's existing style, run the suite. A failure that doesn't touch this phase's `Files:` is probably pre-existing: check before absorbing it, and tell the user instead. Fix and re-run, ONE retry; still red → `[!]`.
@@ -57,7 +59,7 @@ What is left after that — aesthetics, "is this interaction right?", UX ambigui
 
 ## Step 6: Record and notify
 
-Record the outcome and make the phase commit exactly as the shared core (`refs/phase-execution.md`) specifies — the Step 5 `> Verify:` notes included, surfaced in the notification and the summary.
+Record the outcome and make the phase commit exactly as the shared core (`refs/phase-execution.md`) specifies — the Step 5 `> Verify:` notes included, surfaced in the notification and the summary. Then the shared core's *Notify the foreman*: one outcome message to the foreman chat, best-effort.
 
 ```bash
 osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'

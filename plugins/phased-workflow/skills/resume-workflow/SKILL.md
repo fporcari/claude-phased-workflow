@@ -1,11 +1,11 @@
 ---
 description: Locate the active phased workflow and report where it stands, then name the skill that takes it forward. The entry point of the phased-workflow plugin, and the only skill in it the agent may reach on its own. Use when the user asks where the work stands, what the next phase is, whether a workflow is running, why a phase is stuck or failed, how to resume after an interrupted session, or mentions `.phased/` or a `wf/` branch.
-allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Grep, Glob, AskUserQuestion, mcp__visualize__read_me, mcp__visualize__show_widget
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, mcp__visualize__read_me, mcp__visualize__show_widget, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Resume Workflow
 
-Supervision and resume view of the work plan. **Read-only on source code** — the only files this command may modify are the plan and `notes.md`, and only on an approved edit; each such edit gets its own `wf:` commit.
+Supervision and resume view of the work plan. **Read-only on source code** — the only files this command may modify are the plan, `notes.md`, `foreman.json` and `handover.md`; plan and notes only on an approved edit; each edit gets its own `wf:` commit.
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
@@ -39,6 +39,26 @@ No active plan → stop: `/write-workflow` creates one, `/import-workflow` adapt
 
 The third command gives `BASE`, the commit that added the plan. Everything after it is this workflow; everything before it is not — on an adopted branch that distinction is the whole point.
 
+## Step 1b: The foreman
+
+Read `.phased/active/<slug>/foreman.json` (protocol, file format and
+take-command mechanics live once in `common.md` → *The foreman*):
+
+- **Absent, or `status` is `deposed` with no successor** → **assume command,
+  without asking**: this is the normal state of every workflow that predates
+  the protocol, and a workflow being resumed wants a foreman. Take command
+  per `common.md` — rename, write the file, ONE `wf: foreman — <session name>
+  takes command` commit — and say so in one line of the report.
+- **Present and it names this very session** → nothing to do.
+- **Present and it names another session** → do not depose on a status query.
+  Report it (Step 3 gets a *Capocantiere* line: who, since when). Offer the
+  takeover through the Step 3 AskUserQuestion only when something actually
+  needs action here, or the user says they want this chat in charge. On yes:
+  depose per `common.md` — best-effort farewell message and retitle of the
+  old session, read `handover.md` if present and fold what it says into the
+  report, then take command (its own commit). The old chat may be long dead;
+  nothing in this step is allowed to block on it.
+
 ## Step 2: Attribute the work
 
 Each completed phase committed its own work, so attribution is **exact — never infer it**:
@@ -61,7 +81,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 
 ## Step 3: Report (in Italian)
 
-1. **Stato del piano** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"in esecuzione da oltre 2 ore — la chat precedente potrebbe essere terminata"*.
+1. **Stato del piano** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"in esecuzione da oltre 2 ore — la chat precedente potrebbe essere terminata"*. One **Capocantiere** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
 2. **Commit del workflow** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Copertura** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.

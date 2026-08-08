@@ -1,7 +1,7 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__visualize__read_me, mcp__visualize__show_widget
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__visualize__read_me, mcp__visualize__show_widget, mcp__ccd_session_mgmt__set_session_title
 ---
 
 # Write Workflow
@@ -99,7 +99,7 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md` and an empty `notes.md`.
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `common.md` → *The foreman* (rename this session, write the file; the commit is Step 6's plan commit, no second one).
 
 ```
 # Context: <branch-name>
@@ -148,6 +148,7 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch>.
+Questa chat è il capocantiere (wf:<slug>:foreman): le chat di fase notificano qui l'esito.
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
 Fase 1 — suggerito: <model>, effort <effort>.
 ```

@@ -2,7 +2,7 @@
 description: Import an existing plan or a handoff document into a .phased/ workflow
 argument-hint: <path to the source, or nothing to look for one>
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion
+allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, mcp__ccd_session_mgmt__set_session_title
 ---
 
 # Import Workflow
@@ -69,9 +69,14 @@ Then write and commit:
 
 ```bash
 mkdir -p .phased/active/<slug>
-# plan.md + empty notes.md
+# plan.md + empty notes.md + foreman.json
 git add .phased && git commit -m "wf: import plan for <slug>"
 ```
+
+**Importing is taking command**: write `foreman.json` alongside the plan and
+rename this session, per `common.md` → *The foreman* — the file rides the
+import commit above, no second commit. An imported workflow is thereby born
+with a foreman, exactly like a written one.
 
 Verify the commit is not empty (`git show --stat HEAD`).
 
@@ -81,6 +86,7 @@ Verify the commit is not empty (`git show --stat HEAD`).
 
 ```
 Importato in .phased/active/<slug>/plan.md (<N> fasi: <x> completate, <y> da fare), committato su <branch>.
+Questa chat è il capocantiere (wf:<slug>:foreman): le chat di fase notificano qui l'esito.
 Sorgente lasciata in <path> — superata, cancellala quando vuoi.
 <gaps, if any>
 Per continuare, lancia /execute-phase.

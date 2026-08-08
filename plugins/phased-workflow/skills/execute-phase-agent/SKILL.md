@@ -1,6 +1,6 @@
 ---
 description: Execute the next phase unattended — no questions, baseline attribution, convergence loop, one commit per phase
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Execute Phase — Agent
@@ -81,5 +81,7 @@ When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general
 ## Step 6: Record, commit, stop
 
 Record the outcome and make the phase commit exactly as the shared core specifies. **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none.
+
+Then the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
 
 Print `✓ Phase N completed: <title>` or `⚠ Phase N has issues: <reason>` and stop.

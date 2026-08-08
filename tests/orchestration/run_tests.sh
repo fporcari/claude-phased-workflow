@@ -46,7 +46,12 @@
 # session blind: several [>], a [>] with no "In execution since", a WIP note
 # with no commit: ref; a healthy [>] draws zero warnings) and static (the
 # structured > WIP: format is single-source in refs/phase-execution.md,
-# cited by /execute-phase, never restated). S16 retired with the KB mirror
+# cited by /execute-phase, never restated). S30 checks the foreman protocol
+# (chat hierarchy and cross-session messaging): single-source in common.md's
+# '## The foreman', the shared core carrying the one 'Notify the foreman'
+# step, every taking/deposing/notifying skill citing it, resume-workflow
+# keeping the assume-command migration, no skill restating foreman.json —
+# proven by mutation. S16 retired with the KB mirror
 # in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
@@ -1284,6 +1289,74 @@ assert "S29h: phase-execution.md declares itself the single source" \
   'grep -q "single source of its format" "$S29_REF"'
 assert "S29i: /execute-phase cites WIP checkpoints and restates no format" \
   'grep -q "WIP checkpoints" "$S29_SKILL" && ! grep -q "> WIP: <" "$S29_SKILL" && ! grep -q "> WIP: done:" "$S29_SKILL"'
+
+echo "== S30: the foreman protocol lives once and is cited, not restated =="
+# One chat commands each workflow (the foreman), executor chats message it —
+# file format, take-command mechanics and message formats are prose spread
+# over several skills, the exact shape that drifts. So: common.md owns the
+# protocol under '## The foreman', the shared core carries the one 'Notify
+# the foreman' step both execute modes cite, every skill that takes or hands
+# over command cites the section, and nobody restates the foreman.json body.
+s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S30_C="$2/common.md"
+  grep -q '^## The foreman' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: missing the '## The foreman' section"
+  grep -q 'foreman\.json' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section does not name foreman.json"
+  grep -q 'Best-effort' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section does not state the best-effort rule"
+  grep -q 'handover\.md' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section does not name handover.md"
+  grep -q '^## Notify the foreman' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: missing the 'Notify the foreman' step"
+  # Every skill that takes command, deposes, notifies or reads the rationale
+  # cites the section instead of re-deriving it.
+  for S30_S in write-workflow import-workflow resume-workflow execute-phase \
+               execute-phase-agent finalize-workflow; do
+    S30_F="$1/$S30_S/SKILL.md"
+    grep -qi 'foreman' "$S30_F" 2>/dev/null \
+      || echo "$S30_F: does not cite common.md's The foreman section"
+  done
+  # resume-workflow owns the migration: no foreman on file → assume command.
+  grep -q 'assume command' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/resume-workflow/SKILL.md: lost the assume-command migration path"
+  # Nobody but common.md carries the foreman.json body.
+  for S30_S in write-workflow import-workflow resume-workflow execute-phase \
+               execute-phase-agent finalize-workflow; do
+    S30_F="$1/$S30_S/SKILL.md"
+    if grep -q '"status": "active"' "$S30_F" 2>/dev/null; then
+      echo "$S30_F: restates the foreman.json format (single source: common.md)"
+    fi
+  done
+  return 0
+}
+S30_OUT="$(s30_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S30_OUT" ] || echo "  offending: $S30_OUT"
+assert "S30: the foreman protocol is single-source and cited" '[ -z "$S30_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/^## The foreman.*/## The site manager (renamed)/' "$S24_REFS/common.md" \
+  > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when common.md stops owning the protocol" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed -i.bak '/[Ff]oreman/d' "$S30_MUT/resume-workflow/SKILL.md" \
+  && rm -f "$S30_MUT/resume-workflow/SKILL.md.bak"
+assert "S30: the guard fails when resume-workflow drops the takeover" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+cp "$S24_REFS/common.md" "$S30_MUT/refs/common.md"
+sed '/^## Notify the foreman/,+7d' "$S24_REFS/phase-execution.md" \
+  > "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when the shared core stops notifying" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
