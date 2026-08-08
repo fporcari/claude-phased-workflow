@@ -1320,13 +1320,20 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # resume-workflow owns the migration: no foreman on file → assume command.
   grep -q 'assume command' "$1/resume-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/resume-workflow/SKILL.md: lost the assume-command migration path"
-  # Nobody but common.md carries the foreman.json body.
+  # Nobody but common.md carries the foreman.json body or the message formats.
   for S30_S in write-workflow import-workflow resume-workflow execute-phase \
                execute-phase-agent finalize-workflow; do
     S30_F="$1/$S30_S/SKILL.md"
-    if grep -q '"foreman":' "$S30_F" 2>/dev/null; then
-      echo "$S30_F: restates the foreman.json format (single source: common.md)"
+    if grep -qE '"foreman":|"since":|\[wf:' "$S30_F" 2>/dev/null; then
+      echo "$S30_F: restates the foreman.json body or message format (single source: common.md)"
     fi
+  done
+  # The rename suggestion is restated only verbatim: the shared suffix must
+  # appear identical in the source and in both skills that close with it.
+  S30_SUFFIX="indirizzo a cui le chat di fase"
+  for S30_F in "$S30_C" "$1/write-workflow/SKILL.md" "$1/import-workflow/SKILL.md"; do
+    grep -q "$S30_SUFFIX" "$S30_F" 2>/dev/null \
+      || echo "$S30_F: the rename suggestion drifted from the canonical wording"
   done
   return 0
 }
@@ -1356,6 +1363,14 @@ sed '/^## Notify the foreman/,+7d' "$S24_REFS/phase-execution.md" \
   > "$S30_MUT/refs/phase-execution.md"
 assert "S30: the guard fails when the shared core stops notifying" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# A skill restates the foreman.json body — the copy defect the single-source
+# rule exists for.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+printf '\n  "foreman": "wf:<slug>:foreman",\n' >> "$S30_MUT/execute-phase/SKILL.md"
+assert "S30: the guard fails when a skill restates the foreman.json body" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 
 echo ""

@@ -76,7 +76,6 @@ This step is the only whole-diff review on the "Merge sul parent" and "Solo comm
 
 Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`common.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
 
-A rationale question the notes leave open, on an interactive plan, may additionally be put to the phase's own chat by message — best-effort, per `common.md` → *The foreman*: those chats are often gone, and the file remains the mechanism.
 
 One bar: **would this have saved a future session real work, in a way the repo and git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" → yes. Bugs specific to this diff, anything visible by opening the file → no.
 

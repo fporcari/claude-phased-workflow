@@ -251,8 +251,11 @@ creation, and by `/resume-workflow` when no other session claims the title
 (a missing `foreman.json` is the normal state of any pre-protocol workflow —
 absence is migration, not an error):
 
-1. Write `foreman.json` — `foreman` is the title above, `since` now; a
-   replaced foreman moves into `history` with its deposition timestamp.
+1. Write `foreman.json` — `foreman` is the title above, `since` now. A
+   foreman replaced by deposition moves into `history` with its deposition
+   timestamp. **Idempotent by content**: if the file already carries exactly
+   this title and no other session claims it, leave it untouched — no commit,
+   no history entry; re-claiming a title you already hold is not an event.
 2. Commit it (`wf: foreman — takes command`), or fold it into the commit the
    skill is already making (plan, import). Tracked like the plan: left
    uncommitted it breaks the clean-tree invariant.
@@ -262,8 +265,9 @@ absence is migration, not an error):
 
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
-that session id. In the CLI (Claude Code ≥ 2.1.224) the same by name:
-`ListAgents` + `SendMessage`. One plain-text message, header line first:
+that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
+(≥ 2.1.224 per its release notes; that leg is not yet field-tested). One
+plain-text message, header line first:
 
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
@@ -273,10 +277,12 @@ that session id. In the CLI (Claude Code ≥ 2.1.224) the same by name:
 [wf:<slug>] workflow finalized — <consolidation outcome, one line>.
 ```
 
-**Best-effort, always, in both directions.** No `foreman.json`, no messaging
-tool (unattended sessions — `claude -p` sub-sessions, scheduled runs — have
-none, by platform design), no session bearing the title, delivery refused →
-skip in silence and move on. A notification never fails a phase, never asks
+**Best-effort, always, in both directions.** No `foreman.json`, no way to
+reach sessions (unattended runs — `claude -p` sub-sessions, scheduled tasks —
+cannot message desktop chats: the session-management tools are absent there,
+and a `SendMessage` tool seen in one addresses its own subagents, not
+sessions), no session bearing the title, delivery refused → skip in silence
+and move on. A notification never fails a phase, never asks
 the user anything, and never becomes a retry loop. A foreman receiving one
 re-reads `.phased/` and redraws its board — the plan on disk, not the
 message text, is the state.
@@ -289,10 +295,9 @@ old chat may be dead; nothing here is allowed to block on it.
 
 **Per-phase rationale.** A phase that makes a non-obvious choice appends it
 to `notes.md` under a `## Phase N` heading — why this way, what was rejected.
-That is what `/finalize-workflow`'s lessons pass (its Step 5) reads instead
-of interrogating executor chats that no longer exist; interactive children
-still alive may additionally be queried by message, but the file is the
-mechanism, the message the extra.
+That is what `/finalize-workflow`'s lessons pass (its Step 5) reads: executor
+chats are gone by then, and they carry no title to be reached at anyway —
+the file is the only mechanism.
 
 ## Notifications
 

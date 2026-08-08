@@ -2,7 +2,7 @@
 description: Import an existing plan or a handoff document into a .phased/ workflow
 argument-hint: <path to the source, or nothing to look for one>
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, mcp__ccd_session_mgmt__set_session_title
+allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion
 ---
 
 # Import Workflow

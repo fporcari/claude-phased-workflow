@@ -54,5 +54,10 @@ a live session (it woke and acted on it), retitle of the old foreman to
 `history` — each primitive verified against the actual desktop tools.
 
 S30 updated to the simplified contract (title lookup defined in `common.md`,
-no `handover.md`, nobody restates the JSON body). 185 assertions over 29
-scenarios, green.
+no `handover.md`, nobody restates the JSON body or the message formats, the
+rename suggestion pinned verbatim across its three files — the restatement
+clause proven by mutation). An independent inspector agent reviewed the whole
+protocol before release; its two mechanical findings (a dead tool grant from
+the abandoned self-rename design, a take-command that was not idempotent for
+the foreman's own status queries) are fixed in this same release. 186
+assertions over 29 scenarios, green.
