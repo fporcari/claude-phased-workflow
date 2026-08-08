@@ -266,7 +266,9 @@ absence is migration, not an error):
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
 that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
-(≥ 2.1.224 per its release notes; that leg is not yet field-tested). One
+(≥ 2.1.224; on 2.1.226 both tools verified present even in `claude -p`
+sub-sessions — so unattended children may reach the foreman too, best-effort
+as always; end-to-end delivery from headless not yet field-tested). One
 plain-text message, header line first:
 
 ```
@@ -278,11 +280,10 @@ plain-text message, header line first:
 ```
 
 **Best-effort, always, in both directions.** No `foreman.json`, no way to
-reach sessions (unattended runs — `claude -p` sub-sessions, scheduled tasks —
-cannot message desktop chats: the session-management tools are absent there,
-and a `SendMessage` tool seen in one addresses its own subagents, not
-sessions), no session bearing the title, delivery refused → skip in silence
-and move on. A notification never fails a phase, never asks
+reach sessions (the desktop session-management tools are absent in unattended
+runs; on a CLI < 2.1.224 there is no cross-session `SendMessage` either, and
+where one exists the target may still be invisible to `ListAgents`), no
+session bearing the title, delivery refused → skip in silence and move on. A notification never fails a phase, never asks
 the user anything, and never becomes a retry loop. A foreman receiving one
 re-reads `.phased/` and redraws its board — the plan on disk, not the
 message text, is the state.
