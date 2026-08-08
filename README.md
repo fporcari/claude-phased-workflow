@@ -1,6 +1,6 @@
 # Claude Code Phased Workflow
 
-**Version 5.10.0** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
+**Version 5.10.1** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
 
 A slash command system for Claude Code that structures development work into planned phases, executable in independent sessions, with shared state on the file system.
 
@@ -283,7 +283,7 @@ Key behaviors:
 - **Per-phase `Run: <model> / <effort>` hint** — `opus` floor and default, never `sonnet` (the standing rule for UI and declarative work), `fable` where inventive work survives the gate; the effort scales how wide the phase looks before it asks. Advice, not enforcement: both are chosen when you open the chat, which is why `/write-workflow` and `/resume-workflow` quote it beforehand
 - **Two verification fields** — `Done:` stays machine-re-runnable; `Verify:` carries the human steps, each with a *when* (`now`, or `deferred: needs Phase M`). What a browser agent can assert goes to the `ui-test` skill, never onto the human's list (`ui-test` ships separately — when it is not installed those checks fall to the human as `Verify: now` steps, declared, never dropped); deferred steps accumulate in `verify.md` and finalize presents them as one QA pass
 - **Records modified files** in the `> Files:` line — source of truth for finalize
-- **Reports to the foreman** — each workflow has one commanding chat (the *foreman*, recorded in `foreman.json` next to the plan; `/write-workflow`, `/import-workflow` and `/resume-workflow` take command, `/resume-workflow` can depose a stale one). Phase chats message it the outcome — done, failed, blocked, plan changed — over Claude Code's cross-session messaging (≥ 2.1.224), best-effort by design: no foreman, no messaging tool, dead session → silent skip, never a failed phase
+- **Reports to the foreman** — each workflow has one commanding chat (the *foreman*, recorded in `foreman.json` next to the plan; `/write-workflow`, `/import-workflow` and `/resume-workflow` take command, `/resume-workflow` can depose a stale one). Its address is the chat's **title** (`wf:<slug>:foreman` — the skills suggest it, renaming the chat is the user's one manual step): phase chats look the title up in the session list and message it the outcome — done, failed, blocked, plan changed — over Claude Code's cross-session messaging (≥ 2.1.224), best-effort by design: no foreman, no messaging tool, unclaimed title, dead session → silent skip, never a failed phase
 
 ### `/execute-phase-agent`, `/run-workflow`, `/repair-phase` — Unattended Execution
 
@@ -689,6 +689,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [5.10.1](docs/release-5.10.1.md) | the foreman field-tested: the title is the address, the user's rename is the one manual step |
 | [5.10.0](docs/release-5.10.0.md) | the foreman: one chat commands the workflow, phase chats report to it over cross-session messaging |
 | [5.9.0](docs/release-5.9.0.md) | a skill that waits says so: the gate line, one gate at finalize, no fake questions |
 | [5.8.0](docs/release-5.8.0.md) | the resume path leaves evidence a fresh session can diff, and the version claim is checked |

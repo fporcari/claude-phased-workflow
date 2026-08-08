@@ -150,7 +150,7 @@ Then: *"Branch pushato. Lancia `/pull-request` per creare la PR verso `<parent>`
 
 **Solo commit** → nothing else happens; the workflow branch holds everything.
 
-Whichever path ran: if `foreman.json` names a session other than this one, send it the closing `workflow finalized` message per `common.md` → *The foreman* — best-effort, so the father's board learns the run is over.
+Whichever path ran: send the foreman the closing `workflow finalized` message per `common.md` → *The foreman* — best-effort. `list_sessions` excludes the current session, so when this chat IS the foreman the title lookup finds nothing and the skip is automatic.
 
 After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"La roadmap ha altre macrofasi. Prossimo passo: nuova chat e `/write-workflow` per dettagliare la prossima — col senno di poi di quella appena committata."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
 

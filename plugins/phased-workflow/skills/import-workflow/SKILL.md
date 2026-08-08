@@ -73,10 +73,10 @@ mkdir -p .phased/active/<slug>
 git add .phased && git commit -m "wf: import plan for <slug>"
 ```
 
-**Importing is taking command**: write `foreman.json` alongside the plan and
-rename this session, per `common.md` → *The foreman* — the file rides the
-import commit above, no second commit. An imported workflow is thereby born
-with a foreman, exactly like a written one.
+**Importing is taking command**: write `foreman.json` alongside the plan, per
+`common.md` → *The foreman* — the file rides the import commit above, no
+second commit; the title suggestion to the user is in the Step 5 close. An
+imported workflow is thereby born with a foreman, exactly like a written one.
 
 Verify the commit is not empty (`git show --stat HEAD`).
 
@@ -86,7 +86,7 @@ Verify the commit is not empty (`git show --stat HEAD`).
 
 ```
 Importato in .phased/active/<slug>/plan.md (<N> fasi: <x> completate, <y> da fare), committato su <branch>.
-Questa chat è il capocantiere (wf:<slug>:foreman): le chat di fase notificano qui l'esito.
+Questa chat è il capocantiere. Rinominala in `wf:<slug>:foreman` — è l'indirizzo a cui le chat di fase mandano gli esiti.
 Sorgente lasciata in <path> — superata, cancellala quando vuoi.
 <gaps, if any>
 Per continuare, lancia /execute-phase.

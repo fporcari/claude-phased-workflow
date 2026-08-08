@@ -5,7 +5,7 @@ allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Write, Grep, Glob, AskU
 
 # Resume Workflow
 
-Supervision and resume view of the work plan. **Read-only on source code** — the only files this command may modify are the plan, `notes.md`, `foreman.json` and `handover.md`; plan and notes only on an approved edit; each edit gets its own `wf:` commit.
+Supervision and resume view of the work plan. **Read-only on source code** — the only files this command may modify are the plan, `notes.md` and `foreman.json`; plan and notes only on an approved edit; each edit gets its own `wf:` commit.
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
@@ -44,20 +44,22 @@ The third command gives `BASE`, the commit that added the plan. Everything after
 Read `.phased/active/<slug>/foreman.json` (protocol, file format and
 take-command mechanics live once in `common.md` → *The foreman*):
 
-- **Absent, or `status` is `deposed` with no successor** → **assume command,
-  without asking**: this is the normal state of every workflow that predates
-  the protocol, and a workflow being resumed wants a foreman. Take command
-  per `common.md` — rename, write the file, ONE `wf: foreman — <session name>
-  takes command` commit — and say so in one line of the report.
-- **Present and it names this very session** → nothing to do.
-- **Present and it names another session** → do not depose on a status query.
-  Report it (Step 3 gets a *Capocantiere* line: who, since when). Offer the
-  takeover through the Step 3 AskUserQuestion only when something actually
-  needs action here, or the user says they want this chat in charge. On yes:
-  depose per `common.md` — best-effort farewell message and retitle of the
-  old session, read `handover.md` if present and fold what it says into the
-  report, then take command (its own commit). The old chat may be long dead;
-  nothing in this step is allowed to block on it.
+- **Absent** → **assume command, without asking**: the normal state of every
+  workflow that predates the protocol, and a workflow being resumed wants a
+  foreman. Take command per `common.md` — write the file, ONE `wf: foreman —
+  takes command` commit, suggest the chat title to the user.
+- **Present, and no other session bears the title** (`list_sessions`) → the
+  title is unclaimed: either it is this very chat (fine) or the old foreman
+  is dead or renamed. Either way, claim it — same take-command step, `since`
+  refreshed, previous entry into `history`; idempotent when it was already
+  this chat.
+- **Present, another session bears the title** → do not depose on a status
+  query. Report it (Step 3 gets a *Capocantiere* line: who, since when).
+  Offer the takeover through the Step 3 AskUserQuestion only when something
+  actually needs action here, or the user says they want this chat in
+  charge. On yes: depose per `common.md` — best-effort farewell message and
+  retitle of the old session — then take command (its own commit). The old
+  chat may be long dead; nothing in this step is allowed to block on it.
 
 ## Step 2: Attribute the work
 

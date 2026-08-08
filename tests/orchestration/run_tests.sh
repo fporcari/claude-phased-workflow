@@ -1305,8 +1305,8 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S30_C: the foreman section does not name foreman.json"
   grep -q 'Best-effort' "$S30_C" 2>/dev/null \
     || echo "$S30_C: the foreman section does not state the best-effort rule"
-  grep -q 'handover\.md' "$S30_C" 2>/dev/null \
-    || echo "$S30_C: the foreman section does not name handover.md"
+  grep -q 'list_sessions' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section does not define the title lookup"
   grep -q '^## Notify the foreman' "$2/phase-execution.md" 2>/dev/null \
     || echo "$2/phase-execution.md: missing the 'Notify the foreman' step"
   # Every skill that takes command, deposes, notifies or reads the rationale
@@ -1324,7 +1324,7 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   for S30_S in write-workflow import-workflow resume-workflow execute-phase \
                execute-phase-agent finalize-workflow; do
     S30_F="$1/$S30_S/SKILL.md"
-    if grep -q '"status": "active"' "$S30_F" 2>/dev/null; then
+    if grep -q '"foreman":' "$S30_F" 2>/dev/null; then
       echo "$S30_F: restates the foreman.json format (single source: common.md)"
     fi
   done

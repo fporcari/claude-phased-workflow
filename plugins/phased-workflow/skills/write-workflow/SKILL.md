@@ -99,7 +99,7 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `common.md` → *The foreman* (rename this session, write the file; the commit is Step 6's plan commit, no second one).
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `common.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; the title suggestion to the user is in the closing message).
 
 ```
 # Context: <branch-name>
@@ -148,7 +148,7 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch>.
-Questa chat è il capocantiere (wf:<slug>:foreman): le chat di fase notificano qui l'esito.
+Questa chat è il capocantiere. Rinominala in `wf:<slug>:foreman` — è l'indirizzo a cui le chat di fase mandano gli esiti.
 Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
 Fase 1 — suggerito: <model>, effort <effort>.
 ```

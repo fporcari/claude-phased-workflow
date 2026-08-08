@@ -46,7 +46,6 @@ git repository root:
     notes.md              # free-form annotations + per-phase rationale
                           #   (## Phase N headings — see "The foreman")
     foreman.json          # which chat commands this workflow (see "The foreman")
-    handover.md           # outgoing foreman's note to the incoming one, optional
     verify.md             # human checks a phase deferred to a wider context
                           #   (see "Verification: Done: and Verify:" below)
     log/phase-N.txt       # stdout of each /run-workflow sub-session, committed
@@ -225,64 +224,46 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 
 ## The foreman — chat hierarchy and messaging
 
-One chat commands each workflow (the **foreman** — capocantiere in the user's
-own metaphor); the chats that execute phases are its children. **This section
-is the single source of the protocol** — the skills cite it, they never
-restate it.
+One chat commands each workflow (the **foreman** — capocantiere); the chats
+that execute phases are its children and report to it. **This section is the
+single source of the protocol** — the skills cite it, they never restate it.
 
-**The identity of the foreman lives in a file, never in any chat's memory:**
+**The foreman's identity lives in a file, and its address is its TITLE.**
+A session can neither read its own id nor rename itself, but every *other*
+session sees both title and id in `list_sessions` — so the title is the one
+address that works, and giving the chat that title is the user's single
+manual step in the whole protocol.
 
-`.phased/active/<slug>/foreman.json`
+`.phased/active/<slug>/foreman.json`:
 
 ```json
 {
-  "session": "wf:<slug>:foreman",
+  "foreman": "wf:<slug>:foreman",
   "since": "<ISO timestamp>",
-  "status": "active",
   "history": [
-    {"session": "<previous session name>", "deposed": "<ISO timestamp>"}
+    {"foreman": "<previous title>", "deposed": "<ISO timestamp>"}
   ]
 }
 ```
 
-`session` is the name a messaging tool can target. Whoever wants to talk to
-the foreman reads this file — no session discovery, no guessing.
+**Taking command** — run by `/write-workflow` and `/import-workflow` at plan
+creation, and by `/resume-workflow` when no other session claims the title
+(a missing `foreman.json` is the normal state of any pre-protocol workflow —
+absence is migration, not an error):
 
-**Taking command** — the shared step run by `/write-workflow` and
-`/import-workflow` at plan creation, and by `/resume-workflow` when it finds
-no active foreman (the normal state of any workflow created before this
-protocol existed — absence is migration, not an error):
+1. Write `foreman.json` — `foreman` is the title above, `since` now; a
+   replaced foreman moves into `history` with its deposition timestamp.
+2. Commit it (`wf: foreman — takes command`), or fold it into the commit the
+   skill is already making (plan, import). Tracked like the plan: left
+   uncommitted it breaks the clean-tree invariant.
+3. Ask the user, one line, to rename this chat: *"Rinomina questa chat in
+   `wf:<slug>:foreman` — è l'indirizzo a cui le chat di fase mandano gli
+   esiti."* Until they do, notifications skip silently; nothing breaks.
 
-1. Rename this session to `wf:<slug>:foreman` — in the desktop app the
-   session-management tools refuse the *current* session, so the rename is
-   the user's (say so, one line); in the CLI ask for `/rename
-   wf:<slug>:foreman` (or note the launch used `--name`). A failed or skipped
-   rename does not stop the step. **On the desktop, `session` records the
-   session id** — the only address `send_message` targets — and the title is
-   cosmetic; in the CLI it records the session name.
-2. Write `foreman.json` — status `active`, `since` now; a previous foreman, if
-   any, moves into `history` with its deposition timestamp.
-3. Commit it: `git add .phased && git commit -q -m "wf: foreman — <session
-   name> takes command"`. The file is tracked like the plan: left
-   uncommitted, it breaks the clean-tree invariant the next phase relies on.
-   When the skill's own flow already has a commit coming (the plan commit of
-   `/write-workflow`, the import commit), fold the file into that commit
-   instead of making a second one.
-
-**Deposing a foreman** (`/resume-workflow`, when a new session takes over an
-existing one): best-effort message to the old session — *"You are deposed as
-foreman of wf:<slug>. Append anything only you know to handover.md; the new
-foreman reads it and the plan."* — and best-effort retitle of the old session
-to `wf:<slug>:deposed`. Then read `handover.md` if present, and take command
-as above. Neither the message nor the retitle may block: the file is the
-truth, the retitle is cosmetic.
-
-**Messaging — children to foreman.** Executing skills notify the foreman at
-phase end and on plan changes. To send: read `foreman.json`, then use
-whatever session-messaging tool the environment offers — `SendMessage` (with
-`ListAgents` to confirm the target) in the CLI, Claude Code ≥ 2.1.224, or the
-session-management `send_message` in the desktop app. One plain-text message,
-header line first:
+**Sending to the foreman** (children, at phase end and on plan changes):
+read `foreman.json`, `list_sessions`, exact title match → `send_message` to
+that session id. In the CLI (Claude Code ≥ 2.1.224) the same by name:
+`ListAgents` + `SendMessage`. One plain-text message, header line first:
 
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
@@ -293,18 +274,18 @@ header line first:
 ```
 
 **Best-effort, always, in both directions.** No `foreman.json`, no messaging
-tool available, target session not found, delivery refused → skip in silence
-and move on. A notification never fails a phase, never asks the user
-anything, and never becomes a retry loop. A foreman that receives such a
-message treats it as a prompt to re-read `.phased/` and redraw its board —
-the plan on disk, not the message text, is the state.
+tool (unattended sessions — `claude -p` sub-sessions, scheduled runs — have
+none, by platform design), no session bearing the title, delivery refused →
+skip in silence and move on. A notification never fails a phase, never asks
+the user anything, and never becomes a retry loop. A foreman receiving one
+re-reads `.phased/` and redraws its board — the plan on disk, not the
+message text, is the state.
 
-**Handover.** `handover.md` in the plan directory is the outgoing foreman's
-note to the incoming one — context that lives only in chat: user intent, the
-tone behind decisions, what to watch. The foreman appends to it when
-something worth handing over happens; `/resume-workflow` reads it at
-takeover. Optional by design: the plan and `notes.md` are the primary record,
-and a takeover from a dead chat must work with the files alone.
+**Deposing a foreman** (`/resume-workflow`, when another session holds the
+title and the user wants this chat in charge): best-effort farewell message
+to the old session, retitle it to `wf:<slug>:deposed` (retitling *another*
+session works; only self-rename doesn't), then take command as above. The
+old chat may be dead; nothing here is allowed to block on it.
 
 **Per-phase rationale.** A phase that makes a non-obvious choice appends it
 to `notes.md` under a `## Phase N` heading — why this way, what was rejected.
