@@ -253,11 +253,13 @@ the foreman reads this file — no session discovery, no guessing.
 no active foreman (the normal state of any workflow created before this
 protocol existed — absence is migration, not an error):
 
-1. Rename this session to `wf:<slug>:foreman` — in the desktop app via the
-   session-management `set_session_title` tool; in the CLI, where the model
-   cannot rename its own session, ask the user for one `/rename
+1. Rename this session to `wf:<slug>:foreman` — in the desktop app the
+   session-management tools refuse the *current* session, so the rename is
+   the user's (say so, one line); in the CLI ask for `/rename
    wf:<slug>:foreman` (or note the launch used `--name`). A failed or skipped
-   rename does not stop the step: the file still records the best name known.
+   rename does not stop the step. **On the desktop, `session` records the
+   session id** — the only address `send_message` targets — and the title is
+   cosmetic; in the CLI it records the session name.
 2. Write `foreman.json` — status `active`, `since` now; a previous foreman, if
    any, moves into `history` with its deposition timestamp.
 3. Commit it: `git add .phased && git commit -q -m "wf: foreman — <session
