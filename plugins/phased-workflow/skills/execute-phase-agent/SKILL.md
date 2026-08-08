@@ -80,7 +80,7 @@ When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general
 
 ## Step 6: Record, commit, stop
 
-Record the outcome and make the phase commit exactly as the shared core specifies. **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none.
+Record the outcome and make the phase commit exactly as the shared core specifies. **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none. A `ui`-tagged phase reaching this skill lost its mockup gate and browser pass by construction (the tag belongs to interactive plans): note it, and hand the visual check to the human as a `Verify: now` step.
 
 Then the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
 

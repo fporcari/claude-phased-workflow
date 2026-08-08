@@ -48,6 +48,8 @@ git repository root:
     foreman.json          # which chat commands this workflow (see "The foreman")
     verify.md             # human checks a phase deferred to a wider context
                           #   (see "Verification: Done: and Verify:" below)
+    mockups/phase-N.html  # ui-tagged phases — the approved visual contract
+                          #   (see "Verification" below; written by /execute-phase)
     log/phase-N.txt       # stdout of each /run-workflow sub-session, committed
   done/<slug>/            # moved here by /finalize-workflow
 ```
@@ -182,6 +184,22 @@ exactly those checks to the human as `Verify: now` steps** — a named fallback,
 never a silent skip. The human list otherwise carries only what needs human
 judgment: aesthetics, "is this interaction right?", UX ambiguity.
 Without this split the list fills with automatable work and stops being read.
+
+**Browser verification and logins.** Before driving any browser check,
+establish whether the target is login-gated — always, as the first step. When
+it is, the login is performed by the **human operator** in the visible browser
+window, every time: the executing agent never types, logs, or persists
+credentials, whatever impersonation convention the project offers (those
+conventions belong to the browser-driving skill, never to this plugin). One
+login per session usually suffices — the cookie persists across iterations.
+
+**The mockup is the visual contract** of a `ui`-tagged phase: approved at the
+phase's gate, saved as `mockups/phase-N.html` in the plan directory, committed
+with the phase. The browser pass screenshots the real page next to it, and a
+fresh-context judge (the `ui-judge` agent) compares the two — because the
+author of a UI is the worst judge of its own fidelity. What the judge flags as
+a human call lands in `> Review:`; what remains for human eyes (taste beyond
+the mockup) stays on the `Verify:` list.
 
 **Deferred steps accumulate in `verify.md`** in the plan directory, appended per
 phase, and `/finalize-workflow` presents the file as one QA pass at the end

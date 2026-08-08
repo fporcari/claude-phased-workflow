@@ -66,8 +66,9 @@ Either way:
 1. Too small to verify alone (a model half, a migration, a schema)? Merge it into the phase that makes it verifiable — a phase boundary the user cannot verify is a boundary in the wrong place.
 2. **Split** — two concerns in one phase: just write more phases, no tag.
 3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the file ceiling is lifted for it only.
+4. **`ui`** — a phase whose deliverable is judged by eye: a page, a form, a dashboard. Interactive plans only (an autonomous run has nobody to approve a mockup). At execution the approval gate includes a rendered HTML mockup iterated with the user, and verification adds a browser pass plus a fidelity judge against that mockup (`common.md` → *Verification*). Tag it here so the executing chat knows before exploring.
 
-Only the split-vs-`vast` call materially changes execution — batch it into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
+The split-vs-`vast` call and the `ui` tag materially change execution — batch them into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
 
 **Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list.
 
@@ -116,7 +117,7 @@ Mode: interactive
   - Files: <involved files, if known>
   - Decisions: <choices already settled — omit if none>
   - Details: <what to do concretely>
-- [ ] **Phase 2**: table foo with its TH UI (model + webpage)
+- [ ] **Phase 2**: table foo with its TH UI (model + webpage)  `ui`
   - Run: opus / low
   - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
   - Details: table + columns + relations, then TableHandler view + form.

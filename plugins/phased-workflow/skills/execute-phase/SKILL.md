@@ -1,7 +1,7 @@
 ---
 description: Execute the next phase from the active work plan
 disable-model-invocation: true
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, SendUserFile, ToolSearch, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Execute Phase
@@ -41,6 +41,18 @@ Read the phase's `Pattern:` example first — don't re-explore what planning alr
 
 Present in ONE message: what the phase will do, the files to create/modify/delete with their key changes, and **every open question batched** (anything `Decisions:`/`Details:` leave unsettled). Then ONE AskUserQuestion carrying approval plus those questions.
 
+**`ui` phases — the mockup gate.** Before asking for approval, build a
+throwaway **static HTML mockup** of what the phase will produce — look and
+layout only, plausible fake data, no framework — and show it rendered
+(SendUserFile with `display: render`, or the Browser pane). This gate may
+loop: mockup → feedback → mockup, as long as it takes — aesthetics is all
+decision, and this is the one interruption that is legitimate by design. A
+text description of a UI is never a substitute: the stated purpose of the
+tag is judging the *look*. Approval of the phase IS approval of the mockup:
+save the approved version as `.phased/active/<slug>/mockups/phase-N.html` —
+the phase's visual contract (`common.md` → *Verification*), the reference
+for Step 5's judge, committed with the phase.
+
 **No file may be edited before approval. After approval, run to completion.**
 
 ## Step 4: Execute
@@ -52,7 +64,8 @@ Implement only this phase. When a coherent, demonstrable sub-result lands and su
 ## Step 5: Verify
 
 - Testable logic → write/update tests in the repo's existing style, run the suite. A failure that doesn't touch this phase's `Files:` is probably pre-existing: check before absorbing it, and tell the user instead. Fix and re-run, ONE retry; still red → `[!]`.
-- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool), where installed, drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't — and when it is not installed, apply the declared fallback in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: those checks go to the human as `Verify: now` steps, said out loud.
+- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool), where installed, drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't — and when it is not installed, apply the declared fallback in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: those checks go to the human as `Verify: now` steps, said out loud. **Login-gated target → the human performs the login, always** — first establish whether there is one, then hand over (`common.md` → *Verification*).
+- `ui`-tagged → the browser pass above takes `mockups/phase-N.html` as its reference and must return **screenshots of the key states** (saved next to the mockup). Then ONE `ui-judge` subagent (Agent tool; fallback: a general-purpose subagent told to stay read-only), given the mockup path, the screenshot paths, and a one-line phase brief. Findings: **MECHANICAL** (element missing or plainly wrong vs the mockup) → fix now, re-run the check; **JUDGMENT** (a deviation that may be legitimate, an aesthetic call) → record as `> Review:`, never block. No browser surface available → the judge is skipped too; say so and hand the comparison to the human as a `Verify: now` step with both paths.
 - `vast` → optionally re-run the read-only fan-out to confirm no site was missed, then test as usual.
 
 What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.

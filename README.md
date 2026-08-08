@@ -1,6 +1,6 @@
 # Claude Code Phased Workflow
 
-**Version 5.11.0** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
+**Version 5.12.0** — see the [Changelog](#changelog). Requires the [Claude Code](https://claude.com/claude-code) desktop app for the full experience (the live Monitor and run notifications); the CLI works without them.
 
 A slash command system for Claude Code that structures development work into planned phases, executable in independent sessions, with shared state on the file system.
 
@@ -689,6 +689,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [5.12.0](docs/release-5.12.0.md) | the `ui` tag: mockup gate at approval, browser pass with human login, and the ui-judge |
 | [5.11.0](docs/release-5.11.0.md) | the run inspector: per-phase events relayed to the foreman, and the stop-work question |
 | [5.10.1](docs/release-5.10.1.md) | the foreman field-tested: the title is the address, the user's rename is the one manual step |
 | [5.10.0](docs/release-5.10.0.md) | the foreman: one chat commands the workflow, phase chats report to it over cross-session messaging |
