@@ -266,10 +266,11 @@ absence is migration, not an error):
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
 that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
-(≥ 2.1.224; on 2.1.226 both tools verified present even in `claude -p`
-sub-sessions — so unattended children may reach the foreman too, best-effort
-as always; end-to-end delivery from headless not yet field-tested). One
-plain-text message, header line first:
+(≥ 2.1.224). Field-tested on 2.1.226: a `claude -p` sub-session carries both
+tools but its `ListAgents` sees NO desktop sessions — CLI and desktop are
+separate worlds, so unattended children still end at the silent skip and the
+foreman messaging is desktop-chat-to-desktop-chat. One plain-text message,
+header line first:
 
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
