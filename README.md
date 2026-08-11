@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/logo-on-dark.svg">
-  <img src="docs/img/logo.svg" alt="Claude Code phased workflow" width="520">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/logo-on-dark.svg?v=2">
+  <img src="docs/img/logo.svg?v=2" alt="Claude Code phased workflow" width="520">
 </picture>
 
 # Working in phases with Claude Code
