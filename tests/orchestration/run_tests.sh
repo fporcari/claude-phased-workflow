@@ -1441,6 +1441,88 @@ assert "S31: the guard fails when the shared core loses plan-is-context" \
   '[ -n "$(s31_guard "$SKILLS_DIR" "$S31_MUT/refs" "$RUNNER_SRC")" ]'
 rm -rf "$S31_MUT"
 
+echo "== S32: the closing report has a shape, a gate, and one detail question =="
+# Three 5.14.0 invariants. (a) common.md owns the report shape (one verdict
+# line + one line per finding) and the per-channel delivery rule — the two
+# closing reports are a report page where one can render, the degraded chat
+# path gets exactly ONE detail question, one-way surfaces the short form
+# only. (b) The report-judge agent ships as a comprehension probe,
+# fresh-context by design, with the CANNOT ANSWER convention. (c) The two
+# closing-report skills cite the gate — run-workflow with the Agent tool it
+# needs — and nobody restates the shape.
+S32_AGENTS="$TESTDIR/../../plugins/phased-workflow/agents"
+s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints one line per violation
+  S32_C="$2/common.md"
+  grep -q 'one verdict line' "$S32_C" 2>/dev/null \
+    || echo "$S32_C: the register lost the report shape (one verdict line + one line per finding)"
+  grep -q 'short form only' "$S32_C" 2>/dev/null \
+    || echo "$S32_C: the register lost the one-way-surfaces delivery rule"
+  grep -q 'report page' "$S32_C" 2>/dev/null \
+    || echo "$S32_C: the register lost the report page (hypertext delivery)"
+  grep -q 'report-judge' "$S32_C" 2>/dev/null \
+    || echo "$S32_C: the register lost the report-judge gate"
+  S32_A="$3/report-judge.md"
+  if [ ! -f "$S32_A" ]; then
+    echo "$S32_A: the report-judge agent is missing"
+  else
+    grep -q 'CANNOT ANSWER' "$S32_A" 2>/dev/null \
+      || echo "$S32_A: lost the CANNOT ANSWER convention (the probe must not guess)"
+    grep -qi 'fresh context' "$S32_A" 2>/dev/null \
+      || echo "$S32_A: lost the fresh-context clause"
+  fi
+  for S32_S in finalize-workflow run-workflow; do
+    S32_F="$1/$S32_S/SKILL.md"
+    grep -q 'report-judge' "$S32_F" 2>/dev/null \
+      || echo "$S32_F: does not cite the report-judge gate"
+  done
+  grep -q '^allowed-tools:.*Agent' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/run-workflow/SKILL.md: Agent missing from allowed-tools (the gate cannot run)"
+  # Nobody but common.md carries the shape rule.
+  for S32_S in write-workflow import-workflow resume-workflow execute-phase \
+               execute-phase-agent finalize-workflow run-workflow; do
+    S32_F="$1/$S32_S/SKILL.md"
+    if grep -q 'one verdict line' "$S32_F" 2>/dev/null; then
+      echo "$S32_F: restates the report shape (single source: common.md)"
+    fi
+  done
+  return 0
+}
+S32_OUT="$(s32_guard "$SKILLS_DIR" "$S24_REFS" "$S32_AGENTS")"
+[ -z "$S32_OUT" ] || echo "  offending: $S32_OUT"
+assert "S32: the report shape, the gate and the question are single-source and cited" \
+  '[ -z "$S32_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"
+sed 's/one verdict line/a verdict somewhere/' "$S24_REFS/common.md" \
+  > "$S32_MUT/refs/common.md"
+assert "S32: the guard fails when common.md loses the report shape" \
+  '[ -n "$(s32_guard "$SKILLS_DIR" "$S32_MUT/refs" "$S32_AGENTS")" ]'
+rm -rf "$S32_MUT"
+S32_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S32_MUT/"
+sed -i.bak '/report-judge/d' "$S32_MUT/run-workflow/SKILL.md" \
+  && rm -f "$S32_MUT/run-workflow/SKILL.md.bak"
+assert "S32: the guard fails when a closing-report skill drops the gate" \
+  '[ -n "$(s32_guard "$S32_MUT" "$S24_REFS" "$S32_AGENTS")" ]'
+rm -rf "$S32_MUT"
+S32_MUT="$(mktemp -d)"
+assert "S32: the guard fails when the report-judge agent is missing" \
+  '[ -n "$(s32_guard "$SKILLS_DIR" "$S24_REFS" "$S32_MUT")" ]'
+rm -rf "$S32_MUT"
+S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"
+sed '/report page/d' "$S24_REFS/common.md" > "$S32_MUT/refs/common.md"
+assert "S32: the guard fails when common.md loses the report page" \
+  '[ -n "$(s32_guard "$SKILLS_DIR" "$S32_MUT/refs" "$S32_AGENTS")" ]'
+rm -rf "$S32_MUT"
+# A skill restates the shape rule — the copy defect single-source exists for.
+S32_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S32_MUT/"
+printf '\nThe report is one verdict line plus one line per finding.\n' \
+  >> "$S32_MUT/execute-phase/SKILL.md"
+assert "S32: the guard fails when a skill restates the report shape" \
+  '[ -n "$(s32_guard "$S32_MUT" "$S24_REFS" "$S32_AGENTS")" ]'
+rm -rf "$S32_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

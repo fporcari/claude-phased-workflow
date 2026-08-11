@@ -1,7 +1,7 @@
 ---
 description: Run all remaining phases autonomously — launches a new claude session per phase with correct model
 disable-model-invocation: true
-allowed-tools: Bash, Read, Edit, Monitor, PushNotification, AskUserQuestion, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash, Read, Write, Edit, Monitor, PushNotification, AskUserQuestion, Agent, SendUserFile, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Run Workflow
@@ -83,7 +83,7 @@ If the launcher is killed outright (`kill -9`, machine shutdown) even `run-end` 
 
 **Degradation is declared, not silent.** Without the Monitor tool or PushNotification available, run the script in the foreground exactly as before and report once at the end — and say that the early `[!]` notification needs the background path.
 
-Report the run's outcome to the user per `common.md` → *The reporting register*: what landed and what it now does, what failed and what the user would see because of it — the launcher's raw summary is the record, not the report.
+Report the run's outcome to the user per `common.md` → *The reporting register*: the short form (verdict line, one line per finding — what landed and what it now does, what failed and what the user would see because of it), passed through the `report-judge` comprehension probe before showing, delivered as the register's report page where the session can render one — degraded path: the short form in chat, closed with the register's single detail question. The launcher's raw summary is the record, not the report.
 
 **Runaway cap:** `--max-budget-usd` is a bugged-loop safety net, not a spend limit — on a subscription plan quota is the 5-hour window, not dollars. Caps come from effort ($50 low → $300 max, doubled for fable). A phase that actually trips its cap is a signal to investigate, not to raise it. `RUN_WORKFLOW_NO_BUDGET=1` removes the flag entirely.
 

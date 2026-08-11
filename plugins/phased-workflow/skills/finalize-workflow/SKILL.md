@@ -1,7 +1,7 @@
 ---
 description: Finalize the workflow - verify all phases, prepare final commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent, SendUserFile, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Finalize Workflow
@@ -66,7 +66,7 @@ Pass every `> Review:` note as an explicit focus point — each must come out co
 
 **Large autonomous diffs:** offer the user a reviewer panel instead of the single pass — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) in parallel, each finding then verified by 3 independent skeptics prompted to *refute* it, keeping only what survives a majority. Read-only, under ~15 agents, never edits source.
 
-Findings → present them in Italian, phrased per `common.md` → *The reporting register* (each one as its consequence for the user, identifiers in parentheses at most), and ask: *"La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?"* (recommended: fix first). Fixing is delegated, not done here; then re-run `/finalize-workflow`.
+Findings → present them per `common.md` → *The reporting register*: the short form in Italian (verdict line, one line per finding, its consequence for the user), passed through the `report-judge` comprehension probe before showing, delivered as the register's report page where the session can render one. Then ONE question — *"La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Espandi i dettagli prima di decidere*), never as a second question. Fixing is delegated, not done here; then re-run `/finalize-workflow`.
 
 This step is the only whole-diff review on the "Merge sul parent" and "Solo commit" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 

@@ -362,6 +362,48 @@ into Italian for the human. The artifacts themselves (`> Issue:`,
 stay technical English: repair sessions and reviews read them, and
 periphrasis would cost them precision.
 
+**A report has a shape, not only a vocabulary.** The short form IS the
+report: one verdict line first — landed or not, and the single fact that
+matters most — then one line per finding, and nothing else. Detail is never
+volunteered: the artifacts hold it, the reader pulls it through the question
+below. A wall of clear sentences is still a wall.
+
+**Delivery depends on the channel.** The closing reports —
+`/run-workflow`'s run-end summary, `/finalize-workflow`'s findings
+presentation — are hypertext where the session can render a file to the
+user (SendUserFile on the desktop): a **report page**, the verdict on top,
+one line per finding, each finding a closed `<details>` expansion opening
+on its detail drawn from the plan artifacts. The page is written outside
+the repo (`${TMPDIR:-/tmp}/phased-workflow/<slug>-report.html` — a file in
+the tree would dirty it), and the verdict line is repeated in chat beside
+it. The reader pulls detail at their own pace; no detail question is
+asked. The cap survives inside the expansions: each one answers a precise
+question of the decision-maker — never the phase chronicle. Without a way
+to render the page (CLI, headless), degrade declared: the short form in
+chat, then exactly ONE question governs detail — a dedicated one (*Espandi
+tutto / Scelgo io quali / Basta così*) when the report ends the exchange,
+folded as an extra option into the decision question the skill already
+asks when there is one, never two questions stacked. A user who is away
+answers when they return; the question waits, no special case. The one-way
+surfaces — the foreman one-liners, push notifications, the `stop-work?`
+reason (itself already a question, about the work) — carry the
+short form only: never a page, never the question.
+
+**The report-judge gate.** Before a closing report is shown, it passes the
+`report-judge` agent (Agent tool) — a comprehension probe, not a critique.
+Fresh context by design: the agent gets the draft (for a report page, its
+collapsed layer only — what is visible with every expansion closed) and a
+one-line brief of what the workflow was about, not the code and not the
+plan. It first retells in its own words what it understood happened, then
+answers the decision-maker's three questions from the draft alone — did it
+land, what do I decide now, what is still pending. Compare retelling and
+answers with what the artifacts say: a misreading, a wrong or missing
+answer, or an `OPAQUE:` sentence names exactly what the report buries —
+rewrite and re-probe once, then show. Best-effort like every notification: no Agent
+tool, or the judge errors → show the report anyway, saying the gate was
+skipped. One-liners and pushes are not gated — they are one line by
+construction.
+
 ## Notifications
 
 How a skill surfaces state depends on whether the user is at the keyboard:

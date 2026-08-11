@@ -190,7 +190,7 @@ internally and opaquely.
 
 ## The test suite, scenario by scenario
 
-**192 assertions over 30 scenarios** — S1 through S31, S16 retired with the KB
+**198 assertions over 31 scenarios** — S1 through S32, S16 retired with the KB
 mirror. S1–S13 run the shipped `/run-workflow` script against a mock `claude`
 binary: `/goal` call shape, model/effort/cap selection, repair succeeding and
 resuming the loop, repair failing and stopping it, the idempotent repair
@@ -212,7 +212,9 @@ once on every exit path), S26 (every sub-session prompt namespaced), S27 (the
 steering reaches every sub-session), S29 (the resume path leaves
 machine-readable evidence), S30 (the foreman protocol single-source and
 cited), S31 (cross-phase awareness ships, and the reporting register is
-single-source).
+single-source), S32 (the closing report's shape, the report page, the
+report-judge comprehension probe and the single detail question —
+single-source and cited, the agent shipped).
 
 Static checks on what the repo ships: S14 (no frozen copy of a shipped
 contract; the light contract carries its per-phase-commit clause), S15 (every
