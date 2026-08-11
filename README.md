@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/logo-on-dark.svg">
+  <img src="docs/img/logo.svg" alt="Claude Code phased workflow" width="520">
+</picture>
+
 # Working in phases with Claude Code
 
 **Version 5.14.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
