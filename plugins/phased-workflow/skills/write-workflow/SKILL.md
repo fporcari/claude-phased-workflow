@@ -21,9 +21,9 @@ git rev-parse --show-toplevel
 git rev-parse --verify origin/develop >/dev/null 2>&1 && echo develop || echo main
 ```
 
-**On a feature branch** — read what is already there (`git log origin/<base>..HEAD --oneline`, `git diff --stat origin/<base>...HEAD`, the full diff, and `gh issue view <number>` if the branch starts with one), summarise it, then ask: *"Cosa vuoi pianificare su questo branch?"*
+**On a feature branch** — read what is already there (`git log origin/<base>..HEAD --oneline`, `git diff --stat origin/<base>...HEAD`, the full diff, and `gh issue view <number>` if the branch starts with one), summarise it, then ask: *"What do you want to plan on this branch?"*
 
-**On the base branch** — no exploration. Ask straight away: *"Sei su `<branch>`. Cosa vuoi fare?"*
+**On the base branch** — no exploration. Ask straight away: *"You are on `<branch>`. What do you want to do?"*
 
 The user's answer is the primary input. Read code only in service of the plan.
 
@@ -77,12 +77,12 @@ The split-vs-`vast` call and the `ui` tag materially change execution — batch 
 - **Effort** — start low and climb only for a reason. A phase whose `Decisions:` and `Pattern:` are settled is where high effort buys least: it gets spent re-exploring what planning already decided. `low` mechanical, `medium` the standard phase, `high` where real design judgment survives inside the phase, `xhigh` a wide multi-file surface, `max` practically never (overthinking, diminishing returns). Levels copied from an older plan rarely transfer — decide them here, for this plan.
 - **Model** — `opus` is the floor and the default; `sonnet` never, the standing rule for UI and declarative work (a phase mechanical enough for it belongs on the autonomous side of the fork). `fable` only where inventive work survives *after* the approval gate: architecture to invent, an unknown surface, no obvious decomposition. Half of its usual case is absent here — fable also earns its premium where nobody is watching, and interactive work is watched by construction — so a phase whose ambiguity is "the user will say whether it looks right" is `opus`, not `fable`.
 
-**Present the plan in Italian**, each phase with its `Run:` line, and iterate until the user approves.
+**Present the plan**, each phase with its `Run:` line, and iterate until the user approves.
 
 **Close the presentation with the branch line and the gate line** (`common.md` → *The gate line*):
 
-> Branch: \<what will happen\>   (dimmi se preferisci diversamente)
-> **Procedo?** Al tuo ok creo il branch e scrivo `.phased/active/<slug>/plan.md`.
+> Branch: \<what will happen\>   (say so if you would rather have it otherwise)
+> **Proceed?** On your ok, I create the branch and write `.phased/active/<slug>/plan.md`.
 
 The branch line is pre-filled per Step 4 and flippable.
 
@@ -148,17 +148,17 @@ git add .phased && git commit -m "wf: plan for <slug>"
 Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/` is excluded by a `.gitignore` — say so and stop rather than working around it; the whole chain depends on the plan being tracked.
 
 ```
-Piano scritto in .phased/active/<slug>/plan.md (<N> fasi), committato su <branch>.
-Questa chat è il capocantiere. Rinominala in `wf:<slug>:foreman` — è l'indirizzo a cui le chat di fase mandano gli esiti.
-Per eseguire, lancia /execute-phase (meglio in una nuova sessione per contesto pulito).
-Fase 1 — suggerito: <model>, effort <effort>.
+Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
+This chat is the foreman. Rename it to `wf:<slug>:foreman` — it is the address phase chats report to.
+To run it, launch /execute-phase (better in a new session, for a clean context).
+Phase 1 — suggested: <model>, effort <effort>.
 ```
 
 The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
 
 **Then draw the board**, as specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — the same widget `/resume-workflow` draws, one source for both. Two things are this skill's own:
 
-- **Every state select starts on `da fare`**: the plan was just written, so there is no history to seed from. Phase 1 is the first unfinished phase, hence the only one with `copia comando`.
+- **Every state select starts on `to do`**: the plan was just written, so there is no history to seed from. Phase 1 is the first unfinished phase, hence the only one with `copy command`.
 - **No notes and no export** (the ref's *supervision only* section): nothing has run yet, so there is nothing to annotate, and an export with nothing in it is furniture.
 
 **Only after the commit, never during Step 3's presentation.** The plan is iterated in prose, and a board offering a command for a branch that does not exist yet is a trap. On an autonomous plan, no board at all.

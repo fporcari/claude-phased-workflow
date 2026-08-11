@@ -60,7 +60,7 @@ Every question here exists to fill a field of the plan. Know which one before yo
 **The mode fork leads** because it reshapes everything below it: interactive phases
 close where a human can look at something, autonomous ones close on one concern with a
 re-runnable `Done:`. The same work splits into different phases under the two. Derive
-a recommendation from the work itself — *"lo riconosco quando lo vedo"* (UI, visual,
+a recommendation from the work itself — *"I'll know it when I see it"* (UI, visual,
 declarative) → interactive; measurable (refactor, migration, well-specified startup) →
 autonomous — and put it as the recommended answer.
 
@@ -81,8 +81,8 @@ tree: you cannot branch on an answer you asked for in parallel.
 
 Each question carries **your recommended answer and its reason in one line** — the
 user often just confirms, which is the point — and, when the answer reshapes what
-follows, **what it unlocks**: *"se rispondi X, la domanda dopo sull'indice non serve
-più"*.
+follows, **what it unlocks**: *"if you answer X, the next question about the index
+falls away"*.
 
 Use `AskUserQuestion` with the recommendation first per `common.md`. An answer that
 opens ground you had not mapped sends you back to Step 3 for that subtree: the tree
@@ -92,32 +92,32 @@ it.
 
 **Done when** every branch is **decided**, or **deferred in the plan's own
 vocabulary** — a check that only makes sense later is a `Verify: deferred: needs Phase
-M`, not a vague "si decide poi". A branch with no field and no phase to land in is not
-settled.
+M`, not a vague "we'll decide later". A branch with no field and no phase to land in is
+not settled.
 
 ## Step 5: Hand over
 
-Present in Italian, in the shape `/write-workflow` reads, and **wait for the user to
+Present it in the shape `/write-workflow` reads, and **wait for the user to
 confirm the shared understanding**:
 
 ```
-Mode: <interactive|autonomous> — <motivo in mezza riga>
+Mode: <interactive|autonomous> — <reason, half a line>
 
-Deciso:
-- <decisione> → <scelta> (<motivo>)          [Decisions:]
-- pattern per <lavoro> → `path/to/esempio.py:func`   [Pattern:]
-- <fase> è finita quando <criterio rieseguibile>     [Done:]
+Settled:
+- <decision> → <choice> (<reason>)                   [Decisions:]
+- pattern for <work> → `path/to/example.py:func`     [Pattern:]
+- <phase> is finished when <re-runnable criterion>   [Done:]
 
-Rinviato:
+Deferred:
 - <check> → Verify: deferred: needs Phase <M>
 
-Fatti su cui poggia:
-- <fatto> (<path>)
+Facts it rests on:
+- <fact> (<path>)
 ```
 
-Close the block with the gate line (`common.md` → *The gate line*): *"**Confermi?**
-Al tuo ok qui è finito: lancia `/write-workflow` in questa chat, legge le decisioni
-da qui."*
+Close the block with the gate line (`common.md` → *The gate line*): *"**Confirm?**
+On your ok we are done here: launch `/write-workflow` in this chat, it reads the
+decisions from here."*
 
 Not confirmed → keep going on the parts they push back on. Nothing else happens
 here: no branch, no file, no code.

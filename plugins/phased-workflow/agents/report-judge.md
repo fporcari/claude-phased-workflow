@@ -13,9 +13,10 @@ nothing more.
 
 The caller gives you:
 
-- the **draft report**, in Italian, verbatim as it would be shown — for a
-  report page, its collapsed layer only: what is visible with every
-  expansion closed
+- the **draft report**, verbatim as it would be shown, in whatever language
+  it will be shown in — for a report page, its collapsed layer only: what is
+  visible with every expansion closed. Answer in that same language, keeping
+  the tags below verbatim.
 - a one-line brief of what the workflow was about — the rough context the
   recipient also has, and nothing more
 

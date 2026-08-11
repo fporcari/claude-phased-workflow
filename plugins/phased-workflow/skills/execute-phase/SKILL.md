@@ -78,11 +78,11 @@ Record the outcome and make the phase commit exactly as the shared core (`refs/p
 osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'
 ```
 
-Then summarise in Italian: what was done, test results, the manual checks left to the user — **and the next step, always**: the next phase with its `Run:` hint quoted (*"prossima: Phase N+1 — nuova chat, `/execute-phase` (suggerito: \<model\> / \<effort\>)"*), or `/finalize-workflow` when this was the last. The user must never need to know the flow by heart to keep moving.
+Then summarise: what was done, test results, the manual checks left to the user — **and the next step, always**: the next phase with its `Run:` hint quoted (*"next: Phase N+1 — new chat, `/execute-phase` (suggested: \<model\> / \<effort\>)"*), or `/finalize-workflow` when this was the last. The user must never need to know the flow by heart to keep moving.
 
 ## Context window
 
-The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ Il contesto si sta riempiendo. Apri una nuova chat e rilancia /execute-phase. Salvo il lavoro parziale in un commit prima?"* On yes: checkpoint exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
+The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ The context is filling up. Open a new chat and run /execute-phase again. Shall I save the partial work in a commit first?"* On yes: checkpoint exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
 
 ## Rules
 

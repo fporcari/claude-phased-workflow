@@ -13,7 +13,7 @@ A healthy workflow is a valid reason to run this: when nothing is broken it earl
 
 ## The map
 
-Every other skill in this plugin is **user-invoked**: only the user typing its name reaches it. Naming the right one is part of this skill's job — in Step 3's *Prossimo passo*, and whenever the user asks what to run.
+Every other skill in this plugin is **user-invoked**: only the user typing its name reaches it. Naming the right one is part of this skill's job — in Step 3's *Next step*, and whenever the user asks what to run.
 
 | Skill | Reach for it when |
 |---|---|
@@ -55,7 +55,7 @@ take-command mechanics live once in `common.md` → *The foreman*):
   exact title, so nothing is rewritten and no commit is made; at most,
   repeat the rename suggestion if the user never applied it.
 - **Present, another session bears the title** → do not depose on a status
-  query. Report it (Step 3 gets a *Capocantiere* line: who, since when).
+  query. Report it (Step 3 gets a *Foreman* line: who, since when).
   Offer the takeover through the Step 3 AskUserQuestion only when something
   actually needs action here, or the user says they want this chat in
   charge. On yes: depose per `common.md` — best-effort farewell message and
@@ -82,20 +82,20 @@ Two distinct kinds of drift, and they mean different things:
 
 Flag a phase as **oversized** when its commit spans more than ~10 files, covers unrelated areas (model + UI + tests for different features), or is too large to review as one commit. **Exception:** a `vast` phase is intentionally whole — that size is by design, never propose re-phasing it for size alone. For a pending phase the same judgment is a projection from its `Files:`, not a measurement; say which one you are making.
 
-## Step 3: Report (in Italian)
+## Step 3: Report
 
-1. **Stato del piano** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"in esecuzione da oltre 2 ore — la chat precedente potrebbe essere terminata"*. One **Capocantiere** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
-2. **Commit del workflow** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
-3. **Copertura** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"*. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
+2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
+3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
-5. **Fasi sovradimensionate** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
-6. **Prossimo passo** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
+5. **Oversized phases** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
+6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
 
 **The board.** On a `Mode: interactive` plan, render points 1 and 6 as the inline widget specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the layout; it is the single source of the board's shape, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a grid argues badly.
 
 What is this skill's own, on top of that file:
 
-- **Seed every state select from the plan**, since here the plan has a history: `[x]` → `fatta`, `[>]` → `in esecuzione`, `[!]` → `problema`, the rest → `da fare`. The board is then the user's working view, re-seeded on the next run.
+- **Seed every state select from the plan**, since here the plan has a history: `[x]` → `done`, `[>]` → `running`, `[!]` → `problem`, the rest → `to do`. The board is then the user's working view, re-seeded on the next run.
 - **Notes and export are on**, per the ref's *supervision only* section: this is the command that runs over work already done, so there is something to annotate and something to export.
 - On an autonomous plan, no board at all — the report stays text, as the ref says.
 
@@ -111,7 +111,7 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
-- **Adding phases for work that surfaced** — the answer to *"this phase passed and is still wrong"*. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (typically the board's `annotazioni e problemi`, or its export).
+- **Adding phases for work that surfaced** — the answer to *"this phase passed and is still wrong"*. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (typically the board's `notes and problems`, or its export).
 
   **In the tail, never in the middle**, even when the work logically belongs at Phase 2. Phase numbers must be contiguous ascending from 1, so an insertion renumbers everything after it — while the commits already made say `wf(phase 3)`, `wf(phase 4)` with the old numbers, and the correspondence between the plan and the history breaks silently. Execution order stays the numeric order; the new phase's text says what it remedies.
 

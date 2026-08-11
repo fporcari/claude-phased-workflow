@@ -7,7 +7,7 @@ allowed-tools: Bash(gh:*), Bash(git:*), Bash(cat:*), Bash(python3:*), Read, Grep
 
 # Pull Request Review & Creation
 
-Review the branch as the maintainer who has to approve it, then open the PR — or block it. All written output (title, body, review report) in English; conversation in Italian.
+Review the branch as the maintainer who has to approve it, then open the PR — or block it. All written output (title, body, review report) in English; the conversation follows the user's own configuration (`${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Language*).
 
 ## Step 1: Base branch and issue
 

@@ -691,7 +691,7 @@ MN_OUT="$(python3 "$NEXTPHASE" --validate "$MODE_NONE_PLAN" 2>&1)"; MN_RC=$?
 assert "S19h: no Mode: line and no table validates clean (exit 0)" '[ "$MN_RC" = 0 ]'
 assert "S19h: no Mode finding is emitted" '! printf "%s" "$MN_OUT" | grep -qi "Mode:"'
 
-# (i) a MALFORMED Mode: line ("Mode: autonomous (robottino)") is an error, not
+# (i) a MALFORMED Mode: line ("Mode: autonomous (fast lane)") is an error, not
 # a silent no-header read — the same threat as (f), one notch earlier: a line
 # the value-check cannot even parse must not degrade into the interactive
 # default either.
@@ -699,7 +699,7 @@ MODE_MALFORMED_PLAN="$OT/mode-malformed-plan.md"
 cat > "$MODE_MALFORMED_PLAN" <<'EOF'
 # Context: mode-malformed
 Parent: main
-Mode: autonomous (robottino)
+Mode: autonomous (fast lane)
 
 ## Work Plan
 - [ ] **Phase 1**: phase one
@@ -1332,7 +1332,7 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   done
   # The rename suggestion is restated only verbatim: the shared suffix must
   # appear identical in the source and in both skills that close with it.
-  S30_SUFFIX="indirizzo a cui le chat di fase"
+  S30_SUFFIX="address phase chats report to"
   for S30_F in "$S30_C" "$1/write-workflow/SKILL.md" "$1/import-workflow/SKILL.md"; do
     grep -q "$S30_SUFFIX" "$S30_F" 2>/dev/null \
       || echo "$S30_F: the rename suggestion drifted from the canonical wording"

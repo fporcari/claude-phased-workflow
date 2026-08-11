@@ -9,7 +9,14 @@ of restating them.
 ## Language
 
 All written content (plans, phase notes, code, comments, commits, PRs,
-issues) in English. Conversation with the user in Italian.
+issues) in English: the artifacts outlive the chat that produced them, and
+what reads them next is usually another session.
+
+**The conversation is in the user's language, never in one this plugin
+picks.** Follow their own configuration — global instructions, output style,
+or simply the language they are writing in. Every wording quoted below and in
+the skills (gate lines, question options, closing messages, board labels) is
+the English **canon of what to say**, not the language to say it in.
 
 ## AskUserQuestion style
 
@@ -26,9 +33,9 @@ that a reply is expected. Every presentation that ends in a wait closes
 with ONE line, plain text, **never inside a code fence** (fenced text
 reads as log output, not as a question addressed to the user):
 
-> **Procedo?** Al tuo ok \<exactly what happens next\>.
+> **Proceed?** On your ok, \<exactly what happens next\>.
 
-The verb can change (*Confermi?* / *Lancio?*), the shape cannot: a bold
+The verb can change (*Confirm?* / *Launch?*), the shape cannot: a bold
 one-word question, then what the ok unlocks. Multi-way choices go through
 `AskUserQuestion` instead (style above); the gate line is for the binary
 "go" that unblocks the skill.
@@ -242,7 +249,7 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 
 ## The foreman — chat hierarchy and messaging
 
-One chat commands each workflow (the **foreman** — capocantiere); the chats
+One chat commands each workflow (the **foreman**); the chats
 that execute phases are its children and report to it. **This section is the
 single source of the protocol** — the skills cite it, they never restate it.
 
@@ -277,9 +284,9 @@ absence is migration, not an error):
 2. Commit it (`wf: foreman — takes command`), or fold it into the commit the
    skill is already making (plan, import). Tracked like the plan: left
    uncommitted it breaks the clean-tree invariant.
-3. Ask the user, one line, to rename this chat: *"Rinomina questa chat in
-   `wf:<slug>:foreman` — è l'indirizzo a cui le chat di fase mandano gli
-   esiti."* Until they do, notifications skip silently; nothing breaks.
+3. Ask the user, one line, to rename this chat: *"Rename this chat to
+   `wf:<slug>:foreman` — it is the address phase chats report to."* Until
+   they do, notifications skip silently; nothing breaks.
 
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
@@ -303,16 +310,16 @@ The `<one line>` slots — the Issue, the blocked reason, the stop-work
 reason — are written in the reporting register (below): the consequence
 first, no bare identifiers.
 
-**Stop-work (fermo lavori).** `stop-work?` is the one message that is a
+**Stop-work.** `stop-work?` is the one message that is a
 question, not a report: `/run-workflow`'s inspector sends it when continuing
 looks like wasted tokens. A foreman receiving it does not judge on its own —
-it puts ONE AskUserQuestion to its user immediately (*Fermo lavori* /
-*Continua*, with the inspector's reason) and replies with the decision on
+it puts ONE AskUserQuestion to its user immediately (*Stop workflow* /
+*Go on*, with the inspector's reason) and replies with the decision on
 the message's own reply path: `stop-work: granted` or `stop-work: denied —
 continue`. No reply reaching the inspector → the run's own stop conditions
 govern, as if nothing was asked. After a granted stop the flow is human:
-chiacchierata, plan correction (`/resume-workflow` re-phasing or hand
-edits), then a fresh `/run-workflow` is the ripresa lavori.
+talk it through, correct the plan (`/resume-workflow` re-phasing or hand
+edits), then a fresh `/run-workflow` restarts the work.
 
 **Best-effort, always, in both directions.** No `foreman.json`, no way to
 reach sessions (the desktop session-management tools are absent in unattended
@@ -345,9 +352,9 @@ in an autonomous run, nobody was. **This section is the single source of
 the register** — the skills cite it, they never restate it.
 
 - **Name things by what they do for the user**, never by identifier alone:
-  "il controllo che impedisce di salvare una fattura vuota", not
+  "the check that stops an empty invoice from being saved", not
   "`validate_invoice()` in `invoice.py`".
-- **A defect is a consequence**: *se succede X, l'utente vede Y*. An
+- **A defect is a consequence**: *if X happens, the user sees Y*. An
   internal state nobody would notice is not a finding a decision-maker can
   act on.
 - **Identifiers may follow in parentheses**, as the record for whoever does
@@ -357,7 +364,7 @@ the register** — the skills cite it, they never restate it.
   in plain words instead.
 
 The register applies at *presentation* time, when plan artifacts are turned
-into Italian for the human. The artifacts themselves (`> Issue:`,
+into prose for the human, in their language. The artifacts themselves (`> Issue:`,
 `> Review:`, `> Verify:` notes, `notes.md`, the finalize agent's report)
 stay technical English: repair sessions and reviews read them, and
 periphrasis would cost them precision.
@@ -380,8 +387,8 @@ it. The reader pulls detail at their own pace; no detail question is
 asked. The cap survives inside the expansions: each one answers a precise
 question of the decision-maker — never the phase chronicle. Without a way
 to render the page (CLI, headless), degrade declared: the short form in
-chat, then exactly ONE question governs detail — a dedicated one (*Espandi
-tutto / Scelgo io quali / Basta così*) when the report ends the exchange,
+chat, then exactly ONE question governs detail — a dedicated one (*Expand
+all / Let me pick / That's enough*) when the report ends the exchange,
 folded as an extra option into the decision question the skill already
 asks when there is one, never two questions stacked. A user who is away
 answers when they return; the question waits, no special case. The one-way

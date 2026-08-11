@@ -15,7 +15,7 @@ Typical sources: a pre-4.0 `.claude/MEMORY.md`, a parallel `memory_<name>.md` fr
 
 ## Step 1: Find the source
 
-`$ARGUMENTS` names it → use that. Otherwise look, in order, for `.claude/MEMORY.md`, `.claude/memory_*.md`, then any handoff-looking markdown the user points at. Several candidates → AskUserQuestion. Nothing → stop: *"Non trovo niente da importare. `/write-workflow` scrive un piano nuovo."*
+`$ARGUMENTS` names it → use that. Otherwise look, in order, for `.claude/MEMORY.md`, `.claude/memory_*.md`, then any handoff-looking markdown the user points at. Several candidates → AskUserQuestion. Nothing → stop: *"Nothing to import here. `/write-workflow` writes a new plan."*
 
 `.phased/active/` already occupied → stop. One branch, one plan.
 
@@ -44,11 +44,11 @@ Produce the plan in the `/write-workflow` format — same `Pattern:` / `Files:` 
 
 A handoff document has no phases yet: derive them from what it describes, and say plainly that you did — this is the one case where the import is also an act of planning, and the user should review it as such.
 
-**Then report the gaps, don't fill them.** Check every remaining `[ ]` phase against the autonomous-ready bar (`/run-workflow` pre-flight): concrete and verifiable, bounded scope, measurable `Done:`, decisions pre-made, `Pattern:` cited for non-trivial code. Present what is missing, per phase, in Italian:
+**Then report the gaps, don't fill them.** Check every remaining `[ ]` phase against the autonomous-ready bar (`/run-workflow` pre-flight): concrete and verifiable, bounded scope, measurable `Done:`, decisions pre-made, `Pattern:` cited for non-trivial code. Present what is missing, per phase:
 
 ```
-Phase 3 — manca Done: misurabile ("funziona bene" non è verificabile)
-Phase 5 — nessun Pattern: e il codice non è banale
+Phase 3 — no measurable Done: ("works fine" cannot be checked)
+Phase 5 — no Pattern:, and the code is not trivial
 ```
 
 Inventing a plausible `Done:` for a phase whose author never wrote one is worse than leaving the gap visible: it looks settled and nobody checks it again. Offer to refine them now, one at a time, or to import as-is and leave `/write-workflow` to it.
@@ -57,11 +57,11 @@ Inventing a plausible `Done:` for a phase whose author never wrote one is worse 
 
 ## Step 4: Land it
 
-Show the plan and close with the gate line (`common.md` → *The gate line*): *"**Procedo?** Al tuo ok creo/adotto il branch e committo il piano."* Then, depending on Step 2:
+Show the plan and close with the gate line (`common.md` → *The gate line*): *"**Proceed?** On your ok, I create or adopt the branch and commit the plan."* Then, depending on Step 2:
 
 **Fresh import** → same branch rules as `/write-workflow` Step 4 (*Open the branch*): on a base branch, `git switch -c wf/<slug>`; on a feature branch, adopt it by default, with `wf/<slug>` off it as the alternative.
 
-**Mid-run import** → **adopt the current branch, no question, no rebase, no reset.** The completed phases correspond to work already in this tree and to commits already made; a fresh branch would strand them. Say so explicitly: *"Import in place su `<branch>`: le fasi già `[x]` corrispondono a lavoro già presente qui, quindi nessun branch nuovo e nessuna riscrittura della history."*
+**Mid-run import** → **adopt the current branch, no question, no rebase, no reset.** The completed phases correspond to work already in this tree and to commits already made; a fresh branch would strand them. Say so explicitly: *"Imported in place on `<branch>`: the phases already `[x]` match work that is already here, so no new branch and no history rewrite."*
 
 This is safe because the workflow's base is the plan commit, not the branch point (see `common.md`): the old commits land before it and therefore outside the workflow, so `/finalize-workflow` consolidates only what comes after and leaves them for the user to deal with — which is the honest outcome, since nothing can retroactively tell which of them belonged to which phase.
 
@@ -85,9 +85,9 @@ Verify the commit is not empty (`git show --stat HEAD`).
 ## Step 5: Close
 
 ```
-Importato in .phased/active/<slug>/plan.md (<N> fasi: <x> completate, <y> da fare), committato su <branch>.
-Questa chat è il capocantiere. Rinominala in `wf:<slug>:foreman` — è l'indirizzo a cui le chat di fase mandano gli esiti.
-Sorgente lasciata in <path> — superata, cancellala quando vuoi.
+Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), committed on <branch>.
+This chat is the foreman. Rename it to `wf:<slug>:foreman` — it is the address phase chats report to.
+Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>
-Per continuare, lancia /execute-phase.
+To carry on, launch /execute-phase.
 ```

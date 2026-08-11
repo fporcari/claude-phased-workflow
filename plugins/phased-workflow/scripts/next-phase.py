@@ -313,7 +313,7 @@ def validate(path, phases, text):
                     mode_value = mm.group(1).lower()
                     mode_lineno = idx
             else:
-                # "Mode: autonomous (robottino)" must not silently read as
+                # "Mode: autonomous (fast lane)" must not silently read as
                 # "no header" and degrade to the interactive default — the
                 # same threat the unknown-value error below exists for.
                 add(idx, 'error',

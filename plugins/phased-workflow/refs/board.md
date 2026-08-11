@@ -25,7 +25,7 @@ it is a text report set in a table.** The layout is fixed rather than left to th
 renderer, because a free hand drops the controls: a bare table has no natural cell
 for a button.
 
-- **Header** — three metric cards: `fasi fatte N / M`, `branch`, `modo`.
+- **Header** — three metric cards: `phases done N / M`, `branch`, `mode`.
 - **One card per phase**, in order: state icon, `Phase N: <title>`, and one muted
   meta line — `<model> / <effort> · <n> file · <commit, or manual checks>`. The card
   of the first unfinished phase carries the accent border; finished ones are muted.
@@ -50,12 +50,12 @@ suggestion popup that forks the tree is worse than a copied command.
 
 | State | Command on the card |
 |---|---|
-| unfinished (`da fare` / `in esecuzione`) | `/phased-workflow:execute-phase Phase N — <title>` |
-| `problema`, **and the plan has that phase `[!]`** | `/phased-workflow:repair-phase` |
-| `problema` on a phase the plan has `[x]` | **none** — annotate and export |
+| unfinished (`to do` / `running`) | `/phased-workflow:execute-phase Phase N — <title>` |
+| `problem`, **and the plan has that phase `[!]`** | `/phased-workflow:repair-phase` |
+| `problem` on a phase the plan has `[x]` | **none** — annotate and export |
 | a `[~]` phase | none: a red baseline nobody owns is the human's |
 
-**`problema` means two different things, and only one of them is repairable.** A phase
+**`problem` means two different things, and only one of them is repairable.** A phase
 the plan marks `[!]` failed its own `Done:` — tests red, with `> Issue:` and
 `> Attempted:` written by whoever ran it — and `/repair-phase` exists precisely for that:
 it re-diagnoses from scratch and pushes that code back to green.
@@ -71,8 +71,8 @@ the plan grows through `/resume-workflow`.
 Every unfinished phase shows its command, not just the one whose turn it is —
 reading it is how you see what is coming.
 
-**`copia comando` appears only where every earlier phase is `fatta`**; elsewhere the
-command sits greyed, with no button, and the card says `tocca dopo la fase M`. The
+**`copy command` appears only where every earlier phase is `done`**; elsewhere the
+command sits greyed, with no button, and the card says `due after phase M`. The
 reason is narrower than order-breaking, which cannot happen anyway (`next-phase.py`
 chooses the phase; the argument is only a chat-title label): a command copied out of
 turn produces a chat *titled* `Phase 4` that runs Phase 2, and that title is what
@@ -80,8 +80,8 @@ the user will scroll their session list for a day later.
 
 ## One state per phase
 
-**Each card carries a single state select — `da fare` / `in esecuzione` / `fatta` /
-`problema` — and the skill seeds them all when it draws the board.** From that
+**Each card carries a single state select — `to do` / `running` / `done` /
+`problem` — and the skill seeds them all when it draws the board.** From that
 moment the board is the user's working view: they move the selects as the phases go,
 without waiting for a report to agree.
 
@@ -92,9 +92,9 @@ cannot write to `plan.md`: no network leaves the widget sandbox) but the board d
 not argue about it. It is re-seeded from the plan every time a skill draws it, so a
 wrong marker survives exactly until the next board.
 
-**The selects are order-guided.** `fatta` is offered only when every earlier phase
-is already `fatta`; while one is not, the option stays disabled on the later cards.
-And moving a phase back off `fatta` returns every later `fatta` to `da fare`, since
+**The selects are order-guided.** `done` is offered only when every earlier phase
+is already `done`; while one is not, the option stays disabled on the later cards.
+And moving a phase back off `done` returns every later `done` to `to do`, since
 the alternative is a state the chain cannot reach. It is the ordering rule the whole
 chain runs on, enforced where the user is clicking rather than explained afterwards.
 
@@ -104,10 +104,10 @@ Present when a board is drawn over work that has run (`/resume-workflow`), omitt
 on a plan that has just been written (`/write-workflow`): there is nothing to
 annotate before the first phase starts, and an export with nothing in it is furniture.
 
-- **An `annotazioni e problemi` textarea on every card.** Interactive phases run in
+- **A `notes and problems` textarea on every card.** Interactive phases run in
   chats the board cannot see: what you noticed, what came out wrong, what to
   revisit, goes next to the phase it came from.
-- **An `esporta prompt correzioni` button at the foot of the board**, copying one
+- **An `export fix prompt` button at the foot of the board**, copying one
   prompt built from the cards that carry notes. **It is also the only thing that
   saves them** — like the selects, the textareas live in that message and die with
   it. Say so once, under the board.
@@ -116,25 +116,29 @@ The exported prompt has a fixed shape, so it can be pasted into a fresh chat and
 acted on:
 
 ```
-Revisione post-fase — <slug> (branch <branch>, piano .phased/active/<slug>/plan.md)
+Post-phase review — <slug> (branch <branch>, plan .phased/active/<slug>/plan.md)
 
-Phase 2 — table foo with its TH UI  [fatta]
-  la form salva ma il grid non si ricarica dopo il save
+Phase 2 — table foo with its TH UI  [done]
+  the form saves but the grid does not reload afterwards
 
-Phase 4 — pdf export endpoint  [problema]
-  lo sconto e' calcolato nella pagina: va nel modello, e serve un punto solo
-  che lo applichi anche all'export
+Phase 4 — pdf export endpoint  [problem]
+  the discount is computed in the page: it belongs in the model, and one
+  single point must apply it to the export too
 
-Per ciascuna, decidi quale dei due casi e' e dillo prima di toccare niente:
+For each one, decide which of the two cases it is and say so before touching
+anything:
 
-1. correzione puntuale — individua la causa e proponi la modifica;
-2. problema di impostazione — non si ripara dentro la fase: proponi le fasi
-   NUOVE che lo risolvono, nel formato del piano (titolo, Files:, Details:,
-   Done:, Run:), da aggiungere IN CODA. Le scrive /resume-workflow, con il suo
-   commit.
+1. targeted fix — find the cause and propose the change;
+2. design problem — not repairable inside the phase: propose the NEW phases
+   that solve it, in the plan's format (title, Files:, Details:, Done:, Run:),
+   to be appended AT THE END. /resume-workflow writes them, with its own commit.
 
-Una fase gia' chiusa non si riapre: quello che le manca diventa lavoro nuovo.
+A closed phase is not reopened: what it lacks becomes new work.
 ```
+
+The scaffold is fixed text the widget builds, so it ships in English like every
+other written artifact; the notes it carries are the user's own words, in
+whatever language they typed them.
 
 Phases with no note are left out — an export listing every phase says nothing about
 which ones need attention.

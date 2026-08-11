@@ -1,4 +1,4 @@
-# Write Workflow — Autonomous (robottino) addendum
+# Write Workflow — Autonomous addendum
 
 Loaded by `/write-workflow` when its automation fork (Step 2) selects autonomous. Everything in the main skill still applies; this adds a stricter refinement and format, because the plan must pass the launcher's pre-flight without a single question.
 
@@ -6,8 +6,8 @@ The fork already asked whether the plan targets autonomous execution — do not 
 
 ## Per-phase refinement
 
-1. **Pattern reference.** For non-trivial code, find 1–2 existing examples and propose them: *"Per la Phase X uso il pattern di `path/to/example.py:func`. Confermi?"* No clean candidate → ask the user; still nothing → propose 2–3 based on the phase description; still nothing → the phase is `new-pattern (flagged: higher risk)` and the user is told it is riskier autonomously. Library-standard work needs no reference.
-2. **Scope safety.** Sub-sessions run `--permission-mode auto`; the categories its classifier is expected to deny, and this plugin's own convention for writing phases, are listed in `${CLAUDE_PLUGIN_ROOT}/refs/auto-mode-scope.md`. A phase needing one → surface it: *"Phase X richiede `<command>`, che auto mode blocca. Opzioni: (a) rifrasare la fase per fermarsi prima — lo fai tu dopo, (b) rimuovere la fase, (c) farla a mano fuori da `/run-workflow`."* Never silently rewrite the phase to hide it.
+1. **Pattern reference.** For non-trivial code, find 1–2 existing examples and propose them: *"For Phase X I follow the pattern of `path/to/example.py:func`. Confirm?"* No clean candidate → ask the user; still nothing → propose 2–3 based on the phase description; still nothing → the phase is `new-pattern (flagged: higher risk)` and the user is told it is riskier autonomously. Library-standard work needs no reference.
+2. **Scope safety.** Sub-sessions run `--permission-mode auto`; the categories its classifier is expected to deny, and this plugin's own convention for writing phases, are listed in `${CLAUDE_PLUGIN_ROOT}/refs/auto-mode-scope.md`. A phase needing one → surface it: *"Phase X needs `<command>`, which auto mode denies. Options: (a) rephrase the phase to stop before it — you do that part later, (b) drop the phase, (c) run it by hand outside `/run-workflow`."* Never silently rewrite the phase to hide it.
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/execute-phase-agent` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
@@ -17,9 +17,9 @@ The fork already asked whether the plan targets autonomous execution — do not 
 
 If the refinement reveals the task doesn't fit autonomous execution, say so instead of forcing it — flip the fork (Step 2 of `/write-workflow`) back to interactive rather than bending the plan to a mode it resists. Red flags: the work *is* the exploration; decisions that only implementation can settle; visual/UX output needing human judgment per iteration; heavy dependence on external state; tests requiring human setup; success meaning "the user will recognise it when they see it".
 
-The user picks robottino when the task suits it, so friction usually means a misunderstanding, not a stubborn user. Stop and ask, in Italian:
+The user picks autonomous when the task suits it, so friction usually means a misunderstanding, not a stubborn user. Stop and ask:
 
-> *"Aspetta — su questo piano sento attrito a renderlo robottinizzabile. Motivo: <reason concreto>. Probabilmente uno dei due: (a) ho frainteso io qualcosa — chiariamo; (b) il task è davvero più adatto all'interattivo — procedo con un piano interattivo normale? Cosa succede?"*
+> *"Wait — this plan resists being made autonomous. Reason: <concrete reason>. It is probably one of two things: (a) I misunderstood something — let's clear it up; (b) the task really does suit interactive better — shall I go on with a normal interactive plan? Which is it?"*
 
 **Not a rejection:** phases unspecifiable only because they depend on *earlier phases' outcomes* — that plan is too ambitious for one wave, so split it into macro-phases.
 
@@ -93,9 +93,9 @@ Keep the column order exactly as above — `/run-workflow` reads Effort and Mode
 ## Closing message
 
 ```
-Piano robottino-ready scritto in .phased/active/<slug>/plan.md (<N> fasi + review finale), committato su <branch>.
-Tutte le fasi hanno: pattern reference, files, decisions pre-fatte, done criterion misurabile.
-Ogni fase gira in loop auto-correttivo (3 tentativi test+lint, review indipendente, gate sul Done); su fase fallita parte UNA riparazione automatica a occhi freschi prima di fermarsi per te.
-La review finale corregge le sviste banali e segnala il resto in .phased/active/<slug>/review.md.
-Per eseguire: /run-workflow (passerà la pre-flight check senza domande).
+Autonomous-ready plan written to .phased/active/<slug>/plan.md (<N> phases + final review), committed on <branch>.
+Every phase carries: pattern reference, files, pre-made decisions, a measurable done criterion.
+Each phase runs a self-correcting loop (3 test+lint attempts, independent review, gate on the Done); a failed phase gets ONE automatic fresh-eyes repair before it stops for you.
+The final review fixes the trivial slips and flags the rest in .phased/active/<slug>/review.md.
+To run it: /run-workflow (it will pass the pre-flight check with no questions).
 ```

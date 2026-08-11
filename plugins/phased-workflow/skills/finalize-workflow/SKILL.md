@@ -35,7 +35,7 @@ git rev-list --count "$BASE"^..<parent>                         # 0 => BASE is t
 
 All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
-**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Show them as ONE list, in Italian, grouped by phase, each with the result the user should see; a deferred step whose phase has since landed is now due. Phrase every step per `common.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding.
+**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Show them as ONE list, grouped by phase, each with the result the user should see; a deferred step whose phase has since landed is now due. Phrase every step per `common.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding.
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
@@ -66,9 +66,9 @@ Pass every `> Review:` note as an explicit focus point — each must come out co
 
 **Large autonomous diffs:** offer the user a reviewer panel instead of the single pass — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) in parallel, each finding then verified by 3 independent skeptics prompted to *refute* it, keeping only what survives a majority. Read-only, under ~15 agents, never edits source.
 
-Findings → present them per `common.md` → *The reporting register*: the short form in Italian (verdict line, one line per finding, its consequence for the user), passed through the `report-judge` comprehension probe before showing, delivered as the register's report page where the session can render one. Then ONE question — *"La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Espandi i dettagli prima di decidere*), never as a second question. Fixing is delegated, not done here; then re-run `/finalize-workflow`.
+Findings → present them per `common.md` → *The reporting register*: the short form (verdict line, one line per finding, its consequence for the user), passed through the `report-judge` comprehension probe before showing, delivered as the register's report page where the session can render one. Then ONE question — *"The pre-commit review found N problems. Fix them first, or shall I go on to the commit?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Expand the details before deciding*), never as a second question. Fixing is delegated, not done here; then re-run `/finalize-workflow`.
 
-This step is the only whole-diff review on the "Merge sul parent" and "Solo commit" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
+This step is the only whole-diff review on the "Merge into parent" and "Commit only" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 
 ## Step 5: Capture durable lessons
 
@@ -106,13 +106,13 @@ Build the commit message from the objective, the completed phases, the actual di
 
 Present it, then ask ONE `AskUserQuestion` — choosing a path approves the message as shown, so say right above the question that edits to the message are welcome before choosing:
 
-- **Pull request** (Recommended) — branch pulito dal parent, squash, PR verso `<parent-branch>`
-- **Merge sul parent** — squash direttamente su `<parent-branch>` e push
-- **Solo commit** — lascia il branch com'è, decido dopo
+- **Pull request** (Recommended) — clean branch off the parent, squash, PR to `<parent-branch>`
+- **Merge into parent** — squash straight onto `<parent-branch>` and push
+- **Commit only** — leave the branch as it is, decide later
 
 One gate, not two: approving the commit message separately was a second round-trip that bought nothing.
 
-**Merge sul parent** → from the main repo (`git worktree list --porcelain | head -1 | sed 's/worktree //'`): switch to the parent, pull, then
+**Merge into parent** → from the main repo (`git worktree list --porcelain | head -1 | sed 's/worktree //'`): switch to the parent, pull, then
 
 ```bash
 git merge --squash <workflow-branch>
@@ -145,13 +145,13 @@ git commit
 git push -u origin <type>/<slug>
 ```
 
-Then: *"Branch pushato. Lancia `/pull-request` per creare la PR verso `<parent>`."*
+Then: *"Branch pushed. Launch `/pull-request` to open the PR to `<parent>`."*
 
-**Solo commit** → nothing else happens; the workflow branch holds everything.
+**Commit only** → nothing else happens; the workflow branch holds everything.
 
 Whichever path ran: send the foreman the closing `workflow finalized` message per `common.md` → *The foreman* — best-effort. `list_sessions` excludes the current session, so when this chat IS the foreman the title lookup finds nothing and the skip is automatic.
 
-After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"La roadmap ha altre macrofasi. Prossimo passo: nuova chat e `/write-workflow` per dettagliare la prossima — col senno di poi di quella appena committata."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
+After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"The roadmap has further macro-phases. Next step: a new chat and `/write-workflow` to detail the next one — with the hindsight of the one just committed."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
 
 ## Rules
 
