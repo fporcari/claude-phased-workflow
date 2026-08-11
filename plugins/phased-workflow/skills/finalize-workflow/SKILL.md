@@ -35,7 +35,7 @@ git rev-list --count "$BASE"^..<parent>                         # 0 => BASE is t
 
 All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
-**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Show them as ONE list, in Italian, grouped by phase, each with the result the user should see; a deferred step whose phase has since landed is now due. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding.
+**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Show them as ONE list, in Italian, grouped by phase, each with the result the user should see; a deferred step whose phase has since landed is now due. Phrase every step per `common.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding.
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
@@ -66,7 +66,7 @@ Pass every `> Review:` note as an explicit focus point — each must come out co
 
 **Large autonomous diffs:** offer the user a reviewer panel instead of the single pass — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) in parallel, each finding then verified by 3 independent skeptics prompted to *refute* it, keeping only what survives a majority. Read-only, under ~15 agents, never edits source.
 
-Findings → present them in Italian and ask: *"La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?"* (recommended: fix first). Fixing is delegated, not done here; then re-run `/finalize-workflow`.
+Findings → present them in Italian, phrased per `common.md` → *The reporting register* (each one as its consequence for the user, identifiers in parentheses at most), and ask: *"La review pre-commit ha trovato N problemi. Li sistemiamo prima o procedo col commit?"* (recommended: fix first). Fixing is delegated, not done here; then re-run `/finalize-workflow`.
 
 This step is the only whole-diff review on the "Merge sul parent" and "Solo commit" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 

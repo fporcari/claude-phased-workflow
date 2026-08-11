@@ -26,6 +26,16 @@ then its `Files:`. Write the code the phase describes, and nothing else.
 Never invent framework APIs. ONE phase per invocation; no out-of-scope
 refactoring.
 
+**The plan is context, not just a queue.** Before the first edit, skim the
+whole plan once — every phase, not only yours. The `> Done:`/`> Files:`
+notes of completed phases say what already exists: reuse it, never
+duplicate it. The pending phases say where the work is heading: a
+micro-choice this phase leaves open (a name, where a helper lives, a data
+shape) is decided in favour of the phases that come after, and a choice
+that would force a successor to undo or work around it is the wrong choice
+even when it is locally cheaper. Scope is unchanged: knowing Phase 5
+exists never means implementing a piece of it here.
+
 ## Record the outcome
 
 ```

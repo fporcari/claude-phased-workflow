@@ -1375,6 +1375,72 @@ assert "S30: the guard fails when a skill restates the foreman.json body" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 
+echo "== S31: cross-phase awareness and the reporting register ship and are cited =="
+# Two 5.13.0 invariants. (a) Workers treat the whole plan as context, not a
+# queue: the shared core carries the plan-is-context paragraph (both execute
+# modes load it), and the light contract — which loads no skill — carries its
+# own cross-phase clause. (b) Reports to the decision-maker are phrased for
+# someone who does not know the implementation: common.md owns
+# '## The reporting register', the presenting skills cite it, nobody restates
+# its rules.
+s31_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints one line per violation
+  S31_C="$2/common.md"
+  grep -q '^## The reporting register' "$S31_C" 2>/dev/null \
+    || echo "$S31_C: missing the '## The reporting register' section"
+  grep -q 'stay technical English' "$S31_C" 2>/dev/null \
+    || echo "$S31_C: the register section lost the artifacts-stay-technical boundary"
+  grep -q 'The plan is context' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: missing the plan-is-context paragraph"
+  grep -q 'does not complicate later phases' "$3" 2>/dev/null \
+    || echo "$3: the light contract lost its cross-phase clause"
+  for S31_S in finalize-workflow run-workflow; do
+    S31_F="$1/$S31_S/SKILL.md"
+    grep -qi 'reporting register' "$S31_F" 2>/dev/null \
+      || echo "$S31_F: does not cite common.md's reporting register"
+  done
+  # Nobody but common.md carries the register's rules.
+  for S31_S in write-workflow import-workflow resume-workflow execute-phase \
+               execute-phase-agent finalize-workflow run-workflow; do
+    S31_F="$1/$S31_S/SKILL.md"
+    if grep -q 'Name things by what they do' "$S31_F" 2>/dev/null; then
+      echo "$S31_F: restates the reporting register (single source: common.md)"
+    fi
+  done
+  return 0
+}
+S31_OUT="$(s31_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
+[ -z "$S31_OUT" ] || echo "  offending: $S31_OUT"
+assert "S31: cross-phase awareness and the register are single-source and cited" \
+  '[ -z "$S31_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S31_MUT/"
+sed 's/^## The reporting register.*/## How to talk (renamed)/' "$S24_REFS/common.md" \
+  > "$S31_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S31_MUT/refs/phase-execution.md"
+assert "S31: the guard fails when common.md stops owning the register" \
+  '[ -n "$(s31_guard "$S31_MUT" "$S31_MUT/refs" "$RUNNER_SRC")" ]'
+rm -rf "$S31_MUT"
+S31_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S31_MUT/"
+sed -i.bak '/[Rr]eporting register/d' "$S31_MUT/run-workflow/SKILL.md" \
+  && rm -f "$S31_MUT/run-workflow/SKILL.md.bak"
+assert "S31: the guard fails when a presenting skill drops the citation" \
+  '[ -n "$(s31_guard "$S31_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
+rm -rf "$S31_MUT"
+S31_MUT="$(mktemp -d)"
+sed '/does not complicate later phases/d' "$RUNNER_SRC" > "$S31_MUT/run-workflow.sh"
+assert "S31: the guard fails when the light contract loses the cross-phase clause" \
+  '[ -n "$(s31_guard "$SKILLS_DIR" "$S24_REFS" "$S31_MUT/run-workflow.sh")" ]'
+rm -rf "$S31_MUT"
+S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"
+cp "$S24_REFS/common.md" "$S31_MUT/refs/common.md"
+sed '/The plan is context/d' "$S24_REFS/phase-execution.md" \
+  > "$S31_MUT/refs/phase-execution.md"
+assert "S31: the guard fails when the shared core loses plan-is-context" \
+  '[ -n "$(s31_guard "$SKILLS_DIR" "$S31_MUT/refs" "$RUNNER_SRC")" ]'
+rm -rf "$S31_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

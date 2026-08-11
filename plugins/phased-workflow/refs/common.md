@@ -299,6 +299,10 @@ header line first:
 [wf:<slug>] stop-work? — <what looks wrong, one line; the run keeps burning until answered>.
 ```
 
+The `<one line>` slots — the Issue, the blocked reason, the stop-work
+reason — are written in the reporting register (below): the consequence
+first, no bare identifiers.
+
 **Stop-work (fermo lavori).** `stop-work?` is the one message that is a
 question, not a report: `/run-workflow`'s inspector sends it when continuing
 looks like wasted tokens. A foreman receiving it does not judge on its own —
@@ -330,6 +334,33 @@ to `notes.md` under a `## Phase N` heading — why this way, what was rejected.
 That is what `/finalize-workflow`'s lessons pass (its Step 5) reads: executor
 chats are gone by then, and they carry no title to be reached at anyway —
 the file is the only mechanism.
+
+## The reporting register
+
+Every report addressed to the person who decides — the foreman one-liners,
+`/finalize-workflow`'s QA pass and findings presentation, the `stop-work?`
+question, a run's closing summary — assumes the reader does NOT know the
+implementation details. They were not in the session that wrote the code;
+in an autonomous run, nobody was. **This section is the single source of
+the register** — the skills cite it, they never restate it.
+
+- **Name things by what they do for the user**, never by identifier alone:
+  "il controllo che impedisce di salvare una fattura vuota", not
+  "`validate_invoice()` in `invoice.py`".
+- **A defect is a consequence**: *se succede X, l'utente vede Y*. An
+  internal state nobody would notice is not a finding a decision-maker can
+  act on.
+- **Identifiers may follow in parentheses**, as the record for whoever does
+  the fixing — but the sentence must carry its meaning without them.
+- **Labels are not explanations.** "Fallback", "shadow mode", "refactor"
+  explain nothing to someone who has not read the code: state the mechanism
+  in plain words instead.
+
+The register applies at *presentation* time, when plan artifacts are turned
+into Italian for the human. The artifacts themselves (`> Issue:`,
+`> Review:`, `> Verify:` notes, `notes.md`, the finalize agent's report)
+stay technical English: repair sessions and reviews read them, and
+periphrasis would cost them precision.
 
 ## Notifications
 
