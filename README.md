@@ -7,6 +7,8 @@
 
 **Version 5.14.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
+> **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
+
 ## First, the problem
 
 Freestyle works — genuinely — for any job that fits inside one chat. The trouble starts when the work is bigger than a session:
