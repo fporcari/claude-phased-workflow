@@ -197,7 +197,15 @@ Every command declares its own `allowed-tools`, and the test suite fails if a sk
 
 ## Getting started
 
-Prerequisites: [Claude Code](https://claude.com/claude-code) **≥ 2.1.139** for the `/goal` guard on autonomous sessions (older versions fall back to plain skill prompts at runtime), git with a remote, `gh` authenticated. The desktop app adds the live run monitor and notifications; the CLI works without them.
+Prerequisites:
+
+- [Claude Code](https://claude.com/claude-code) **≥ 2.1.170** for autonomous runs — `/goal` guards the sub-sessions (2.1.139; older versions fall back to plain skill prompts at runtime) and the repair session runs on `fable` (2.1.170; on an older CLI the run still completes, falling back to `opus`, and a phase that pins `Model: fable` fails to launch). The interactive path needs no more than **≥ 2.1.139**.
+- `bash` and `python3` on `PATH` — every skill resolves the active plan through `scripts/next-phase.py`, and the autonomous launchers are shell scripts. This holds for the interactive path too, not just for `/run-workflow`.
+- `git` with a remote, `gh` authenticated.
+
+macOS and Linux. Windows is not supported: the launchers need a bash shell, which Claude Code no longer requires there, and `python3` is not the interpreter's name on that platform. Under WSL it behaves like Linux.
+
+The desktop app adds the live run monitor and notifications; the CLI works without them.
 
 **Install from the marketplace (recommended):**
 
