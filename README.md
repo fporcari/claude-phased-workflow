@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 5.15.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 5.16.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -68,11 +68,11 @@ In autonomous mode every phase goes through a fixed cycle. Verification is done 
 
 *And when the plan is done — who looks at the whole?*
 
-While the robot runs, every check that only a human eye can do — "is the page what it should be?" — does not stop the train: it is **put on the bill**, in a `verify.md` file that accumulates phase by phase. When the plan is done, the first thing you do is the eye check against that list: like at a restaurant, the bill arrives once, at the till — not one course at a time.
+While the robot runs, every check that only a human eye can do — "is the page what it should be?" — does not stop the train: it is **put on the bill**, in a `verify.md` file that accumulates phase by phase. When the plan is done, the first thing you do is the eye check against that list: like at a restaurant, the bill arrives once, at the till — not one course at a time. The bill comes as a **QA page** — a rendered checklist, one checkbox per check, each with the action to exercise and the result you should see — so you work through it at your own pace and tick as you go.
 
 Then you run `/finalize-workflow` — and here is the point that is easy to miss: up to now **nobody has ever seen the work as a whole**. Every phase was born in a fresh session and was checked in isolation: that is the price of always-clean context. Finalize pays it in one pass, with a review of the entire diff that hunts precisely the problems *between* phases — one phase breaking another's assumption, the same helper written twice by sessions that never met, style drifting along the way.
 
-On large autonomous jobs the review becomes a **panel**: four reviewers in parallel (correctness, cross-phase coherence, pattern conformance, test coverage), and every finding then faces three skeptics instructed to *refute* it — only what survives reaches you. And finalize **never touches the code**: it reports and delegates; the decisions stay yours.
+**How deep that review goes is your call, not a fixed cost.** Finalize asks once — extended, light, or none — and recommends from what it knows: when a human eye lands on the result anyway (you vetted each phase as it ran, or the QA page exercises what was built), the light pass hunts only the between-phases residue at a fraction of the tokens; when nothing human ever looks at the work, the extended pass is the only eye it gets and earns its price. On large autonomous jobs a fourth option appears, the **panel**: four reviewers in parallel (correctness, cross-phase coherence, pattern conformance, test coverage), and every finding then faces three skeptics instructed to *refute* it — only what survives reaches you. And finalize **never touches the code**: it reports and delegates; the decisions stay yours.
 
 Before closing, two more gestures: the **lessons of the run** are rescued (the traps discovered, the "why the first attempts missed") — because the workflow branch gets thrown away, and without this step the method never learns — and the whole job becomes **one clean commit**, with three exits to choose from: pull request, direct merge on the parent, or "just commit, I'll decide later".
 
@@ -176,7 +176,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | `/import-workflow` | you already have a plan or a handoff | adapts it to the format, preserving phase states verbatim and reporting gaps instead of inventing them |
 | `/execute-phase` | interactive execution | one phase per chat: one approval gate up front (with a rendered mockup on `ui` phases), then no interruptions |
 | `/resume-workflow` | "where were we?" | read-only audit of plan vs git: drift, stale phases, next step — and the board, on interactive plans |
-| `/finalize-workflow` | all phases done | QA pass from `verify.md`, whole-diff review, lessons, one clean commit — PR, merge, or leave it |
+| `/finalize-workflow` | all phases done | QA page from `verify.md` (a checklist you tick as you exercise), whole-diff review at the depth you choose, lessons, one clean commit — PR, merge, or leave it |
 | `/pull-request` | delivering by PR | maintainer-grade review, then creates the PR |
 
 ### Autonomous execution
@@ -269,6 +269,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [5.16.0](docs/release-5.16.0.md) | the QA pass becomes a tickable checklist page, and finalize's whole-diff review asks its depth — light where a human eye already landed |
 | [5.15.0](docs/release-5.15.0.md) | the plugin stops choosing the conversation language: English canon for every shipped wording, the language follows the user |
 | [5.14.0](docs/release-5.14.0.md) | closing reports get a shape — verdict plus one line per finding — a comprehension-probe gate, and a report page with detail behind a click |
 | [5.13.0](docs/release-5.13.0.md) | workers read the whole plan as context, the inspector watches cross-phase coherence, and reports speak the decision-maker's language |

@@ -1523,6 +1523,64 @@ assert "S32: the guard fails when a skill restates the report shape" \
   '[ -n "$(s32_guard "$S32_MUT" "$S24_REFS" "$S32_AGENTS")" ]'
 rm -rf "$S32_MUT"
 
+echo "== S33: the QA pass is a page and the review depth is the user's call =="
+# Two 5.16.0 invariants. (a) common.md owns the QA page — the checklist HTML
+# the user works through while exercising the result; a work sheet, not a
+# closing report, so the report-judge gate does not apply and only common.md
+# knows its filename. (b) finalize's pre-commit review asks its depth
+# (Extended / Light / None) instead of always paying the extended pass, Light
+# is scoped to cross-phase issues only, and the report-judge probe is skipped
+# on a clean review — the token cost tracks what a human has already vetted.
+s33_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S33_C="$2/common.md"
+  grep -q 'QA page' "$S33_C" 2>/dev/null \
+    || echo "$S33_C: the Verification section lost the QA page"
+  grep -q -- '-qa\.html' "$S33_C" 2>/dev/null \
+    || echo "$S33_C: the QA page lost its out-of-tree filename"
+  grep -q 'work sheet, not a closing report' "$S33_C" 2>/dev/null \
+    || echo "$S33_C: the QA page lost the work-sheet clause (report-judge would creep in)"
+  S33_F="$1/finalize-workflow/SKILL.md"
+  grep -q 'QA page' "$S33_F" 2>/dev/null \
+    || echo "$S33_F: Step 2 no longer delivers the QA pass as the QA page"
+  grep -qE 'AskUserQuestion.+Extended.+Light.+None' "$S33_F" 2>/dev/null \
+    || echo "$S33_F: the review depth question (Extended / Light / None) is gone"
+  grep -q 'cross-phase issues only' "$S33_F" 2>/dev/null \
+    || echo "$S33_F: Light lost its cross-phase-only scope"
+  grep -q 'skip the probe when the review returns no findings' "$S33_F" 2>/dev/null \
+    || echo "$S33_F: the zero-findings probe skip is gone"
+  # Nobody but common.md carries the page filename.
+  for S33_S in "$1"/*/SKILL.md; do
+    if grep -q -- '-qa\.html' "$S33_S" 2>/dev/null; then
+      echo "$S33_S: hardcodes the QA page filename (single source: common.md)"
+    fi
+  done
+  return 0
+}
+S33_OUT="$(s33_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S33_OUT" ] || echo "  offending: $S33_OUT"
+assert "S33: the QA page and the depth question are single-source and cited" \
+  '[ -z "$S33_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+S33_MUT="$(mktemp -d)"; mkdir -p "$S33_MUT/refs"
+sed '/QA page/d' "$S24_REFS/common.md" > "$S33_MUT/refs/common.md"
+assert "S33: the guard fails when common.md loses the QA page" \
+  '[ -n "$(s33_guard "$SKILLS_DIR" "$S33_MUT/refs")" ]'
+rm -rf "$S33_MUT"
+S33_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S33_MUT/"
+sed -i.bak 's/Extended\*\* \/ \*\*Light\*\* \/ \*\*None/one depth/' \
+  "$S33_MUT/finalize-workflow/SKILL.md" && rm -f "$S33_MUT/finalize-workflow/SKILL.md.bak"
+assert "S33: the guard fails when finalize drops the depth question" \
+  '[ -n "$(s33_guard "$S33_MUT" "$S24_REFS")" ]'
+rm -rf "$S33_MUT"
+S33_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S33_MUT/"
+printf '\nWrite the checklist to /tmp/phased-workflow/<slug>-qa.html directly.\n' \
+  >> "$S33_MUT/execute-phase/SKILL.md"
+assert "S33: the guard fails when a skill hardcodes the QA page filename" \
+  '[ -n "$(s33_guard "$S33_MUT" "$S24_REFS")" ]'
+rm -rf "$S33_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

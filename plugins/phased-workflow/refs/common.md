@@ -212,6 +212,19 @@ the mockup) stays on the `Verify:` list.
 phase, and `/finalize-workflow` presents the file as one QA pass at the end
 instead of scattering checks the user cannot yet perform.
 
+**The QA pass is delivered as a QA page** where the session can render a file
+to the user (SendUserFile on the desktop): a manual test plan written outside
+the repo (`${TMPDIR:-/tmp}/phased-workflow/<slug>-qa.html` — a file in the
+tree would dirty it), one checkbox per check, grouped by phase, each item
+naming the action to exercise and the result the user should see — the
+reporting register applies. A deferred step whose phase has since landed is
+marked as now due. The checkboxes are the user's own tracking while they work
+through the list — purely client-side, nothing reports back to the session:
+the presenting skill still asks its one question about the outcome afterwards.
+It is a work sheet, not a closing report, so the report-judge gate does not
+apply to it. Without a way to render the page (CLI, headless), degrade
+declared: the same list in chat, grouped by phase.
+
 The mechanism is **thick in interactive mode and thin in autonomous, never
 absent**: an autonomous project startup still wants human eyes on the result.
 
