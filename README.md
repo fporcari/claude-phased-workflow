@@ -216,6 +216,12 @@ claude plugin install phased-workflow@claude-phased-workflow
 
 Note the reference: `phased-workflow@` is the plugin, `claude-phased-workflow` is the **marketplace name** declared in `marketplace.json` — not the GitHub slug.
 
+**Update to a new release** — one command; it refreshes the marketplace from GitHub by itself, no separate `marketplace update` needed. Restart open sessions to load the new version:
+
+```bash
+claude plugin update phased-workflow@claude-phased-workflow
+```
+
 **Per-project** (in the project's `.claude/settings.json`):
 
 ```json
