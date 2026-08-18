@@ -232,6 +232,45 @@ absent**: an autonomous project startup still wants human eyes on the result.
 *"here is what I noticed and will not decide for you"* — the user reads and
 judges; `verify.md` says *"here is what you must exercise"* — the user does.
 
+## New-method markers and minimality
+
+Two disciplines on every method or function a phase CREATES. They hold in
+both execution modes; **this section is the single source of the contract**
+(the review procedure lives in `refs/naming-review.md` — skills cite these
+two, they never restate them).
+
+**Minimality.** A phase introduces only the callables its objective and
+`Done:` criterion require. A helper "for later", a speculative abstraction,
+a second code path nothing exercises — that is scope the plan did not buy,
+and the phase verifier reports it. When in doubt, inline the code: a future
+phase can extract the helper the day two callers exist.
+
+**The marker.** Every new method or function carries, on its definition
+line, an end-of-line comment in the file's own comment token:
+
+```python
+def calc_totals(self):  # wf:phase-3:new
+```
+
+The name is a *proposal*: agent-chosen names are the part of a diff users
+most often want to reword, so each one stays findable until a human has
+ruled on it. Names that ARE framework API (dispatch by prefix or suffix, a
+hook the framework matches literally) carry the marker too — they appear in
+the review as fixed names, where only the free part, if any, can change.
+
+The marker is scaffolding, like the `wf(phase N)` commits — it never
+reaches the parent branch:
+
+- **interactive runs** — `/close-phase` runs the naming review at the end
+  of each phase; accepted or renamed, the markers die with the phase commit.
+- **autonomous runs** — nobody can answer a naming question mid-run, so
+  markers accumulate in the phase commits and `/finalize-workflow` runs ONE
+  naming review for the whole workflow before consolidating.
+
+The sweep is blocking either way: before a phase commit closes the review,
+and again before the workflow consolidates, a grep for `wf:phase-` over the
+touched files must come back empty.
+
 ## Failure and repair notes
 
 Note fields the autonomous chain writes on phases, and what consumes them:
@@ -351,7 +390,7 @@ old chat may be dead; nothing here is allowed to block on it.
 
 **Per-phase rationale.** A phase that makes a non-obvious choice appends it
 to `notes.md` under a `## Phase N` heading — why this way, what was rejected.
-That is what `/finalize-workflow`'s lessons pass (its Step 5) reads: executor
+That is what `/finalize-workflow`'s lessons pass (its Step 6) reads: executor
 chats are gone by then, and they carry no title to be reached at anyway —
 the file is the only mechanism.
 

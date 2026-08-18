@@ -26,6 +26,15 @@ then its `Files:`. Write the code the phase describes, and nothing else.
 Never invent framework APIs. ONE phase per invocation; no out-of-scope
 refactoring.
 
+**New callables: minimal, and marked.** Introduce only the methods and
+functions the phase's `Done:` requires, and give every one of them the
+end-of-line marker on its definition line — `# wf:phase-N:new`, in the
+file's own comment token — per `refs/common.md` → *New-method markers and
+minimality*. The name you choose is a proposal: the naming review
+(`refs/naming-review.md`) is where a human accepts or rewords it —
+`/close-phase` in interactive runs, `/finalize-workflow` in autonomous
+ones — so never spend a question on a name here.
+
 **The plan is context, not just a queue.** Before the first edit, skim the
 whole plan once — every phase, not only yours. The `> Done:`/`> Files:`
 notes of completed phases say what already exists: reuse it, never
@@ -37,6 +46,12 @@ even when it is locally cheaper. Scope is unchanged: knowing Phase 5
 exists never means implementing a piece of it here.
 
 ## Record the outcome
+
+The `[x]` path has a skill of its own: in interactive runs `/close-phase`
+performs this section and the two that follow (naming review included);
+`/execute-phase-agent` performs them inline, markers left in place. The
+`[!]` and `[~]` outcomes are always recorded directly by the executing
+skill — failure never routes through `/close-phase`.
 
 ```
 - [x] **Phase N**: title

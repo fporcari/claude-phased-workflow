@@ -70,15 +70,11 @@ Implement only this phase. When a coherent, demonstrable sub-result lands and su
 
 What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
 
-## Step 6: Record and notify
+## Step 6: Close the phase
 
-Record the outcome and make the phase commit exactly as the shared core (`refs/phase-execution.md`) specifies — the Step 5 `> Verify:` notes included, surfaced in the notification and the summary. Then the shared core's *Notify the foreman*: one outcome message to the foreman chat, best-effort.
+A phase that reached its `Done:` closes through the `close-phase` skill (Skill tool): naming review of the methods this phase marked (`common.md` → *New-method markers and minimality* — accept-all is one keypress), the Done gate re-run, the `[x]` record with the Step 5 `> Verify:` notes, the ONE phase commit, the foreman message and the desktop notification — all per the shared cores it cites. Hand it the outcome material (touched files, `> Review:`/`> Verify:` notes); do not restate its mechanics here. Its closing line names the next step; add beside it what it does not carry — what was done, test results, the manual checks left to the user.
 
-```bash
-osascript -e 'display notification "Phase N: <short outcome>" with title "Claude — <repo>/<branch>" sound name "Glass"'
-```
-
-Then summarise: what was done, test results, the manual checks left to the user — **and the next step, always**: the next phase with its `Run:` hint quoted (*"next: Phase N+1 — new chat, `/execute-phase` (suggested: \<model\> / \<effort\>)"*), or `/finalize-workflow` when this was the last. The user must never need to know the flow by heart to keep moving.
+A phase ending `[!]` or `[~]` never routes through `close-phase`: record and commit it directly, exactly as the shared core (`refs/phase-execution.md`) specifies, and send the foreman message per `common.md` → *The foreman*, best-effort.
 
 ## Context window
 

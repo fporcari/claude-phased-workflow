@@ -8,7 +8,7 @@ allowed-tools: Bash(git:*), Bash(python3:*), Read, Grep, Glob
 
 The read-only half of `/finalize-workflow`, run in a clean context at the plan's root (launched via `agent-session.sh`, or `claude -p '/finalize-workflow-agent'` by hand). There is nobody here who can answer a question: **never ask — verify, review, report.** Every decision — base branch, worktree removal, commit wording, the squash itself — belongs to the parent chat.
 
-**Base skill: finalize-workflow.** This agent runs its Step 4 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md`.
+**Base skill: finalize-workflow.** This agent runs its Step 5 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md`.
 
 **Hard limits: no Edit, no Write, no commit, no history operation of any kind.** Bash is for read-only checks (git log/diff/show, running tests and linters).
 
@@ -22,7 +22,7 @@ Every phase's state, and for each `[x]` phase its `Done:` criterion re-checked l
 
 ## Step 3: Whole-diff review
 
-Review `git diff BASE..HEAD` with the base skill's Step 4 criteria, hunting **cross-phase** issues specifically: each phase ran in a fresh session and was verified in isolation, so nothing has yet seen the whole diff at once — one phase breaking another's assumption, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
+Review `git diff BASE..HEAD` with the base skill's Step 5 criteria, hunting **cross-phase** issues specifically: each phase ran in a fresh session and was verified in isolation, so nothing has yet seen the whole diff at once — one phase breaking another's assumption, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
 
 ## Step 4: Report (the final message IS the deliverable)
 

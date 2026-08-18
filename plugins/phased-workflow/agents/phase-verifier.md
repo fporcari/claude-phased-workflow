@@ -22,6 +22,17 @@ Verify, in order:
    same conventions, no invented framework APIs.
 3. **Correctness** — real bugs, wrong API usage, edge cases the tests miss,
    unused imports, leftover debug output.
+4. **Marker discipline** — every method or function ADDED by this phase
+   carries the `wf:phase-N:new` end-of-line marker on its definition line
+   (the contract is `refs/common.md` → *New-method markers and minimality*).
+   A new callable without it escapes the naming review: MECHANICAL, fix:
+   add the marker.
+5. **Necessity** — the phase may introduce only the callables its objective
+   and `Done:` require. A helper with a single caller that could be inlined,
+   a speculative abstraction, a parameter nothing passes, a code path
+   nothing exercises — over-engineering is a finding: JUDGMENT (needs: a
+   human to decide whether the extra surface stays), except plainly dead
+   code, which is MECHANICAL (fix: remove it).
 
 Return ONLY a findings report, no praise and no summary of what is fine.
 Classify every finding as exactly one of:

@@ -1,12 +1,12 @@
 ---
 description: Finalize the workflow - verify all phases, prepare final commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, AskUserQuestion, Skill, Agent, SendUserFile, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(grep:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, Edit, AskUserQuestion, Skill, Agent, SendUserFile, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Finalize Workflow
 
-Verify the work plan is complete and turn the working tree into one clean commit. **Never edit source code here** — findings get reported and delegated.
+Verify the work plan is complete and turn the working tree into one clean commit. **Never edit source code here** — findings get reported and delegated. One declared exception: Step 3's naming review, whose edits are the user's own naming decisions plus marker removal.
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
 
@@ -18,7 +18,7 @@ git branch --show-current
 git worktree list --porcelain
 ```
 
-Set `IN_WORKTREE` from whether the cwd is in the worktree list. No active plan → stop; the plan lives on the workflow branch, so check `git branch --show-current` before concluding there is nothing to finalize — and check `--plans` first: the workflow may live in another checkout (`common.md` → *Plan location*). When it does, every git command below runs `git -C <plan root>` and every path is anchored there; the consolidation itself (Step 7) must happen on the plan's branch, never on the cwd's.
+Set `IN_WORKTREE` from whether the cwd is in the worktree list. No active plan → stop; the plan lives on the workflow branch, so check `git branch --show-current` before concluding there is nothing to finalize — and check `--plans` first: the workflow may live in another checkout (`common.md` → *Plan location*). When it does, every git command below runs `git -C <plan root>` and every path is anchored there; the consolidation itself (Step 8) must happen on the plan's branch, never on the cwd's.
 
 Read the plan for `Parent:`, the issue number and the phase states. **Resolve the parent ref**: `origin/<parent>` if `git rev-parse --verify` finds it, otherwise the local `<parent>`.
 
@@ -29,28 +29,38 @@ BASE=$(git log -1 --diff-filter=A --format=%H -- <plan path>)   # the commit tha
 git rev-list --count "$BASE"^..<parent>                         # 0 => BASE is the branch point
 ```
 
-`BASE` is the workflow's base: everything after it belongs to this run, everything before it does not. That second command tells you which shape you are in — **dedicated branch** (the plan commit *is* the branch point: the branch is the workflow) or **adopted branch** (the branch already carried commits, which must survive untouched). Step 3 and Step 7 differ between the two; nothing else does.
+`BASE` is the workflow's base: everything after it belongs to this run, everything before it does not. That second command tells you which shape you are in — **dedicated branch** (the plan commit *is* the branch point: the branch is the workflow) or **adopted branch** (the branch already carried commits, which must survive untouched). Step 4 and Step 8 differ between the two; nothing else does.
 
 ## Step 2: Verify completion
 
 All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
-**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Deliver them as the **QA page** defined there: ONE checklist, grouped by phase, each check with the action to exercise and the result the user should see; a deferred step whose phase has since landed is now due. Phrase every item per `common.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding. **Keep the answer**: whether a human exercises the result is one of the inputs Step 4's recommendation reads.
+**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Deliver them as the **QA page** defined there: ONE checklist, grouped by phase, each check with the action to exercise and the result the user should see; a deferred step whose phase has since landed is now due. Phrase every item per `common.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding. **Keep the answer**: whether a human exercises the result is one of the inputs Step 5's recommendation reads.
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
-## Step 3: Review the scope
+## Step 3: Naming review
+
+Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases created — nobody could answer a naming question mid-run (`common.md` → *New-method markers and minimality*). Collect them over the union of every phase's `> Files:` (`grep -rn "wf:phase-[0-9]*:new" <files>`); none → skip in one line. Found → run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` for the whole workflow: ONE map, accept-all as the recommended fast path, renames applied with their call sites, markers stripped, the narrow signal re-run when anything was renamed. Commit the result on the workflow branch:
+
+```bash
+git add -A && git commit -q -m "wf: method naming review"
+```
+
+**This is the one step of finalize that edits source, by design** — the edits are the user's naming decisions plus marker removal, and the commit lands before the scope review so what gets reviewed is what will ship. The ref's sweep is blocking: a marker that survives here reaches the parent branch.
+
+## Step 4: Review the scope
 
 No staging heuristics any more, and no guessing: the workflow is exactly `git log --oneline "$BASE"..HEAD`, one commit per phase plus the plan commit. Show it, with `git diff --stat "$BASE"..HEAD`.
 
 The tree must be clean. If `git status --short` shows anything, a phase closed without committing or someone edited by hand — report it and ask whether to include it before going on; do not sweep it in silently.
 
-Consolidation happens at Step 7, once the review has passed, and its shape depends on Step 1:
+Consolidation happens at Step 8, once the review has passed, and its shape depends on Step 1:
 
 - **Dedicated branch** — the branch *is* the workflow, so the parent takes it whole with `git merge --squash`. Nothing to reset here.
 - **Adopted branch** — the commits before `BASE` are not yours: `git reset --soft "$BASE"^` collapses only the workflow, leaving them untouched.
 
-## Step 4: Pre-commit review
+## Step 5: Pre-commit review
 
 **When the plan lives in another checkout (its own worktree), or the cwd is outside the plan's root**, do not review in-session: silently run the shipped verify agent in a clean sub-session at the plan's root —
 
@@ -77,9 +87,9 @@ Findings → present them per `common.md` → *The reporting register*: the shor
 
 This step is the only whole-diff review on the "Merge into parent" and "Commit only" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 
-## Step 5: Capture durable lessons
+## Step 6: Capture durable lessons
 
-**This step is mandatory and runs before anything is archived or removed.** `.phased/` never reaches the parent, and the workflow branch is deletable at Step 7 — so this is the only path by which anything learned during the run outlives it. Skipping it silently is how the loop stops learning across runs.
+**This step is mandatory and runs before anything is archived or removed.** `.phased/` never reaches the parent, and the workflow branch is deletable at Step 8 — so this is the only path by which anything learned during the run outlives it. Skipping it silently is how the loop stops learning across runs.
 
 Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`common.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
 
@@ -88,7 +98,7 @@ One bar: **would this have saved a future session real work, in a way the repo a
 
 Nothing clears the bar → say so explicitly, in one line, naming what you scanned. Something does → propose it via AskUserQuestion with a draft title and a two-line summary, and on approval write it wherever this project keeps durable know-how, following whatever your global rules say about that. Prefer correcting an existing entry over adding a near-duplicate. Never publish without approval.
 
-## Step 6: Archive the plan
+## Step 7: Archive the plan
 
 The run is over and its lessons are out. Move the plan directory into the archive and commit it on the workflow branch:
 
@@ -99,7 +109,7 @@ git commit -q -m "wf: archive plan for <slug>"
 
 It stays on this branch — logs, notes and phase history included — and never reaches the parent. If `.phased/roadmap.md` exists, leave it in place: the next macro-phase is written against it.
 
-## Step 7: Close out
+## Step 8: Close out
 
 Build the commit message from the objective, the completed phases, the actual diff and the issue (`fixes #N`):
 
@@ -139,7 +149,7 @@ git commit                           # the message approved above
 
 The commits that preceded `BASE` stay exactly as they were; the branch then reaches the parent by the ordinary merge or PR.
 
-**Say the trade-off out loud before doing it.** Consolidating in place drops the per-phase commits and the archived plan from the branch — unlike the dedicated-branch path, no separate branch is left holding them. The tag is what keeps them reachable (`git log wf-archive/<slug>`), and Step 5 is what carries the lessons out regardless. Delete the tag once the work is merged and the history is no longer wanted.
+**Say the trade-off out loud before doing it.** Consolidating in place drops the per-phase commits and the archived plan from the branch — unlike the dedicated-branch path, no separate branch is left holding them. The tag is what keeps them reachable (`git log wf-archive/<slug>`), and Step 6 is what carries the lessons out regardless. Delete the tag once the work is merged and the history is no longer wanted.
 
 **Pull request** → branch off the **parent**, not off the workflow branch, so the PR carries one commit and no `.phased/`:
 
@@ -162,6 +172,6 @@ After the first two, offer to delete the workflow branch and its worktree (defau
 
 ## Rules
 
-- **NO source code editing** — report findings, delegate fixes
+- **NO source code editing** — report findings, delegate fixes. The one exception is Step 3's naming review: renames the user chose and marker removal, committed as its own `wf:` commit
 - Show what will happen before any git operation; be especially careful with resets
-- Never delete the workflow branch before Step 5 has run: it is the only thing carrying the run's lessons out
+- Never delete the workflow branch before Step 6 has run: it is the only thing carrying the run's lessons out

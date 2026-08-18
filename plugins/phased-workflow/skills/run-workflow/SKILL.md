@@ -91,7 +91,7 @@ Report the run's outcome to the user per `common.md` → *The reporting register
 
 ## After completion
 
-**Inspection notes — only now, never mid-run** (the run owned the tree until `run-end`; writing earlier breaks the clean-tree invariant). Append to the plan's `notes.md` a `## Run inspection` section: one bullet per noteworthy fact of the run, read from the EVENT stream and the phase logs — which phase failed and was repaired, which came back blocked, anomalies (a phase that tripped its budget cap, a no-progress stop, a session that died), and nothing when the run was uneventful (write `- uneventful run, N/N phases` and stop there). Commit it as `wf: run inspection notes`. This is what `/finalize-workflow` reads: its pre-commit review takes these bullets as focus points, and its lessons pass (Step 5) scans the same file.
+**Inspection notes — only now, never mid-run** (the run owned the tree until `run-end`; writing earlier breaks the clean-tree invariant). Append to the plan's `notes.md` a `## Run inspection` section: one bullet per noteworthy fact of the run, read from the EVENT stream and the phase logs — which phase failed and was repaired, which came back blocked, anomalies (a phase that tripped its budget cap, a no-progress stop, a session that died), and nothing when the run was uneventful (write `- uneventful run, N/N phases` and stop there). Commit it as `wf: run inspection notes`. This is what `/finalize-workflow` reads: its pre-commit review takes these bullets as focus points, and its lessons pass (Step 6) scans the same file.
 
 Then:
 

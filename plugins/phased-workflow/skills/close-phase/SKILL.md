@@ -1,0 +1,91 @@
+---
+description: Close the phase whose work is finished — naming review of the new methods, Done gate, plan update to [x], ONE phase commit, foreman notification. Invoke at the end of an interactive phase, when the user says the phase is done, or manually on a [>] phase whose work a dead session left complete but unclosed.
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+---
+
+# Close Phase
+
+Turn finished work into a closed phase: naming review, Done gate, `[x]`
+record, ONE phase commit, foreman notification. **The happy path only** — a
+phase that fails closes `[!]` where it failed, inside the executing skill;
+this skill never writes `[!]` or `[~]`.
+
+Three ways in, one mechanic:
+
+- **From `/execute-phase`** — its closing step is this skill.
+- **Model-invoked** — the conversation's phase work is done and verified;
+  closing is not a question, so nothing asks permission to *start* (the
+  naming review carries its own question, and the commit is the phase
+  commit the flow already owes).
+- **Manual** — `/close-phase` on a `[>]` phase whose work a dead session
+  finished but never closed; before this skill, the only honest move was
+  resetting completed work to `[ ]`.
+
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at
+start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
+(outcome format, the phase commit, the foreman message) and
+`${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` (the naming review) — cited,
+never restated.
+
+## Step 1: Identify the phase
+
+Invoked from the executing conversation, the phase is the one just
+executed — no lookup needed, and the caller's outcome material (touched
+files, `> Review:`/`> Verify:` notes) travels with the invocation.
+
+Invoked standalone, resolve the plan first
+(`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from
+outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan
+location*). The phase to close is the `[>]` one; none → nothing to close,
+say so and stop.
+
+**A standalone close gates on evidence.** This session did not write the
+work, so the work must speak: read the phase's `> WIP:` note, diff from its
+`commit:` (`git diff <commit>..HEAD`), and check what exists against the
+phase's `Done:`. No note, no `partial` commit, or a diff that does not
+reach `Done:` → this is a resume-or-reset case
+(`refs/phase-execution.md` → *Resuming a `[>]` phase*), not a close —
+say so and stop. Closing unverified work would forge the one guarantee
+`[x]` gives the plan's next reader.
+
+## Step 2: The Done gate
+
+Re-check the phase's `Done:` literally, criterion by criterion — run the
+named tests, the named lint, verify the named output. An unmet criterion
+blocks the close: report it and stop, leaving the phase `[>]`. In the
+`/execute-phase` flow this re-runs checks that just passed — cheap, and it
+is what makes `[x]` a contract instead of a claim.
+
+## Step 3: Naming review
+
+Run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` scoped to this phase's
+touched files. The fast path is one keypress: accept all → markers
+stripped, nothing else changes. Renames re-run the narrow signal per the
+ref before anything commits.
+
+## Step 4: Record, commit, notify
+
+Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
+phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,
+`> Files:` (ALL touched files), the `> Review:`/`> Verify:` notes handed
+over by the caller; ONE commit `wf(phase N): <title>` carrying code,
+naming-review edits and plan update together; then the foreman message,
+best-effort. A choice the review made worth remembering (a rename and why)
+goes to `notes.md` under the phase's `## Phase N` heading before the
+commit.
+
+```bash
+osascript -e 'display notification "Phase N closed: <title>" with title "Claude — <repo>/<branch>" sound name "Glass"'
+```
+
+Close with the next step, always: the next phase with its `Run:` hint
+quoted, or `/finalize-workflow` when this was the last. The user must never
+need to know the flow by heart to keep moving.
+
+## Rules
+
+- Happy path only: never write `[!]` or `[~]`, never absorb a red Done gate
+- ONE commit — the phase commit; naming-review edits never get their own
+- A standalone close without evidence of completed work is a refusal, not a favour
+- The naming-review sweep (grep for `wf:phase-` over the touched files, empty) runs before the commit, even on the accept-all path
