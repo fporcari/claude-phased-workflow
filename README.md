@@ -134,9 +134,15 @@ If a phase dies midway (a `[>]` marker left hanging), the committed evidence of 
 
 ## Stop-work
 
-The inspector has one power beyond reporting: when continuing looks like waste — a repair cascade, a tripped budget cap, phases closing suspiciously fast, an outcome that undermines a phase still to run — it sends the foreman the protocol's only question: `stop-work?`
+The inspector has one power beyond reporting: when continuing looks like waste — a repair cascade, a tripped budget cap, phases closing suspiciously fast, an outcome that undermines a phase still to run — it sends the foreman one of the protocol's two questions: `stop-work?`
 
 The foreman **does not decide alone**: it turns the question to you (*Stop workflow / Go on*). The agent is the smoke detector; the switch stays in your hand.
+
+## Clarify
+
+The protocol's other question belongs to interactive mode, and its decision policy is the mirror image. When a phase chat hits an ambiguity in the plan — what the objective means, what `Done:` covers — you are not the first responder: the foreman authored the plan and holds the reasons it is shaped that way, so the phase chat asks it first (`clarify?`). The foreman answers — editing and committing the plan itself when the answer changes it — and the phase chat shows you the decision, asking for confirmation. A foreman in doubt does not guess: it sends the question back down, rephrased, and the phase chat puts it to you.
+
+Either way you stay in one chat: the foreman never speaks to you directly, and when it does not answer — dead chat, wrong title, no foreman at all — the question falls back to you exactly as it did before the protocol existed.
 
 ## The plan's markers
 
@@ -276,6 +282,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [5.18.0](docs/release-5.18.0.md) | `clarify?`: plan ambiguities in interactive phases go to the foreman first; the human confirms the decision in the child chat |
 | [5.17.1](docs/release-5.17.1.md) | the foreman commands and does not execute: no skill sends the next phase back to the chat that holds the plan |
 | [5.17.0](docs/release-5.17.0.md) | new methods are born marked, their names reviewed in one map — one keypress to accept all — and `/close-phase` closes the phase |
 | [5.16.0](docs/release-5.16.0.md) | the QA pass becomes a tickable checklist page, and finalize's whole-diff review asks its depth — light where a human eye already landed |

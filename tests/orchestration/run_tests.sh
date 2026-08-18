@@ -51,8 +51,10 @@
 # '## The foreman', the shared core carrying the one 'Notify the foreman'
 # step, every taking/deposing/notifying skill citing it, resume-workflow
 # keeping the assume-command migration, no skill restating foreman.json, the
-# commands-not-executes rule in the section and no skill sending a phase back
-# to the foreman chat — proven by mutation. S16 retired with the KB mirror
+# commands-not-executes rule in the section, no skill sending a phase back
+# to the foreman chat, and the clarify? question (5.18.0) owned by the
+# section — ask-user reply path included — and cited by /execute-phase —
+# proven by mutation. S16 retired with the KB mirror
 # in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
@@ -1342,6 +1344,16 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # and no skill sends a phase back to the chat that holds the plan.
   grep -q 'commands; it does not execute' "$S30_C" 2>/dev/null \
     || echo "$S30_C: the foreman section lost the commands-not-executes rule"
+  # 5.18.0 — clarify?: the channel's second question. The section owns it
+  # (format, opposite decision policy, ask-user reply path, timeout fallback);
+  # /execute-phase cites the routing and restates nothing (the format check
+  # above already forbids the message body in skills).
+  grep -q 'clarify?' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section does not define clarify?"
+  grep -q 'ask-user' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: clarify? lost the ask-user reply path"
+  grep -qi 'clarify' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: does not route plan ambiguities via clarify?"
   for S30_F in "$1"/*/SKILL.md; do
     if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
       echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"
@@ -1399,6 +1411,30 @@ cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 printf '\nRun the next phase with /execute-phase in this chat.\n' \
   >> "$S30_MUT/resume-workflow/SKILL.md"
 assert "S30: the guard fails when a skill sends the next phase back to this chat" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+# clarify? leaves the section — the 5.18.0 channel disappears.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/clarify?//g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when common.md stops defining clarify?" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# The ask-user reply path leaves the section — the foreman-in-doubt branch dies.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/ask-user//g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when clarify? loses the ask-user reply path" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# /execute-phase stops routing plan ambiguities upward — the defect of #13.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed -i.bak '/[Cc]larify/d' "$S30_MUT/execute-phase/SKILL.md" \
+  && rm -f "$S30_MUT/execute-phase/SKILL.md.bak"
+assert "S30: the guard fails when /execute-phase drops the clarify routing" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 

@@ -365,14 +365,23 @@ header line first:
 [wf:<slug>] plan changed at phase N — <one-line summary of the approved deviation>.
 [wf:<slug>] workflow finalized — <consolidation outcome, one line>.
 [wf:<slug>] stop-work? — <what looks wrong, one line; the run keeps burning until answered>.
+[wf:<slug>] clarify? phase N — <the plan ambiguity, one line; the phase waits until answered>.
 ```
 
 The `<one line>` slots — the Issue, the blocked reason, the stop-work
 reason — are written in the reporting register (below): the consequence
 first, no bare identifiers.
 
-**Stop-work.** `stop-work?` is the one message that is a
-question, not a report: `/run-workflow`'s inspector sends it when continuing
+**Two of the messages are questions, not reports** — `stop-work?` and
+`clarify?`. They ride the same upward channel and carry OPPOSITE decision
+policies, and the human sits at opposite ends: at the foreman for
+`stop-work?` (its children are `claude -p`, with nobody in front of them),
+at the child for `clarify?` (an interactive phase, with its user watching).
+Unlike the reports, a question expects a reply on the message's own reply
+path — the silent-skip rule below still governs *sending* it, never
+answering the human in its place.
+
+**Stop-work.** `/run-workflow`'s inspector sends `stop-work?` when continuing
 looks like wasted tokens. A foreman receiving it does not judge on its own —
 it puts ONE AskUserQuestion to its user immediately (*Stop workflow* /
 *Go on*, with the inspector's reason) and replies with the decision on
@@ -382,12 +391,43 @@ govern, as if nothing was asked. After a granted stop the flow is human:
 talk it through, correct the plan (`/resume-workflow` re-phasing or hand
 edits), then a fresh `/run-workflow` restarts the work.
 
+**Clarify.** `/execute-phase` sends `clarify?` when an interactive phase hits
+an ambiguity in the PLAN — objective, `Done:`, `Files:`, `Pattern:` — before
+asking its own user: the foreman authored the plan and holds the reasons it
+is shaped that way, so it answers better than the human, who would have to
+reconstruct them. The scope is strict: local technical choices and the
+phase's own approval gates stay with the human in the child chat, or
+interactive mode loses its point. Where `stop-work?` forbids the foreman
+from judging, here deciding is its FIRST attempt: it replies
+`clarify: <decision, one line>`, and when the answer changes the plan it
+edits and commits the plan itself (its prerogative, as in
+`/resume-workflow`), appending `— plan changed, commit <short hash>`; the
+child never touches the plan — it re-reads it from disk. A foreman in doubt
+does not guess: it replies `clarify: ask-user — <the question, rephrased
+better than the child put it>`, and the child asks the human. Either way
+the human lives ONLY in the child chat — the foreman never addresses the
+person: the child shows what the foreman decided and asks confirmation
+before acting on it. A rejected decision travels back up with its reason
+exactly ONCE (`clarify? phase N — user rejected: <reason>`); no convergence
+→ the question is the human's, as it is without the protocol. The child
+sends only when the foreman is ANOTHER session, and that check is free: the
+title lookup runs on `list_sessions`, which excludes the current session, so
+finding nothing means this chat is the foreman or the foreman is dead — both
+land on asking the human directly, today's behaviour. An unanswered question
+cannot skip in silence like a report: no reply within ~3 minutes (the
+foreman is an idle chat the message has to wake) → ask the human, saying the
+foreman did not answer.
+
 **Best-effort, always, in both directions.** No `foreman.json`, no way to
 reach sessions (the desktop session-management tools are absent in unattended
 runs; on a CLI < 2.1.224 there is no cross-session `SendMessage` either, and
 where one exists the target may still be invisible to `ListAgents`), no
 session bearing the title, delivery refused → skip in silence and move on. A notification never fails a phase, never asks
-the user anything, and never becomes a retry loop. A foreman receiving one
+the user anything, and never becomes a retry loop. An undeliverable or
+unanswered *question* is the one exception to the silence — it falls back as
+its own paragraph states (to the child's user for `clarify?`, to the run's
+own stop conditions for `stop-work?`) — and even a question is never worth a
+retry loop. A foreman receiving one
 re-reads `.phased/` and redraws its board — the plan on disk, not the
 message text, is the state.
 

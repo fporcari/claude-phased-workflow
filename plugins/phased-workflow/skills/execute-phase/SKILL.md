@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skil
 
 # Execute Phase
 
-Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution — and a real doubt is asked **live, in this chat**, because here there is somebody who can answer.
+Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution — and a real doubt is asked **live, in this chat**, because here there is somebody who can answer. One class of doubt is routed first: an ambiguity in the *plan itself* goes to the foreman (`common.md` → *The foreman*, `clarify?`) before it reaches the user — the plan's author answers it better — and the user here confirms what the foreman decided.
 
 Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on a strong model — `opus` floor, never `sonnet`, which is also the standing rule for UI and declarative work.
 
@@ -39,6 +39,8 @@ Read the phase's `Pattern:` example first — don't re-explore what planning alr
 
 **Scale the exploration to the phase's `Run:` effort** (missing → `high`): `low` only the listed `Files:`; `medium` + their immediate references; `high` up to 2 read-only Explore subagents and the surrounding package; `xhigh`/`max` up to 3 plus a cross-package consistency pass. Same scale as `/execute-phase-agent` Step 2 — what differs is only that here it ends in a question instead of a decision.
 
+**Plan ambiguities go up before the gate.** An open question about the plan itself — what the objective means, what `Done:` covers, a `Files:`/`Pattern:` that doesn't match the code — is not the user's first: send it to the foreman per `common.md` → *The foreman* (`clarify?` — precondition, reply paths, one-round cap and timeout all live there) and fold the answer into the gate as a settled decision, presented for confirmation. What the foreman sent back as the user's (`ask-user`), what it never answered, and every question outside that scope — local technical choices, the approval itself — joins the batch as today.
+
 Present in ONE message: what the phase will do, the files to create/modify/delete with their key changes, and **every open question batched** (anything `Decisions:`/`Details:` leave unsettled). Then ONE AskUserQuestion carrying approval plus those questions.
 
 **`ui` phases — the mockup gate.** Before asking for approval, build a
@@ -57,7 +59,7 @@ for Step 5's judge, committed with the phase.
 
 ## Step 4: Execute
 
-Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it.
+Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it. Same routing mid-phase as at the gate: a blocker that is a plan ambiguity goes to the foreman first (`clarify?`, per `common.md` → *The foreman*), and the ONE question to the user then presents the foreman's decision for confirmation — a rejection travels back up once, per the protocol.
 
 **When an answer changes the plan itself** — a phase reshaped, a decision reversed, scope moved — the plan edit gets committed as usual, and the foreman chat is told: one `plan changed at phase N` message per the protocol in `common.md` → *The foreman*, best-effort. The father must not discover a deviation at finalize.
 
