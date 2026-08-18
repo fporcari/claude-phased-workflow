@@ -23,10 +23,11 @@ message they were drawn in cannot compete with that.
 - **Judgments stay prose.** Coverage, drift, oversizing, why a phase failed — those
   go in the reply where they can be read. A strip shows a position well and argues a
   finding badly.
-- **Not on an incoming message.** A foreman told that a phase closed answers with the
-  delta — `common.md` → *The foreman*. The board answers the human's question about
-  where the work stands, or a change in the plan's *shape* (a re-phasing, a `[!]`
-  that wants a decision); one marker moving is not either.
+- **Never on an incoming message**, whatever it carries. A foreman told that a phase
+  closed — or that its result was rejected and the plan needs re-planning — answers
+  with the delta (`common.md` → *The foreman*). The board is drawn when the **person**
+  asks where the work stands, and after a re-planning is committed, once. Drawing it
+  because the shape is *about to* change shows a position nobody will act on.
 
 ## The shape
 
@@ -34,7 +35,8 @@ message they were drawn in cannot compete with that.
 - **One row per phase**, in order: the marker (`[ ]` `[>]` `[x]` `[!]` `[~]`) as an
   icon, `Phase N: <title>`, and nothing else. A `[>]` row carries its age; a `[>]`
   waiting on the human's checks says so instead (`refs/phase-execution.md` →
-  *Awaiting the human's checks*).
+  *Awaiting the human's checks*). An `[x]` whose result was rejected is marked as
+  closed-with-a-problem, muted — its work stands, its design did not.
 - **The next phase is the only emphasis** — the first unfinished row, with its
   `Run: <model> / <effort>` hint beside it, since both are chosen when that chat
   opens and reading them afterwards is too late.

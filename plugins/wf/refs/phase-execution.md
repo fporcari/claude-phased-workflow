@@ -169,11 +169,17 @@ the skills cite it, they never restate it:
 **Three ways out of the gate**, and only the middle one is more work here:
 the checks pass → close; something is off and this phase can fix it →
 ordinary work on the open phase, commit, present again; the result is wrong
-at the root → the `Done:` passed, so the phase closes `[x]` with the verdict
-recorded as `> Review:`, and what the person wants becomes NEW phases via
-`/resume-workflow`. **Never `[!]` on a person's judgment** — `common.md` →
-*Failure and repair notes* has the reason: it aims an automatic repair at
-green code.
+at the root → the `Done:` passed, so the phase closes `[x]` carrying the
+verdict as `> Review:`, the foreman gets the `result rejected` line, and the
+phases that have not run are re-planned through `/resume-workflow`.
+**Never `[!]` on a person's judgment** — `common.md` → *Failure and repair
+notes* has both reasons: it aims an automatic repair at green code, and the
+work itself is usually sound.
+
+**Nothing is closed and nobody is told before the person has answered.** The
+`[x]`, the phase commit and the foreman message all belong on the far side of
+this gate: a phase reported done while its checks are still unrun is the
+failure the gate exists to prevent.
 
 The checks themselves stay in their own `> Verify: now` notes: one syntax,
 not two. `next-phase.py` reports such a phase as `blocked:` — only the human

@@ -68,6 +68,8 @@ ref before anything commits.
 
 A phase held open for the human's checks carries a `> Testing:` note (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` → *Awaiting the human's checks*): drop it here — `[x]` and the note contradict each other, and the checks it was waiting for are recorded as `> Verify:` like every other.
 
+**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the foreman message is the `result rejected` one instead of the `done` one (`common.md` → *The foreman*), because what follows is a re-planning, not the next phase. The closing line says the same: the next step is `/resume-workflow`.
+
 Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
 phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,
 `> Files:` (ALL touched files), the `> Review:`/`> Verify:` notes handed

@@ -1390,7 +1390,7 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # and the launch command lost the argument that only existed to title a chat.
   grep -q 'answers with the DELTA' "$S30_C" 2>/dev/null \
     || echo "$S30_C: a foreman receiving a message still redraws its board"
-  grep -q 'Not on an incoming message' "$2/board.md" 2>/dev/null \
+  grep -q 'Never on an incoming message' "$2/board.md" 2>/dev/null \
     || echo "$2/board.md: the board is still drawn on an incoming message"
   if grep -q 'execute-phase Phase N' "$2/board.md" 2>/dev/null; then
     echo "$2/board.md: the card command still carries the chat-title argument"
@@ -1812,6 +1812,16 @@ s34_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S34_PE: the gate has no exit for a result rejected at the root"
   grep -qi "Never \`\[!\]\` on a person's judgment" "$S34_PE" 2>/dev/null \
     || echo "$S34_PE: the gate does not forbid [!] on a human's judgment"
+  # 6.3.0 — the gate is also what holds the report back, and a rejected result
+  # travels up as its own line so the foreman knows the plan is about to move.
+  grep -q 'Nothing is closed and nobody is told before' "$S34_PE" 2>/dev/null \
+    || echo "$S34_PE: the gate no longer holds the [x], the commit and the message"
+  grep -q 'result rejected' "$2/common.md" 2>/dev/null \
+    || echo "$2/common.md: no message carries a rejected result to the foreman"
+  grep -q 'result rejected' "$1/close-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/close-phase/SKILL.md: closes a rejected result as an ordinary done"
+  grep -q 'Re-planning after a rejected result' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/resume-workflow/SKILL.md: has no re-planning path for a rejected result"
   return 0
 }
 S34_G="$(s34_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -1839,6 +1849,23 @@ cp "$S24_REFS/phase-execution.md" "$S34_MUT/refs/phase-execution.md"
 sed 's/machine verdict, never a human one/state/' "$S24_REFS/common.md" \
   > "$S34_MUT/refs/common.md"
 assert "S34: the guard fails when [!] stops being a machine verdict" \
+  '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
+rm -rf "$S34_MUT"
+# The gate stops holding the report back — a phase reported done unchecked.
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S34_MUT/"
+cp "$S24_REFS/common.md" "$S34_MUT/refs/common.md"
+sed 's/Nothing is closed and nobody is told before/Close and report when/' \
+  "$S24_REFS/phase-execution.md" > "$S34_MUT/refs/phase-execution.md"
+assert "S34: the guard fails when the gate stops holding the report" \
+  '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
+rm -rf "$S34_MUT"
+# The rejection has no line of its own to travel up on.
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S34_MUT/"
+cp "$S24_REFS/phase-execution.md" "$S34_MUT/refs/phase-execution.md"
+sed 's/result rejected/done/g' "$S24_REFS/common.md" > "$S34_MUT/refs/common.md"
+assert "S34: the guard fails when a rejected result travels up as a plain done" \
   '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
 rm -rf "$S34_MUT"
 # The gate loses the exit for a result the human rejects at the root.

@@ -288,13 +288,25 @@ which repairs without asking — at code whose tests are already green, to fix
 a disagreement no test states.
 
 So a rejected result never moves the marker. Its `Done:` passed, so the phase
-is `[x]`; what the person wants is a **decomposition** change, and that is
-new phases, written from their own account of what is wrong and appended by
-`/resume-workflow`, which owns the plan edit and its commit. The verdict
-itself stays on the phase as `> Review:` — including what was rejected, so
-nobody proposes it again — and a phase that already carries `> Issue:` /
-`> Attempted:` keeps them: they are the record of what its own tests went
-through, not a claim about the design.
+is `[x]` — closed, and closed carrying a problem: the verdict stays on it as
+`> Review:`, rejected options included, so nobody proposes them again. A phase
+that already carries `> Issue:` / `> Attempted:` keeps them: they are the
+record of what its own tests went through, not a claim about the design.
+
+What changes is the **decomposition**, and not only by addition: the phases
+that have not run yet were written for the design just rejected, so
+`/resume-workflow` re-plans them — rewriting what no longer fits, adding what
+is missing — from the person's own account of what went wrong. It owns that
+edit and its commit.
+
+**The foreman is told, in one line** — `phase N closed, result rejected`,
+above. It is the one report that is not routine: the plan it authored is
+about to change, and it holds the reasons the plan was shaped that way. It
+answers as it answers any message, with the delta (`refs/board.md` → *When it
+is drawn*): a rejection is the moment a board is most tempting and least
+useful — the shape is about to change, so drawing the old one costs tokens to
+show a position nobody will act on. The re-planning itself is a conversation,
+and it happens where the person is.
 
 Note fields the autonomous chain writes on phases, and what consumes them:
 
@@ -408,6 +420,7 @@ header line first:
 
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
+[wf:<slug>] phase N closed, result rejected — <what the person judged wrong, one line>. The pending phases need re-planning.
 [wf:<slug>] phase N FAILED — <title>. Issue: <one line>.
 [wf:<slug>] phase N blocked — <one line>.
 [wf:<slug>] plan changed at phase N — <one-line summary of the approved deviation>.
