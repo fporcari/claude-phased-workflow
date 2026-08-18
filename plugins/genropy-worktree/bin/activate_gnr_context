@@ -27,7 +27,7 @@ fi
 # System GenroPy config dir: virtualenv installs keep it in
 # $VIRTUAL_ENV/etc/gnr/, non-venv installs in ~/.gnr/.
 _gnr_config_dir=""
-for _gnr_candidate in "${VIRTUAL_ENV:-}/etc/gnr" "$HOME/.gnr"; do
+for _gnr_candidate in ${VIRTUAL_ENV:+"$VIRTUAL_ENV/etc/gnr"} "$HOME/.gnr"; do
     if [ -f "$_gnr_candidate/environment.xml" ]; then
         _gnr_config_dir="$_gnr_candidate"
         break
