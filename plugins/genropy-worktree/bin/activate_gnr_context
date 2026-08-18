@@ -24,6 +24,20 @@ if [ "$WORKTREE_ROOT" = "$MAIN_REPO" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
+# System GenroPy config dir: virtualenv installs keep it in
+# $VIRTUAL_ENV/etc/gnr/, non-venv installs in ~/.gnr/.
+_gnr_config_dir=""
+for _gnr_candidate in "${VIRTUAL_ENV:-}/etc/gnr" "$HOME/.gnr"; do
+    if [ -f "$_gnr_candidate/environment.xml" ]; then
+        _gnr_config_dir="$_gnr_candidate"
+        break
+    fi
+done
+if [ -z "$_gnr_config_dir" ]; then
+    echo "Error: environment.xml not found in \$VIRTUAL_ENV/etc/gnr/ or ~/.gnr/" >&2
+    return 1 2>/dev/null || exit 1
+fi
+
 # Port offset: deterministic from the worktree name, so reopening a terminal
 # on the same worktree always gives back the same URL. 1..49, never 0: the
 # main repo keeps the standard 8080/40404.
@@ -33,16 +47,12 @@ _gnr_daemon_port=$(( 40404 + _gnr_offset ))
 
 # Generate .gnr/ if not present
 if [ ! -f "$WORKTREE_ROOT/.gnr/environment.xml" ]; then
-    GNR_CONFIG_SRC="$HOME/.gnr/environment.xml"
-    if [ ! -f "$GNR_CONFIG_SRC" ]; then
-        echo "Error: $GNR_CONFIG_SRC not found." >&2
-        return 1 2>/dev/null || exit 1
-    fi
+    GNR_CONFIG_SRC="$_gnr_config_dir/environment.xml"
     mkdir -p "$WORKTREE_ROOT/.gnr"
     sed -E "s|$MAIN_REPO/|$WORKTREE_ROOT/|g; s|$MAIN_REPO\"|$WORKTREE_ROOT\"|g" \
         "$GNR_CONFIG_SRC" > "$WORKTREE_ROOT/.gnr/environment.xml"
-    if [ -d "$HOME/.gnr/instanceconfig" ] && [ ! -e "$WORKTREE_ROOT/.gnr/instanceconfig" ]; then
-        ln -s "$HOME/.gnr/instanceconfig" "$WORKTREE_ROOT/.gnr/instanceconfig"
+    if [ -d "$_gnr_config_dir/instanceconfig" ] && [ ! -e "$WORKTREE_ROOT/.gnr/instanceconfig" ]; then
+        ln -s "$_gnr_config_dir/instanceconfig" "$WORKTREE_ROOT/.gnr/instanceconfig"
     fi
     for entry in ".gnr/"; do
         git -C "$WORKTREE_ROOT" check-ignore -q "$entry" 2>/dev/null || echo "$entry" >> "$WORKTREE_ROOT/.gitignore"
@@ -55,12 +65,12 @@ if [ -L "$WORKTREE_ROOT/.gnr/siteconfig" ]; then
     rm "$WORKTREE_ROOT/.gnr/siteconfig"
 fi
 if [ ! -f "$WORKTREE_ROOT/.gnr/siteconfig/default.xml" ]; then
-    if [ ! -f "$HOME/.gnr/siteconfig/default.xml" ]; then
-        echo "Error: $HOME/.gnr/siteconfig/default.xml not found." >&2
+    if [ ! -f "$_gnr_config_dir/siteconfig/default.xml" ]; then
+        echo "Error: $_gnr_config_dir/siteconfig/default.xml not found." >&2
         return 1 2>/dev/null || exit 1
     fi
     mkdir -p "$WORKTREE_ROOT/.gnr/siteconfig"
-    GNR_WT_SRC="$HOME/.gnr/siteconfig/default.xml" \
+    GNR_WT_SRC="$_gnr_config_dir/siteconfig/default.xml" \
     GNR_WT_DST="$WORKTREE_ROOT/.gnr/siteconfig/default.xml" \
     GNR_WT_HTTP_PORT="$_gnr_http_port" \
     GNR_WT_DAEMON_PORT="$_gnr_daemon_port" \
@@ -136,12 +146,14 @@ if [ -n "${GNR_WT_DB:-}" ]; then
     _gnr_branch_slug="$(git -C "$WORKTREE_ROOT" rev-parse --abbrev-ref HEAD |
         tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+|_+$//g' | cut -c1-30)"
     _gnr_wt_dbname="${GNR_WT_DB}_${_gnr_branch_slug}"
-    GNR_WT_DBNAME="$_gnr_wt_dbname" python3 - <<'PY' > /tmp/gnr_wt_dsn.$$
+    GNR_WT_DBNAME="$_gnr_wt_dbname" \
+    GNR_WT_INSTANCECONFIG="$_gnr_config_dir/instanceconfig/default.xml" \
+    python3 - <<'PY' > /tmp/gnr_wt_dsn.$$
 import os
 import xml.etree.ElementTree as ET
 from urllib.parse import quote
 
-path = os.path.expanduser('~/.gnr/instanceconfig/default.xml')
+path = os.environ['GNR_WT_INSTANCECONFIG']
 db = ET.parse(path).getroot().find('db')
 attrs = db.attrib if db is not None else {}
 user = quote(attrs.get('user') or 'postgres')
@@ -209,4 +221,4 @@ if [ -n "${GNR_WT_DB:-}" ]; then
     echo "    gnr db setup <instance>"
 fi
 
-unset _gnr_offset _gnr_http_port _gnr_daemon_port _gnr_db_line _gnr_branch_slug _gnr_wt_dbname
+unset _gnr_offset _gnr_http_port _gnr_daemon_port _gnr_db_line _gnr_branch_slug _gnr_wt_dbname _gnr_config_dir _gnr_candidate
