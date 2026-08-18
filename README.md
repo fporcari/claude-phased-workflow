@@ -165,7 +165,7 @@ Either way you stay in one chat: the foreman never speaks to you directly. And b
 | `[ ]` | to do — nobody has picked it up yet |
 | `[>]` | in progress — set by the executor at start; hanging beyond ~2h, resume flags it as a suspect dead session. Also the state of a phase whose code is done and committed and which is waiting for *your* checks (`> Testing:`) — that one is not stale, it is waiting |
 | `[x]` | closed and verified: the `Done:` criterion passed, the phase commit exists |
-| `[!]` | failed with the bounded attempts exhausted — one automatic fresh-eyes repair, then it waits for you |
+| `[!]` | failed with the bounded attempts exhausted — one automatic fresh-eyes repair, then it waits for you. A machine verdict only: a result *you* judge wrong never lands here, it becomes new phases |
 | `[~]` | blocked on a red baseline no phase owns — the chain has no mandate over it, so it goes to the human |
 
 Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `> Issue:`, `> Attempted:`, `> Repaired:`, `> Review:`, `> Verify:`, `> Testing:`) — the machine-readable evidence that makes fresh-eyes repair and the final review possible. The full vocabulary lives in [refs/common.md](plugins/wf/refs/common.md).
@@ -332,6 +332,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.2.1](docs/release-6.2.1.md) | rejecting a result at the test gate no longer marks the phase `[!]`: its tests are green, so what changes is the decomposition |
 | [6.2.0](docs/release-6.2.0.md) | the board becomes a strip you read: the controls go back to the conversation, which now carries remarks upward on its own |
 | [6.1.0](docs/release-6.1.0.md) | a phase with checks left to you does not close itself: work committed, phase open, `/close-phase` on your ok — and the foreman answers a phase report with the delta, not a redrawn board |
 | [6.0.3](docs/release-6.0.3.md) | the chat titles itself — the foreman's rename was the last manual step — and the messaging channel is tried `list_sessions` first |

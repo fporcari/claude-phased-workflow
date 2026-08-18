@@ -278,6 +278,24 @@ touched files must come back empty.
 
 ## Failure and repair notes
 
+**`[!]` is a machine verdict, never a human one.** A phase is `[!]` when its
+`Done:` came back red and the bounded attempts are exhausted — that is what
+`/repair-phase` reads, and its whole job is to make a `Done:` green again.
+**A person judging the result wrong is a different thing**, including when
+they say the phase is broken: if the `Done:` passed, the machine has nothing
+to repair. Marking it `[!]` sends the next session — or an unattended run,
+which repairs without asking — at code whose tests are already green, to fix
+a disagreement no test states.
+
+So a rejected result never moves the marker. Its `Done:` passed, so the phase
+is `[x]`; what the person wants is a **decomposition** change, and that is
+new phases, written from their own account of what is wrong and appended by
+`/resume-workflow`, which owns the plan edit and its commit. The verdict
+itself stays on the phase as `> Review:` — including what was rejected, so
+nobody proposes it again — and a phase that already carries `> Issue:` /
+`> Attempted:` keeps them: they are the record of what its own tests went
+through, not a claim about the design.
+
 Note fields the autonomous chain writes on phases, and what consumes them:
 
 - `> Issue:` — root symptom and current diagnosis; written by `/execute-phase-agent`

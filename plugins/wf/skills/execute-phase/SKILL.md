@@ -80,7 +80,7 @@ What is left after that — aesthetics, "is this interaction right?", UX ambigui
 
 1. Commit the work and write the `> Testing:` note, per the shared core (`refs/phase-execution.md` → *Awaiting the human's checks*). The phase stays `[>]`.
 2. Present the checks — each with what to do and what should happen — and **stop there**. No `close-phase`, no foreman message: nothing has closed.
-3. What the checks turn up is ordinary work on the open phase: fix, commit the same way, present again.
+3. What the checks turn up is ordinary work on the open phase: fix, commit the same way, present again — unless the verdict is that the phase is wrong at the root, which is not this phase's to repair and never `[!]`: the shared core's third exit applies (`common.md` → *Failure and repair notes*).
 4. The user's ok is the trigger for the close below. A new chat resuming here gets the same gate back from `next-phase.py`, as `blocked:` (Step 1).
 
 **Nothing left for the human** — the suite covered it — closes straight away, as before.

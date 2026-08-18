@@ -1804,6 +1804,14 @@ s34_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
       echo "$S34_F: restates the > Testing: format (single source: phase-execution.md)"
     fi
   done
+  # 6.2.1 — the gate's third exit. A person judging the result wrong is not a
+  # failed Done:, and marking it [!] aims an automatic repair at green code.
+  grep -q 'machine verdict, never a human one' "$2/common.md" 2>/dev/null \
+    || echo "$2/common.md: [!] is no longer bounded to a machine verdict"
+  grep -q 'Three ways out of the gate' "$S34_PE" 2>/dev/null \
+    || echo "$S34_PE: the gate has no exit for a result rejected at the root"
+  grep -qi "Never \`\[!\]\` on a person's judgment" "$S34_PE" 2>/dev/null \
+    || echo "$S34_PE: the gate does not forbid [!] on a human's judgment"
   return 0
 }
 S34_G="$(s34_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -1823,6 +1831,24 @@ printf '\n> Testing: awaiting the human checks | commit: <hash>\n' \
   >> "$S34_MUT/close-phase/SKILL.md"
 assert "S34: the guard fails when a skill respells the note format" \
   '[ -n "$(s34_guard "$S34_MUT" "$S24_REFS")" ]'
+rm -rf "$S34_MUT"
+# [!] goes back to meaning whatever a session decides it means.
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S34_MUT/"
+cp "$S24_REFS/phase-execution.md" "$S34_MUT/refs/phase-execution.md"
+sed 's/machine verdict, never a human one/state/' "$S24_REFS/common.md" \
+  > "$S34_MUT/refs/common.md"
+assert "S34: the guard fails when [!] stops being a machine verdict" \
+  '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
+rm -rf "$S34_MUT"
+# The gate loses the exit for a result the human rejects at the root.
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S34_MUT/"
+cp "$S24_REFS/common.md" "$S34_MUT/refs/common.md"
+sed 's/Three ways out of the gate/Two ways out/' "$S24_REFS/phase-execution.md" \
+  > "$S34_MUT/refs/phase-execution.md"
+assert "S34: the guard fails when the gate loses its rejection exit" \
+  '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
 rm -rf "$S34_MUT"
 
 echo ""

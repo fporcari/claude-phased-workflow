@@ -166,6 +166,15 @@ the skills cite it, they never restate it:
 > Testing: awaiting the human's `Verify: now` checks | commit: <short hash>
 ```
 
+**Three ways out of the gate**, and only the middle one is more work here:
+the checks pass → close; something is off and this phase can fix it →
+ordinary work on the open phase, commit, present again; the result is wrong
+at the root → the `Done:` passed, so the phase closes `[x]` with the verdict
+recorded as `> Review:`, and what the person wants becomes NEW phases via
+`/resume-workflow`. **Never `[!]` on a person's judgment** — `common.md` →
+*Failure and repair notes* has the reason: it aims an automatic repair at
+green code.
+
 The checks themselves stay in their own `> Verify: now` notes: one syntax,
 not two. `next-phase.py` reports such a phase as `blocked:` — only the human
 clears it, so an unattended run stops and says so instead of resuming a
