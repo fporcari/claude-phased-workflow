@@ -50,8 +50,8 @@ suggestion popup that forks the tree is worse than a copied command.
 
 | State | Command on the card |
 |---|---|
-| unfinished (`to do` / `running`) | `/phased-workflow:execute-phase Phase N — <title>` |
-| `problem`, **and the plan has that phase `[!]`** | `/phased-workflow:repair-phase` |
+| unfinished (`to do` / `running`) | `/wf:execute-phase Phase N — <title>` |
+| `problem`, **and the plan has that phase `[!]`** | `/wf:repair-phase` |
 | `problem` on a phase the plan has `[x]` | **none** — annotate and export |
 | a `[~]` phase | none: a red baseline nobody owns is the human's |
 

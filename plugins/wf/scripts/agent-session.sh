@@ -43,7 +43,7 @@ NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
 PLUGIN_NAME=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
   "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1 \
   | sed 's/.*"\([^"]*\)"$/\1/')
-PLUGIN_NAME=${PLUGIN_NAME:-phased-workflow}
+PLUGIN_NAME=${PLUGIN_NAME:-wf}
 
 REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
 PLAN_ROOT="$REPO_ROOT"

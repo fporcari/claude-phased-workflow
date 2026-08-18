@@ -27,7 +27,7 @@ fi
 # the pre-2.5.0 text, so the guarded and slim-goal arms measured the previous
 # version while the harness reported the current one. Extract live instead —
 # there is then no copy that can drift.
-SKILL_RAP="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
+SKILL_RAP="$TESTDIR/../../plugins/wf/scripts/run-workflow.sh"
 extract_contract() {  # $1 = variable name as assigned in the launcher script
   python3 - "$SKILL_RAP" "$1" <<'PYEOF'
 import re, sys

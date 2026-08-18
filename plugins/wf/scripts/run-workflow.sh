@@ -31,7 +31,7 @@ NEXT_PHASE_PY="$SCRIPT_DIR/next-phase.py"
 PLUGIN_NAME=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
   "$SCRIPT_DIR/../.claude-plugin/plugin.json" 2>/dev/null | head -1 \
   | sed 's/.*"\([^"]*\)"$/\1/')
-PLUGIN_NAME=${PLUGIN_NAME:-phased-workflow}
+PLUGIN_NAME=${PLUGIN_NAME:-wf}
 
 # Every run ends with exactly ONE stable `EVENT: run-end` line, whatever the
 # exit path. The parent Monitor terminates on this line, so an early exit —

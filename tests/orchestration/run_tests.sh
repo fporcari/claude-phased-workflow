@@ -57,7 +57,7 @@
 # proven by mutation. S16 retired with the KB mirror
 # in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
-RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
+RUNNER_SRC="$TESTDIR/../../plugins/wf/scripts/run-workflow.sh"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 OT="$WORK"
@@ -68,7 +68,7 @@ cp "$RUNNER_SRC" "$OT/runner.sh"
 # The launcher now resolves its selector next to itself, so the suite must place
 # next-phase.py beside the copied runner — otherwise it exercises whatever is
 # installed on the machine (or the silent file-order fallback when nothing is).
-cp "$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py" "$OT/next-phase.py"
+cp "$TESTDIR/../../plugins/wf/scripts/next-phase.py" "$OT/next-phase.py"
 bash -n "$OT/runner.sh" || { echo "runner syntax error"; exit 1; }
 export OPS="$OT/mockops.py"
 PASS=0; FAIL=0
@@ -216,7 +216,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
 assert "fallback notice printed" 'grep -q "goal guard unavailable" out.log'
-assert "namespaced /phased-workflow:execute-phase-agent prompt used" 'grep -q -- "-p /phased-workflow:execute-phase-agent --model" .claude/invocations.log'
+assert "namespaced /wf:execute-phase-agent prompt used" 'grep -q -- "-p /wf:execute-phase-agent --model" .claude/invocations.log'
 assert "no /goal in calls" '! grep -q -- "-p /goal" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 # (b) same old CLI, repair path: REPAIR_PROMPT is the OTHER plain-prompt
@@ -232,7 +232,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' > .claude/mock-queue
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
-assert "S7b: namespaced /phased-workflow:repair-phase prompt used" 'grep -q -- "-p /phased-workflow:repair-phase --model fable" .claude/invocations.log'
+assert "S7b: namespaced /wf:repair-phase prompt used" 'grep -q -- "-p /wf:repair-phase --model fable" .claude/invocations.log'
 assert "S7b: no bare-slash repair prompt" '! grep -q -- "-p /repair-phase" .claude/invocations.log'
 assert "S7b: repair succeeded on the old CLI too" 'grep -q "Repair succeeded" out.log'
 
@@ -357,7 +357,7 @@ echo "== S15: every skill stays inside its own allowed-tools =="
 # runtime, and it produced three real defects (write-workflow's gh/Sourcerer
 # calls, the worktree skills' grep|head|sed pipes and bare cat/pwd steps,
 # pull-request's code-review skill).
-SKILLS_DIR="$TESTDIR/../../plugins/phased-workflow/skills"
+SKILLS_DIR="$TESTDIR/../../plugins/wf/skills"
 CHECKER="$TESTDIR/check_allowlists.py"
 ALLOW_OUT="$(python3 "$CHECKER" "$SKILLS_DIR" 2>&1)"; ALLOW_RC=$?
 [ "$ALLOW_RC" = 0 ] || echo "$ALLOW_OUT"
@@ -408,7 +408,7 @@ echo "== S17: /import-workflow — classification and the mid-run git sequence =
 # calls, and the git sequence it prescribes for a source that carries [x]
 # phases. That path is the one that can destroy work — a fresh wf/ branch built
 # over a half-finished 3.x run strands the commits the [x] phases refer to.
-NEXTPHASE="$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py"
+NEXTPHASE="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
 
 # -- the classifier reads a pre-4.0 MEMORY.md unchanged (the phase-line format
 #    did not change, which is why the skill reuses it instead of eyeballing)
@@ -512,7 +512,7 @@ echo "== S19: next-phase.py --validate gates the launcher before any session =="
 # The validator shares the selector's own regexes, so a plan it rejects is one
 # the loop could not drive correctly. The launcher runs it once before the loop
 # and stops on a non-zero result, printing it verbatim — no session spent.
-NEXTPHASE="$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py"
+NEXTPHASE="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
 
 # (a) a healthy plan validates clean and the run proceeds to completion
 setup S19a; fixture3
@@ -766,8 +766,8 @@ echo "== S21: skills and refs address the plugin, not ~/.claude =="
 # file, and a description, not a path the plugin resolves. Static check, S18 idiom.
 # The guard lives in check_home_paths.py so the mutation below re-runs the
 # REAL check, not an inline copy of its logic (the S15 idiom).
-S21_SKILLS="$TESTDIR/../../plugins/phased-workflow/skills"
-S21_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
+S21_SKILLS="$TESTDIR/../../plugins/wf/skills"
+S21_REFS="$TESTDIR/../../plugins/wf/refs"
 HOME_GUARD="$TESTDIR/check_home_paths.py"
 HOME_OUT="$(python3 "$HOME_GUARD" "$S21_SKILLS" "$S21_REFS")"
 [ -z "$HOME_OUT" ] || echo "  offending: $HOME_OUT"
@@ -878,7 +878,7 @@ echo "== S24: the automation fork is real, not decorative =="
 # checks the fork's consumers: run-workflow's pre-flight reads Mode: interactive
 # and offers the conversion, and import-workflow writes a Mode: header. Mutation
 # proves it bites.
-S24_REFS="$TESTDIR/../../plugins/phased-workflow/refs"
+S24_REFS="$TESTDIR/../../plugins/wf/refs"
 s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S24_W="$1/write-workflow/SKILL.md"
   S24_A="$2/write-workflow-autonomous.md"
@@ -1071,7 +1071,7 @@ echo "== S26: every claude -p sub-session prompt carries a plugin: namespace =="
 # argument that starts with a slash and carries no colon; the /goal contracts
 # (which begin `/goal` but embed `Condition:`) and the variable-based `"$..."`
 # calls are correctly left alone.
-S26_SCRIPTS="$TESTDIR/../../plugins/phased-workflow/scripts"
+S26_SCRIPTS="$TESTDIR/../../plugins/wf/scripts"
 s26_guard() {  # $1 = a scripts dir; one line per bare-slash claude -p prompt
   for S26_F in "$1"/*.sh; do
     [ -f "$S26_F" ] || continue
@@ -1238,7 +1238,7 @@ echo "== S29: the resume path leaves machine-readable evidence =="
 # the selector surfaces that ref, and the validator warns — never blocks — on
 # the three states that leave a resume blind. Static half: the structured
 # format lives once, in refs/phase-execution.md, and /execute-phase cites it.
-NEXTPHASE="$TESTDIR/../../plugins/phased-workflow/scripts/next-phase.py"
+NEXTPHASE="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
 S29_DIR="$OT/s29"; mkdir -p "$S29_DIR"
 
 cat > "$S29_DIR/healthy.md" <<'EOF'
@@ -1286,8 +1286,8 @@ assert "S29g: the status line says out loud that the commit ref is missing" \
   'printf "%s" "$S29_SOUT" | grep -q "wip: yes (no commit ref)"'
 
 # Static half: the format is single-source and cited, not restated.
-S29_REF="$TESTDIR/../../plugins/phased-workflow/refs/phase-execution.md"
-S29_SKILL="$TESTDIR/../../plugins/phased-workflow/skills/execute-phase/SKILL.md"
+S29_REF="$TESTDIR/../../plugins/wf/refs/phase-execution.md"
+S29_SKILL="$TESTDIR/../../plugins/wf/skills/execute-phase/SKILL.md"
 assert "S29h: the structured > WIP: format lives in phase-execution.md" \
   'grep -q "> WIP: done: .*| missing: .*| next: .*| commit: " "$S29_REF"'
 assert "S29h: phase-execution.md declares itself the single source" \
@@ -1513,7 +1513,7 @@ echo "== S32: the closing report has a shape, a gate, and one detail question ==
 # fresh-context by design, with the CANNOT ANSWER convention. (c) The two
 # closing-report skills cite the gate — run-workflow with the Agent tool it
 # needs — and nobody restates the shape.
-S32_AGENTS="$TESTDIR/../../plugins/phased-workflow/agents"
+S32_AGENTS="$TESTDIR/../../plugins/wf/agents"
 s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints one line per violation
   S32_C="$2/common.md"
   grep -q 'one verdict line' "$S32_C" 2>/dev/null \

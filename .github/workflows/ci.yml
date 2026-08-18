@@ -34,7 +34,7 @@ jobs:
         run: |
           set -e
           readme=$(grep -m1 -oP '(?<=\*\*Version )[0-9]+\.[0-9]+\.[0-9]+(?=\*\*)' README.md)
-          plugin=$(python3 -c "import json; print(json.load(open('plugins/phased-workflow/.claude-plugin/plugin.json'))['version'])")
+          plugin=$(python3 -c "import json; print(json.load(open('plugins/wf/.claude-plugin/plugin.json'))['version'])")
           market=$(python3 -c "import json; d=json.load(open('.claude-plugin/marketplace.json')); print(d['plugins'][0]['version'])")
           echo "README=$readme plugin.json=$plugin marketplace.json=$market"
           [ "$readme" = "$plugin" ] && [ "$plugin" = "$market" ] || { echo "version drift"; exit 1; }
@@ -51,4 +51,4 @@ jobs:
         run: zsh tests/orchestration/run_tests.sh
 
       - name: Validate the benchmark fixture plan
-        run: python3 plugins/phased-workflow/scripts/next-phase.py --validate tests/benchmark/fixture/.phased/active/bench/plan.md
+        run: python3 plugins/wf/scripts/next-phase.py --validate tests/benchmark/fixture/.phased/active/bench/plan.md

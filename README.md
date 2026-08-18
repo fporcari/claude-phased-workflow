@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 5.17.1** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.0.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -154,7 +154,7 @@ Either way you stay in one chat: the foreman never speaks to you directly, and w
 | `[!]` | failed with the bounded attempts exhausted — one automatic fresh-eyes repair, then it waits for you |
 | `[~]` | blocked on a red baseline no phase owns — the chain has no mandate over it, so it goes to the human |
 
-Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `> Issue:`, `> Attempted:`, `> Repaired:`, `> Review:`, `> Verify:`) — the machine-readable evidence that makes fresh-eyes repair and the final review possible. The full vocabulary lives in [refs/common.md](plugins/phased-workflow/refs/common.md).
+Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `> Issue:`, `> Attempted:`, `> Repaired:`, `> Review:`, `> Verify:`) — the machine-readable evidence that makes fresh-eyes repair and the final review possible. The full vocabulary lives in [refs/common.md](plugins/wf/refs/common.md).
 
 ## Where the plan lives
 
@@ -218,15 +218,24 @@ The desktop app adds the live run monitor and notifications; the CLI works witho
 
 ```bash
 claude plugin marketplace add fporcari/claude-phased-workflow
-claude plugin install phased-workflow@claude-phased-workflow
+claude plugin install wf@claude-phased-workflow
 ```
 
-Note the reference: `phased-workflow@` is the plugin, `claude-phased-workflow` is the **marketplace name** declared in `marketplace.json` — not the GitHub slug.
+Note the reference: `wf@` is the plugin, `claude-phased-workflow` is the **marketplace name** declared in `marketplace.json` — not the GitHub slug.
+
+**Upgrading from 5.x** — the plugin was renamed `phased-workflow` → `wf` in 6.0.0, so the old entry has to go or you keep two installs:
+
+```bash
+claude plugin uninstall phased-workflow@claude-phased-workflow
+claude plugin install wf@claude-phased-workflow
+```
+
+Nothing else changes: `.phased/` plans, `wf/` branches and phase commits carry no plugin name. Typed commands become `/wf:<name>` — the bare `/<name>` form works as before.
 
 **Update to a new release** — one command; it refreshes the marketplace from GitHub by itself, no separate `marketplace update` needed. Restart open sessions to load the new version:
 
 ```bash
-claude plugin update phased-workflow@claude-phased-workflow
+claude plugin update wf@claude-phased-workflow
 ```
 
 **Per-project** (in the project's `.claude/settings.json`):
@@ -235,7 +244,7 @@ claude plugin update phased-workflow@claude-phased-workflow
 {
   "plugins": {
     "marketplaces": ["fporcari/claude-phased-workflow"],
-    "installed": ["phased-workflow@claude-phased-workflow"]
+    "installed": ["wf@claude-phased-workflow"]
   }
 }
 ```
@@ -245,7 +254,7 @@ claude plugin update phased-workflow@claude-phased-workflow
 ```bash
 git clone https://github.com/fporcari/claude-phased-workflow.git
 claude plugin marketplace add ./claude-phased-workflow
-claude plugin install phased-workflow@claude-phased-workflow
+claude plugin install wf@claude-phased-workflow
 ```
 
 Installing the plugin is the whole install — skills, launcher, phase selector, verifier subagent and shared refs all resolve through `${CLAUDE_PLUGIN_ROOT}`. **Never copy the skills into `~/.claude/commands/`**: a flat copy wins the bare `/<name>` over the plugin and keeps an old version running without you noticing. Migrating from ≤ 4.0.0? A one-time `install.sh` in the plugin cache moves the superseded flat copies aside — moving, never deleting.
@@ -282,6 +291,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.0.0](docs/release-6.0.0.md) | the plugin is renamed `wf`: the command prefix stops swallowing the skill name — `/wf:execute-phase` |
 | [5.18.0](docs/release-5.18.0.md) | `clarify?`: plan ambiguities in interactive phases go to the foreman first; the human confirms the decision in the child chat |
 | [5.17.1](docs/release-5.17.1.md) | the foreman commands and does not execute: no skill sends the next phase back to the chat that holds the plan |
 | [5.17.0](docs/release-5.17.0.md) | new methods are born marked, their names reviewed in one map — one keypress to accept all — and `/close-phase` closes the phase |
