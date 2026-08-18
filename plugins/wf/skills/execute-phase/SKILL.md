@@ -25,7 +25,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 
 No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work. If the plan lives in another checkout (or the user means a different workflow), resolve via `--plans` and anchor every command to that plan's root — `common.md` → *Plan location*.
 
-Act on `recommendation:` — `next: N` → proceed; `resume-candidate: N` → ask whether to take over a phase another chat left `[>]` — on yes, resume per the shared core (`refs/phase-execution.md` → *WIP checkpoints*): the `> WIP:` note and its `commit:` are the evidence, the diff decides what is already done; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop.
+Act on `recommendation:` — `next: N` → proceed; `resume-candidate: N` → ask whether to take over a phase another chat left `[>]` — on yes, resume per the shared core (`refs/phase-execution.md` → *WIP checkpoints*): the `> WIP:` note and its `commit:` are the evidence, the diff decides what is already done; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop — except a `blocked:` naming a phase that awaits the human's checks, which is this skill's own gate coming back: present those checks and, on the user's ok, close the phase through `close-phase` (`refs/phase-execution.md` → *Awaiting the human's checks*).
 
 Mark the phase `[>]` with `> In execution since <ISO timestamp>`.
 
@@ -74,7 +74,16 @@ Implement only this phase. When a coherent, demonstrable sub-result lands and su
 
 What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
 
-## Step 6: Close the phase
+## Step 6: Hand over for testing, then close
+
+**A `Verify: now` step left to the human holds the phase open.** Step 5's split already decided this: what an agent could assert, an agent asserted; what remains is what only you can judge. Closing before you have judged it books a result nobody has looked at — and on a `ui` phase whose browser pass could not run, that is the whole result. So, when at least one `now` check is yours:
+
+1. Commit the work and write the `> Testing:` note, per the shared core (`refs/phase-execution.md` → *Awaiting the human's checks*). The phase stays `[>]`.
+2. Present the checks — each with what to do and what should happen — and **stop there**. No `close-phase`, no foreman message: nothing has closed.
+3. What the checks turn up is ordinary work on the open phase: fix, commit the same way, present again.
+4. The user's ok is the trigger for the close below. A new chat resuming here gets the same gate back from `next-phase.py`, as `blocked:` (Step 1).
+
+**Nothing left for the human** — the suite covered it — closes straight away, as before.
 
 A phase that reached its `Done:` closes through the `close-phase` skill (Skill tool): naming review of the methods this phase marked (`common.md` → *New-method markers and minimality* — accept-all is one keypress), the Done gate re-run, the `[x]` record with the Step 5 `> Verify:` notes, the ONE phase commit, the foreman message and the desktop notification — all per the shared cores it cites. Hand it the outcome material (touched files, `> Review:`/`> Verify:` notes); do not restate its mechanics here. Its closing line names the next step; add beside it what it does not carry — what was done, test results, the manual checks left to the user.
 

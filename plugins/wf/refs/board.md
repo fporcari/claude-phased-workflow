@@ -17,6 +17,10 @@ skills cite it and add only what is theirs, they never restate it.
 - **Judgments stay prose.** Coverage, drift, oversizing, why a phase failed — those
   go in the reply where they can be read. A grid shows a position well and argues a
   finding badly.
+- **Not on an incoming message.** A foreman told that a phase closed answers with the
+  delta — `common.md` → *The foreman*. The board answers the human's question about
+  where the work stands, or a change in the plan's *shape* (a re-phasing, a `[!]`
+  that wants a decision); one marker moving is not either.
 
 ## The shape
 
@@ -50,7 +54,7 @@ suggestion popup that forks the tree is worse than a copied command.
 
 | State | Command on the card |
 |---|---|
-| unfinished (`to do` / `running`) | `/wf:execute-phase Phase N — <title>` |
+| unfinished (`to do` / `running`) | `/wf:execute-phase` |
 | `problem`, **and the plan has that phase `[!]`** | `/wf:repair-phase` |
 | `problem` on a phase the plan has `[x]` | **none** — annotate and export |
 | a `[~]` phase | none: a red baseline nobody owns is the human's |
@@ -71,12 +75,12 @@ the plan grows through `/resume-workflow`.
 Every unfinished phase shows its command, not just the one whose turn it is —
 reading it is how you see what is coming.
 
-**`copy command` appears only where every earlier phase is `done`**; elsewhere the
-command sits greyed, with no button, and the card says `due after phase M`. The
-reason is narrower than order-breaking, which cannot happen anyway (`next-phase.py`
-chooses the phase; the argument is only a chat-title label): a command copied out of
-turn produces a chat *titled* `Phase 4` that runs Phase 2, and that title is what
-the user will scroll their session list for a day later.
+**The command carries no argument.** It used to repeat `Phase N — <title>`, which
+`next-phase.py` ignored: the phase is chosen from the plan, and the text was only
+there to name the chat. Since 6.1.0 the phase chat titles itself
+(`common.md` → *The foreman*), so the argument has nothing left to do and copying
+one out of turn no longer mislabels a session — every unfinished card can carry the
+same bare command, with `due after phase M` saying only what it says: order.
 
 ## One state per phase
 

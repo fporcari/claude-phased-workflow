@@ -66,6 +66,8 @@ ref before anything commits.
 
 ## Step 4: Record, commit, notify
 
+A phase held open for the human's checks carries a `> Testing:` note (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` → *Awaiting the human's checks*): drop it here — `[x]` and the note contradict each other, and the checks it was waiting for are recorded as `> Verify:` like every other.
+
 Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
 phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,
 `> Files:` (ALL touched files), the `> Review:`/`> Verify:` notes handed

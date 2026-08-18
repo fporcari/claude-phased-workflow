@@ -19,6 +19,7 @@ Rules:
 Output: a "phases:" table plus one final "recommendation:" line:
   recommendation: next: 3               execute Phase 3
   recommendation: resume-candidate: 2 (age: 3.4h, wip: yes)
+  recommendation: blocked: phase 2 ... awaiting the human's checks
   recommendation: attention: 5[!]       user must resolve before going on
   recommendation: done                  all phases [x]
   recommendation: blocked: <reason>     pending phases exist, none eligible
@@ -57,6 +58,7 @@ class Phase:
         self.since = None
         self.wip = False
         self.wip_commit = None
+        self.testing = False
 
     @property
     def age_hours(self):
@@ -85,6 +87,8 @@ def parse_lines(lines):
                 cm = WIP_COMMIT_RE.search(line)
                 if cm:
                     phases[-1].wip_commit = cm.group(1)
+            if 'Testing:' in line:
+                phases[-1].testing = True
     return phases
 
 
@@ -221,6 +225,15 @@ def recommend(phases):
     for i, p in enumerate(phases):
         if p.status == ' ' and not blockers(phases, i):
             return f'next: {p.number}'
+    # A [>] phase carrying '> Testing:' is not unfinished work: its code is
+    # complete and committed, and only the human's own checks can clear it.
+    # Reported as blocked so an unattended run stops and says why, instead of
+    # resuming a phase there is nothing left to implement in.
+    testing = [p for p in phases if p.status == '>' and p.testing]
+    if testing:
+        p = testing[0]
+        return (f'blocked: phase {p.number} is complete and awaiting the '
+                f"human's checks — /wf:close-phase once they pass")
     candidates = [p for p in phases if p.status == '>']
     if candidates:
         p = candidates[0]
@@ -250,7 +263,8 @@ def recommend(phases):
 
 KNOWN_NOTE_FIELDS = (
     'Done', 'Files', 'Issue', 'Attempted', 'Repaired', 'Repair attempted',
-    'Review', 'Blocked', 'WIP', 'In execution since', 'Verify', 'Verified',
+    'Review', 'Blocked', 'WIP', 'Testing', 'In execution since', 'Verify',
+    'Verified',
 )
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')

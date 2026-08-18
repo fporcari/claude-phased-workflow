@@ -150,3 +150,25 @@ what a dead session did.
 Checkpoints are not phase commits: `/finalize-workflow` squashes them with
 everything else, and red-baseline attribution keeps matching against the
 `> Files:` of *completed* phases, which a `[>]` phase does not yet have.
+
+## Awaiting the human's checks
+
+Interactive mode only — an unattended phase has nobody to hand a check to.
+**When verification leaves the human at least one `Verify: now` step, the
+code is finished but the phase is not.** It is committed and left `[>]`, so
+nothing closes on a result nobody has looked at yet.
+
+The mechanic is the checkpoint above — a `partial` commit — plus the note
+that says what it waits for. **This is the single source of its format** —
+the skills cite it, they never restate it:
+
+```
+> Testing: awaiting the human's `Verify: now` checks | commit: <short hash>
+```
+
+The checks themselves stay in their own `> Verify: now` notes: one syntax,
+not two. `next-phase.py` reports such a phase as `blocked:` — only the human
+clears it, so an unattended run stops and says so instead of resuming a
+phase with nothing left to implement. What the checks turn up is ordinary
+work on the still-open phase: commit it the same way, replace the note. The
+human's ok is what runs `/close-phase`, and closing drops the note.

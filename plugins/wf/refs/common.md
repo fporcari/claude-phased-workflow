@@ -170,6 +170,11 @@ contract** — the skills cite it, they never restate it.
 - `deferred: needs Phase M` — it only makes sense in a wider context, so it is
   **dated, not skipped**.
 
+A `now` step also **gates the close in interactive mode**: the phase commits
+its work and stays `[>]` until the human has run those checks — the mechanic
+is in `refs/phase-execution.md` → *Awaiting the human's checks*. Autonomous
+mode has nobody to wait for and closes as before.
+
 ```
   > Verify: now — open /foo, save a row, it reappears in the grid after reload
   > Verify: deferred: needs Phase 5 — the invoice total matches the order once
@@ -479,8 +484,13 @@ unanswered *question* is the one exception to the silence — it falls back as
 its own paragraph states (for `clarify?`, to the disk re-read and then the
 child's user; for `stop-work?`, to the run's own stop conditions) — and even
 a question is never worth a retry loop. A foreman receiving one
-re-reads `.phased/` and redraws its board — the plan on disk, not the
-message text, is the state.
+re-reads `.phased/` before answering — the plan on disk, not the message
+text, is the state — and answers with the DELTA, not the board: what
+changed, what it blocks, what to launch next, in the register below. A board
+is for a human asking where the work stands; a phase closing is one line
+moving, and redrawing the whole position for it is a recomputation dressed
+as an update, paid in tokens on every message (`refs/board.md` → *When it is
+drawn*).
 
 **Deposing a foreman** (`/resume-workflow`, when another session holds the
 title and the user wants this chat in charge): best-effort farewell message

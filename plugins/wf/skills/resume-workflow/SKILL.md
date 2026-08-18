@@ -85,7 +85,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"*. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`common.md` → *Verification*): report those, and that the phase closes when they pass. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
