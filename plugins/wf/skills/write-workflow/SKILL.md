@@ -158,11 +158,8 @@ Where the title could not be set — the tool is absent — that line becomes th
 
 The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
 
-**Then draw the board**, as specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — the same widget `/resume-workflow` draws, one source for both. Two things are this skill's own:
+**Then draw the board**, as specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — the same strip `/resume-workflow` draws, one source for both. Here every row is `[ ]` and Phase 1 is the emphasised one: the plan was just written, there is no history yet.
 
-- **Every state select starts on `to do`**: the plan was just written, so there is no history to seed from. Phase 1 is the first unfinished phase, hence the only one with `copy command`.
-- **No notes and no export** (the ref's *supervision only* section): nothing has run yet, so there is nothing to annotate, and an export with nothing in it is furniture.
-
-**Only after the commit, never during Step 3's presentation.** The plan is iterated in prose, and a board offering a command for a branch that does not exist yet is a trap. On an autonomous plan, no board at all.
+**Only after the commit, never during Step 3's presentation.** The plan is iterated in prose, and a board naming a branch that does not exist yet is a trap. On an autonomous plan, no board at all.
 
 (Autonomous plans use the closing message in the autonomous reference file.)

@@ -92,17 +92,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 5. **Oversized phases** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
 6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, or clean up drift. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
 
-**The board.** On a `Mode: interactive` plan, render points 1 and 6 as the inline widget specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the layout; it is the single source of the board's shape, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a grid argues badly.
-
-What is this skill's own, on top of that file:
-
-- **Seed every state select from the plan**, since here the plan has a history: `[x]` → `done`, `[>]` → `running`, `[!]` → `problem`, the rest → `to do`. The board is then the user's working view, re-seeded on the next run.
-- **Notes and export are on**, per the ref's *supervision only* section: this is the command that runs over work already done, so there is something to annotate and something to export.
-- On an autonomous plan, no board at all — the report stays text, as the ref says.
-
-**No `spawn_task` chip.** A chip does open a session of its own, which is why 5.6.0 reached for it, but its own UI decides how — including starting a *new worktree* for a plan that already has a branch and a checkout — and `spawn_task` exposes no parameter to prevent it. A suggestion popup that forks the tree is worse than a button that is honest about running here.
-
-No `visualize` server → the plain text report of today, with the launch command spelled out to copy. Declare the fallback, never fail silently; same rule as `ui-test` in `/execute-phase`.
+**The board.** On a `Mode: interactive` plan, render points 1 and 6 as the strip specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the shape; it is the single source, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a strip argues badly. On an autonomous plan, no board at all. No `visualize` server → the same rows as a plain list, per the ref.
 
 **Healthy plan → stop here.** No `[!]`/`[~]`, no stale `[>]`, no drift: the report ends with the next step and nothing to resume — no questions asked.
 
@@ -112,7 +102,7 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
-- **Adding phases for work that surfaced** — the answer to *"this phase passed and is still wrong"*. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (typically the board's `notes and problems`, or its export).
+- **Adding phases for work that surfaced** — the answer to *"this phase passed and is still wrong"*. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (the user's own account of it, here in this chat).
 
   **In the tail, never in the middle**, even when the work logically belongs at Phase 2. Phase numbers must be contiguous ascending from 1, so an insertion renumbers everything after it — while the commits already made say `wf(phase 3)`, `wf(phase 4)` with the old numbers, and the correspondence between the plan and the history breaks silently. Execution order stays the numeric order; the new phase's text says what it remedies.
 

@@ -1395,6 +1395,17 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   if grep -q 'execute-phase Phase N' "$2/board.md" 2>/dev/null; then
     echo "$2/board.md: the card command still carries the chat-title argument"
   fi
+  # 6.2.0 — the board is a strip, not a working view: the controls went where
+  # the conversation already goes. Nothing on it is clickable, and no skill
+  # sends the user back to a textarea that no longer exists.
+  grep -q 'Nothing on it is clickable' "$2/board.md" 2>/dev/null \
+    || echo "$2/board.md: the board no longer declares itself read-only"
+  for S30_F in "$2/board.md" "$1"/*/SKILL.md; do
+    if grep -qE 'state select|copy command|notes and problems|export fix prompt' \
+        "$S30_F" 2>/dev/null; then
+      echo "$S30_F: still specifies a board control (the strip has none)"
+    fi
+  done
   for S30_F in "$1"/*/SKILL.md; do
     if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
       echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"

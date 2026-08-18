@@ -196,7 +196,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | `/import-workflow` | you already have a plan or a handoff | adapts it to the format, preserving phase states verbatim and reporting gaps instead of inventing them |
 | `/execute-phase` | interactive execution | one phase per chat: one approval gate up front (with a rendered mockup on `ui` phases), then no interruptions |
 | `/close-phase` | the phase's work is finished | naming review of the new methods (accept-all is one keypress), Done gate, `[x]` record, one phase commit — invoked by `/execute-phase`, by the model when the work is done, or manually on a `[>]` phase a dead session left complete |
-| `/resume-workflow` | "where were we?" | read-only audit of plan vs git: drift, stale phases, next step — and the board, on interactive plans |
+| `/resume-workflow` | "where were we?" | read-only audit of plan vs git: drift, stale phases, next step — and the board strip, on interactive plans |
 | `/finalize-workflow` | all phases done | QA page from `verify.md` (a checklist you tick as you exercise), naming review of what autonomous phases created, whole-diff review at the depth you choose, lessons, one clean commit — PR, merge, or leave it |
 | `/pull-request` | delivering by PR | maintainer-grade review, then creates the PR |
 
@@ -332,6 +332,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.2.0](docs/release-6.2.0.md) | the board becomes a strip you read: the controls go back to the conversation, which now carries remarks upward on its own |
 | [6.1.0](docs/release-6.1.0.md) | a phase with checks left to you does not close itself: work committed, phase open, `/close-phase` on your ok — and the foreman answers a phase report with the delta, not a redrawn board |
 | [6.0.3](docs/release-6.0.3.md) | the chat titles itself — the foreman's rename was the last manual step — and the messaging channel is tried `list_sessions` first |
 | [6.0.2](docs/release-6.0.2.md) | the clarify decision survives a dead reply: committed to notes first, the plan edit travels in the reply, the child applies it on acceptance |
