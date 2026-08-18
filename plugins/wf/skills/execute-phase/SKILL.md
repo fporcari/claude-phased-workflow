@@ -1,7 +1,7 @@
 ---
 description: Execute the next phase from the active work plan
 disable-model-invocation: true
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, SendUserFile, ToolSearch, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, SendUserFile, ToolSearch, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Execute Phase
@@ -28,6 +28,8 @@ No active plan → stop and say so: `/write-workflow` creates one, `/import-work
 Act on `recommendation:` — `next: N` → proceed; `resume-candidate: N` → ask whether to take over a phase another chat left `[>]` — on yes, resume per the shared core (`refs/phase-execution.md` → *WIP checkpoints*): the `> WIP:` note and its `commit:` are the evidence, the diff decides what is already done; `attention: ...` → surface the `[!]`/`[~]` phases, they block what follows; `done` → suggest `/finalize-workflow`; `blocked: ...` → report and stop.
 
 Mark the phase `[>]` with `> In execution since <ISO timestamp>`.
+
+**Title this chat** `wf:<slug>:phase-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`common.md` → *The foreman*). Best-effort, like everything on that channel: no tool, no title, no consequence — nothing addresses a phase chat, the title is there so the session list reads as a workflow.
 
 ## Step 2: `vast` phases only — read-only fan-out
 

@@ -1,7 +1,7 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__visualize__read_me, mcp__visualize__show_widget
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__ccd_session_mgmt__set_session_title, mcp__visualize__read_me, mcp__visualize__show_widget
 ---
 
 # Write Workflow
@@ -100,7 +100,7 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `common.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; the title suggestion to the user is in the closing message).
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `common.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
 
 ```
 # Context: <branch-name>
@@ -149,10 +149,12 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
-This chat is the foreman. Rename it to `wf:<slug>:foreman` — it is the address phase chats report to.
+This chat is the foreman, now titled `wf:<slug>:foreman` — it is the address phase chats report to.
 To run it, launch /execute-phase in a new chat — this one stays the board.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
+
+Where the title could not be set — the tool is absent — that line becomes the ask instead, per `common.md` → *The foreman*, take-command step 3.
 
 The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
 

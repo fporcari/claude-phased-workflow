@@ -315,10 +315,12 @@ chat lands in the degenerate branches below (*when this chat IS the foreman*),
 which keep working. Those are a fallback, never advice.
 
 **The foreman's identity lives in a file, and its address is its TITLE.**
-A session can neither read its own id nor rename itself, but every *other*
-session sees both title and id in `list_sessions` — so the title is the one
-address that works, and giving the chat that title is the user's single
-manual step in the whole protocol.
+A session cannot read its own id, but every *other* session sees both title
+and id in `list_sessions` — so the title is the one address that works. It is
+also one a session can set for itself: `set_session_title` takes the literal
+`"self"` (field-tested on 2.1.234 — the 5.10.1 note saying the tool refuses
+the current session is superseded), and it returns the title it replaced. The
+chat titles itself; the protocol has no manual step left.
 
 `.phased/active/<slug>/foreman.json`:
 
@@ -345,9 +347,12 @@ absence is migration, not an error):
 2. Commit it (`wf: foreman — takes command`), or fold it into the commit the
    skill is already making (plan, import). Tracked like the plan: left
    uncommitted it breaks the clean-tree invariant.
-3. Ask the user, one line, to rename this chat: *"Rename this chat to
-   `wf:<slug>:foreman` — it is the address phase chats report to."* Until
-   they do, notifications skip silently; nothing breaks.
+3. Title this chat `wf:<slug>:foreman` — `set_session_title` with
+   `session_id: "self"`. Best-effort like the rest of this channel: where
+   the tool is absent (CLI sessions, unattended runs) ask the user instead,
+   one line — *"Rename this chat to `wf:<slug>:foreman` — it is the
+   address phase chats report to."* Until the chat bears the title,
+   notifications skip silently; nothing breaks.
 4. In the same breath, one more line: *"Allow this chat to send
    cross-session messages and commit under `.phased/` without asking —
    answering a phase chat's `clarify?` happens while you are in the other
@@ -357,13 +362,25 @@ absence is migration, not an error):
    attending two chats, the exact thing the protocol exists to avoid. Advice,
    like the rename: nothing breaks if ignored, the fallback absorbs it.
 
+**Children title themselves too**, `wf:<slug>:phase-N — <phase title>`, by
+the same call at the start of the phase. Nothing addresses them — only the
+foreman's title is an address — so this is legibility, not protocol: the
+session list stops being a wall of auto-generated summaries, one prefix
+groups the workflow, and each chat says which phase it is holding.
+
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
 that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
-(≥ 2.1.224). Field-tested on 2.1.226: a `claude -p` sub-session carries both
-tools but its `ListAgents` sees NO desktop sessions — CLI and desktop are
-separate worlds, so unattended children still end at the silent skip and the
-foreman messaging is desktop-chat-to-desktop-chat. One plain-text message,
+(≥ 2.1.224). **`list_sessions` first, always**: fall back to `ListAgents`
+only where that tool does not EXIST, never because it came back without the
+title — a chat carrying both toolsets (Claude Code inside the desktop app)
+is neither world, and the environment tilts the wrong way: `ListAgents` is
+always loaded while `list_sessions`/`send_message` sit behind `ToolSearch`,
+so the branch that works is the one you have to go and fetch. Field-tested
+on 2.1.226: a `claude -p` sub-session carries both tools but its
+`ListAgents` sees NO desktop sessions — CLI and desktop are separate worlds,
+so unattended children still end at the silent skip and the foreman
+messaging is desktop-chat-to-desktop-chat. One plain-text message,
 header line first:
 
 ```
@@ -434,9 +451,12 @@ exactly ONCE (`clarify? phase N — user rejected: <reason>`); no convergence
 → the question is the human's, as it is without the protocol. The child
 sends only when the foreman is ANOTHER session, and that check is free: the
 title lookup runs on `list_sessions`, which excludes the current session, so
-finding nothing means this chat is the foreman or the foreman is dead — both
-land on asking the human directly, today's behaviour. An unanswered question
-cannot skip in silence like a report: no reply within ~3 minutes (the
+finding nothing there means this chat is the foreman or the foreman is dead —
+both land on asking the human directly, today's behaviour. That channel alone
+licenses the inference: an empty `ListAgents` is no evidence of an unreachable
+foreman, and a false unreachable degrades in silence into attending the
+human — the exact outcome this protocol exists to avoid. An unanswered
+question cannot skip in silence like a report: no reply within ~3 minutes (the
 foreman is an idle chat the message has to wake) → the child re-reads
 `.phased/` — `notes.md` included — before falling back: a committed decision
 found there IS the reply, presented to the human for confirmation with the
@@ -464,8 +484,9 @@ message text, is the state.
 
 **Deposing a foreman** (`/resume-workflow`, when another session holds the
 title and the user wants this chat in charge): best-effort farewell message
-to the old session, retitle it to `wf:<slug>:deposed` (retitling *another*
-session works; only self-rename doesn't), then take command as above. The
+to the old session, retitle it to `wf:<slug>:deposed` (`set_session_title`
+takes the other session's id, read from `list_sessions`), then take command
+as above. The
 old chat may be dead; nothing here is allowed to block on it.
 
 **Per-phase rationale.** A phase that makes a non-obvious choice appends it

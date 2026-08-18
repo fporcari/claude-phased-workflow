@@ -47,13 +47,14 @@ take-command mechanics live once in `common.md` → *The foreman*):
 - **Absent** → **assume command, without asking**: the normal state of every
   workflow that predates the protocol, and a workflow being resumed wants a
   foreman. Take command per `common.md` — write the file, ONE `wf: foreman —
-  takes command` commit, suggest the chat title to the user.
+  takes command` commit, title this chat.
 - **Present, and no other session bears the title** (`list_sessions`) → the
   title is unclaimed: either it is this very chat (fine) or the old foreman
   is dead or renamed. Either way, claim it — same take-command step, which is
   **idempotent by content** (`common.md`): the file already carries this
-  exact title, so nothing is rewritten and no commit is made; at most,
-  repeat the rename suggestion if the user never applied it.
+  exact title, so nothing is rewritten and no commit is made; at most, the
+  chat re-applies the title to itself — the call returns the one it
+  replaced, which is also how a chat learns it had drifted off it.
 - **Present, another session bears the title** → do not depose on a status
   query. Report it (Step 3 gets a *Foreman* line: who, since when).
   Offer the takeover through the Step 3 AskUserQuestion only when something

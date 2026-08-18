@@ -2,7 +2,7 @@
 description: Import an existing plan or a handoff document into a .phased/ workflow
 argument-hint: <path to the source, or nothing to look for one>
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion
+allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, mcp__ccd_session_mgmt__set_session_title
 ---
 
 # Import Workflow
@@ -86,8 +86,10 @@ Verify the commit is not empty (`git show --stat HEAD`).
 
 ```
 Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), committed on <branch>.
-This chat is the foreman. Rename it to `wf:<slug>:foreman` — it is the address phase chats report to.
+This chat is the foreman, now titled `wf:<slug>:foreman` — it is the address phase chats report to.
 Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>
 To carry on, launch /execute-phase in a new chat — this one stays the board.
 ```
+
+Where the title could not be set — the tool is absent — that line becomes the ask instead, per `common.md` → *The foreman*, take-command step 3.

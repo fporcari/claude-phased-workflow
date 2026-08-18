@@ -1372,6 +1372,20 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S30_C: the clarify timeout no longer re-reads the disk"
   grep -q 'does not resolve desktop sessions' "$S30_C" 2>/dev/null \
     || echo "$S30_C: the reply tool for desktop sessions is no longer named"
+  # 6.0.3 — the chat titles itself: set_session_title accepts the literal
+  # "self" (2.1.234), so the protocol's last manual step is gone. The section
+  # says so and no longer claims otherwise, and every skill that titles a chat
+  # declares the tool it needs to do it.
+  grep -q '"self"' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: take-command no longer names the self-rename"
+  if grep -q 'nor rename itself' "$S30_C" 2>/dev/null; then
+    echo "$S30_C: still claims a session cannot rename itself"
+  fi
+  for S30_S in write-workflow import-workflow resume-workflow execute-phase; do
+    S30_F="$1/$S30_S/SKILL.md"
+    grep -q 'set_session_title' "$S30_F" 2>/dev/null \
+      || echo "$S30_F: does not title its chat (set_session_title)"
+  done
   for S30_F in "$1"/*/SKILL.md; do
     if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
       echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"
@@ -1480,6 +1494,24 @@ sed 's/IS the reply/may exist/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.m
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 assert "S30: the guard fails when the clarify timeout stops re-reading the disk" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# The section goes back to claiming a chat cannot rename itself — the stale
+# field test that cost the protocol its one manual step.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/A session cannot read its own id/A session can neither read its own id nor rename itself/' \
+  "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when the section denies the self-rename" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# A skill titles its chat without declaring the tool that does it.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed -i.bak 's/set_session_title//g' "$S30_MUT/execute-phase/SKILL.md" \
+  && rm -f "$S30_MUT/execute-phase/SKILL.md.bak"
+assert "S30: the guard fails when a titling skill drops set_session_title" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 
 echo "== S31: cross-phase awareness and the reporting register ship and are cited =="

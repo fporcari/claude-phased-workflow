@@ -332,6 +332,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.0.3](docs/release-6.0.3.md) | the chat titles itself — the foreman's rename was the last manual step — and the messaging channel is tried `list_sessions` first |
 | [6.0.2](docs/release-6.0.2.md) | the clarify decision survives a dead reply: committed to notes first, the plan edit travels in the reply, the child applies it on acceptance |
 | [6.0.1](docs/release-6.0.1.md) | field-tested `clarify?`: the foreman replies before touching the plan, and take-command advises the permissions an unattended reply needs |
 | [6.0.0](docs/release-6.0.0.md) | the plugin is renamed `wf`: the command prefix stops swallowing the skill name — `/wf:execute-phase` |
