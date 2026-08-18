@@ -1359,8 +1359,19 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # edit so it cannot die behind a commit's permission prompt.
   grep -q 'without asking' "$S30_C" 2>/dev/null \
     || echo "$S30_C: take-command lost the unattended-permissions advice"
-  grep -q 'replies FIRST' "$S30_C" 2>/dev/null \
-    || echo "$S30_C: clarify? lost the reply-before-plan-edit order"
+  # 6.0.2 — the decision survives a dead reply path: notes.md committed
+  # before replying, the plan edit travels in the reply and is applied by
+  # the child on acceptance, the timeout re-reads the disk before falling
+  # back to the human, and the reply tool is named (SendMessage does not
+  # resolve desktop sessions).
+  grep -q 'BEFORE replying' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: clarify? lost the decision-on-disk-before-reply step"
+  grep -q 'applies the foreman' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: clarify? lost the child-applies-on-acceptance step"
+  grep -q 'IS the reply' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the clarify timeout no longer re-reads the disk"
+  grep -q 'does not resolve desktop sessions' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the reply tool for desktop sessions is no longer named"
   for S30_F in "$1"/*/SKILL.md; do
     if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
       echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"
@@ -1453,12 +1464,21 @@ cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 assert "S30: the guard fails when take-command drops the permissions advice" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
-# The reply queues behind the plan edit again — the order the prompt kills.
+# The decision stops landing on disk before the reply — the 6.0.2 invariant
+# that saved the field test when both message channels died.
 S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/replies FIRST/replies/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+sed 's/BEFORE replying/when convenient/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
-assert "S30: the guard fails when the clarify reply queues behind the plan edit" \
+assert "S30: the guard fails when the decision no longer lands on disk first" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# The timeout stops re-reading the disk — back to burning a decision that exists.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/IS the reply/may exist/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when the clarify timeout stops re-reading the disk" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 

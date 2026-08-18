@@ -140,9 +140,9 @@ The foreman **does not decide alone**: it turns the question to you (*Stop workf
 
 ## Clarify
 
-The protocol's other question belongs to interactive mode, and its decision policy is the mirror image. When a phase chat hits an ambiguity in the plan — what the objective means, what `Done:` covers — you are not the first responder: the foreman authored the plan and holds the reasons it is shaped that way, so the phase chat asks it first (`clarify?`). The foreman answers — editing and committing the plan itself when the answer changes it — and the phase chat shows you the decision, asking for confirmation. A foreman in doubt does not guess: it sends the question back down, rephrased, and the phase chat puts it to you.
+The protocol's other question belongs to interactive mode, and its decision policy is the mirror image. When a phase chat hits an ambiguity in the plan — what the objective means, what `Done:` covers — you are not the first responder: the foreman authored the plan and holds the reasons it is shaped that way, so the phase chat asks it first (`clarify?`). The foreman decides, writes the decision to disk (its notes, committed), and replies carrying the plan edit the decision implies; the phase chat shows you the decision and, on your ok, applies that edit and commits it — no other confirmation asked of anyone, anywhere. A foreman in doubt does not guess: it sends the question back down, rephrased, and the phase chat puts it to you.
 
-Either way you stay in one chat: the foreman never speaks to you directly, and when it does not answer — dead chat, wrong title, no foreman at all — the question falls back to you exactly as it did before the protocol existed.
+Either way you stay in one chat: the foreman never speaks to you directly. And because the decision is committed before the reply travels, a lost message loses nothing: the phase chat re-reads the plan directory before bothering you, and only a silent disk means the question falls back to you exactly as it did before the protocol existed.
 
 ## The plan's markers
 
@@ -291,6 +291,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.0.2](docs/release-6.0.2.md) | the clarify decision survives a dead reply: committed to notes first, the plan edit travels in the reply, the child applies it on acceptance |
 | [6.0.1](docs/release-6.0.1.md) | field-tested `clarify?`: the foreman replies before touching the plan, and take-command advises the permissions an unattended reply needs |
 | [6.0.0](docs/release-6.0.0.md) | the plugin is renamed `wf`: the command prefix stops swallowing the skill name — `/wf:execute-phase` |
 | [5.18.0](docs/release-5.18.0.md) | `clarify?`: plan ambiguities in interactive phases go to the foreman first; the human confirms the decision in the child chat |

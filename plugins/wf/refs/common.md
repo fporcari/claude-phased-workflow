@@ -406,14 +406,25 @@ is shaped that way, so it answers better than the human, who would have to
 reconstruct them. The scope is strict: local technical choices and the
 phase's own approval gates stay with the human in the child chat, or
 interactive mode loses its point. Where `stop-work?` forbids the foreman
-from judging, here deciding is its FIRST attempt: it replies
-`clarify: <decision, one line>` — and it replies FIRST, before touching the
-plan: the child is waiting on a timeout, and a reply that queues behind an
-edit and a commit dies with them on the first permission prompt. When the
-decision changes the plan, the foreman edits and commits the plan itself
-AFTER replying (its prerogative, as in `/resume-workflow`), closing the
-reply with `— plan edit follows`; the child never touches the plan — it
-re-reads it from disk before acting on the decision. A foreman in doubt
+from judging, here deciding is its FIRST attempt — and the decision takes
+two roads, because the field test saw either one alone die (a permission
+prompt killed one round, an unresolvable address the other; the disk was the
+only channel that never failed):
+
+1. **Disk**: the foreman records the decision in `notes.md`, under the
+   phase's `## Phase N` heading, and commits it BEFORE replying — its own
+   file, never contended with the child's working tree.
+2. **Reply**: `clarify: <decision, one line>`. When the decision changes the
+   plan, the reply also carries the exact plan edit, as before-text →
+   after-text pairs — never a literal patch: the child's plan holds a `[>]`
+   marker the foreman never saw. The foreman does NOT touch the plan: one
+   writer per working tree, and mid-phase that writer is the child.
+3. **The child applies on acceptance**: it shows the human the decision and,
+   accepted, applies the foreman's edit verbatim — the hands, not the
+   author — committing `.phased/` alone as `wf: clarify phase N — <one
+   line>`. Nobody asks permission for that commit: the workflow branch is
+   unpushed, the edit touches the plan directory only, and the human gate
+   was the acceptance itself. A foreman in doubt
 does not guess: it replies `clarify: ask-user — <the question, rephrased
 better than the child put it>`, and the child asks the human. Either way
 the human lives ONLY in the child chat — the foreman never addresses the
@@ -426,8 +437,17 @@ title lookup runs on `list_sessions`, which excludes the current session, so
 finding nothing means this chat is the foreman or the foreman is dead — both
 land on asking the human directly, today's behaviour. An unanswered question
 cannot skip in silence like a report: no reply within ~3 minutes (the
-foreman is an idle chat the message has to wake) → ask the human, saying the
-foreman did not answer.
+foreman is an idle chat the message has to wake) → the child re-reads
+`.phased/` — `notes.md` included — before falling back: a committed decision
+found there IS the reply, presented to the human for confirmation with the
+note that the message never arrived; only a silent disk hands the question
+to the human as the foreman's failure to answer.
+
+**Replying on the desktop**: the reply travels by `send_message`
+(session-management) with the incoming message's `from` attribute as the
+`session_id`. `SendMessage` does not resolve desktop sessions or their
+titles (field-tested: id, title and `ListAgents` names all unreachable) —
+its "copy the from as your to" advice belongs to the agent world, not here.
 
 **Best-effort, always, in both directions.** No `foreman.json`, no way to
 reach sessions (the desktop session-management tools are absent in unattended
@@ -436,9 +456,9 @@ where one exists the target may still be invisible to `ListAgents`), no
 session bearing the title, delivery refused → skip in silence and move on. A notification never fails a phase, never asks
 the user anything, and never becomes a retry loop. An undeliverable or
 unanswered *question* is the one exception to the silence — it falls back as
-its own paragraph states (to the child's user for `clarify?`, to the run's
-own stop conditions for `stop-work?`) — and even a question is never worth a
-retry loop. A foreman receiving one
+its own paragraph states (for `clarify?`, to the disk re-read and then the
+child's user; for `stop-work?`, to the run's own stop conditions) — and even
+a question is never worth a retry loop. A foreman receiving one
 re-reads `.phased/` and redraws its board — the plan on disk, not the
 message text, is the state.
 
