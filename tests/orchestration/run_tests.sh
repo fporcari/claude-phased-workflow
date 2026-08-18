@@ -1354,6 +1354,13 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S30_C: clarify? lost the ask-user reply path"
   grep -qi 'clarify' "$1/execute-phase/SKILL.md" 2>/dev/null \
     || echo "$1/execute-phase/SKILL.md: does not route plan ambiguities via clarify?"
+  # 6.0.1 — the foreman must be able to answer unattended: take-command
+  # advises the permission setup, and the clarify reply precedes the plan
+  # edit so it cannot die behind a commit's permission prompt.
+  grep -q 'without asking' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: take-command lost the unattended-permissions advice"
+  grep -q 'replies FIRST' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: clarify? lost the reply-before-plan-edit order"
   for S30_F in "$1"/*/SKILL.md; do
     if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
       echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"
@@ -1436,6 +1443,23 @@ sed -i.bak '/[Cc]larify/d' "$S30_MUT/execute-phase/SKILL.md" \
   && rm -f "$S30_MUT/execute-phase/SKILL.md.bak"
 assert "S30: the guard fails when /execute-phase drops the clarify routing" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+# Take-command stops advising the unattended permissions — the 6.0.1 field
+# finding: a foreman on default permissions decides and dies on the prompt.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/without asking//g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when take-command drops the permissions advice" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# The reply queues behind the plan edit again — the order the prompt kills.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/replies FIRST/replies/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when the clarify reply queues behind the plan edit" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 
 echo "== S31: cross-phase awareness and the reporting register ship and are cited =="

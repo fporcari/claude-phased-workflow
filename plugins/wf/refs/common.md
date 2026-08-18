@@ -348,6 +348,14 @@ absence is migration, not an error):
 3. Ask the user, one line, to rename this chat: *"Rename this chat to
    `wf:<slug>:foreman` — it is the address phase chats report to."* Until
    they do, notifications skip silently; nothing breaks.
+4. In the same breath, one more line: *"Allow this chat to send
+   cross-session messages and commit under `.phased/` without asking —
+   answering a phase chat's `clarify?` happens while you are in the other
+   chat, and a permission prompt here has nobody in front of it."*
+   Field-tested: on default permissions the foreman DECIDES and then dies on
+   the prompt — the child times out into its fallback and the human ends up
+   attending two chats, the exact thing the protocol exists to avoid. Advice,
+   like the rename: nothing breaks if ignored, the fallback absorbs it.
 
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
@@ -399,10 +407,13 @@ reconstruct them. The scope is strict: local technical choices and the
 phase's own approval gates stay with the human in the child chat, or
 interactive mode loses its point. Where `stop-work?` forbids the foreman
 from judging, here deciding is its FIRST attempt: it replies
-`clarify: <decision, one line>`, and when the answer changes the plan it
-edits and commits the plan itself (its prerogative, as in
-`/resume-workflow`), appending `— plan changed, commit <short hash>`; the
-child never touches the plan — it re-reads it from disk. A foreman in doubt
+`clarify: <decision, one line>` — and it replies FIRST, before touching the
+plan: the child is waiting on a timeout, and a reply that queues behind an
+edit and a commit dies with them on the first permission prompt. When the
+decision changes the plan, the foreman edits and commits the plan itself
+AFTER replying (its prerogative, as in `/resume-workflow`), closing the
+reply with `— plan edit follows`; the child never touches the plan — it
+re-reads it from disk before acting on the decision. A foreman in doubt
 does not guess: it replies `clarify: ask-user — <the question, rephrased
 better than the child put it>`, and the child asks the human. Either way
 the human lives ONLY in the child chat — the foreman never addresses the
