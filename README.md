@@ -5,16 +5,18 @@
 
 # Working in phases with Claude Code
 
-**Version 6.0.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.0.2** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
+>
+> **Already installed and just want the commands?** [Cheatsheet](#cheatsheet).
 
 ## First, the problem
 
 Freestyle works — genuinely — for any job that fits inside one chat. The trouble starts when the work is bigger than a session:
 
 1. **Long chats rot.** The context fills up, decisions made at the start fall out the other end, Claude re-does analysis it already did, and quality degrades the further you go.
-2. **Chats are mortal.** Close the window, crash the app, come back in three days: everything that lived only in the conversation — where you were, what was missing, why you chose this way — died with it.
+2. **A chat is not a medium.** `--resume` gives you the conversation back, not the state: it is on your machine, in your list, and to find out where you were you have to re-read it. Meanwhile the things that matter — where you are, what is missing, why you chose this way — cannot be read by another session, another agent, or a colleague. What lives only in a chat lives for one person, on one laptop.
 3. **Unattended work burns tokens in the dark.** You leave Claude working alone, step out, and nobody notices it is circling the same error until you come back.
 4. **"Done" is self-certification.** Claude says "done, everything works" — but it is Claude saying it. On interfaces it is worse: whether a page *looks right* is not something a test decides.
 
@@ -78,7 +80,7 @@ Before closing, two more gestures: the **lessons of the run** are rescued (the t
 
 ## Git is the memory, not an archive
 
-*Answers wall 2: where memory lives, if chats die.*
+*Answers wall 2: where the memory lives, if a chat holds it for one person only.*
 
 Every job is a **branch**, and the plan travels committed inside the branch: any session — or colleague — that opens the branch has everything, without asking anyone.
 
@@ -86,7 +88,7 @@ Every job is a **branch**, and the plan travels committed inside the branch: any
 - **Regressions have a culprit**: every phase declares the files it touches, so when something breaks, git says which phase broke it.
 - **Half-done work is not lost**: work in progress leaves a committed footprint too, so the next session resumes from there instead of doing archaeology.
 
-That is why any chat can die at any moment without drama: close everything, come back in three days, `/resume-workflow` reads the branch and picks up.
+That is why no chat is worth going back to: close everything, come back in three days on another machine, and `/resume-workflow` reads the branch and picks up — no `--resume` to hunt for, no scrollback to re-read.
 
 ## Model and effort, per phase
 
@@ -123,7 +125,7 @@ Messages between chats are best-effort by design — any of them can be lost and
 | Phase chat | desktop chat | code + the phase commit | when its phase closes |
 | Executor | headless `claude -p` | code + the phase commit | every phase — born with fresh context |
 | Verifier | headless | nothing: read-only, emits findings | after the verdict |
-| UI judge | headless | nothing: compares screenshots to the approved mockup | after the verdict |
+| UI judge | headless | nothing: compares screenshots to the approved mockup — interactive `ui` phases only | after the verdict |
 | Repair | headless | the fix, one attempt | after the attempt |
 
 ## Succession
@@ -277,13 +279,40 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**198 assertions over 31 scenarios** (S1–S32, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The scenario-by-scenario catalog is in [docs/design-notes.md](docs/design-notes.md); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**210 assertions over 32 scenarios** (S1–S33, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The scenario-by-scenario catalog is in [docs/design-notes.md](docs/design-notes.md); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
 ## GenroPy worktree support
 
 If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` plugin makes `gnr` CLI commands work from workflow worktrees — see [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md).
+
+## Cheatsheet
+
+*One screen: what to type, and when.*
+
+| You want to | Type | Where it belongs |
+|---|---|---|
+| turn a vague idea into settled decisions | `/scope-workflow <what>` | before the plan exists |
+| turn the discussion into a plan on a branch | `/write-workflow` | it asks: interactive or autonomous? |
+| bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
+| start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
+| do the next phase, one phase per chat | `/execute-phase` | interactive |
+| close a phase whose work is finished | `/close-phase` | interactive — usually called for you |
+| run the whole plan unattended | `/run-workflow` | autonomous |
+| run exactly one phase unattended | `/execute-phase-agent` | autonomous |
+| retry a phase that came back `[!]` | `/repair-phase` | autonomous — one attempt, fresh eyes |
+| ask where the work stands | `/resume-workflow` | any time, any chat, read-only |
+| close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
+| deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
+
+**Plan markers** — `[ ]` to do · `[>]` in progress · `[x]` done and verified · `[!]` failed, waiting for you · `[~]` blocked on a red baseline nobody owns.
+
+**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
+
+**Who says "done"** — interactive: you do, phase by phase. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
+
+**Lost?** `/resume-workflow`. It needs the branch, nothing else — not the chat that started it, not the machine it ran on.
 
 ## Changelog
 
