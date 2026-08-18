@@ -7,7 +7,7 @@ Run GenroPy sites and CLI commands (`gnr web serve`, `gnr db setup`, etc.) from 
 When working in a git worktree, GenroPy commands still use the main repo's code and paths because:
 
 1. **Python**: `gnr` is installed as editable from the main repo
-2. **environment.xml**: `~/.gnr/environment.xml` has absolute paths to the main repo
+2. **environment.xml**: the system `environment.xml` (`$VIRTUAL_ENV/etc/gnr/` on virtualenv installs, `~/.gnr/` otherwise) has absolute paths to the main repo
 3. **git**: you cannot `git switch` to a branch already checked out in a worktree
 
 And two worktrees of the same project cannot be served at once, because they would share port 8080, the gnrdaemon on 40404, and the database.
@@ -132,8 +132,8 @@ from its own worktree, each `gnr db setup` applied its own branch column
 
 1. Detects the current worktree via `git rev-parse --show-toplevel`
 2. Derives a stable port offset (`1..49`) from the worktree name
-3. On first run, generates `.gnr/environment.xml` by copying `~/.gnr/environment.xml` and replacing main repo paths with worktree paths
-4. Symlinks `instanceconfig/` from `~/.gnr/`, and writes a **copy** of `siteconfig/default.xml` carrying the worktree's HTTP and gnrdaemon ports
+3. On first run, generates `.gnr/environment.xml` by copying the system `environment.xml` — looked up in `$VIRTUAL_ENV/etc/gnr/` first (virtualenv installs keep the GenroPy config there), then `~/.gnr/` — and replacing main repo paths with worktree paths
+4. Symlinks `instanceconfig/` from the same config directory, and writes a **copy** of `siteconfig/default.xml` carrying the worktree's HTTP and gnrdaemon ports
 5. Sets `PYTHONPATH` to the worktree's `gnrpy/` (GenroPy worktrees only)
 6. Sets `GENRO_GNRFOLDER` to the worktree's `.gnr/`, and `GNR_LOCAL_PROJECTS` to a private directory holding a single symlink back to this worktree (a shared parent directory would let the resolver glob pick a sibling worktree at random)
 7. With `GNR_WT_DB` set, composes `GNR_DB_DSN` for the per-branch database
