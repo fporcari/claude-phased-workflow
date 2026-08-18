@@ -305,6 +305,15 @@ One chat commands each workflow (the **foreman**); the chats
 that execute phases are its children and report to it. **This section is the
 single source of the protocol** — the skills cite it, they never restate it.
 
+**The foreman commands; it does not execute.** Its context has to hold the whole
+plan — that is what lets it answer for any phase — so no skill ever recommends
+running `/execute-phase` in the foreman chat: a *Next step* naming that skill is
+always worded as a fresh chat. Launching an unattended run (`/run-workflow`) from
+the foreman is the exception and the intended one: it supervises there, it does
+not implement. Nothing is enforced — a user who executes a phase in the foreman
+chat lands in the degenerate branches below (*when this chat IS the foreman*),
+which keep working. Those are a fallback, never advice.
+
 **The foreman's identity lives in a file, and its address is its TITLE.**
 A session can neither read its own id nor rename itself, but every *other*
 session sees both title and id in `list_sessions` — so the title is the one

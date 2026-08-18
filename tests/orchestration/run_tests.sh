@@ -50,8 +50,9 @@
 # (chat hierarchy and cross-session messaging): single-source in common.md's
 # '## The foreman', the shared core carrying the one 'Notify the foreman'
 # step, every taking/deposing/notifying skill citing it, resume-workflow
-# keeping the assume-command migration, no skill restating foreman.json —
-# proven by mutation. S16 retired with the KB mirror
+# keeping the assume-command migration, no skill restating foreman.json, the
+# commands-not-executes rule in the section and no skill sending a phase back
+# to the foreman chat — proven by mutation. S16 retired with the KB mirror
 # in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/phased-workflow/scripts/run-workflow.sh"
@@ -1337,6 +1338,15 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     grep -q "$S30_SUFFIX" "$S30_F" 2>/dev/null \
       || echo "$S30_F: the rename suggestion drifted from the canonical wording"
   done
+  # The foreman commands and does not execute: the rule lives in the section,
+  # and no skill sends a phase back to the chat that holds the plan.
+  grep -q 'commands; it does not execute' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section lost the commands-not-executes rule"
+  for S30_F in "$1"/*/SKILL.md; do
+    if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
+      echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"
+    fi
+  done
   return 0
 }
 S30_OUT="$(s30_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -1372,6 +1382,23 @@ S30_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 printf '\n  "foreman": "wf:<slug>:foreman",\n' >> "$S30_MUT/execute-phase/SKILL.md"
 assert "S30: the guard fails when a skill restates the foreman.json body" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+# The commands-not-executes rule leaves the section.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed '/commands; it does not execute/d' "$S24_REFS/common.md" \
+  > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when the foreman may execute a phase" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# A skill points the next phase back at this chat — the 5.17.1 defect itself.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+printf '\nRun the next phase with /execute-phase in this chat.\n' \
+  >> "$S30_MUT/resume-workflow/SKILL.md"
+assert "S30: the guard fails when a skill sends the next phase back to this chat" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 

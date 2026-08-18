@@ -89,5 +89,5 @@ Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), c
 This chat is the foreman. Rename it to `wf:<slug>:foreman` — it is the address phase chats report to.
 Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>
-To carry on, launch /execute-phase.
+To carry on, launch /execute-phase in a new chat — this one stays the board.
 ```

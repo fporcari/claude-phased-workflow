@@ -150,7 +150,7 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
 This chat is the foreman. Rename it to `wf:<slug>:foreman` — it is the address phase chats report to.
-To run it, launch /execute-phase (better in a new session, for a clean context).
+To run it, launch /execute-phase in a new chat — this one stays the board.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 

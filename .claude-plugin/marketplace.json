@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "A phased workflow system for Claude Code: converse, plan, execute, finalize. One branch per plan, on a branch or inside a git worktree.",
-    "version": "5.17.0"
+    "version": "5.17.1"
   },
   "plugins": [
     {
       "name": "phased-workflow",
       "source": "./plugins/phased-workflow",
       "description": "Phased development workflow with natural conversation planning, one phase per session, one branch and one commit per phase, and a self-correcting autonomous chain (convergence loops + fresh-eyes repair)",
-      "version": "5.17.0",
+      "version": "5.17.1",
       "author": {
         "name": "Francesco Porcari"
       },

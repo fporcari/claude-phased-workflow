@@ -21,7 +21,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 | `/write-workflow` | there is no plan yet, and the work was just discussed |
 | `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
 | `/issue` | the work starts from a GitHub issue (analysis only) |
-| `/execute-phase` | run the next phase in this chat, with an approval gate |
+| `/execute-phase` | run the next phase in a new chat, with an approval gate |
 | `/run-workflow` | run every remaining phase unattended (`Mode: autonomous` plans) |
 | `/repair-phase` | a phase is `[!]` and needs fresh eyes |
 | `/finalize-workflow` | every phase is `[x]` — consolidate into one commit |
