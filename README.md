@@ -8,8 +8,35 @@
 **Version 6.0.2** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
->
-> **Already installed and just want the commands?** [Cheatsheet](#cheatsheet).
+
+## Quickstart
+
+*The whole surface on one screen. Not installed yet? [Getting started](#getting-started) — then come back here.*
+
+| You want to | Type | Where it belongs |
+|---|---|---|
+| turn a vague idea into settled decisions | `/scope-workflow <what>` | before the plan exists |
+| turn the discussion into a plan on a branch | `/write-workflow` | it asks: interactive or autonomous? |
+| bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
+| start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
+| do the next phase, one phase per chat | `/execute-phase` | interactive |
+| close a phase whose work is finished | `/close-phase` | interactive — usually called for you |
+| run the whole plan unattended | `/run-workflow` | autonomous |
+| run exactly one phase unattended | `/execute-phase-agent` | autonomous |
+| retry a phase that came back `[!]` | `/repair-phase` | autonomous — one attempt, fresh eyes |
+| ask where the work stands | `/resume-workflow` | any time, any chat, read-only |
+| close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
+| deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
+
+**Plan markers** — `[ ]` to do · `[>]` in progress · `[x]` done and verified · `[!]` failed, waiting for you · `[~]` blocked on a red baseline nobody owns.
+
+**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
+
+**Who says "done"** — interactive: you do, phase by phase. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
+
+**Lost?** `/resume-workflow`. It needs the branch, nothing else — not the chat that started it, not the machine it ran on.
+
+---
 
 ## First, the problem
 
@@ -286,33 +313,6 @@ There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real se
 ## GenroPy worktree support
 
 If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` plugin makes `gnr` CLI commands work from workflow worktrees — see [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md).
-
-## Cheatsheet
-
-*One screen: what to type, and when.*
-
-| You want to | Type | Where it belongs |
-|---|---|---|
-| turn a vague idea into settled decisions | `/scope-workflow <what>` | before the plan exists |
-| turn the discussion into a plan on a branch | `/write-workflow` | it asks: interactive or autonomous? |
-| bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
-| start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
-| do the next phase, one phase per chat | `/execute-phase` | interactive |
-| close a phase whose work is finished | `/close-phase` | interactive — usually called for you |
-| run the whole plan unattended | `/run-workflow` | autonomous |
-| run exactly one phase unattended | `/execute-phase-agent` | autonomous |
-| retry a phase that came back `[!]` | `/repair-phase` | autonomous — one attempt, fresh eyes |
-| ask where the work stands | `/resume-workflow` | any time, any chat, read-only |
-| close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
-| deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
-
-**Plan markers** — `[ ]` to do · `[>]` in progress · `[x]` done and verified · `[!]` failed, waiting for you · `[~]` blocked on a red baseline nobody owns.
-
-**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
-
-**Who says "done"** — interactive: you do, phase by phase. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
-
-**Lost?** `/resume-workflow`. It needs the branch, nothing else — not the chat that started it, not the machine it ran on.
 
 ## Changelog
 
