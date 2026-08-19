@@ -275,10 +275,12 @@ open('.phased/active/toy/plan.md','w').write(s)
 EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "no phase session started" '! grep -q "execute-phase-agent skill\|Execute the next pending" .claude/invocations.log'
-assert "repair launched" 'grep -q "repair-phase-agent skill" .claude/invocations.log'
+assert "repair launched first, before any phase session" 'head -1 .claude/invocations.log | grep -q "repair-phase-agent skill"'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
 assert "phase 1 repaired" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
+# "continuing with next phase" used to be a lie here: the repair consumed the
+# only loop iteration (budget = pending count) and Phase 2 silently never ran.
+assert "loop actually continued to phase 2 after repair" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
 echo "== S11: Case A reopen ([x] count drops) -> repair runs, progress guard silent =="
 setup S11; fixture2
@@ -287,11 +289,12 @@ s = open('.phased/active/toy/plan.md').read()
 s = s.replace('- [ ] **Phase 1**: phase one', '- [x] **Phase 1**: phase one', 1)
 open('.phased/active/toy/plan.md','w').write(s)
 EOF
-printf '%s\n' 'python3 "$OPS" reopen; exit 0' 'python3 "$OPS" repair_ok; exit 0' > .claude/mock-queue
+printf '%s\n' 'python3 "$OPS" reopen; exit 0' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "progress guard did NOT fire" '! grep -q "No progress in the last run" out.log'
 assert "repair launched after reopen" 'grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "reopened phase back to [x]" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
+assert "pending phase still ran after the repair round" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
 echo "== S12: baseline red and unattributable -> [~] stops the run =="
 setup S12; fixture2
@@ -2242,6 +2245,27 @@ sed -i.bak '/Ends at:/d' "$S38_MUT/finalize-workflow/SKILL.md" \
 assert "S38: the guard fails when the close skips the delivered border" \
   '[ -n "$(s38_guard "$S38_MUT" "$S24_REFS")" ]'
 rm -rf "$S38_MUT"
+
+echo "== S39: sessions are not phases — a WIP resume does not starve the tail =="
+# The loop budget used to be the initial [ ] count, but a phase that dies
+# leaving [>] consumes TWO sessions for one decrement: with the old bound the
+# last phase never ran and the run ended silently with work pending. The bound
+# is now twice the pending count, and exhausting it says so out loud.
+setup S39; fixture2
+printf '%s\n' 'python3 "$OPS" wip1; exit 0' 'python3 "$OPS" resume1; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S39: WIP resume announced" 'grep -q "Phase left in WIP state" out.log'
+assert "S39: 3 sessions for 2 phases" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 3 ]'
+assert "S39: both phases [x] — the tail phase still ran" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
+assert "S39: no exhaustion message on a completed run" '! grep -q "Session budget exhausted" out.log'
+# Perpetual WIP: every session leaves [>] alive, no deliberate stop ever fires —
+# the bound is the only thing that ends the run, and it must say so.
+setup S39_exhaust; fixture2
+printf '%s\n' 'python3 "$OPS" wip1; exit 0' 'python3 "$OPS" noop; exit 0' 'python3 "$OPS" noop; exit 0' 'python3 "$OPS" noop; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S39: bound stops a perpetual-WIP run" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 4 ]'
+assert "S39: exhaustion is declared, not silent" 'grep -q "Session budget exhausted" out.log'
+assert "S39: exhausted run still ends stopped, not ok" 'grep -q "EVENT: run-end stopped" out.log'
 
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"

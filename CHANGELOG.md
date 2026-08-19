@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.12.1 — 2026-08-19
+
+Sessions are not phases: the launcher's loop budget was the initial `[ ]` count, so a phase resumed from `[>]` — or a repair round — consumed two iterations for one decrement and the tail of the plan silently never ran (S10 and S11 had even ratified the starvation). The bound is now twice the pending count, every deliberate stop names itself, and exhausting the bound with work still pending is declared out loud instead of reading like any other stop.
+
 ## 6.12.0 — 2026-08-19
 
 The programme is a graph, not a chain: Macro 5 may require what Macro 2 builds with other macros in between, so a contract lives from producer to consumer and every macro it crosses inherits it into its own `Must not break:` — you saw the Uffizi on the Italy leg to compare them with the Prado on the Spain leg, and no leg in between may lose that luggage. The coherence judge flags intermediate macros whose scope plausibly destroys what crosses them, each macro's planning inherits the contracts in transit, and finalize's roadmap check treats lost luggage as a finding.

@@ -220,7 +220,19 @@ fi
 echo "Found $REMAINING phases to execute."
 echo ""
 
-for i in $(seq 1 $REMAINING); do
+# Sessions are NOT phases: a phase that dies mid-work leaves [>] and its resume
+# consumes a second session for a single [ ]->[x] decrement, so a budget equal
+# to the pending count starves the tail of the plan. Twice the count gives every
+# phase one resume; the progress guard below still stops a stuck run long before
+# this bound, which only backstops pathological loops (e.g. perpetual WIP).
+# STOP_REASON marks every deliberate break — after the loop, an empty one with
+# work still pending means the bound itself ended the run, and that must be said
+# out loud: without the message this exit is indistinguishable from other stops.
+MAX_SESSIONS=$((REMAINING * 2))
+SESSIONS=0
+STOP_REASON=""
+while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
+  SESSIONS=$((SESSIONS + 1))
   # Re-read the plan to get current state
   if ! phase_any ' '; then
     echo ""
@@ -264,6 +276,7 @@ for i in $(seq 1 $REMAINING); do
     blocked:*)
       echo ""
       echo "Stopping — next-phase.py reports: $REC"
+      STOP_REASON="selector-blocked"
       break ;;
     *)
       # Script unavailable or unexpected output: fall back to file order.
@@ -277,6 +290,7 @@ for i in $(seq 1 $REMAINING); do
 
   if [ "$RUN_PHASE" -eq 1 ] && [ -z "$NEXT_PHASE" ]; then
     echo "Could not determine the next phase. Stopping — check the active plan under .phased/active/."
+    STOP_REASON="no-next-phase"
     break
   fi
 
@@ -382,6 +396,7 @@ for i in $(seq 1 $REMAINING); do
       echo ""
       echo "claude exited with code $CLAUDE_EXIT. Stopping."
       echo "Check the active plan under .phased/active/ — reset any stale [>] phase to [ ] before relaunching."
+      STOP_REASON="claude-exit"
       break
     fi
   fi
@@ -399,6 +414,7 @@ for i in $(seq 1 $REMAINING); do
       echo ""
       echo "A phase failed [!] and repair was already attempted. Stopping for review."
       echo "Fix the issue (or delete its 'Repair attempted:' note to grant another repair round), then run /run-workflow again."
+      STOP_REASON="repair-exhausted"
       break
     fi
 
@@ -438,6 +454,7 @@ for i in $(seq 1 $REMAINING); do
     if phase_any '!'; then
       echo ""
       echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
+      STOP_REASON="repair-failed"
       break
     fi
     echo "Repair succeeded — continuing with next phase."
@@ -451,6 +468,7 @@ for i in $(seq 1 $REMAINING); do
     echo "EVENT: phase-blocked $BLOCKED_PHASE"
     echo ""
     echo "A phase is blocked [~]. Stopping for review."
+    STOP_REASON="phase-blocked"
     break
   fi
 
@@ -478,12 +496,21 @@ for i in $(seq 1 $REMAINING); do
       echo ""
       echo "No progress in the last run (phase stuck as [>]?). Stopping."
       echo "Check the active plan under .phased/active/ — reset stale [>] phases to [ ] and relaunch."
+      STOP_REASON="no-progress"
       break
     fi
   fi
 
   echo ""
 done
+
+# The bound ended the run with work still pending: every deliberate stop above
+# set STOP_REASON and printed its own message, so an empty one here is the
+# exhaustion path — say so, or this exit reads like any other stop.
+if [ -z "$STOP_REASON" ] && { phase_any ' ' || phase_any '>'; }; then
+  echo ""
+  echo "Session budget exhausted: $SESSIONS sessions run (bound $MAX_SESSIONS for $REMAINING pending phases) with work still pending — relaunch /run-workflow to continue."
+fi
 
 echo ""
 echo "========================================="

@@ -24,6 +24,14 @@ elif op == 'blocked':
     # Baseline red and attributable to no phase (attribution Case B).
     s = s.replace('- [ ] **Phase 1**: phase one',
                   '- [~] **Phase 1**: phase one\n  > Blocked: pre-existing failure on the baseline', 1)
+elif op == 'wip1':
+    # Session dies mid-phase leaving the healthy WIP evidence (S29's format:
+    # "In execution since" + a commit ref) — the resume costs a second session.
+    s = s.replace('- [ ] **Phase 1**: phase one',
+                  '- [>] **Phase 1**: phase one\n  > WIP: In execution since 2026-07-18T00:00:00Z — step 1 done, step 2 pending. commit: abc1234', 1)
+elif op == 'resume1':
+    s = s.replace('- [>] **Phase 1**: phase one',
+                  '- [x] **Phase 1**: phase one', 1)
 elif op == 'noop':
     pass
 open(mem, 'w').write(s)
