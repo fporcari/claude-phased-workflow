@@ -96,10 +96,25 @@ A repair chat titles itself too, `wf:<slug>:repair-N — <phase title>`, and the
 wearing that title would address itself. Unattended repairs skip the title —
 a `claude -p` session has neither the tools nor a reader for it.
 
+**Channel floors — single source.** The messaging layer rides the most
+unstable platform surface this plugin touches, so its version floors live
+HERE and nowhere else (a skill cites this section, it never restates a
+number): cross-session `SendMessage` in the CLI needs **≥ 2.1.224**; the
+desktop session-management tools (`list_sessions`/`send_message`) have no
+version floor but exist only in desktop chats; a `claude -p` sub-session
+reaches neither world (field-tested, below). The launcher's own floors
+(`/goal` ≥ 2.1.139, `fable` ≥ 2.1.170) are detected at runtime by
+`run-workflow.sh`, which declares its fallback in a NOTE. **Declare the
+channel when reporting state**: a skill that reports where the workflow
+stands (`/resume-workflow`'s report, `/run-workflow`'s first relay) says in
+one line which branch is alive in this installation — desktop tools, CLI
+`SendMessage`, or neither — so a dead channel reads as declared degradation,
+never as a silent skip discovered later.
+
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
 that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
-(≥ 2.1.224). **`list_sessions` first, always** — and *first* means before any
+(*Channel floors* above). **`list_sessions` first, always** — and *first* means before any
 conclusion about who is reachable. **A tool missing from your tool list is not
 a missing tool.** `list_sessions` and `send_message` are deferred behind
 `ToolSearch` while `ListAgents` is always loaded, so the branch that works is

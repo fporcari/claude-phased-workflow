@@ -12,6 +12,18 @@ last-checked-version: 2.1.235
 last-checked-date: 2026-08-19
 ```
 
+## Version floors
+
+The minimum Claude Code versions the plugins rely on, each detected or
+declared at its own site. An update entry that moves one of these is a
+breaking change by definition.
+
+| Floor | Feature | Detected / declared at |
+|---------|---------|------------------------|
+| 2.1.139 | `/goal` guard for phase sessions | `run-workflow.sh` runtime check, declared NOTE fallback |
+| 2.1.170 | `fable` model alias | `run-workflow.sh` (repair hardcodes it; phases may pin it) |
+| 2.1.224 | cross-session `SendMessage` in the CLI | `refs/foreman.md` → *Channel floors* (single source for messaging floors) |
+
 ## Plugin surfaces
 
 The mechanisms of Claude Code this repo's plugins depend on. An update that

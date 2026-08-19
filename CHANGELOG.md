@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.15.0 — 2026-08-19
+
+The messaging channel is declared, not discovered: `foreman.md` gains *Channel floors* — the single source of the version floors the messaging layer rides (CLI `SendMessage` ≥ 2.1.224; the launcher's own 2.1.139/2.1.170 floors stay runtime-detected) — and the state-reporting skills (`/resume-workflow`'s report, `/run-workflow`'s first relay) say in one line which branch is alive in this installation, so a dead channel reads as declared degradation instead of surfacing later as a silent skip. The compatibility baseline carries the floor table, so the daily update check flags any drift. S40 guards it all, proven by mutation.
+
 ## 6.14.0 — 2026-08-19
 
 The doctrine splits by consumer, so a session pays only for the layers its skill uses: `common.md` (860 lines, read by everyone) becomes a 250-line core plus `contracts.md` (Done:/Verify:, contract tests, Must not break:, markers — planning, execution, close, doctor, finalize) and `foreman.md` (hierarchy, messaging, ledger, register, notifications — the skills that supervise or report). A headless phase session drops from ~1140 lines of doctrine to ~790 and defers the foreman layer entirely — it reads only the message formats, at the notify step. Every static guard was repointed and re-proven by mutation, and every mutation dir now starts from the full pristine refs set, so a guard reading several refs can no longer pass vacuously on a file the mutation did not touch.

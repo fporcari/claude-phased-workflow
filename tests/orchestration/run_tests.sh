@@ -2294,6 +2294,48 @@ assert "S39: bound stops a perpetual-WIP run" '[ "$(grep -c "CALL:" .claude/invo
 assert "S39: exhaustion is declared, not silent" 'grep -q "Session budget exhausted" out.log'
 assert "S39: exhausted run still ends stopped, not ok" 'grep -q "EVENT: run-end stopped" out.log'
 
+echo "== S40: messaging floors live once, and the channel is declared, not discovered =="
+# The messaging layer rides the most unstable platform surface the plugin
+# touches (three version floors grew up scattered). foreman.md owns the
+# floors; the state-reporting skills declare which channel branch is alive
+# instead of letting a dead one surface as a silent skip.
+s40_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  grep -q 'Channel floors' "$2/foreman.md" 2>/dev/null \
+    || echo "$2/foreman.md: missing the 'Channel floors' single source"
+  grep -q '2\.1\.224' "$2/foreman.md" 2>/dev/null \
+    || echo "$2/foreman.md: the SendMessage floor left its single source"
+  grep -rq '2\.1\.224' "$1" 2>/dev/null \
+    && echo "$1: a skill restates the SendMessage floor (single source: foreman.md)"
+  grep -q 'Channel floors' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/resume-workflow/SKILL.md: the report does not declare the live channel"
+  grep -q 'Channel floors' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/run-workflow/SKILL.md: the relay does not declare its channel up front"
+  return 0
+}
+S40_OUT="$(s40_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S40_OUT" ] || echo "  offending: $S40_OUT"
+assert "S40: floors single-source and the channel declared" '[ -z "$S40_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+S40_MUT="$(mktemp -d)"; mkdir -p "$S40_MUT/refs"; cp "$S24_REFS"/*.md "$S40_MUT/refs/"
+cp -R "$SKILLS_DIR"/. "$S40_MUT/"
+sed 's/Channel floors/Version notes/g' "$S24_REFS/foreman.md" > "$S40_MUT/refs/foreman.md"
+assert "S40: the guard fails when foreman.md stops owning the floors" \
+  '[ -n "$(s40_guard "$SKILLS_DIR" "$S40_MUT/refs")" ]'
+rm -rf "$S40_MUT"
+S40_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S40_MUT/"
+printf '\nCLI SendMessage needs >= 2.1.224.\n' >> "$S40_MUT/execute-phase/SKILL.md"
+assert "S40: the guard fails when a skill restates a floor" \
+  '[ -n "$(s40_guard "$S40_MUT" "$S24_REFS")" ]'
+rm -rf "$S40_MUT"
+S40_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S40_MUT/"
+sed -i.bak '/Channel floors/d' "$S40_MUT/resume-workflow/SKILL.md" \
+  && rm -f "$S40_MUT/resume-workflow/SKILL.md.bak"
+assert "S40: the guard fails when the report stops declaring the channel" \
+  '[ -n "$(s40_guard "$S40_MUT" "$S24_REFS")" ]'
+rm -rf "$S40_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"
