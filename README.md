@@ -332,6 +332,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.5.0](docs/release-6.5.0.md) | a phase that outgrew its chat closes on what it reached: the `Done:` is corrected to the truth and the foreman grows a phase for the remainder |
 | [6.4.0](docs/release-6.4.0.md) | handing over a long phase is a move you can call, a tool you have not loaded is not a tool that is absent, and a phase chat does not supervise |
 | [6.3.0](docs/release-6.3.0.md) | a rejected result travels up as its own line and re-plans the phases that have not run — no `[x]` and no report before you have answered |
 | [6.2.1](docs/release-6.2.1.md) | rejecting a result at the test gate no longer marks the phase `[!]`: its tests are green, so what changes is the decomposition |

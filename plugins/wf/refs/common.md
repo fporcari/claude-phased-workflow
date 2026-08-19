@@ -299,6 +299,12 @@ that have not run yet were written for the design just rejected, so
 is missing — from the person's own account of what went wrong. It owns that
 edit and its commit.
 
+`phase N closed short` is the same family: a phase that outgrew its chat
+(`refs/phase-execution.md` → *When the phase outgrows its chat*) closes on
+the sub-result it reached, and the remainder needs a phase the child does not
+write — sizing is the foreman's job, and a phase that overran is evidence
+about the sizing.
+
 **The foreman is told, in one line** — `phase N closed, result rejected`,
 above. It is the one report that is not routine: the plan it authored is
 about to change, and it holds the reasons the plan was shaped that way. It
@@ -439,6 +445,7 @@ header line first:
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
 [wf:<slug>] phase N closed, result rejected — <what the person judged wrong, one line>. The pending phases need re-planning.
+[wf:<slug>] phase N closed short — <what landed>. Remaining: <one line>; it needs a phase of its own.
 [wf:<slug>] phase N FAILED — <title>. Issue: <one line>.
 [wf:<slug>] phase N blocked — <one line>.
 [wf:<slug>] plan changed at phase N — <one-line summary of the approved deviation>.

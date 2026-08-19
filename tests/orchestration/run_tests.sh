@@ -1386,6 +1386,17 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     grep -q 'set_session_title' "$S30_F" 2>/dev/null \
       || echo "$S30_F: does not title its chat (set_session_title)"
   done
+  # 6.5.0 — a phase that outgrows its chat has two answers, and the cleaner one
+  # closes it on the sub-result reached. The refusal stays where it belongs: a
+  # RED criterion is repair territory, an UNREACHED one is a narrowed Done:.
+  grep -q 'When the phase outgrows its chat' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: no fork between closing short and handing over"
+  grep -q 'closed short' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: no message carries a short close to the foreman"
+  grep -q 'closed short' "$1/close-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/close-phase/SKILL.md: a Done: unreached for scope is still a plain refusal"
+  grep -q 'closed short' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/resume-workflow/SKILL.md: nobody writes the phase for the remainder"
   # 6.4.0 — a deferred tool is not an absent tool. The whole channel bug came
   # back through the word EXIST: list_sessions is invisible until ToolSearch
   # loads it, so "that tool does not exist" read true and licensed ListAgents.
@@ -1544,6 +1555,16 @@ sed 's/IS the reply/may exist/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.m
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the clarify timeout stops re-reading the disk" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# Closing short disappears: an overrun phase has nowhere to go but a handover.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+cp "$S24_REFS/common.md" "$S30_MUT/refs/common.md"
+cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
+sed 's/When the phase outgrows its chat/Checkpoints, again/' \
+  "$S24_REFS/phase-execution.md" > "$S30_MUT/refs/phase-execution.md"
+assert "S30: the guard fails when a phase cannot be closed short" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 # EXIST comes back, and with it the reading that a deferred tool is absent.

@@ -57,6 +57,17 @@ blocks the close: report it and stop, leaving the phase `[>]`. In the
 `/execute-phase` flow this re-runs checks that just passed — cheap, and it
 is what makes `[x]` a contract instead of a claim.
 
+**Two ways a criterion goes unmet, and only one of them is a refusal.**
+Something the phase built is red — a failing test, a lint error — and the
+close stops, full stop: that is repair territory, never absorbed here. But a
+criterion covering work the phase never got to, with everything it *did*
+build green, is the **closed short** case (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
+→ *When the phase outgrows its chat*): say which criteria are unreached,
+propose the `Done:` narrowed to the sub-result that exists, and close on the
+user's ok — the message is the `closed short` one, and the closing line names
+`/resume-workflow` in the foreman chat, which writes the phase for the
+remainder.
+
 ## Step 3: Naming review
 
 Run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` scoped to this phase's
@@ -89,7 +100,7 @@ need to know the flow by heart to keep moving.
 
 ## Rules
 
-- Happy path only: never write `[!]` or `[~]`, never absorb a red Done gate
+- Happy path only: never write `[!]` or `[~]`, and never absorb a criterion that is *red* — a criterion merely **unreached**, with what exists green, is the closed-short case above, and it is closed by narrowing the `Done:` with the user, never by ignoring it
 - ONE commit — the phase commit; naming-review edits never get their own
 - A standalone close without evidence of completed work is a refusal, not a favour
 - The naming-review sweep (grep for `wf:phase-` over the touched files, empty) runs before the commit, even on the accept-all path

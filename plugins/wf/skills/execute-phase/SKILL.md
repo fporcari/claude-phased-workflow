@@ -91,7 +91,9 @@ A phase ending `[!]` or `[~]` never routes through `close-phase`: record and com
 
 ## Handing over
 
-A long phase outlives its chat, and the handover is a move the user can call at any time — *"pass the baton"*, no reason needed — not only a reaction to a full context. Offer it too, since the user strongly dislikes compaction: when the phase isn't done and the context is filling (or it already compacted once), *"⚠️ The context is filling up. Open a new chat and run /execute-phase again. Shall I hand over first?"*
+A long phase outlives its chat. **Ask first whether it has a seam**, because a phase that does not fit one context was sized wrong and there are two answers to that, not one (`refs/phase-execution.md` → *When the phase outgrows its chat*): a coherent green sub-result **closes short** — the phase ends properly and the foreman grows a phase for the remainder — while work in mid-air hands over. Closing short is the cleaner one; propose it whenever the seam is there.
+
+The handover itself is a move the user can call at any time — *"pass the baton"*, no reason needed — not only a reaction to a full context. Offer it too, since the user strongly dislikes compaction: when the phase isn't done and the context is filling (or it already compacted once), *"⚠️ The context is filling up. Close this phase on what is done, or hand over to a new chat?"*
 
 Handing over is three things, in order:
 

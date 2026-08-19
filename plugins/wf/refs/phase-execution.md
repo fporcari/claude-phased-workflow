@@ -137,6 +137,40 @@ trusting the story. Free prose is what made resume unreliable: a fresh
 session reading vague prose reinterprets, and reinterpretation is how work
 gets redone or contradicted.
 
+## When the phase outgrows its chat
+
+A phase that does not fit in one context was sized wrong — the plan's own
+doctrine, applied to itself. So the first question is not *how do I carry
+this over* but **is there a seam here**, and the answer decides between two
+mechanics:
+
+- **There is a coherent, demonstrable sub-result, and what exists is
+  green** → **close short**, the cleaner of the two. Nothing half-cooked has
+  to survive a chat boundary: the phase ends properly, the tree is clean,
+  the markers are reviewed, and the plan grows a phase for the remainder.
+- **The work is mid-air** — a refactor half applied, a schema with nothing
+  using it yet — → **hand over**. There is no honest `Done:` to write, so
+  the `> WIP:` checkpoint above is the only truthful record.
+
+**Closing short**, in order:
+
+1. **Rewrite the phase's `Done:` to the sub-result actually reached**, and
+   its `Files:` to what actually landed, with the user's ok. Mid-phase the
+   child is the only writer of the plan, so it makes this edit itself — on
+   its own phase, never on the others. A narrowed `Done:` is not a lowered
+   bar: it is the plan being corrected to match what was really built, which
+   is the precondition for `[x]` to keep meaning what it says.
+2. **Close through `/close-phase`** like any other phase: naming review,
+   `Done:` gate re-run — it passes now, honestly — `[x]`, ONE phase commit.
+3. **Tell the foreman it closed short**, naming what remains in one line, so
+   the plan grows the phases that carry it. What remains also goes to
+   `notes.md` under the phase's `## Phase N`: a remainder that lives only in
+   a message dies with the message.
+
+The remainder is re-planned by the foreman, never appended by the child:
+sizing the work is the job the whole protocol gives that chat, and the phase
+that just overran is evidence about the sizing, not only about itself.
+
 **Resuming a `[>]` phase** — the calling skill decides *whether* to take
 it over; this is *how*: read the `> WIP:` note, run
 `git log --oneline` over the phase's `partial` commits and
