@@ -42,8 +42,19 @@ duplicate it. The pending phases say where the work is heading: a
 micro-choice this phase leaves open (a name, where a helper lives, a data
 shape) is decided in favour of the phases that come after, and a choice
 that would force a successor to undo or work around it is the wrong choice
-even when it is locally cheaper. Scope is unchanged: knowing Phase 5
-exists never means implementing a piece of it here.
+even when it is locally cheaper. Where the plan carries contract tests, the
+pending phases' `tests/phase-M/` are the sharpest statement of where the
+work is heading — read the ones this phase's choices could touch. Scope is
+unchanged: knowing Phase 5 exists never means implementing a piece of it
+here.
+
+**Contract tests, where the plan carries them** (`refs/common.md` →
+*Contract tests*): copy `tests/phase-N/` verbatim into the repo's test tree
+before implementing — red is the starting state, green is part of `Done:`.
+A skeleton's body is yours to write; everything else is read-only here, and
+a test that cannot pass as written goes up, never under the knife —
+`clarify?` in interactive mode, `[!]` naming the test in unattended mode,
+per the single source.
 
 ## Record the outcome
 

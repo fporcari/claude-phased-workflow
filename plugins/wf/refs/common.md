@@ -57,6 +57,8 @@ git repository root:
                           #   (see "Verification: Done: and Verify:" below)
     mockups/phase-N.html  # ui-tagged phases — the approved visual contract
                           #   (see "Verification" below; written by /execute-phase)
+    tests/phase-N/        # contract tests authored at plan time — the
+                          #   executable contract (see "Contract tests" below)
     log/phase-N.txt       # stdout of each /run-workflow sub-session, committed
   done/<slug>/            # moved here by /finalize-workflow
 ```
@@ -233,9 +235,83 @@ declared: the same list in chat, grouped by phase.
 The mechanism is **thick in interactive mode and thin in autonomous, never
 absent**: an autonomous project startup still wants human eyes on the result.
 
+**Authored checks are foreman-owned.** After the plan commit, the contract
+fields — `Done:`, the authored `Verify:` steps, the contract tests where the
+plan carries them — belong to the plan's author, never to the phase executing
+them. On a `ui` phase the authored `Verify:` list is written COMPLETE at
+planning time: the checks the human will run at that phase are pre-established
+in the plan, not improvised at the gate — the mockup loop refines the look,
+never the checklist. The executing chat may ADD surfaced steps — an addition
+strengthens the contract — but never drops or rewords an authored one on its
+own: a check that no longer fits is a plan ambiguity, routed through the
+foreman (`clarify?`), whose reply carries the edit. The sanctioned protocols
+that already reshape the contract — closed short, a rejected result — keep
+working as written: both report to the foreman by construction.
+
 `verify.md` and `review.md` are siblings, not duplicates: `review.md` says
 *"here is what I noticed and will not decide for you"* — the user reads and
 judges; `verify.md` says *"here is what you must exercise"* — the user does.
+
+## Contract tests — the executable contract
+
+An option `/write-workflow` puts to the user: the tests of EVERY phase are
+authored at planning time, while the whole design sits in one context, and
+committed with the plan under `.phased/active/<slug>/tests/phase-N/`. Each
+such phase's `Done:` opens with them. **This section is the single source of
+the contract** — the skills cite it, they never restate it.
+
+What the tests buy is bindingness: a later phase's premise stops being prose
+an executor may skim and becomes a red test the phase cannot close over.
+Recommended where the work is refactoring or otherwise well-specified —
+behaviour that must survive is exactly what a test states best; on
+exploratory work prefer skeletons (below) over guessed signatures.
+
+**Each test is authored at one of two precisions**, chosen per test by how
+settled the surface is:
+
+- **Executable** — the design already fixes the signatures (a refactor: they
+  exist today). Real, runnable test code. Read-only for the child in its
+  entirety.
+- **Skeleton** — the behaviour is decided, the bindings are not. A named test
+  whose contract is stated in comment lines carrying the `wf:contract:`
+  marker, with a red body (`pytest.fail("phase N pending")` or the repo
+  equivalent):
+
+  ```python
+  def test_invoice_total_survives_rename():
+      # wf:contract: renaming legacyAmount -> amount keeps invoice.total()
+      # wf:contract: equal to the sum of its lines after reload
+      pytest.fail("phase 3 pending")
+  ```
+
+  The child replaces the red body with a real implementation of exactly what
+  the `wf:contract:` lines state; the test name and those lines are
+  read-only. Red by construction either way: no phase closes over an
+  unimplemented contract, and no signature gets guessed at planning.
+
+The rules, in both execution modes:
+
+- **The phase copies its own tests verbatim** from `tests/phase-N/` into the
+  repo's test tree at phase start, and implements until they are green. The
+  copy — and a skeleton's body — is the phase's work; the contract is not.
+- **The contract is read-only for the child.** A test that cannot pass as
+  written — a wrong premise, an assertion the design outgrew — is a plan
+  ambiguity, never a local fix: interactive phases route it as `clarify?`
+  (*The foreman*), and the foreman's reply carries the exact test edit as
+  before-text → after-text, applied verbatim by the child and committed as
+  `wf: clarify phase N — <one line>`. Unattended phases have nobody to ask:
+  the phase closes `[!]` with `> Issue:` naming the test — a contract that
+  cannot be met unchanged is a plan defect, not a licence to edit it.
+- **The close verifies the copy.** `/close-phase`'s Done gate (and the
+  phase-verifier, where it runs) checks the in-tree copy against the plan
+  copy: executable tests byte-identical; skeletons with their test names and
+  every `wf:contract:` line surviving verbatim and no red body left. Any
+  divergence must be covered by a foreman decision recorded in `notes.md`
+  under the phase's `## Phase N` — a silent one blocks the close.
+
+A plan without the option keeps today's behaviour: tests are written by each
+phase, and the cross-phase direction is prose
+(`refs/phase-execution.md` → *The plan is context*).
 
 ## New-method markers and minimality
 

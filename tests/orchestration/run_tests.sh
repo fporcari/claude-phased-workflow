@@ -1978,6 +1978,77 @@ assert "S34: the guard fails when the gate loses its rejection exit" \
   '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
 rm -rf "$S34_MUT"
 
+echo "== S35: the contract is authored once and no child rewrites it =="
+# Three 6.8.0 invariants. (a) common.md owns the contract-tests contract —
+# plan-time tests under .phased at two precisions (executable / skeleton),
+# read-only for the child, integrity-checked at close — and owns the
+# authored-checks ownership rule (ui Verify: lists pre-established at
+# planning, changes routed through the foreman). (b) The shared core carries
+# the copy-verbatim mechanic and /execute-phase's gate carries the
+# compatibility line, so a conflict with a pending phase surfaces before
+# approval. (c) close-phase checks the in-tree copy against the plan copy,
+# and an unattended phase closes [!] rather than edit a contract into
+# passing.
+s35_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S35_C="$2/common.md"
+  grep -q '^## Contract tests' "$S35_C" 2>/dev/null \
+    || echo "$S35_C: missing the '## Contract tests' section"
+  grep -q 'read-only for the child' "$S35_C" 2>/dev/null \
+    || echo "$S35_C: the contract lost the child's read-only rule"
+  grep -q 'foreman-owned' "$S35_C" 2>/dev/null \
+    || echo "$S35_C: the authored checks lost their owner"
+  grep -q 'tests/phase-N' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the shared core lost the copy-verbatim mechanic"
+  grep -q 'compatibility line' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: the gate lost its compatibility line"
+  grep -q 'Contract tests' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: planning no longer offers contract tests"
+  grep -q 'tests/phase-N' "$1/close-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/close-phase/SKILL.md: the close no longer checks test integrity"
+  grep -q 'cannot pass as written closes the phase' "$1/execute-phase-agent/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase-agent/SKILL.md: an unattended phase may edit a contract test into passing"
+  return 0
+}
+S35_OUT="$(s35_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S35_OUT" ] || echo "  offending: $S35_OUT"
+assert "S35: the contract fields are single-source, checked at gate and close" \
+  '[ -z "$S35_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+# common.md stops owning the contract-tests section.
+S35_MUT="$(mktemp -d)"; mkdir -p "$S35_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S35_MUT/"
+sed 's/^## Contract tests.*/## Tests, roughly/' "$S24_REFS/common.md" \
+  > "$S35_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S35_MUT/refs/phase-execution.md"
+assert "S35: the guard fails when common.md stops owning contract tests" \
+  '[ -n "$(s35_guard "$S35_MUT" "$S35_MUT/refs")" ]'
+rm -rf "$S35_MUT"
+# The child may edit the contract again.
+S35_MUT="$(mktemp -d)"; mkdir -p "$S35_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S35_MUT/"
+sed 's/read-only for the child/editable when needed/' "$S24_REFS/common.md" \
+  > "$S35_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S35_MUT/refs/phase-execution.md"
+assert "S35: the guard fails when the child may edit the contract" \
+  '[ -n "$(s35_guard "$S35_MUT" "$S35_MUT/refs")" ]'
+rm -rf "$S35_MUT"
+# The close stops checking the copies.
+S35_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S35_MUT/"
+sed -i.bak 's|tests/phase-N|the phase tests|g' "$S35_MUT/close-phase/SKILL.md" \
+  && rm -f "$S35_MUT/close-phase/SKILL.md.bak"
+assert "S35: the guard fails when the close stops checking integrity" \
+  '[ -n "$(s35_guard "$S35_MUT" "$S24_REFS")" ]'
+rm -rf "$S35_MUT"
+# The gate loses the compatibility line.
+S35_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S35_MUT/"
+sed -i.bak '/compatibility line/d' "$S35_MUT/execute-phase/SKILL.md" \
+  && rm -f "$S35_MUT/execute-phase/SKILL.md.bak"
+assert "S35: the guard fails when the gate loses the compatibility line" \
+  '[ -n "$(s35_guard "$S35_MUT" "$S24_REFS")" ]'
+rm -rf "$S35_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

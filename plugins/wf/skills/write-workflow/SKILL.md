@@ -56,6 +56,21 @@ Extract from the conversation: objective, phases, files per phase, pattern refer
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
+**Contract tests.** One more option, asked with the Decisions batch: author
+the tests of EVERY phase now, while the whole design sits in one context —
+into `.phased/active/<slug>/tests/phase-N/`, committed with the plan, each
+phase's `Done:` opening with "the plan's tests for this phase, copied into
+the test tree, pass". Recommend it on refactoring and other well-specified
+work — behaviour that must survive is exactly what a test states best;
+where a signature is not settled yet, author that test as a skeleton
+(`wf:contract:` comment lines + red body) instead of guessing. The whole
+contract — the two precisions, where the tests live, the child's read-only
+rule, the integrity check at close — lives once in `common.md` → *Contract
+tests*; writing them inside `.phased/` keeps this skill's own first rule
+intact. Authoring them is plan-time work: derive each phase's tests from its
+`Details:` and `Done:`, in the repo's own test style, and present them with
+the plan.
+
 **Sizing.** The boundary depends on the mode chosen in Step 2.
 
 *Interactive plans — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
@@ -70,7 +85,7 @@ Either way:
 
 The split-vs-`vast` call and the `ui` tag materially change execution — batch them into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
 
-**Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list.
+**Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list. On a `ui` phase the `Verify:` list is authored COMPLETE here — the checks the human will run at that phase are pre-established now, and execution may add but never drop or reword them (`common.md` → *Verification*, authored checks are foreman-owned).
 
 **Run hint.** Every phase carries a `Run: <model> / <effort>` line: advice for the human who opens that chat, never something the plan enforces — the model is picked when the session starts, before any skill has read the plan. That is also why it is written down instead of only said here: the chat that needs it is opened days later, and by then this conversation is gone.
 

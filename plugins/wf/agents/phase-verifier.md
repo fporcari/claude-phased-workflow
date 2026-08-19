@@ -33,6 +33,15 @@ Verify, in order:
    nothing exercises — over-engineering is a finding: JUDGMENT (needs: a
    human to decide whether the extra surface stays), except plainly dead
    code, which is MECHANICAL (fix: remove it).
+6. **Contract-test integrity** — when the caller names plan-authored
+   contract tests, compare each in-tree copy against its plan copy:
+   executable tests byte-identical; skeletons with their test names and
+   every `wf:contract:` comment line surviving verbatim, red placeholder
+   body gone, and the body actually asserting what those lines state. A
+   divergence the caller cites no foreman decision for: MECHANICAL, fix:
+   restore the plan copy. A body that dodges its `wf:contract:` lines
+   (asserts less, or something else): MECHANICAL, fix: implement the stated
+   contract.
 
 Return ONLY a findings report, no praise and no summary of what is fine.
 Classify every finding as exactly one of:

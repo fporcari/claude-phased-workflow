@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.8.0 — 2026-08-19
+
+The contract between phases becomes enforceable: planning can author every phase's tests up front — executable where the surface is settled, skeletons (`wf:contract:` lines + red body) where it is not — `ui` checks are pre-established in the plan, the gate states in one line what the phase leaves standing for the pending ones, and any change of contract routes through the foreman: no child rewrites what the plan authored.
+
 ## 6.7.1 — 2026-08-19
 
 A repair says so on the plan: the chat names the phase it is repairing, and `[!]` stops being ambiguous between broken and being-worked-on.

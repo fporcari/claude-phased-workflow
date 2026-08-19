@@ -58,7 +58,7 @@ Per the shared core, scaling exploration to the **Effort** column of the executi
 
 ## Step 3: Write tests
 
-Test the phase's logic following the repo's existing test patterns. Purely UI/declarative phases with no testable logic → skip.
+Phases with contract tests start from them: copy `tests/phase-N/` verbatim and make them green — a skeleton's body is yours, the rest is read-only, and a test that cannot pass as written closes the phase `[!]` naming it (`common.md` → *Contract tests*); never edit a contract into passing. Then test the phase's remaining logic following the repo's existing test patterns. Purely UI/declarative phases with no testable logic → skip.
 
 ## Step 4: Convergence loop
 
@@ -76,7 +76,7 @@ Green signal = test suite + linter scoped to the touched files. Both must pass.
 
 **An independent verifier runs only where it earns its keep**: the phase is marked `sonnet`, or its `Pattern:` is `new-pattern`. Otherwise skip it — you already check your own work as you go, and a second review pass on a well-specified phase mostly re-litigates settled decisions.
 
-When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general-purpose subagent told to stay read-only), given the phase objective and `Done:`, its `Pattern:` example, and **only this phase's touched files**. Findings: **MECHANICAL** (real bug, wrong API, divergence from the pattern) → fix, re-run the signal, same 3-attempt budget. **JUDGMENT** (design trade-off, human call) → do not fix; record as `> Review:`. Never blocks `[x]`.
+When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general-purpose subagent told to stay read-only), given the phase objective and `Done:`, its `Pattern:` example, **only this phase's touched files**, and — where the plan carries them — the phase's contract-test paths, plan copy and in-tree copy. Findings: **MECHANICAL** (real bug, wrong API, divergence from the pattern) → fix, re-run the signal, same 3-attempt budget. **JUDGMENT** (design trade-off, human call) → do not fix; record as `> Review:`. Never blocks `[x]`.
 
 ## Step 6: Record, commit, stop
 

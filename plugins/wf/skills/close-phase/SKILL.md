@@ -57,6 +57,15 @@ blocks the close: report it and stop, leaving the phase `[>]`. In the
 `/execute-phase` flow this re-runs checks that just passed — cheap, and it
 is what makes `[x]` a contract instead of a claim.
 
+**Contract tests gate the close too.** Where the plan carries
+`tests/phase-N/` for this phase (`common.md` → *Contract tests*), check the
+in-tree copies against the plan copies: executable tests byte-identical,
+skeletons with their names and every `wf:contract:` line surviving verbatim
+and no red body left. A divergence not covered by a foreman decision in
+`notes.md` under `## Phase N` blocks the close exactly like a red
+criterion — the contract was edited by the wrong writer, and closing over
+it would launder the edit into `[x]`.
+
 **Two ways a criterion goes unmet, and only one of them is a refusal.**
 Something the phase built is red — a failing test, a lint error — and the
 close stops, full stop: that is repair territory, never absorbed here. But a
