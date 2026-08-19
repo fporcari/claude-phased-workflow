@@ -57,10 +57,13 @@ The tree must be clean. If `git status --short` shows anything, a phase closed w
 
 **On a programme (`.phased/roadmap.md` exists): the roadmap check.** Compare
 what this macro actually built — the diff above, read against the plan's
-`Must not break:` lines — with the remaining macro-phases' bullets: every
-shape a later macro would have to undo or work around is a finding
-(`common.md` → *Must not break:*). This is the last cheap moment to act —
-the next macro is planned against this commit. Findings feed Step 5's
+`Must not break:` lines — with the remaining macro-phases' mini-scopes:
+every shape a later macro would have to undo or work around is a finding
+(`common.md` → *Must not break:*). Where the roadmap declares an `Ends at:`
+for this macro, compare it with the state actually delivered — a leg about
+to close in Puglia is caught at the close of the leg, not at the departure
+of the next. This is the last cheap moment to act — the next macro is
+planned against this commit. Findings feed Step 5's
 review as explicit focus points and the closing report; deep measurement
 (retro-fitted contract tests against the landed code) belongs to `/doctor`,
 not here.

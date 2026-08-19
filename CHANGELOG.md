@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.11.0 — 2026-08-19
+
+The macro split is scoped, not just listed — the split moment is the only one with the whole programme in a single context: every macro gets a mini-scope (objective, `Starts from:`/`Ends at:`, `Delivers`, `Consumes`, `Requires of earlier work`, open decisions) with user questions batched once, a fresh-context coherence judge checks the itinerary first (each `Ends at:` must be the next `Starts from:` — the Italy leg must not end in Puglia) and the contract graph second, and downstream the consumer question reads the later macros' `Requires` lines instead of memory while finalize compares the state actually delivered with the declared border.
+
 ## 6.10.1 — 2026-08-19
 
 The programme contract reaches the unattended path too — the one macro-phases actually run on: the light-mode goal contract now names `Must not break:` as later phases of the same rank, and `/run-workflow`'s inspector reads the header and the roadmap's remaining macros in its per-phase coherence look.

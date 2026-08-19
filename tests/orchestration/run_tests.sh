@@ -2172,6 +2172,59 @@ assert "S37: the guard fails when the light contract sheds the programme contrac
   '[ -n "$(s37_guard "$SKILLS_DIR" "$S24_REFS" "$S37_MUT/run-workflow.sh")" ]'
 rm -rf "$S37_MUT"
 
+echo "== S38: the split is scoped, judged, and lands at the right border =="
+# Three 6.11.0 invariants. (a) Every macro of a split gets a mini-scope at
+# split time — the only moment the whole programme is in one context — with
+# the itinerary fields (Starts from:/Ends at:) and the contract halves
+# (Delivers / Requires of earlier work). (b) A fresh-context coherence judge
+# checks the itinerary and the contract graph before the split is presented.
+# (c) Downstream, the consumer question reads the later macros' Requires
+# lines instead of memory, and finalize compares the delivered state with
+# the macro's declared Ends at:.
+s38_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S38_A="$2/write-workflow-autonomous.md"
+  grep -q 'mini-scope' "$S38_A" 2>/dev/null \
+    || echo "$S38_A: the split lost its per-macro mini-scope"
+  grep -q 'Ends at:' "$S38_A" 2>/dev/null \
+    || echo "$S38_A: the mini-scope lost the itinerary fields"
+  grep -q 'coherence judge' "$S38_A" 2>/dev/null \
+    || echo "$S38_A: the split lost the fresh-eyes judge"
+  grep -q 'Requires of earlier work' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: the consumer question no longer reads the roadmap's Requires"
+  grep -q 'Ends at:' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: the macro close no longer checks the delivered border"
+  return 0
+}
+S38_OUT="$(s38_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S38_OUT" ] || echo "  offending: $S38_OUT"
+assert "S38: the mini-scope, the judge and the border checks all ship" \
+  '[ -z "$S38_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+# The itinerary fields disappear from the mini-scope.
+S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S38_MUT/"
+sed '/Ends at:/d' "$S24_REFS/write-workflow-autonomous.md" \
+  > "$S38_MUT/refs/write-workflow-autonomous.md"
+assert "S38: the guard fails when the itinerary fields disappear" \
+  '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
+rm -rf "$S38_MUT"
+# The split goes unjudged.
+S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S38_MUT/"
+sed 's/coherence judge/vibe check/g' "$S24_REFS/write-workflow-autonomous.md" \
+  > "$S38_MUT/refs/write-workflow-autonomous.md"
+assert "S38: the guard fails when the split goes unjudged" \
+  '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
+rm -rf "$S38_MUT"
+# The macro closes without looking at its own border.
+S38_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S38_MUT/"
+sed -i.bak '/Ends at:/d' "$S38_MUT/finalize-workflow/SKILL.md" \
+  && rm -f "$S38_MUT/finalize-workflow/SKILL.md.bak"
+assert "S38: the guard fails when the close skips the delivered border" \
+  '[ -n "$(s38_guard "$S38_MUT" "$S24_REFS")" ]'
+rm -rf "$S38_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

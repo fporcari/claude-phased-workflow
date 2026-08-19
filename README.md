@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.10.1** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.11.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -343,6 +343,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.11.0 | the macro split is scoped, not just listed: a mini-scope per macro at split time, a fresh-eyes coherence judge on the itinerary (`Ends at:` ≡ next `Starts from:`) and the contract graph, and finalize checking the delivered border |
 | 6.10.1 | the programme contract reaches the unattended path too: light-mode phases and the run inspector's coherence look now read `Must not break:` and the roadmap |
 | 6.10.0 | a future consumer's contract travels backwards (#15): `Must not break:` in the plan header, the consumer question at planning, the roadmap check at macro close, and `/doctor` turning a consumer measured late into a measured list of reds |
 | 6.9.0 | `/doctor`: is the work still coherent with the plan — coherence audit, contract-test integrity, and a blind retro-fit of missing tests, verified phase by phase, findings never fixed in place |

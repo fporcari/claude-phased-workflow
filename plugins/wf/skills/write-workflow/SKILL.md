@@ -78,6 +78,11 @@ workflow builds, and what will they require of it?* The answer becomes the
 plan's `Must not break:` header lines, backed by skeleton contract tests
 where a requirement can be stated as behaviour; "nobody yet" is written
 down too. Field semantics live once in `common.md` → *Must not break:*.
+On a roadmap carrying mini-scopes, the answer starts there, confirmed
+rather than reconstructed: collect the lines of `Requires of earlier work`
+from the later macros that touch this plan's output, and take the macro's
+own `Ends at:` as a planning constraint — the last phases must land the
+system at that border.
 
 **Sizing.** The boundary depends on the mode chosen in Step 2.
 

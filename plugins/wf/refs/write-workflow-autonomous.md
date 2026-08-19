@@ -28,25 +28,62 @@ The user picks autonomous when the task suits it, so friction usually means a mi
 
 Split when more than ~8-10 phases would be needed, or a phase can only be written concretely after an earlier one lands, or the combined diff would be too large for one finalize review.
 
-Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phased/roadmap.md`, as plain bullets — a file of its own, one level above `active/`, because the roadmap has to outlive the macro currently being worked: when `/finalize-workflow` moves `active/<slug>/` into `done/`, the roadmap stays where the next `/write-workflow` will look for it.
+Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phased/roadmap.md` — a file of its own, one level above `active/`, because the roadmap has to outlive the macro currently being worked: when `/finalize-workflow` moves `active/<slug>/` into `done/`, the roadmap stays where the next `/write-workflow` will look for it.
+
+**The split is scoped, not just listed.** The moment the split is proposed
+is the only moment the whole programme sits in one context, and a macro
+reduced to a one-line bullet is how a future consumer's requirements die
+(issue #15). So every macro — not only the first — gets a **mini-scope**, at
+`/scope-workflow`'s bar but produced here, automated: ground facts come from
+the codebase (one read-only Explore subagent per area from ~3 up — a fact is
+looked up, never asked), and the decisions that belong to the user are
+batched into ONE AskUserQuestion round — never one interview per macro. The
+format, one block per macro:
 
 ```
 # Roadmap
-- Macro 1 (current): <title> — detailed in active/<slug>/plan.md as Phases 1..N
-- Macro 2: <one-line scope — what it delivers, who consumes it, what it needs from Macro 1>
+## Macro 1 (current): <title> — detailed in active/<slug>/plan.md
+## Macro 2: <title>
+- Objective: <2 lines>
+- Starts from: <the state it assumes standing when it begins>
+- Ends at: <the state it leaves the system in — the border, never the locally convenient stop>
+- Delivers: <what lands, and who consumes it>
+- Consumes: <what it takes, and from which macro>
+- Requires of earlier work: <what it will demand of output built before it — the seeds of their Must not break:>
+- Open decisions: <what must be settled when this macro is planned — recorded, not resolved now>
 ```
 
-The bullet's *who consumes it* is the forward half of the contract: when a
-later `/write-workflow` details a macro, its consumer question (main skill,
-Step 3) is answered against these bullets, and the answer becomes that
-plan's `Must not break:` header — the mechanism that carries a future
-consumer's requirements backwards (`common.md` → *Must not break:*). At
-roadmap creation the whole programme is in one context for the only time:
-name each macro's consumers NOW, while naming them is cheap.
+*Delivers* names the forward half of the contract — what lands and who
+consumes it — and *Requires of earlier work* the backward half: when a later
+`/write-workflow` details a macro, it collects from the LATER macros'
+`Requires` lines everything that touches what this macro builds, and those
+become its `Must not break:` header (`common.md` → *Must not break:*) —
+confirmed from the roadmap, not reconstructed from memory.
+`Starts from:`/`Ends at:` are the **itinerary**: plan a European tour as
+Italy, France, Spain, and the Italy leg must not end in Puglia — internally
+perfect, and stranded at the wrong border.
 
-Keeping it out of `plan.md` also means the launcher cannot mistake a roadmap bullet for a phase line: the separation is structural, not a matter of formatting.
+**The coherence judge.** Before the split is presented, ONE fresh-context
+subagent (Agent tool; read-only; fallback: a general-purpose subagent told
+to stay read-only) gets the mini-scopes ALONE — not the conversation — and
+checks:
 
-The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
+1. **The itinerary first**: the `Ends at:` of every macro ≡ the
+   `Starts from:` of the next. A gap here blocks the presentation — it is
+   the split itself that is wrong.
+2. **The contract graph**: every `Consumes` is delivered by an earlier
+   macro; every `Delivers` has a consumer or is the final deliverable;
+   every `Requires of earlier work` names output some earlier macro
+   actually builds; no two macros contradict each other's semantics (a
+   stack kept parallel by one macro and assumed cut over by another).
+
+Findings → fix the mini-scopes, re-judge ONCE, then present the split.
+Fresh eyes by design: the author of a split is the worst judge of its own
+seams.
+
+Keeping the roadmap out of `plan.md` also means the launcher cannot mistake its blocks for phase lines: the separation is structural (no `[ ]` markers here), not a matter of formatting.
+
+The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight — **starting from its mini-scope**: the `Open decisions` are its scoping agenda, the later macros' `Requires` become its `Must not break:`, and its `Ends at:` is a planning constraint — the last phases must land the system there. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
 
 ## Plan format
 
