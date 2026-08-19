@@ -130,6 +130,19 @@ phase_count() { grep -c "$(phase_re "$1")" "$PLAN" 2>/dev/null || true; }
 phase_any()   { grep -q "$(phase_re "$1")" "$PLAN" 2>/dev/null; }
 phase_lines() { grep -E '^- \[[ x!~>]\] \*\*Phase' "$PLAN" 2>/dev/null; }
 
+# Wall time per session, collected into the summary: "the run felt slow" is
+# not diagnosable from a transcript with no clock — the per-session line says
+# WHICH phase and WHICH model/effort configuration ate the time. $SECONDS is
+# integer in both bash and zsh; the stable EVENT lines are a tested contract
+# and stay untouched by this.
+fmt_secs() { printf '%dm%02ds' "$(($1 / 60))" "$(($1 % 60))"; }
+TIMINGS=""
+add_timing() {  # $1 = label, $2 = elapsed seconds
+  echo "Session wall time: $(fmt_secs "$2") — $1"
+  TIMINGS="${TIMINGS}  $1: $(fmt_secs "$2")
+"
+}
+
 # Pre-loop validation gate. next-phase.py --validate shares the selector's own
 # regexes, so a plan it rejects is one the loop could not drive correctly. Print
 # its output verbatim (no re-wording) and stop before spending a single session.
@@ -381,6 +394,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     # Without it $? would be tee's status and every non-zero claude exit would
     # be read as success.
     set -o pipefail
+    T0=$SECONDS
     # --append-system-prompt LAST: the orchestration tests assert the
     # model/effort/permission/cap sequence contiguously.
     claude -p "$RUN_PROMPT" \
@@ -392,6 +406,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
 
     CLAUDE_EXIT=$?
     set +o pipefail
+    add_timing "phase $NEXT_PHASE ($MODEL/$EFFORT/$MODE_LABEL)" "$((SECONDS - T0))"
     if [ "$CLAUDE_EXIT" -ne 0 ]; then
       echo ""
       echo "claude exited with code $CLAUDE_EXIT. Stopping."
@@ -427,6 +442,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     REPAIR_BUDGET_ARGS=()
     [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
     set -o pipefail
+    T0=$SECONDS
     claude -p "$REPAIR_PROMPT" \
       --model fable \
       --effort max \
@@ -435,6 +451,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-fable.txt"
     REPAIR_EXIT=$?
     set +o pipefail
+    add_timing "repair phase $FAILED_PHASE (fable/max)" "$((SECONDS - T0))"
 
     # Only fall back if the fable session never ran at all (non-zero exit AND no
     # outcome written). If it ran and gave up, it left the marker — do not
@@ -443,12 +460,14 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
       REPAIR_BUDGET_ARGS=()
       [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+      T0=$SECONDS
       claude -p "$REPAIR_PROMPT" \
         --model opus \
         --effort max \
         --permission-mode auto \
         "${REPAIR_BUDGET_ARGS[@]}" \
         --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
+      add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
     fi
 
     if phase_any '!'; then
@@ -519,6 +538,11 @@ echo "========================================="
 echo ""
 phase_lines | head -20
 echo ""
+if [ -n "$TIMINGS" ]; then
+  echo "Session wall times:"
+  printf '%s' "$TIMINGS"
+  echo ""
+fi
 # One commit per phase now, so the run's output is history, not a dirty tree.
 # The base is the commit that ADDED the plan — on an adopted branch it is what
 # separates this workflow from the work that preceded it.

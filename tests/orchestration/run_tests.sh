@@ -173,6 +173,8 @@ assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permi
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
 assert "no repair launched" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
+assert "wall time recorded per session, with the config that ate it" 'grep -qE "Session wall time: [0-9]+m[0-9]{2}s — phase 1 \(sonnet/low/light\)" out.log'
+assert "wall times summarised at the end" 'grep -q "Session wall times:" out.log && grep -qE "  phase 3 \(fable/high/full\): [0-9]+m[0-9]{2}s" out.log'
 # $HOME-independence: the launcher now resolves its selector beside itself, so a
 # run must no longer depend on $HOME. Re-run the happy path with HOME pointing at
 # a nonexistent dir and prove phases still complete and per-phase models still read.
