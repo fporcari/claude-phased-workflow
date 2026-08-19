@@ -17,6 +17,7 @@
 > /run-workflow        # autonomous: the whole plan, unattended
 > /finalize-workflow   # QA, whole-diff review, one clean commit
 > /resume-workflow     # lost? this reads the branch and tells you where you are
+> /help                # the map: from where you are to the command that comes next
 ```
 
 Interactive phases **stop for you**: when a phase leaves you something to check by hand, it commits its work, stays open and waits — your ok is what closes it. Nothing is reported to anyone before you have answered.
