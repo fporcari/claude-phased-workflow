@@ -320,7 +320,10 @@ answers as it answers any message, with the delta (`refs/board.md` → *When it
 is drawn*): a rejection is the moment a board is most tempting and least
 useful — the shape is about to change, so drawing the old one costs tokens to
 show a position nobody will act on. The re-planning itself is a conversation,
-and it happens where the person is.
+and it happens where the person is. A rejection is also a ledger moment
+(*Skill lessons — the wf-lessons ledger*): the design conversation let a bad
+idea through, and where it did is a lesson about the skill, not only about
+this plan.
 
 Note fields the autonomous chain writes on phases, and what consumes them:
 
@@ -491,7 +494,23 @@ asking its own user: the foreman authored the plan and holds the reasons it
 is shaped that way, so it answers better than the human, who would have to
 reconstruct them. The scope is strict: local technical choices and the
 phase's own approval gates stay with the human in the child chat, or
-interactive mode loses its point. Where `stop-work?` forbids the foreman
+interactive mode loses its point.
+
+An ambiguity does not have to be recognized to be routed: **struggle is the
+symptom of one nobody has named**. A phase failing twice against the same
+obstacle, or a chat whose exchange with its user has turned from deciding
+into diagnosing why the approach does not work, stops before the third
+attempt and before the next diagnostic message — checkpoint, then `clarify?`
+carrying the suspected presupposition (*assuming X — does it hold?*): tokens
+spent debating a symptom in the child chat are the cost this routing exists
+to avoid. The answer lands the phase on known ground — the presupposition
+holds → what remains is a defect, and it leaves the chat
+(`refs/phase-execution.md` → *Handing a defect to repair*); it was false →
+the plan is wrong there, and the foreman's decision follows the ordinary
+roads below, a plan edit in the reply or a re-planning of what has not run
+(*Failure and repair notes*).
+
+Where `stop-work?` forbids the foreman
 from judging, here deciding is its FIRST attempt — and the decision takes
 two roads, because the field test saw either one alone die (a permission
 prompt killed one round, an unresolvable address the other; the disk was the
@@ -530,7 +549,10 @@ foreman is an idle chat the message has to wake) → the child re-reads
 `.phased/` — `notes.md` included — before falling back: a committed decision
 found there IS the reply, presented to the human for confirmation with the
 note that the message never arrived; only a silent disk hands the question
-to the human as the foreman's failure to answer.
+to the human as the foreman's failure to answer. A `clarify?` answered is
+also a skill gap made visible — the plan carried an ambiguity nothing
+surfaced earlier — so after the reply the foreman appends a ledger entry,
+best-effort, per *Skill lessons — the wf-lessons ledger* below.
 
 **Replying on the desktop**: the reply travels by `send_message`
 (session-management) with the incoming message's `from` attribute as the
@@ -568,6 +590,41 @@ to `notes.md` under a `## Phase N` heading — why this way, what was rejected.
 That is what `/finalize-workflow`'s lessons pass (its Step 6) reads: executor
 chats are gone by then, and they carry no title to be reached at anyway —
 the file is the only mechanism.
+
+## Skill lessons — the wf-lessons ledger
+
+A misunderstanding that reached the foreman is evidence about a SKILL, not
+only about this plan: a `clarify?` answered means the plan carried an
+ambiguity that `/write-workflow`'s questions did not surface and
+`/execute-phase`'s gate did not catch; a rejected result says the same about
+the design conversation; a repair whose root cause was a plan defect says it
+about the planning again. The plan-level lesson goes to `notes.md` as
+always. The plugin-level lesson would die with the chat, so it goes to a
+ledger at a fixed path — outside every repository, and outside the installed
+plugin, which an update overwrites:
+
+```
+~/.phased/wf-lessons.md
+```
+
+**The foreman writes it**, right after the event that exposed the gap. One
+entry, appended — create the file and its directory on first use:
+
+```
+## <ISO date> — <slug> — skill: <the skill that failed>
+Failure: <what happened, one line>
+Why: <where the skill's own procedure let it through>
+Patch proposal: <section/step> — before-text → after-text
+```
+
+**A proposal, never a patch.** Nothing here edits the plugin: a
+self-diagnosed patch applied automatically is how instructions accumulate
+contradictions. The ledger is consumed in the plugin's own repository — a
+human reads the entries, keeps what deserves keeping, turns it into a real
+skill edit with its own release, and deletes what was consumed.
+
+Best-effort, like every foreman action: write denied, path unreachable →
+skip in silence. A lesson never blocks a reply, a phase, or a run.
 
 ## The reporting register
 

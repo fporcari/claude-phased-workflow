@@ -63,6 +63,8 @@ for Step 5's judge, committed with the phase.
 
 Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it. Same routing mid-phase as at the gate: a blocker that is a plan ambiguity goes to the foreman first (`clarify?`, per `common.md` → *The foreman*), and the ONE question to the user then presents the foreman's decision for confirmation — a rejection travels back up once, per the protocol.
 
+**The stop-loss.** Struggle is itself a routing signal, per the same section of `common.md`: the second failed attempt at one obstacle, or an exchange with the user that has turned from deciding into diagnosing why the approach does not work, stops the work — checkpoint (*WIP checkpoints*), then the suspected presupposition goes up as a `clarify?`; never a third attempt, never another diagnostic message here. The answer decides between the two known exits: a defect leaves the chat (`refs/phase-execution.md` → *Handing a defect to repair*), a wrong plan follows the rejection road.
+
 **When an answer changes the plan itself** — a phase reshaped, a decision reversed, scope moved — the plan edit gets committed as usual, and the foreman chat is told: one `plan changed at phase N` message per the protocol in `common.md` → *The foreman*, best-effort. The father must not discover a deviation at finalize.
 
 ## Step 5: Verify

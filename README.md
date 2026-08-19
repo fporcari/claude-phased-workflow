@@ -160,6 +160,8 @@ The protocol's other question belongs to interactive mode, and its decision poli
 
 Either way you stay in one chat: the foreman never speaks to you directly. And because the decision is committed before the reply travels, a lost message loses nothing: the phase chat re-reads the plan directory before bothering you, and only a silent disk means the question falls back to you exactly as it did before the protocol existed.
 
+The ambiguity does not have to be recognized to be routed. A phase chat that keeps failing against the same obstacle — or finds itself debating with you about *why* something does not work — is showing the symptom of an ambiguity nobody has named: after the second attempt it stops and sends the foreman its suspected presupposition instead of burning your time on diagnosis. The answer lands the phase on known ground — a defect goes to `/repair-phase`, a wrong plan follows the rejection road. And every misunderstanding that reached the foreman leaves a trace beyond this workflow: the foreman appends what failed, why, and a proposed skill patch to `~/.phased/wf-lessons.md` — a ledger a human reviews in the plugin's own repository; nothing patches itself.
+
 ## The plan's markers
 
 | Marker | Meaning |
@@ -216,6 +218,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | Command | When | What it does |
 |---------|------|--------------|
 | `/issue <number>` | starting from a GitHub issue | loads and analyzes it — analysis only, the plan comes from `/write-workflow` |
+| `/help` | which command do I type now? | the map of the plugin: from where the work stands to the command that takes it forward, plus one line per command — reads no state |
 
 Every command declares its own `allowed-tools`, and the test suite fails if a skill instructs a command its allowlist does not permit.
 
@@ -323,6 +326,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | ask where the work stands | `/resume-workflow` | the foreman chat — never the one running a phase |
 | close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
+| find the right command from wherever you are | `/help` | the routing map — reads no state |
 
 **Plan markers** — `[ ]` to do · `[>]` in progress, or done and waiting for your checks (`> Testing:`) · `[x]` done and verified · `[!]` something is demonstrably broken: failed, or under repair · `[~]` blocked on a red baseline nobody owns.
 
@@ -338,6 +342,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.7.0](docs/release-6.7.0.md) | struggle routes up before it burns tokens (the stop-loss), `/help` maps the commands, and every misunderstanding leaves a skill-patch proposal in the wf-lessons ledger |
 | [6.6.0](docs/release-6.6.0.md) | repair splits in two: with you it asks what is wrong and hands the phase back, unattended it closes on its own — and a defect found mid-phase leaves the phase chat |
 | [6.5.0](docs/release-6.5.0.md) | a phase that outgrew its chat closes on what it reached: the `Done:` is corrected to the truth and the foreman grows a phase for the remainder |
 | [6.4.0](docs/release-6.4.0.md) | handing over a long phase is a move you can call, a tool you have not loaded is not a tool that is absent, and a phase chat does not supervise |
