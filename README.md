@@ -19,6 +19,8 @@
 > /resume-workflow     # lost? this reads the branch and tells you where you are
 ```
 
+Interactive phases **stop for you**: when a phase leaves you something to check by hand, it commits its work, stays open and waits — your ok is what closes it. Nothing is reported to anyone before you have answered.
+
 Install in [Getting started](#getting-started); every command, marker and file in the [Cheatsheet](#cheatsheet).
 
 ---
@@ -60,13 +62,13 @@ Then every phase runs in a **brand-new session** that reads the plan and starts 
 
 The plan is the same; what changes is **who verifies**:
 
-- **Interactive** — one phase at a time; you look at the result and say go. Claude Code as you already use it, but with a map.
+- **Interactive** — one phase at a time; you look at the result and say go, and the phase does not close until you have. Claude Code as you already use it, but with a map.
 - **Autonomous** — you launch it and go grocery shopping. "Done" is not declared by whoever wrote the code: a separate checker says it (the loop below). You get a notification when it finishes or when it stops.
 
 |  | Interactive | Autonomous |
 |---|---|---|
 | Who verifies | you, phase by phase | tests, lint, and an independent reviewer |
-| When something fails | you discuss it in the chat | one fresh-eyes repair, then it stops |
+| When something fails | you discuss it in the chat, or send the defect to a repair chat of its own | one fresh-eyes repair, then it stops |
 | Interfaces | a mockup is approved before any code is written | runs straight through with no visual judgment: the eye check lands on the bill, for you, at the end |
 | Login | always the human | always the human — fixed rule, no exceptions |
 
@@ -134,11 +136,11 @@ Messages between chats are best-effort by design — any of them can be lost and
 |---|---|---|---|
 | Foreman | desktop chat | nothing on the code: decisions only | replaceable — its identity lives in `foreman.json`, not in the chat |
 | Inspector | desktop chat | inspection notes | with the chat that launched the run |
-| Phase chat | desktop chat | code + the phase commit | when its phase closes |
+| Phase chat | desktop chat | code + the phase commit | when its phase closes — or earlier, handing over or standing down for a repair |
 | Executor | headless `claude -p` | code + the phase commit | every phase — born with fresh context |
 | Verifier | headless | nothing: read-only, emits findings | after the verdict |
 | UI judge | headless | nothing: compares screenshots to the approved mockup — interactive `ui` phases only | after the verdict |
-| Repair | headless | the fix, one attempt | after the attempt |
+| Repair | desktop chat (`/repair-phase`) or headless (`-agent`) | the fix, one attempt | after the attempt — one chat is one attempt |
 
 ## Succession
 
@@ -316,15 +318,17 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
 | retry a phase that came back `[!]` | `/repair-phase` | one attempt, fresh eyes — `-agent` for the unattended run |
 | chase a defect without burning the phase chat | `/repair-phase` in a new chat | the phase chat stands down, the repair hands back |
-| ask where the work stands | `/resume-workflow` | any time, any chat, read-only |
+| hand a long phase to a fresh chat | say *"pass the baton"* | it commits, writes down the why, and stops |
+| close a phase on what it reached | `/close-phase` | when the rest deserves a phase of its own |
+| ask where the work stands | `/resume-workflow` | the foreman chat — never the one running a phase |
 | close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
 
-**Plan markers** — `[ ]` to do · `[>]` in progress · `[x]` done and verified · `[!]` failed, waiting for you · `[~]` blocked on a red baseline nobody owns.
+**Plan markers** — `[ ]` to do · `[>]` in progress, or done and waiting for your checks (`> Testing:`) · `[x]` done and verified · `[!]` something is demonstrably broken: failed, or under repair · `[~]` blocked on a red baseline nobody owns.
 
 **On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
 
-**Who says "done"** — interactive: you do, phase by phase. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
+**Who says "done"** — interactive: you do, phase by phase, and nothing closes or is reported before you have. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
 
 **Lost?** `/resume-workflow`. It needs the branch, nothing else — not the chat that started it, not the machine it ran on.
 
