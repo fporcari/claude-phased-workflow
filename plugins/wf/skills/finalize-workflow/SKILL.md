@@ -62,7 +62,9 @@ every shape a later macro would have to undo or work around is a finding
 (`common.md` → *Must not break:*). Where the roadmap declares an `Ends at:`
 for this macro, compare it with the state actually delivered — a leg about
 to close in Puglia is caught at the close of the leg, not at the departure
-of the next. This is the last cheap moment to act — the next macro is
+of the next. Contracts in transit across this macro — produced by an
+earlier one, consumed by a later one — are checked the same way: lost
+luggage is a finding. This is the last cheap moment to act — the next macro is
 planned against this commit. Findings feed Step 5's
 review as explicit focus points and the closing report; deep measurement
 (retro-fitted contract tests against the landed code) belongs to `/doctor`,

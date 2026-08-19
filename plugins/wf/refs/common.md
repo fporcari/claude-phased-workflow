@@ -341,6 +341,15 @@ the wrong side of the programme.
   `wf:contract:` skeletons exist for (*Contract tests* above). A constraint
   statable as behaviour is written as a skeleton in the plan's `tests/`,
   owned by the future macro but red against this one's work.
+- **A contract lives from producer to consumer, across everything between.**
+  The dependency structure of a programme is a graph, not a chain: Macro 5
+  may require what Macro 2 builds, with other macros in between. The
+  constraint therefore binds more than its producer — every macro between
+  the one that builds the thing and the one that consumes it inherits the
+  line into its own `Must not break:`, because what is **in transit** must
+  not be lost by a leg it merely crosses. The tour version: you saw the
+  Uffizi on the Italy leg in order to compare them with the Prado on the
+  Spain leg — no leg in between may lose that luggage.
 - **Read at execution.** `/execute-phase`'s compatibility line and the
   shared core's plan-is-context skim treat these lines — and, where a
   roadmap exists, its remaining macro-phases — as premises of the same rank

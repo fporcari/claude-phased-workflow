@@ -2189,10 +2189,18 @@ s38_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S38_A: the mini-scope lost the itinerary fields"
   grep -q 'coherence judge' "$S38_A" 2>/dev/null \
     || echo "$S38_A: the split lost the fresh-eyes judge"
+  grep -q 'in transit' "$S38_A" 2>/dev/null \
+    || echo "$S38_A: the judge reads the graph as a chain (transit rule gone)"
+  grep -q 'in transit' "$2/common.md" 2>/dev/null \
+    || echo "$2/common.md: the contract lost its producer-to-consumer transit rule"
   grep -q 'Requires of earlier work' "$1/write-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/write-workflow/SKILL.md: the consumer question no longer reads the roadmap's Requires"
+  grep -q 'in transit' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: a macro no longer inherits the contracts crossing it"
   grep -q 'Ends at:' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/finalize-workflow/SKILL.md: the macro close no longer checks the delivered border"
+  grep -q 'in transit' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: the macro close no longer checks the luggage in transit"
   return 0
 }
 S38_OUT="$(s38_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -2205,6 +2213,7 @@ S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
 cp -R "$SKILLS_DIR"/. "$S38_MUT/"
 sed '/Ends at:/d' "$S24_REFS/write-workflow-autonomous.md" \
   > "$S38_MUT/refs/write-workflow-autonomous.md"
+cp "$S24_REFS/common.md" "$S38_MUT/refs/common.md"
 assert "S38: the guard fails when the itinerary fields disappear" \
   '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
 rm -rf "$S38_MUT"
@@ -2213,7 +2222,16 @@ S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
 cp -R "$SKILLS_DIR"/. "$S38_MUT/"
 sed 's/coherence judge/vibe check/g' "$S24_REFS/write-workflow-autonomous.md" \
   > "$S38_MUT/refs/write-workflow-autonomous.md"
+cp "$S24_REFS/common.md" "$S38_MUT/refs/common.md"
 assert "S38: the guard fails when the split goes unjudged" \
+  '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
+rm -rf "$S38_MUT"
+# The graph collapses back into a chain — the transit rule disappears.
+S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S38_MUT/"
+cp "$S24_REFS/write-workflow-autonomous.md" "$S38_MUT/refs/write-workflow-autonomous.md"
+sed 's/in transit/nearby/g' "$S24_REFS/common.md" > "$S38_MUT/refs/common.md"
+assert "S38: the guard fails when the transit rule disappears" \
   '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
 rm -rf "$S38_MUT"
 # The macro closes without looking at its own border.

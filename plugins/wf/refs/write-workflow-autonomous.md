@@ -76,6 +76,11 @@ checks:
    every `Requires of earlier work` names output some earlier macro
    actually builds; no two macros contradict each other's semantics (a
    stack kept parallel by one macro and assumed cut over by another).
+   The edges hop: a `Requires` may point several legs back, and every
+   macro the edge crosses inherits the constraint — what is in transit
+   must not be lost by a leg it merely crosses (`common.md` →
+   *Must not break:*, producer-to-consumer rule). Flag any intermediate
+   macro whose scope plausibly destroys what crosses it.
 
 Findings → fix the mini-scopes, re-judge ONCE, then present the split.
 Fresh eyes by design: the author of a split is the worst judge of its own

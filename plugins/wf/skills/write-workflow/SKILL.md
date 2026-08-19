@@ -80,9 +80,12 @@ where a requirement can be stated as behaviour; "nobody yet" is written
 down too. Field semantics live once in `common.md` → *Must not break:*.
 On a roadmap carrying mini-scopes, the answer starts there, confirmed
 rather than reconstructed: collect the lines of `Requires of earlier work`
-from the later macros that touch this plan's output, and take the macro's
-own `Ends at:` as a planning constraint — the last phases must land the
-system at that border.
+from the later macros that touch this plan's output, **inherit the
+contracts in transit across this macro** — produced by an earlier one,
+consumed by a later one, they enter this plan's `Must not break:` too
+(`common.md` → *Must not break:*, producer-to-consumer rule) — and take
+the macro's own `Ends at:` as a planning constraint: the last phases must
+land the system at that border.
 
 **Sizing.** The boundary depends on the mode chosen in Step 2.
 

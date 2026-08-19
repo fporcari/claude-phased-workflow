@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.12.0 — 2026-08-19
+
+The programme is a graph, not a chain: Macro 5 may require what Macro 2 builds with other macros in between, so a contract lives from producer to consumer and every macro it crosses inherits it into its own `Must not break:` — you saw the Uffizi on the Italy leg to compare them with the Prado on the Spain leg, and no leg in between may lose that luggage. The coherence judge flags intermediate macros whose scope plausibly destroys what crosses them, each macro's planning inherits the contracts in transit, and finalize's roadmap check treats lost luggage as a finding.
+
 ## 6.11.0 — 2026-08-19
 
 The macro split is scoped, not just listed — the split moment is the only one with the whole programme in a single context: every macro gets a mini-scope (objective, `Starts from:`/`Ends at:`, `Delivers`, `Consumes`, `Requires of earlier work`, open decisions) with user questions batched once, a fresh-context coherence judge checks the itinerary first (each `Ends at:` must be the next `Starts from:` — the Italy leg must not end in Puglia) and the contract graph second, and downstream the consumer question reads the later macros' `Requires` lines instead of memory while finalize compares the state actually delivered with the declared border.
