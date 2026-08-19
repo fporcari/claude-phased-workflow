@@ -1,5 +1,12 @@
 # Archived benchmark runs — provenance
 
+> **Verification status, 2026-08-19:** every archived run predates the 6.x
+> tier — the contract-tests flow (6.8.0), the doctor's blind retro-fit
+> (6.9.0), the programme-contract graph (6.10–6.12) and the consumer split
+> (6.14.0) are **spec-verified only** (static + mutation guards, zero
+> behavioural runs). The prepared, not-yet-run scenarios that would close the
+> gap live in `../scenarios-6x/`.
+
 Every directory here is a real paid session, and none of them can be reproduced.
 So what matters is knowing **which version of the chain each one actually
 measured**, because until `84f68df` the harness could not tell you: `bench.sh`
