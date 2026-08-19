@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.10.1 — 2026-08-19
+
+The programme contract reaches the unattended path too — the one macro-phases actually run on: the light-mode goal contract now names `Must not break:` as later phases of the same rank, and `/run-workflow`'s inspector reads the header and the roadmap's remaining macros in its per-phase coherence look.
+
 ## 6.10.0 — 2026-08-19
 
 A future consumer's contract travels backwards (issue #15): the plan header gains `Must not break:` — contracts owned by later macro-phases, filled by planning's new consumer question and backed by `wf:contract:` skeletons — the gate's compatibility line and the plan-is-context skim rank it with pending-phase premises, `/finalize-workflow` checks the landed macro against the roadmap's remaining bullets (now carrying *who consumes it*), and `/doctor` turns a consumer measured late into skeletons run against what an earlier macro built — the reds are the measured gap.

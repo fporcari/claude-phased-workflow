@@ -2113,9 +2113,13 @@ echo "== S37: a future consumer's contract travels backwards =="
 # remaining macros as premises of pending-phase rank. (c) finalize runs the
 # roadmap check at macro close, and the doctor can turn a consumer measured
 # late into skeletons run against what an earlier macro built.
-s37_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+s37_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints one line per violation
   grep -q '^## Must not break:' "$2/common.md" 2>/dev/null \
     || echo "$2/common.md: missing the 'Must not break:' section"
+  grep -q 'Must not break' "$3" 2>/dev/null \
+    || echo "$3: the light contract no longer carries the programme contract"
+  grep -q 'Must not break' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/run-workflow/SKILL.md: the inspector coherence look no longer reads the programme contract"
   grep -q 'consumer question' "$1/write-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/write-workflow/SKILL.md: planning lost the consumer question"
   grep -q 'who consumes it' "$2/write-workflow-autonomous.md" 2>/dev/null \
@@ -2130,7 +2134,7 @@ s37_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$1/doctor/SKILL.md: the doctor lost the late-consumer road"
   return 0
 }
-S37_OUT="$(s37_guard "$SKILLS_DIR" "$S24_REFS")"
+S37_OUT="$(s37_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
 [ -z "$S37_OUT" ] || echo "  offending: $S37_OUT"
 assert "S37: the programme contract is single-source and read at gate, close and doctor" \
   '[ -z "$S37_OUT" ]'
@@ -2143,7 +2147,7 @@ sed 's/^## Must not break:.*/## Nice to keep/' "$S24_REFS/common.md" \
 cp "$S24_REFS/phase-execution.md" "$S37_MUT/refs/phase-execution.md"
 cp "$S24_REFS/write-workflow-autonomous.md" "$S37_MUT/refs/write-workflow-autonomous.md"
 assert "S37: the guard fails when common.md stops owning the field" \
-  '[ -n "$(s37_guard "$S37_MUT" "$S37_MUT/refs")" ]'
+  '[ -n "$(s37_guard "$S37_MUT" "$S37_MUT/refs" "$RUNNER_SRC")" ]'
 rm -rf "$S37_MUT"
 # Planning stops asking who consumes the work.
 S37_MUT="$(mktemp -d)"
@@ -2151,7 +2155,7 @@ cp -R "$SKILLS_DIR"/. "$S37_MUT/"
 sed -i.bak '/consumer question/d' "$S37_MUT/write-workflow/SKILL.md" \
   && rm -f "$S37_MUT/write-workflow/SKILL.md.bak"
 assert "S37: the guard fails when planning drops the consumer question" \
-  '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS")" ]'
+  '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
 rm -rf "$S37_MUT"
 # The macro closes without looking at the roadmap.
 S37_MUT="$(mktemp -d)"
@@ -2159,7 +2163,13 @@ cp -R "$SKILLS_DIR"/. "$S37_MUT/"
 sed -i.bak '/roadmap check/d' "$S37_MUT/finalize-workflow/SKILL.md" \
   && rm -f "$S37_MUT/finalize-workflow/SKILL.md.bak"
 assert "S37: the guard fails when the macro close skips the roadmap" \
-  '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS")" ]'
+  '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
+rm -rf "$S37_MUT"
+# The light contract sheds the programme contract.
+S37_MUT="$(mktemp -d)"
+sed 's/Must not break/nice to keep/g' "$RUNNER_SRC" > "$S37_MUT/run-workflow.sh"
+assert "S37: the guard fails when the light contract sheds the programme contract" \
+  '[ -n "$(s37_guard "$SKILLS_DIR" "$S24_REFS" "$S37_MUT/run-workflow.sh")" ]'
 rm -rf "$S37_MUT"
 
 echo ""
