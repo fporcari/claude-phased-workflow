@@ -89,9 +89,17 @@ A phase that reached its `Done:` closes through the `close-phase` skill (Skill t
 
 A phase ending `[!]` or `[~]` never routes through `close-phase`: record and commit it directly, exactly as the shared core (`refs/phase-execution.md`) specifies, and send the foreman message per `common.md` → *The foreman*, best-effort.
 
-## Context window
+## Handing over
 
-The user strongly dislikes compaction — act before it happens. When the phase isn't done and the context is filling (or it already compacted once), offer: *"⚠️ The context is filling up. Open a new chat and run /execute-phase again. Shall I save the partial work in a commit first?"* On yes: checkpoint exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
+A long phase outlives its chat, and the handover is a move the user can call at any time — *"pass the baton"*, no reason needed — not only a reaction to a full context. Offer it too, since the user strongly dislikes compaction: when the phase isn't done and the context is filling (or it already compacted once), *"⚠️ The context is filling up. Open a new chat and run /execute-phase again. Shall I hand over first?"*
+
+Handing over is three things, in order:
+
+1. **Checkpoint** exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
+2. **Write down what four keys cannot hold**: decisions taken and why, roads tried that do not work, what the next chat must not redo — into `notes.md` under the phase's `## Phase N` heading (`common.md` → *The foreman*, per-phase rationale), committed with the checkpoint. This is the part that dies with the chat if nobody writes it.
+3. **Stop.** Say to open a new chat on `/wf:execute-phase`, and touch nothing further: from here the working tree belongs to whoever picks the phase up.
+
+The arriving chat finds the phase `[>]`, and may reach back to this one while it is alive — the shared core's *Resuming a `[>]` phase* says how, and answering that message is the last thing this chat does.
 
 ## Rules
 

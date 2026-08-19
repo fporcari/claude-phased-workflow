@@ -141,11 +141,27 @@ gets redone or contradicted.
 it over; this is *how*: read the `> WIP:` note, run
 `git log --oneline` over the phase's `partial` commits and
 `git diff <commit>..HEAD`, and continue from `next:` toward the phase's
-own `Done:`. What `done:` claims and the diff confirms is not redone. A
-`[>]` phase with no `> WIP:` note and no `partial` commit carries no
-evidence — reset it to `[ ]` with
+own `Done:`. What `done:` claims and the diff confirms is not redone.
+
+**Look for the chat that had it, before reading the tree as an orphan.** A
+phase chat titles itself `wf:<slug>:phase-N — <title>`, so it is findable in
+`list_sessions` like the foreman is (`common.md` → *The foreman*, including
+the rule that a tool you have not loaded is not a tool that is absent). Alive
+→ one message: *hand over — commit anything uncommitted, tell me what is not
+on disk, and stop working on this phase.* Its answer is a **supplement**: the
+`> WIP:` note and the diff stay the authority, and a contradiction is settled
+by the tree. Unreachable, or silent for ~3 minutes → carry on with the disk,
+exactly as if it had never existed.
+
+That message is what makes an uncommitted tree safe. Two chats on one working
+tree are not a handover problem, they are two writers: the arriving one must
+be able to say *stop*, rather than discover the traces afterwards.
+
+A `[>]` phase with no `> WIP:` note and no `partial` commit carries no
+evidence — and if its chat is gone too, reset it to `[ ]` with
 `> Execution interrupted, phase available for retry` rather than guessing
-what a dead session did.
+what a dead session did. Uncommitted changes with nothing to explain them are
+never guessed at either: report them and ask.
 
 Checkpoints are not phase commits: `/finalize-workflow` squashes them with
 everything else, and red-baseline attribution keeps matching against the

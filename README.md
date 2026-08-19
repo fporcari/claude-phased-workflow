@@ -142,7 +142,7 @@ Messages between chats are best-effort by design — any of them can be lost and
 
 ## Succession
 
-`foreman.json` says who commands: if the foreman chat dies, the first `/resume-workflow` takes command by reading the file — with an optional `handover.md` as a note of consignment, optional by design: succession must work even from a dead chat, on the plan and the notes alone.
+`foreman.json` says who commands: if the foreman chat dies, the first `/resume-workflow` takes command by reading the file. Succession never depends on the old chat answering — it works on the plan and the notes alone. The same holds one level down: a phase chat hands over through a `partial` commit, a `> WIP:` note and its rationale in `notes.md`, and the chat that picks the phase up asks the old one only for what the disk could not carry.
 
 If a phase dies midway (a `[>]` marker left hanging), the committed evidence of the work in progress lets the next session resume from there: the phase is reopened, not the story reconstructed.
 
@@ -332,6 +332,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.4.0](docs/release-6.4.0.md) | handing over a long phase is a move you can call, a tool you have not loaded is not a tool that is absent, and a phase chat does not supervise |
 | [6.3.0](docs/release-6.3.0.md) | a rejected result travels up as its own line and re-plans the phases that have not run — no `[x]` and no report before you have answered |
 | [6.2.1](docs/release-6.2.1.md) | rejecting a result at the test gate no longer marks the phase `[!]`: its tests are green, so what changes is the decomposition |
 | [6.2.0](docs/release-6.2.0.md) | the board becomes a strip you read: the controls go back to the conversation, which now carries remarks upward on its own |

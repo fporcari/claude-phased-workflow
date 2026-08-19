@@ -1386,6 +1386,30 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     grep -q 'set_session_title' "$S30_F" 2>/dev/null \
       || echo "$S30_F: does not title its chat (set_session_title)"
   done
+  # 6.4.0 — a deferred tool is not an absent tool. The whole channel bug came
+  # back through the word EXIST: list_sessions is invisible until ToolSearch
+  # loads it, so "that tool does not exist" read true and licensed ListAgents.
+  grep -q 'missing from your tool list is not' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: absence is no longer bound to a failed ToolSearch"
+  grep -q 'ToolSearch' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the section does not name ToolSearch as the way to look"
+  # 6.4.0 — the mirror of the foreman rule: a phase chat does not supervise.
+  # /resume-workflow takes command where no session bears the title, so a phase
+  # chat running it becomes a foreman that also executes.
+  grep -q 'executes; it does not supervise' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: nothing stops a phase chat from supervising"
+  for S30_F in "$1"/*/SKILL.md; do
+    if grep -qE 'resume-workflow[^|]*in this (chat|session)|run /wf:resume-workflow here' \
+        "$S30_F" 2>/dev/null; then
+      echo "$S30_F: recommends /resume-workflow in the current chat (a phase chat does not supervise)"
+    fi
+  done
+  # 6.4.0 — handing over: a named move, its rationale on disk, and the arriving
+  # chat able to tell a live one to commit and stand down.
+  grep -q '^## Handing over' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: the handover is still only a context-window reaction"
+  grep -q 'stop working on this phase' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the arriving chat cannot tell a live one to stand down"
   # 6.1.0 — a message is answered with the delta, not by redrawing the board,
   # and the launch command lost the argument that only existed to title a chat.
   grep -q 'answers with the DELTA' "$S30_C" 2>/dev/null \
@@ -1521,6 +1545,34 @@ cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the clarify timeout stops re-reading the disk" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# EXIST comes back, and with it the reading that a deferred tool is absent.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/missing from your tool list is not/absent from your tool list is not/' \
+  "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
+assert "S30: the guard fails when absence stops meaning a failed ToolSearch" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# The phase chat is allowed to supervise again.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/executes; it does not supervise/does what it likes/' \
+  "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
+assert "S30: the guard fails when a phase chat may supervise" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# A skill sends the user to /resume-workflow in the chat running the phase.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+printf '\nWhen the plan needs reshaping, run /wf:resume-workflow here.\n' \
+  >> "$S30_MUT/execute-phase/SKILL.md"
+assert "S30: the guard fails when a skill supervises from the phase chat" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # The section goes back to claiming a chat cannot rename itself — the stale
 # field test that cost the protocol its one manual step.

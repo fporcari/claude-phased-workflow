@@ -349,6 +349,19 @@ not implement. Nothing is enforced — a user who executes a phase in the forema
 chat lands in the degenerate branches below (*when this chat IS the foreman*),
 which keep working. Those are a fallback, never advice.
 
+**And the mirror: a phase chat executes; it does not supervise.** No skill
+ever recommends `/resume-workflow` — or any re-planning of the whole plan —
+inside a chat that is executing a phase: a *Next step* naming it is always
+worded as the foreman chat, or a fresh one if the foreman is gone. The hazard
+is concrete, not stylistic: `/resume-workflow` takes command when no session
+bears the title, so a phase chat running it writes `foreman.json` in its own
+name and becomes a foreman that is also executing — the very thing the
+paragraph above forbids, reached from the other side. A child that believes
+the foreman is dead is usually a child that looked on the wrong channel
+(*Sending to the foreman*, below): check that before concluding anything.
+What a phase chat may always do is edit the plan for its OWN phase, which
+mid-phase it is the only writer of.
+
 **The foreman's identity lives in a file, and its address is its TITLE.**
 A session cannot read its own id, but every *other* session sees both title
 and id in `list_sessions` — so the title is the one address that works. It is
@@ -406,12 +419,17 @@ groups the workflow, and each chat says which phase it is holding.
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
 that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
-(≥ 2.1.224). **`list_sessions` first, always**: fall back to `ListAgents`
-only where that tool does not EXIST, never because it came back without the
-title — a chat carrying both toolsets (Claude Code inside the desktop app)
-is neither world, and the environment tilts the wrong way: `ListAgents` is
-always loaded while `list_sessions`/`send_message` sit behind `ToolSearch`,
-so the branch that works is the one you have to go and fetch. Field-tested
+(≥ 2.1.224). **`list_sessions` first, always** — and *first* means before any
+conclusion about who is reachable. **A tool missing from your tool list is not
+a missing tool.** `list_sessions` and `send_message` are deferred behind
+`ToolSearch` while `ListAgents` is always loaded, so the branch that works is
+the one you have to go and fetch and the branch that fails is already there.
+Absence is proved by a `ToolSearch` that comes back with nothing, never by a
+tool list that does not mention it, and never by a channel that ran and
+returned no match — an empty `ListAgents` says nothing about a desktop
+session. A chat carrying both toolsets (Claude Code inside the desktop app)
+is neither world, and this is the whole reason the rule is written as an
+order. Field-tested
 on 2.1.226: a `claude -p` sub-session carries both tools but its
 `ListAgents` sees NO desktop sessions — CLI and desktop are separate worlds,
 so unattended children still end at the silent skip and the foreman
