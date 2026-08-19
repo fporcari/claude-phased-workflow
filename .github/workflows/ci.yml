@@ -6,9 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+# A newer push supersedes the run of the older one: without this, a run hung
+# on an external hiccup (apt mirrors, above all) queues up zombies for hours.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    # A hung apt-get otherwise holds the runner for GitHub's 6-hour default.
+    timeout-minutes: 15
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -19,7 +27,9 @@ jobs:
           python-version: '3.12'
 
       - name: Install zsh (not preinstalled on the runner)
-        run: sudo apt-get update && sudo apt-get install -y zsh
+        run: |
+          sudo apt-get update -o Acquire::Retries=3
+          sudo apt-get install -y -o Acquire::Retries=3 zsh
 
       - name: Install flake8
         run: pip install flake8
