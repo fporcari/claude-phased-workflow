@@ -281,6 +281,14 @@ touched files must come back empty.
 **`[!]` is a machine verdict, never a human one.** A phase is `[!]` when its
 `Done:` came back red and the bounded attempts are exhausted — that is what
 `/repair-phase` reads, and its whole job is to make a `Done:` green again.
+
+What the marker asserts is that **something is demonstrably broken**: a red
+signal, or a defect that reproduces. A person is often the one who *saw* it,
+and mid-phase it is `/repair-phase` that writes it down and marks the phase
+`[!]` with their confirmation, for as long as the repair lasts — that is not a
+human verdict, it is a human pointing at a machine-checkable fact. The verdict
+a person cannot make is the other one, below: a phase whose result they judge
+wrong with everything green.
 **A person judging the result wrong is a different thing**, including when
 they say the phase is broken: if the `Done:` passed, the machine has nothing
 to repair. Marking it `[!]` sends the next session — or an unattended run,

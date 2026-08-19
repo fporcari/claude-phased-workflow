@@ -137,6 +137,31 @@ trusting the story. Free prose is what made resume unreliable: a fresh
 session reading vague prose reinterprets, and reinterpretation is how work
 gets redone or contradicted.
 
+## Handing a defect to repair
+
+A defect found mid-phase is not the phase chat's to chase. Debugging is the
+most context-hungry thing a phase does, and the chat holding the phase is the
+one place where that context is expensive: it is carrying the objective, the
+approval, the files and everything decided so far. So the defect goes to a
+chat that exists only for it and is thrown away after.
+
+The phase chat's part is two moves and no diagnosis:
+
+1. **Checkpoint** — `partial` commit and `> WIP:` note, as above. The repair
+   works on committed code, never on top of edits nobody recorded.
+2. **Stand down** and say so: the working tree belongs to the repair chat
+   until it hands back. Two chats editing one tree is the failure mode the
+   whole protocol is shaped to avoid, and a phase chat that keeps tinkering
+   "meanwhile" is that failure.
+
+The rest belongs to `/repair-phase` in the new chat: it asks the human what is
+wrong — their account, not the phase chat's diagnosis — records it as
+`> Issue:`, marks the phase `[!]` on their confirmation for as long as the
+repair lasts, and hands the phase back `[>]` with a `> Repaired:` note when
+the human says it is fixed. **One chat is one attempt**: a repair that eats a
+whole context without a green signal is not a bug but a plan problem, and it
+goes to the foreman as `blocked` rather than to a second repair.
+
 ## When the phase outgrows its chat
 
 A phase that does not fit in one context was sized wrong — the plan's own

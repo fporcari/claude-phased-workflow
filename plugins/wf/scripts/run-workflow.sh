@@ -160,7 +160,7 @@ fi
 CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
 if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
   PHASE_PROMPT='/goal Use the execute-phase-agent skill to execute exactly ONE phase of the active plan under .phased/active/. Condition: the plan gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
-  REPAIR_PROMPT='/goal Use the repair-phase skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
+  REPAIR_PROMPT='/goal Use the repair-phase-agent skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
   # Light mode for Effort=low phases: no skill ritual — the goal contract
   # carries the chain invariants itself (bookkeeping notes included: what the
   # contract omits, the session silently drops). The one invariant it did NOT
@@ -177,7 +177,7 @@ if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V 
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
   PHASE_PROMPT="/$PLUGIN_NAME:execute-phase-agent"
-  REPAIR_PROMPT="/$PLUGIN_NAME:repair-phase"
+  REPAIR_PROMPT="/$PLUGIN_NAME:repair-phase-agent"
   LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
 

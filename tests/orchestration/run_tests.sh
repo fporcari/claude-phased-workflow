@@ -153,7 +153,7 @@ assert "phases 2-3 use FULL skill contract" '[ "$(grep -c -- "-p /goal Use the e
 assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
-assert "no repair launched" '! grep -q "repair-phase skill" .claude/invocations.log'
+assert "no repair launched" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 # $HOME-independence: the launcher now resolves its selector beside itself, so a
 # run must no longer depend on $HOME. Re-run the happy path with HOME pointing at
 # a nonexistent dir and prove phases still complete and per-phase models still read.
@@ -167,7 +167,7 @@ echo "== S2: phase fails -> fable repair succeeds -> loop continues =="
 setup S2; fixture2
 printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "repair via /goal on fable cap 300" 'grep -q -- "-p /goal Use the repair-phase skill.*--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 300" .claude/invocations.log'
+assert "repair via /goal on fable cap 300" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 300" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
 assert "loop continued to phase 2 (both low -> light)" '[ "$(grep -c -- "-p /goal Execute the next pending" .claude/invocations.log)" = 2 ]'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
@@ -193,14 +193,14 @@ EOF
 printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "stops citing prior repair" 'grep -q "repair was already attempted" out.log'
-assert "no repair call" '! grep -q "repair-phase skill" .claude/invocations.log'
+assert "no repair call" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 
 echo "== S5: fable repair crashes -> opus fallback repairs =="
 setup S5; fixture2
 printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'exit 1' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "fallback message" 'grep -q "retrying with opus" out.log'
-assert "opus repair cap 200" 'grep -q -- "-p /goal Use the repair-phase skill.*--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 200" .claude/invocations.log'
+assert "opus repair cap 200" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 200" .claude/invocations.log'
 assert "repair succeeded, loop continued" 'grep -q "Repair succeeded" out.log && [ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
 echo "== S6: no progress -> stop =="
@@ -232,7 +232,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' > .claude/mock-queue
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
-assert "S7b: namespaced /wf:repair-phase prompt used" 'grep -q -- "-p /wf:repair-phase --model fable" .claude/invocations.log'
+assert "S7b: namespaced /wf:repair-phase-agent prompt used" 'grep -q -- "-p /wf:repair-phase-agent --model fable" .claude/invocations.log'
 assert "S7b: no bare-slash repair prompt" '! grep -q -- "-p /repair-phase" .claude/invocations.log'
 assert "S7b: repair succeeded on the old CLI too" 'grep -q "Repair succeeded" out.log'
 
@@ -276,7 +276,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "no phase session started" '! grep -q "execute-phase-agent skill\|Execute the next pending" .claude/invocations.log'
-assert "repair launched" 'grep -q "repair-phase skill" .claude/invocations.log'
+assert "repair launched" 'grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
 assert "phase 1 repaired" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
 
@@ -290,7 +290,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" reopen; exit 0' 'python3 "$OPS" repair_ok; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "progress guard did NOT fire" '! grep -q "No progress in the last run" out.log'
-assert "repair launched after reopen" 'grep -q "repair-phase skill" .claude/invocations.log'
+assert "repair launched after reopen" 'grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "reopened phase back to [x]" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
 
 echo "== S12: baseline red and unattributable -> [~] stops the run =="
@@ -299,7 +299,7 @@ printf '%s\n' 'python3 "$OPS" blocked; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "blocked stop message" 'grep -q "blocked \[~\]" out.log'
 assert "single call only" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 1 ]'
-assert "no repair attempted" '! grep -q "repair-phase skill" .claude/invocations.log'
+assert "no repair attempted" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 
 echo "== S13: xhigh effort -> cap 250 =="
 setup S13
@@ -484,7 +484,7 @@ printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0
 finish_setup; run
 assert "S18: both real phases reached [x]" '[ "$(grep -c "^- \[x\] \*\*Phase" .phased/active/toy/plan.md)" = 2 ]'
 assert "S18: exactly 2 phase sessions ran" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 2 ]'
-assert "S18: the [!] decoy launched no repair" '! grep -q "repair-phase skill" .claude/invocations.log'
+assert "S18: the [!] decoy launched no repair" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "S18: the [!] decoy did not report a failed phase" '! grep -q "A phase failed" out.log'
 assert "S18: the [~] decoy did not block the run" '! grep -q "A phase is blocked" out.log'
 assert "S18: no false no-progress stop" '! grep -q "No progress in the last run" out.log'
@@ -1118,7 +1118,7 @@ rm -rf "$S26_MUT"
 # namespace — the exact regression that once left the whole suite green.
 S26_MUT="$(mktemp -d)"
 cp "$S26_SCRIPTS"/*.sh "$S26_MUT/"
-sed -i.bak 's|REPAIR_PROMPT="/\$PLUGIN_NAME:repair-phase"|REPAIR_PROMPT="/repair-phase"|' \
+sed -i.bak 's|REPAIR_PROMPT="/\$PLUGIN_NAME:repair-phase-agent"|REPAIR_PROMPT="/repair-phase"|' \
   "$S26_MUT/run-workflow.sh" && rm -f "$S26_MUT/run-workflow.sh.bak"
 grep -q 'REPAIR_PROMPT="/repair-phase"' "$S26_MUT/run-workflow.sh" \
   || echo "  S26 mutation did not apply — the assignment shape changed"
@@ -1386,6 +1386,17 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     grep -q 'set_session_title' "$S30_F" 2>/dev/null \
       || echo "$S30_F: does not title its chat (set_session_title)"
   done
+  # 6.6.0 — repair splits by environment, not by method: the base asks the
+  # human and can hand a phase back, the -agent variant is [!]-only and closes
+  # on its own, and the launcher must reach the unattended one.
+  grep -q 'Two ways in' "$1/repair-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/repair-phase/SKILL.md: repair has no interactive way in"
+  grep -q 'Ask what is wrong' "$1/repair-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/repair-phase/SKILL.md: no longer asks the human what is wrong"
+  grep -q 'Handing a defect to repair' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the phase chat has no way to hand a defect out"
+  [ -f "$1/repair-phase-agent/SKILL.md" ] \
+    || echo "$1/repair-phase-agent: the unattended repair variant is missing"
   # 6.5.0 — a phase that outgrows its chat has two answers, and the cleaner one
   # closes it on the sub-result reached. The refusal stays where it belongs: a
   # RED criterion is repair territory, an UNREACHED one is a narrowed Done:.
@@ -1556,6 +1567,22 @@ cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the clarify timeout stops re-reading the disk" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# The unattended repair variant is gone, so the launcher would reach the
+# interactive one and hang on its first question.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+rm -rf "$S30_MUT/repair-phase-agent"
+assert "S30: the guard fails when the unattended repair variant is missing" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+# Repair goes back to grading itself: no question at the start.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed -i.bak 's/## Step 1: Ask what is wrong/## Step 1: Read the failure/' \
+  "$S30_MUT/repair-phase/SKILL.md" && rm -f "$S30_MUT/repair-phase/SKILL.md.bak"
+assert "S30: the guard fails when repair stops asking the human" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # Closing short disappears: an overrun phase has nowhere to go but a handover.
 S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"

@@ -206,7 +206,8 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 |---------|------|--------------|
 | `/run-workflow` | the whole plan, unattended | pre-flight review, then one fresh `/goal`-guarded session per phase; the launching chat stays on as the run's inspector |
 | `/execute-phase-agent` | one phase, unattended | the same phase execution with nobody to ask: convergence loop, independent verification where it earns its keep, `Done:` gate |
-| `/repair-phase` | a phase came back `[!]` | fresh-eyes repair: reads `> Issue:`/`> Attempted:`, may not repeat a listed attempt |
+| `/repair-phase` | a phase came back `[!]`, or you found a defect mid-phase | fresh-eyes repair in a chat of its own — asks you what is wrong, never repeats a listed attempt, and you decide when it is fixed. Closes an `[!]` phase; hands a `[>]` one back to the chat that owns it |
+| `/repair-phase-agent` | the same, unattended | `[!]` only, no questions, the outcome is the run's exit condition |
 
 ### Auxiliary
 
@@ -313,7 +314,8 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | close a phase whose work is finished | `/close-phase` | interactive — usually called for you |
 | run the whole plan unattended | `/run-workflow` | autonomous |
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
-| retry a phase that came back `[!]` | `/repair-phase` | autonomous — one attempt, fresh eyes |
+| retry a phase that came back `[!]` | `/repair-phase` | one attempt, fresh eyes — `-agent` for the unattended run |
+| chase a defect without burning the phase chat | `/repair-phase` in a new chat | the phase chat stands down, the repair hands back |
 | ask where the work stands | `/resume-workflow` | any time, any chat, read-only |
 | close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
@@ -332,6 +334,7 @@ One note per release, in [docs/](docs/):
 
 | Version | In one line |
 |---|---|
+| [6.6.0](docs/release-6.6.0.md) | repair splits in two: with you it asks what is wrong and hands the phase back, unattended it closes on its own — and a defect found mid-phase leaves the phase chat |
 | [6.5.0](docs/release-6.5.0.md) | a phase that outgrew its chat closes on what it reached: the `Done:` is corrected to the truth and the foreman grows a phase for the remainder |
 | [6.4.0](docs/release-6.4.0.md) | handing over a long phase is a move you can call, a tool you have not loaded is not a tool that is absent, and a phase chat does not supervise |
 | [6.3.0](docs/release-6.3.0.md) | a rejected result travels up as its own line and re-plans the phases that have not run — no `[x]` and no report before you have answered |
