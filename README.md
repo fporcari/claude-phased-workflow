@@ -338,47 +338,13 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 
 ## Changelog
 
-One note per release, in [docs/](docs/):
+One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
-| [6.7.0](docs/release-6.7.0.md) | struggle routes up before it burns tokens (the stop-loss), `/help` maps the commands, and every misunderstanding leaves a skill-patch proposal in the wf-lessons ledger |
-| [6.6.0](docs/release-6.6.0.md) | repair splits in two: with you it asks what is wrong and hands the phase back, unattended it closes on its own — and a defect found mid-phase leaves the phase chat |
-| [6.5.0](docs/release-6.5.0.md) | a phase that outgrew its chat closes on what it reached: the `Done:` is corrected to the truth and the foreman grows a phase for the remainder |
-| [6.4.0](docs/release-6.4.0.md) | handing over a long phase is a move you can call, a tool you have not loaded is not a tool that is absent, and a phase chat does not supervise |
-| [6.3.0](docs/release-6.3.0.md) | a rejected result travels up as its own line and re-plans the phases that have not run — no `[x]` and no report before you have answered |
-| [6.2.1](docs/release-6.2.1.md) | rejecting a result at the test gate no longer marks the phase `[!]`: its tests are green, so what changes is the decomposition |
-| [6.2.0](docs/release-6.2.0.md) | the board becomes a strip you read: the controls go back to the conversation, which now carries remarks upward on its own |
-| [6.1.0](docs/release-6.1.0.md) | a phase with checks left to you does not close itself: work committed, phase open, `/close-phase` on your ok — and the foreman answers a phase report with the delta, not a redrawn board |
-| [6.0.3](docs/release-6.0.3.md) | the chat titles itself — the foreman's rename was the last manual step — and the messaging channel is tried `list_sessions` first |
-| [6.0.2](docs/release-6.0.2.md) | the clarify decision survives a dead reply: committed to notes first, the plan edit travels in the reply, the child applies it on acceptance |
-| [6.0.1](docs/release-6.0.1.md) | field-tested `clarify?`: the foreman replies before touching the plan, and take-command advises the permissions an unattended reply needs |
-| [6.0.0](docs/release-6.0.0.md) | the plugin is renamed `wf`: the command prefix stops swallowing the skill name — `/wf:execute-phase` |
-| [5.18.0](docs/release-5.18.0.md) | `clarify?`: plan ambiguities in interactive phases go to the foreman first; the human confirms the decision in the child chat |
-| [5.17.1](docs/release-5.17.1.md) | the foreman commands and does not execute: no skill sends the next phase back to the chat that holds the plan |
-| [5.17.0](docs/release-5.17.0.md) | new methods are born marked, their names reviewed in one map — one keypress to accept all — and `/close-phase` closes the phase |
-| [5.16.0](docs/release-5.16.0.md) | the QA pass becomes a tickable checklist page, and finalize's whole-diff review asks its depth — light where a human eye already landed |
-| [5.15.0](docs/release-5.15.0.md) | the plugin stops choosing the conversation language: English canon for every shipped wording, the language follows the user |
-| [5.14.0](docs/release-5.14.0.md) | closing reports get a shape — verdict plus one line per finding — a comprehension-probe gate, and a report page with detail behind a click |
-| [5.13.0](docs/release-5.13.0.md) | workers read the whole plan as context, the inspector watches cross-phase coherence, and reports speak the decision-maker's language |
-| [5.12.0](docs/release-5.12.0.md) | the `ui` tag: mockup gate at approval, browser pass with human login, and the ui-judge |
-| [5.11.0](docs/release-5.11.0.md) | the run inspector: per-phase events relayed to the foreman, and the stop-work question |
-| [5.10.1](docs/release-5.10.1.md) | the foreman field-tested: the title is the address, the user's rename is the one manual step |
-| [5.10.0](docs/release-5.10.0.md) | the foreman: one chat commands the workflow, phase chats report to it over cross-session messaging |
-| [5.9.0](docs/release-5.9.0.md) | a skill that waits says so: the gate line, one gate at finalize, no fake questions |
-| [5.8.0](docs/release-5.8.0.md) | the resume path leaves evidence a fresh session can diff, and the version claim is checked |
-| [5.7.1](docs/release-5.7.1.md) | `problema` is two things, and only one of them is repairable |
-| [5.7.0](docs/release-5.7.0.md) | the board becomes a working view, shared by planning and supervision |
-| [5.6.1](docs/release-5.6.1.md) | the board's controls become mandatory, and the chip opens in the plan's root |
-| [5.6.0](docs/release-5.6.0.md) | `Run:` hint on interactive plans, and a board in `/resume-workflow` |
-| [5.5.0](docs/release-5.5.0.md) | the rename reaches the guide, and busts the plugin cache |
-| [5.4.0](docs/release-5.4.0.md) | invocation discipline, and `/scope-workflow` |
-| [5.3.0](docs/release-5.3.0.md) | per-model prompt steering for autonomous sessions |
-| [5.2.1](docs/release-5.2.1.md) | act on the adversarial review of 5.1.0–5.2.0 |
-| [5.2.0](docs/release-5.2.0.md) | interactive mode as a first-class mode |
-| [5.1.0](docs/release-5.1.0.md) | the unattended run |
-| [5.0.0](docs/release-5.0.0.md) | command surface, plan location, workspace lifecycle (breaking) |
-| [4.1.0](docs/release-4.1.0.md) | acting on the external review of 4.0.0 |
+| 6.7.0 | struggle routes up before it burns tokens (the stop-loss), `/help` maps the commands, and every misunderstanding leaves a skill-patch proposal in the wf-lessons ledger |
+| 6.6.0 | repair splits in two: with you it asks what is wrong and hands the phase back, unattended it closes on its own — and a defect found mid-phase leaves the phase chat |
+| 6.5.0 | a phase that outgrew its chat closes on what it reached: the `Done:` is corrected to the truth and the foreman grows a phase for the remainder |
 
 The deep rationale — why the commands are shaped the way they are, the design decisions and the trade-offs behind them — lives in [docs/design-notes.md](docs/design-notes.md) and [docs/loop-engineering.md](docs/loop-engineering.md). The Italian source of this README's structure is [docs/architettura-it.html](docs/architettura-it.html).
 
