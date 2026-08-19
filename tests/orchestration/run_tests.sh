@@ -2336,6 +2336,33 @@ assert "S40: the guard fails when the report stops declaring the channel" \
   '[ -n "$(s40_guard "$S40_MUT" "$S24_REFS")" ]'
 rm -rf "$S40_MUT"
 
+echo "== S41: the doctrine mass is measured, and growth pays its budget =="
+# check_doc_mass.py: a skill's closure (SKILL.md + every ref it cites) is the
+# doctrine a session ingests before working; the 6.14.0 split exists because
+# that mass had outgrown what a session reliably follows. The ceiling turns
+# the instruction-mass arms race into a number a merge has to look at.
+S41_OUT="$(python3 "$TESTDIR/check_doc_mass.py" "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S41_OUT" ] || echo "  offending: $S41_OUT"
+assert "S41: every skill closure fits the doc-mass budget" '[ -z "$S41_OUT" ]'
+# Mutations. A ref bloats past the budget for its consumers.
+S41_MUT="$(mktemp -d)"; mkdir -p "$S41_MUT/refs"; cp "$S24_REFS"/*.md "$S41_MUT/refs/"
+python3 - "$S41_MUT/refs/contracts.md" <<'EOF'
+import sys
+with open(sys.argv[1], 'a') as f:
+    f.write("padding line\n" * 1200)
+EOF
+assert "S41: the guard fails when a ref bloats past the budget" \
+  '[ -n "$(python3 "$TESTDIR/check_doc_mass.py" "$SKILLS_DIR" "$S41_MUT/refs")" ]'
+rm -rf "$S41_MUT"
+# A skill cites a ref that does not ship.
+S41_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S41_MUT/"
+printf '\nSee ${CLAUDE_PLUGIN_ROOT}/refs/ghost-layer.md for details.\n' \
+  >> "$S41_MUT/execute-phase/SKILL.md"
+assert "S41: the guard fails on a citation of a ref that does not ship" \
+  '[ -n "$(python3 "$TESTDIR/check_doc_mass.py" "$S41_MUT" "$S24_REFS")" ]'
+rm -rf "$S41_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

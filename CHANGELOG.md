@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.16.0 — 2026-08-19
+
+The doctrine mass becomes a measured quantity: `check_doc_mass.py` computes every skill's closure — its SKILL.md plus every ref it cites, the doctrine a session ingests before working — and S41 fails the suite when a closure exceeds the 1500-line budget or cites a ref that does not ship (`--report` prints the table). Growth now pays its budget at merge time instead of degrading sessions in the field; today's worst case is close-phase at 1392.
+
 ## 6.15.0 — 2026-08-19
 
 The messaging channel is declared, not discovered: `foreman.md` gains *Channel floors* — the single source of the version floors the messaging layer rides (CLI `SendMessage` ≥ 2.1.224; the launcher's own 2.1.139/2.1.170 floors stay runtime-detected) — and the state-reporting skills (`/resume-workflow`'s report, `/run-workflow`'s first relay) say in one line which branch is alive in this installation, so a dead channel reads as declared degradation instead of surfacing later as a silent skip. The compatibility baseline carries the floor table, so the daily update check flags any drift. S40 guards it all, proven by mutation.
