@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.7.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.7.1** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -343,6 +343,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.7.1 | a repair says so on the plan: the chat names the phase it is repairing, and `[!]` stops being ambiguous between broken and being-worked-on |
 | 6.7.0 | struggle routes up before it burns tokens (the stop-loss), `/help` maps the commands, and every misunderstanding leaves a skill-patch proposal in the wf-lessons ledger |
 | 6.6.0 | repair splits in two: with you it asks what is wrong and hands the phase back, unattended it closes on its own — and a defect found mid-phase leaves the phase chat |
 | 6.5.0 | a phase that outgrew its chat closes on what it reached: the `Done:` is corrected to the truth and the foreman grows a phase for the remainder |

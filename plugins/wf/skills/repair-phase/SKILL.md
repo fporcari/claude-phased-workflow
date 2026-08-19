@@ -1,6 +1,6 @@
 ---
 description: Repair a broken phase with fresh eyes, in a chat of its own
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, ToolSearch, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, ToolSearch, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_session_mgmt__set_session_title
 ---
 
 # Repair Phase
@@ -30,6 +30,16 @@ Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" 
 - **No `[!]`, one `[>]`** → the mid-phase case. Write what you said as `> Issue:` and **ask to confirm the phase goes `[!]` while under repair** — one AskUserQuestion, because it is a real state change: while it holds, nothing else in the plan may start, and any chat that looks at the plan sees why. On confirmation, commit that edit alone.
 - **Neither** → nothing to repair here: say so and stop.
 - It already has `> Repair attempted:` → say "Repair already attempted for Phase N — the next look is yours" and stop. Never loop repairs.
+
+**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`common.md` → *The foreman*). **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
+
+**Then write the marker and commit it**, on the phase:
+
+```
+  > Repair started: <ISO timestamp> — chat wf:<slug>:repair-N
+```
+
+`[!]` on its own does not say whether anybody is on the phase, so a foreman reopened cold reads it as broken-and-available and can send a second repair into this working tree — two chats, one tree. The note is on disk and committed, which is the part a message to the foreman cannot promise (`common.md` → *Failure and repair notes*). In the `[>]` case it rides the same commit as the `[!]` transition; in the `[!]` case it is a commit of its own — `wf(phase N): under repair`.
 
 **Hard rule: never repeat an attempt listed in `> Attempted:`.** If your diagnosis leads to essentially one of those fixes, the diagnosis is wrong — dig deeper.
 
@@ -79,6 +89,8 @@ On your ok, record the outcome for the way in:
 ```
   > Repair attempted: <ISO timestamp> — <updated diagnosis: what you ruled out, what the human should look at first>
 ```
+
+**The `> Repair started:` marker goes, whatever the outcome** — it described a repair in progress, and the outcome supersedes it: remove it in the same edit that records the result, on a phase handed back `[>]` too. A marker left behind describes a chat that no longer exists.
 
 Either way, commit — the plan is tracked, and leaving the tree dirty would block the next phase's baseline:
 

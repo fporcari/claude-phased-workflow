@@ -85,7 +85,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`common.md` → *Verification*): report those, and that the phase closes when they pass. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`common.md` → *Verification*): report those, and that the phase closes when they pass. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two chats in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
@@ -96,7 +96,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 
 **Healthy plan → stop here.** No `[!]`/`[~]`, no stale `[>]`, no drift: the report ends with the next step and nothing to resume — no questions asked.
 
-Something needs action → propose it via AskUserQuestion: reset a stale `[>]` to `[ ]`, apply a re-phasing, or hand the `[!]` to `/repair-phase`.
+Something needs action → propose it via AskUserQuestion: reset a stale `[>]` to `[ ]`, apply a re-phasing, or hand the `[!]` to `/repair-phase` — the last one only when no live repair holds it (point 1).
 
 ## Step 4: Apply approved plan edits (only if approved)
 

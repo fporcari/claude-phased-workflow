@@ -332,6 +332,13 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 - `> Attempted:` — numbered list of fixes tried, each with its error
   signature. Mandatory on `[!]`: it is the input of `/repair-phase`, which
   must NOT repeat those attempts.
+- `> Repair started: <ISO timestamp> — chat <title>` — written by
+  `/repair-phase` the moment it takes the phase under repair, committed with
+  that transition, and removed by the edit that records the outcome. It is
+  what separates a phase somebody is repairing right now from one left
+  broken: `[!]` alone does not say, so a foreman reading the plan cold would
+  send a second repair into the same working tree. A marker whose chat is
+  gone is stale, and a stale one means the repair can be taken up again.
 - `> Repaired:` — on a phase turned `[x]` by `/repair-phase`: the actual
   root cause and why the previous attempts missed it.
 - `> Repair attempted: <ISO timestamp> — <diagnosis>` — appended by
@@ -432,6 +439,12 @@ the same call at the start of the phase. Nothing addresses them — only the
 foreman's title is an address — so this is legibility, not protocol: the
 session list stops being a wall of auto-generated summaries, one prefix
 groups the workflow, and each chat says which phase it is holding.
+
+A repair chat titles itself too, `wf:<slug>:repair-N — <phase title>`, and the
+`repair-` prefix is not cosmetic: `/repair-phase` sends its outcome to
+`wf:<slug>:phase-N` by exact match when it hands a phase back, so a repair
+wearing that title would address itself. Unattended repairs skip the title —
+a `claude -p` session has neither the tools nor a reader for it.
 
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to

@@ -263,6 +263,7 @@ def recommend(phases):
 
 KNOWN_NOTE_FIELDS = (
     'Done', 'Files', 'Issue', 'Attempted', 'Repaired', 'Repair attempted',
+    'Repair started',
     'Review', 'Blocked', 'WIP', 'Testing', 'In execution since', 'Verify',
     'Verified',
 )

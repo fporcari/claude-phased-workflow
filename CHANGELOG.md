@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.7.1 — 2026-08-19
+
+A repair says so on the plan: the chat names the phase it is repairing, and `[!]` stops being ambiguous between broken and being-worked-on.
+
 ## 6.7.0 — 2026-08-19
 
 Struggle routes up before it burns tokens (the stop-loss), `/help` maps the commands, and every misunderstanding leaves a skill-patch proposal in the wf-lessons ledger.
