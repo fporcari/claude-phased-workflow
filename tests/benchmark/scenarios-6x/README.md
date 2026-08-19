@@ -1,12 +1,14 @@
-# Benchmark scenarios for the 6.8–6.16 tier — prepared, NOT YET RUN
+# Benchmark scenarios for the 6.8–6.16 tier
 
-**Verification status of the 6.8–6.16 layers: spec-verified only.** The
-contract-test flow, `/doctor`'s blind retro-fit and the coherence judge ship
-with static and mutation guards — proof that the prose is coherent, not that
-the behaviour happens. No archived run under `results/` measures them: the
-archive stops at 2026-07-19, pre-6.x. These scenarios exist to close that
-gap; until one is run and archived, every claim about the tier's behaviour
-is a claim about the spec.
+**Status: one n=1 smoke run, 3/3 passed** (`../results/run-2026-08-19-6x-smoke/`,
+against the installed 6.12.0 release) — sanity, not statistics; the n=3+
+conclusions are still unbought.
+
+The contract-test flow, `/doctor`'s blind retro-fit and the coherence judge
+ship with static and mutation guards — proof that the prose is coherent, not
+that the behaviour happens. These scenarios exist to buy the behavioural
+evidence; each archived run under `results/` says which conclusions its n
+can support.
 
 Each scenario is a fixed stimulus plus an external verdict, same discipline
 as `bench.sh`: never trust the session self-report, classify from the tree
