@@ -52,6 +52,11 @@ Each mismatch is a finding: *which pending phase, which premise, what the
 tree says instead*. This is the retrospective counterpart of
 `/run-workflow`'s per-phase coherence look — done once, over the whole plan.
 
+On a programme (`.phased/roadmap.md` exists) the audit widens: the plan's
+`Must not break:` header and the roadmap's remaining macro-phases are
+premises of the same rank (`common.md` → *Must not break:*) — check the
+landed work against them too.
+
 ## Step 3: Contract-test integrity (where the plan carries them)
 
 Per `common.md` → *Contract tests*: for each `[x]` phase with
@@ -90,6 +95,16 @@ agents with two different blindfolds:
 
 Pending phases get authorship only: their tests stay red by construction and
 become the gate of their own phase, exactly as on a plan born with them.
+
+**A consumer measured late** is the same machinery pointed backwards: when a
+later macro-phase's requirements are known — measured during its planning,
+or stated by the user in this chat — hand them to the blind author as
+`wf:contract:` skeletons against the component that must serve them
+(`common.md` → *Must not break:*), and let the sighted verifier run them
+against what the earlier macro actually built. The reds enumerate exactly
+which requirements the landed shape cannot carry — "the decision must be
+revisited" becomes a measured list, which is what the remedy phases are
+then written from.
 
 Commit the authored tests and the filled bodies together, ONE commit:
 `wf: doctor — contract tests retro-fitted (<n> phases, <m> red)`.

@@ -43,10 +43,12 @@ Read the phase's `Pattern:` example first — don't re-explore what planning alr
 
 **The gate carries a compatibility line.** Before presenting, read the
 pending phases — their `Files:`, `Details:`, and contract tests where the
-plan carries them (`common.md` → *Contract tests*) — and state in ONE line
-what this phase's approach leaves standing for them: the data shape a later
-phase builds on, the file a later `Files:` names, the behaviour a later test
-asserts. A conflict found here is a plan ambiguity: it goes up as `clarify?`
+plan carries them (`common.md` → *Contract tests*) — plus the plan's
+`Must not break:` header and, when `.phased/roadmap.md` exists, its
+remaining macro-phases (`common.md` → *Must not break:*): premises of the
+same rank. State in ONE line what this phase's approach leaves standing for
+them: the data shape a later phase builds on, the file a later `Files:`
+names, the behaviour a later test asserts. A conflict found here is a plan ambiguity: it goes up as `clarify?`
 (below) before any approval is asked — approving an approach nobody checked
 against the plan's own future is how a phase betrays it.
 

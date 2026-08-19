@@ -44,7 +44,10 @@ shape) is decided in favour of the phases that come after, and a choice
 that would force a successor to undo or work around it is the wrong choice
 even when it is locally cheaper. Where the plan carries contract tests, the
 pending phases' `tests/phase-M/` are the sharpest statement of where the
-work is heading — read the ones this phase's choices could touch. Scope is
+work is heading — read the ones this phase's choices could touch. The
+plan's `Must not break:` header and, on a programme, the roadmap's
+remaining macro-phases are successors of the same rank (`refs/common.md` →
+*Must not break:*): a choice that breaks one is wrong at the same price. Scope is
 unchanged: knowing Phase 5 exists never means implementing a piece of it
 here.
 

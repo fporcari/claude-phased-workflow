@@ -71,6 +71,14 @@ intact. Authoring them is plan-time work: derive each phase's tests from its
 `Details:` and `Done:`, in the repo's own test style, and present them with
 the plan.
 
+**The consumer question.** When `.phased/roadmap.md` has unstarted
+macro-phases — or the discussion names later work that will consume this
+plan's output — ask it with the Decisions batch: *who consumes what this
+workflow builds, and what will they require of it?* The answer becomes the
+plan's `Must not break:` header lines, backed by skeleton contract tests
+where a requirement can be stated as behaviour; "nobody yet" is written
+down too. Field semantics live once in `common.md` → *Must not break:*.
+
 **Sizing.** The boundary depends on the mode chosen in Step 2.
 
 *Interactive plans — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
@@ -121,6 +129,7 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: interactive
+Must not break: <one line per contract owned by later work — common.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
 [2-3 sentences]

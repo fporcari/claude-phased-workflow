@@ -2105,6 +2105,63 @@ assert "S36: the guard fails when help stops routing to the doctor" \
   '[ -n "$(s36_guard "$S36_MUT")" ]'
 rm -rf "$S36_MUT"
 
+echo "== S37: a future consumer's contract travels backwards =="
+# Three 6.10.0 invariants (issue #15). (a) common.md owns 'Must not break:' —
+# the plan header field carrying contracts owned by later macro-phases — and
+# write-workflow asks the consumer question that fills it. (b) The gate's
+# compatibility line and the shared core treat those lines and the roadmap's
+# remaining macros as premises of pending-phase rank. (c) finalize runs the
+# roadmap check at macro close, and the doctor can turn a consumer measured
+# late into skeletons run against what an earlier macro built.
+s37_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  grep -q '^## Must not break:' "$2/common.md" 2>/dev/null \
+    || echo "$2/common.md: missing the 'Must not break:' section"
+  grep -q 'consumer question' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: planning lost the consumer question"
+  grep -q 'who consumes it' "$2/write-workflow-autonomous.md" 2>/dev/null \
+    || echo "$2/write-workflow-autonomous.md: the roadmap bullet lost its consumers"
+  grep -q 'Must not break:' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: the compatibility line no longer reads the programme contract"
+  grep -q 'Must not break:' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: plan-is-context no longer ranks the programme contract"
+  grep -q 'roadmap check' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: the macro close lost the roadmap check"
+  grep -q 'measured late' "$1/doctor/SKILL.md" 2>/dev/null \
+    || echo "$1/doctor/SKILL.md: the doctor lost the late-consumer road"
+  return 0
+}
+S37_OUT="$(s37_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S37_OUT" ] || echo "  offending: $S37_OUT"
+assert "S37: the programme contract is single-source and read at gate, close and doctor" \
+  '[ -z "$S37_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+# common.md stops owning the field.
+S37_MUT="$(mktemp -d)"; mkdir -p "$S37_MUT/refs"
+cp -R "$SKILLS_DIR"/. "$S37_MUT/"
+sed 's/^## Must not break:.*/## Nice to keep/' "$S24_REFS/common.md" \
+  > "$S37_MUT/refs/common.md"
+cp "$S24_REFS/phase-execution.md" "$S37_MUT/refs/phase-execution.md"
+cp "$S24_REFS/write-workflow-autonomous.md" "$S37_MUT/refs/write-workflow-autonomous.md"
+assert "S37: the guard fails when common.md stops owning the field" \
+  '[ -n "$(s37_guard "$S37_MUT" "$S37_MUT/refs")" ]'
+rm -rf "$S37_MUT"
+# Planning stops asking who consumes the work.
+S37_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S37_MUT/"
+sed -i.bak '/consumer question/d' "$S37_MUT/write-workflow/SKILL.md" \
+  && rm -f "$S37_MUT/write-workflow/SKILL.md.bak"
+assert "S37: the guard fails when planning drops the consumer question" \
+  '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS")" ]'
+rm -rf "$S37_MUT"
+# The macro closes without looking at the roadmap.
+S37_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S37_MUT/"
+sed -i.bak '/roadmap check/d' "$S37_MUT/finalize-workflow/SKILL.md" \
+  && rm -f "$S37_MUT/finalize-workflow/SKILL.md.bak"
+assert "S37: the guard fails when the macro close skips the roadmap" \
+  '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS")" ]'
+rm -rf "$S37_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

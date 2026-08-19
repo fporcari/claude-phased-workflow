@@ -33,8 +33,16 @@ Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phas
 ```
 # Roadmap
 - Macro 1 (current): <title> — detailed in active/<slug>/plan.md as Phases 1..N
-- Macro 2: <one-line scope — what it delivers, what it needs from Macro 1>
+- Macro 2: <one-line scope — what it delivers, who consumes it, what it needs from Macro 1>
 ```
+
+The bullet's *who consumes it* is the forward half of the contract: when a
+later `/write-workflow` details a macro, its consumer question (main skill,
+Step 3) is answered against these bullets, and the answer becomes that
+plan's `Must not break:` header — the mechanism that carries a future
+consumer's requirements backwards (`common.md` → *Must not break:*). At
+roadmap creation the whole programme is in one context for the only time:
+name each macro's consumers NOW, while naming them is cheap.
 
 Keeping it out of `plan.md` also means the launcher cannot mistake a roadmap bullet for a phase line: the separation is structural, not a matter of formatting.
 
@@ -48,6 +56,7 @@ The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff)
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: autonomous
+Must not break: <one line per contract owned by later work — common.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
 [2-3 sentences]

@@ -55,6 +55,16 @@ No staging heuristics any more, and no guessing: the workflow is exactly `git lo
 
 The tree must be clean. If `git status --short` shows anything, a phase closed without committing or someone edited by hand — report it and ask whether to include it before going on; do not sweep it in silently.
 
+**On a programme (`.phased/roadmap.md` exists): the roadmap check.** Compare
+what this macro actually built — the diff above, read against the plan's
+`Must not break:` lines — with the remaining macro-phases' bullets: every
+shape a later macro would have to undo or work around is a finding
+(`common.md` → *Must not break:*). This is the last cheap moment to act —
+the next macro is planned against this commit. Findings feed Step 5's
+review as explicit focus points and the closing report; deep measurement
+(retro-fitted contract tests against the landed code) belongs to `/doctor`,
+not here.
+
 Consolidation happens at Step 8, once the review has passed, and its shape depends on Step 1:
 
 - **Dedicated branch** — the branch *is* the workflow, so the parent takes it whole with `git merge --squash`. Nothing to reset here.

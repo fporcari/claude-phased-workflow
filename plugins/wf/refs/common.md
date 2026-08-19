@@ -313,6 +313,49 @@ A plan without the option keeps today's behaviour: tests are written by each
 phase, and the cross-phase direction is prose
 (`refs/phase-execution.md` → *The plan is context*).
 
+## Must not break: — contracts owned by the future
+
+A plan header field, one line per constraint, recording what this workflow
+must leave intact — including, on a programme split into macro-phases, what
+a LATER macro-phase will require of the work built here. **This section is
+the single source of the contract** — the skills cite it, they never
+restate it.
+
+The field exists because hindsight flows forward and constraints do not:
+each macro is planned by its own `/write-workflow` after the previous one
+landed, and nothing else carries a future consumer's requirements backwards.
+The failure it answers is documented (issue #15): a data shape chosen
+correctly for one macro's own scope could not carry what a macro planned
+much later measured it needs — nothing destroyed, but the cost landed on
+the wrong side of the programme.
+
+- **Written by `/write-workflow` — the consumer question.** When
+  `.phased/roadmap.md` has unstarted macro-phases (or the discussion names
+  later work that will consume this plan's output), planning asks: *who
+  consumes what this workflow builds, and what will they require of it?*
+  The answer lands here; genuinely unknown is written as `Must not break:
+  unknown — consumers not yet measured`, because an EMPTY field on a macro
+  whose output another one consumes is itself a finding.
+- **Backed by skeletons where it can be.** A future consumer's requirement
+  is "behaviour decided, bindings unknown" by definition — the exact case
+  `wf:contract:` skeletons exist for (*Contract tests* above). A constraint
+  statable as behaviour is written as a skeleton in the plan's `tests/`,
+  owned by the future macro but red against this one's work.
+- **Read at execution.** `/execute-phase`'s compatibility line and the
+  shared core's plan-is-context skim treat these lines — and, where a
+  roadmap exists, its remaining macro-phases — as premises of the same rank
+  as a pending phase's: a choice that breaks one goes up as `clarify?`
+  before any approval.
+- **Checked at the close of the macro.** `/finalize-workflow`'s roadmap
+  check compares what was built against this field and the roadmap's
+  remaining macro-phases, and reports every shape a later macro would have
+  to undo — the last cheap moment to act, since the next macro is planned
+  against this commit.
+- **Audited by `/doctor`, retroactively too.** A consumer measured late can
+  be handed to the doctor as contract skeletons against the component that
+  must serve it: the reds enumerate exactly which requirements the landed
+  shape cannot carry.
+
 ## New-method markers and minimality
 
 Two disciplines on every method or function a phase CREATES. They hold in
