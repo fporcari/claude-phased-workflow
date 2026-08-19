@@ -2347,6 +2347,10 @@ assert "S42: README announces the shipped version ($S42_V)" \
   'grep -q "\*\*Version $S42_V\*\*" "$TESTDIR/../../README.md"'
 assert "S42: CHANGELOG opens with the shipped version" \
   '[ "$(grep -m1 -o "^## [0-9.]*" "$TESTDIR/../../CHANGELOG.md")" = "## $S42_V" ]'
+# The marketplace manifest is a SECOND copy of the version (metadata + the
+# plugin entry) — it sat at 6.12.0 for four releases while plugin.json moved.
+assert "S42: marketplace.json carries the shipped version everywhere" \
+  '[ "$(grep -c "\"version\": \"$S42_V\"" "$TESTDIR/../../.claude-plugin/marketplace.json")" = "$(grep -c "\"version\":" "$TESTDIR/../../.claude-plugin/marketplace.json")" ]'
 
 echo "== S41: the doctrine mass is measured, and growth pays its budget =="
 # check_doc_mass.py: a skill's closure (SKILL.md + every ref it cites) is the
