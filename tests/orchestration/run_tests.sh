@@ -2049,6 +2049,62 @@ assert "S35: the guard fails when the gate loses the compatibility line" \
   '[ -n "$(s35_guard "$S35_MUT" "$S24_REFS")" ]'
 rm -rf "$S35_MUT"
 
+echo "== S36: the doctor diagnoses blind and never reopens a closed phase =="
+# Three 6.9.0 invariants. (a) /doctor ships and is reachable: help and
+# resume-workflow both route to it. (b) Its retro-fit authors the tests
+# BLIND — from the plan's promises, never from the code, whose deviations a
+# sighted author would ratify — while the verifier that fills skeleton
+# bodies is the only one allowed to see the code. (c) It diagnoses only:
+# read-only on source, findings reported and persisted to notes.md, a red
+# retro-test on a [x] phase never reopens it (result-rejected family, never
+# [!]).
+s36_guard() {  # $1 = a skills dir; prints one line per violation
+  S36_D="$1/doctor/SKILL.md"
+  [ -f "$S36_D" ] || { echo "$S36_D: the doctor skill is missing"; return 0; }
+  grep -q 'ratifies the code' "$S36_D" 2>/dev/null \
+    || echo "$S36_D: the retro-fit lost its blindness rationale"
+  grep -q 'Read-only on source code' "$S36_D" 2>/dev/null \
+    || echo "$S36_D: the doctor may edit source"
+  grep -q 'never reopened' "$S36_D" 2>/dev/null \
+    || echo "$S36_D: a red retro-test may reopen a closed phase"
+  grep -q 'Contract tests' "$S36_D" 2>/dev/null \
+    || echo "$S36_D: does not cite common.md's contract-tests contract"
+  grep -q '/wf:doctor' "$1/help/SKILL.md" 2>/dev/null \
+    || echo "$1/help/SKILL.md: the map lost /wf:doctor"
+  grep -q '/doctor' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/resume-workflow/SKILL.md: the map lost /doctor"
+  return 0
+}
+S36_OUT="$(s36_guard "$SKILLS_DIR")"
+[ -z "$S36_OUT" ] || echo "  offending: $S36_OUT"
+assert "S36: the doctor ships blind, read-only, and routed from the maps" \
+  '[ -z "$S36_OUT" ]'
+# Mutations re-run the SAME guard on a copy.
+# The author agent goes sighted.
+S36_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S36_MUT/"
+sed -i.bak '/ratifies the code/d' "$S36_MUT/doctor/SKILL.md" \
+  && rm -f "$S36_MUT/doctor/SKILL.md.bak"
+assert "S36: the guard fails when the author agent goes sighted" \
+  '[ -n "$(s36_guard "$S36_MUT")" ]'
+rm -rf "$S36_MUT"
+# The doctor starts fixing what it finds.
+S36_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S36_MUT/"
+sed -i.bak 's/Read-only on source code/Fix what you find/' "$S36_MUT/doctor/SKILL.md" \
+  && rm -f "$S36_MUT/doctor/SKILL.md.bak"
+assert "S36: the guard fails when the doctor may fix source" \
+  '[ -n "$(s36_guard "$S36_MUT")" ]'
+rm -rf "$S36_MUT"
+# The maps stop routing to it.
+S36_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S36_MUT/"
+sed -i.bak '/wf:doctor/d' "$S36_MUT/help/SKILL.md" \
+  && rm -f "$S36_MUT/help/SKILL.md.bak"
+assert "S36: the guard fails when help stops routing to the doctor" \
+  '[ -n "$(s36_guard "$S36_MUT")" ]'
+rm -rf "$S36_MUT"
+
 echo ""
 echo "RESULT: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

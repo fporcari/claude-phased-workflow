@@ -43,6 +43,10 @@ and the table below are the canon of what to say, not a page to paste.
   the two cases above.
 - **Lost, or resuming after days** — `/wf:resume-workflow` in a fresh chat:
   it needs the branch, nothing else, and it names the next command.
+- **The phases feel incompatible with each other** — or the plan predates
+  contract tests and you want the verdict instead of the suspicion →
+  `/wf:doctor`: coherence audit, contract-test integrity, and a blind
+  retro-fit of the missing tests, verified phase by phase.
 - **Every phase is `[x]`** — `/wf:finalize-workflow`: verification, the QA
   pass of the deferred human checks, one consolidated commit on the parent —
   then PR, merge, or leave it.
@@ -62,6 +66,7 @@ and the table below are the canon of what to say, not a page to paste.
 | `/wf:execute-phase-agent` | one phase, unattended — `/wf:run-workflow`'s worker |
 | `/wf:repair-phase-agent` | repair the first `[!]` phase, unattended |
 | `/wf:resume-workflow` | where the work stands, and which command takes it forward |
+| `/wf:doctor` | is the work still coherent with the plan — audit, test integrity, blind retro-fit |
 | `/wf:finalize-workflow` | verify everything, QA pass, consolidate into one commit |
 | `/wf:finalize-workflow-agent` | the read-only finalize verification, in a clean sub-session |
 | `/wf:pull-request` | open the PR after a maintainer-grade review |

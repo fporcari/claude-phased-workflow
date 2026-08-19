@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.9.0 — 2026-08-19
+
+`/doctor` asks whether the work is still coherent with the plan: a cheap audit of pending premises against what actually landed, contract-test integrity on plans that have them, and — on plans that predate 6.8.0 — a blind retro-fit: one agent authors the missing tests from the plan's promises alone (a sighted author would ratify the code's own deviations), a second fills the skeleton bodies against the real code and runs them phase by phase. Red on a completed phase is a finding, never a fix and never a reopen — remedies stay with `/resume-workflow`.
+
 ## 6.8.0 — 2026-08-19
 
 The contract between phases becomes enforceable: planning can author every phase's tests up front — executable where the surface is settled, skeletons (`wf:contract:` lines + red body) where it is not — `ui` checks are pre-established in the plan, the gate states in one line what the phase leaves standing for the pending ones, and any change of contract routes through the foreman: no child rewrites what the plan authored.
