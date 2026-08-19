@@ -71,7 +71,19 @@ cp "$RUNNER_SRC" "$OT/runner.sh"
 cp "$TESTDIR/../../plugins/wf/scripts/next-phase.py" "$OT/next-phase.py"
 bash -n "$OT/runner.sh" || { echo "runner syntax error"; exit 1; }
 export OPS="$OT/mockops.py"
-PASS=0; FAIL=0
+
+# Pre-flight: prerequisites are declared, never left to fail as raw FAILs — a
+# missing tool must read as a prerequisite, not as a regression. python3 and
+# git are hard requirements; zsh is only needed by the zsh-shell scenarios,
+# which SKIP (counted apart from FAIL) where it is not installed.
+for tool in python3 git; do
+  command -v "$tool" >/dev/null 2>&1 \
+    || { echo "PREREQ: $tool not installed — the suite cannot run."; exit 2; }
+done
+HAVE_ZSH=""
+command -v zsh >/dev/null 2>&1 && HAVE_ZSH=1
+
+PASS=0; FAIL=0; SKIP=0
 
 fixture3() {  # 3 phases: sonnet/opus/fable with low/medium/high effort
 cat > .phased/active/toy/plan.md <<'EOF'
@@ -125,6 +137,11 @@ setup() {
   DIR="$OT/scenarios/$1"
   rm -rf "$DIR"; mkdir -p "$DIR/.claude" "$DIR/.phased/active/toy"; cd "$DIR" || exit 1
   git init -q
+  # Local identity: on a machine with no global git identity every commit in a
+  # throwaway repo dies as "fatal: Failed to resolve 'HEAD'" — 8 assertions red
+  # for a reason no message named.
+  git config user.email wf-tests@harness.local
+  git config user.name "wf test harness"
 }
 
 finish_setup() {
@@ -142,6 +159,8 @@ assert() {
   if eval "$2"; then PASS=$((PASS+1)); echo "  ok: $1"
   else FAIL=$((FAIL+1)); echo "  FAIL: $1"; fi
 }
+
+skip() { SKIP=$((SKIP+1)); echo "  SKIP: $1"; }
 
 echo "== S1: happy path — light mode for low effort, full for the rest =="
 setup S1; fixture3
@@ -256,14 +275,18 @@ assert "all phases [x]" '[ "$(grep -c "^- \\[x\\]" .phased/active/toy/plan.md)" 
 assert "roadmap left out of the plan file" '! grep -q "Macro 2" .phased/active/toy/plan.md'
 
 echo "== S9: zsh (the real invocation shell) — model/effort/cap selection survives =="
-setup S9; fixture3
-printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
-finish_setup; run_zsh
-assert "zsh: phase1 sonnet/low cap 50" 'grep -q -- "--model sonnet --effort low --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
-assert "zsh: phase2 opus/medium cap 100" 'grep -q -- "--model opus --effort medium --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
-assert "zsh: phase3 fable/high cap 400" 'grep -q -- "--model fable --effort high --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
-assert "zsh: no shell error leaked" '! grep -qi "bad math expression\|parse error" out.log'
-assert "zsh: all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
+if [ -n "$HAVE_ZSH" ]; then
+  setup S9; fixture3
+  printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+  finish_setup; run_zsh
+  assert "zsh: phase1 sonnet/low cap 50" 'grep -q -- "--model sonnet --effort low --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
+  assert "zsh: phase2 opus/medium cap 100" 'grep -q -- "--model opus --effort medium --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
+  assert "zsh: phase3 fable/high cap 400" 'grep -q -- "--model fable --effort high --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
+  assert "zsh: no shell error leaked" '! grep -qi "bad math expression\|parse error" out.log'
+  assert "zsh: all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
+else
+  skip "S9: zsh not installed — the zsh-shell assertions did not run (the production shell on macOS is untested here)"
+fi
 
 echo "== S10: relaunch on a [!] WITHOUT a repair marker -> repair launches =="
 setup S10; fixture2
@@ -790,6 +813,8 @@ echo "== S22: --plans finds every reachable plan — root, worktree, orphan bran
 S22_ROOT="$OT/scenarios/S22"
 rm -rf "$S22_ROOT"; mkdir -p "$S22_ROOT"; cd "$S22_ROOT" || exit 1
 git init -q -b main
+git config user.email wf-tests@harness.local
+git config user.name "wf test harness"
 echo base > base.txt; git add -A; git commit -qm base
 plan_fixture() {  # $1 = dir, $2 = second-phase status
   mkdir -p "$1"
@@ -2268,5 +2293,9 @@ assert "S39: exhaustion is declared, not silent" 'grep -q "Session budget exhaus
 assert "S39: exhausted run still ends stopped, not ok" 'grep -q "EVENT: run-end stopped" out.log'
 
 echo ""
-echo "RESULT: $PASS passed, $FAIL failed"
+if [ "$SKIP" -gt 0 ]; then
+  echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"
+else
+  echo "RESULT: $PASS passed, $FAIL failed"
+fi
 [ "$FAIL" = 0 ]
