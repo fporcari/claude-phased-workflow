@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.12.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.16.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -343,6 +343,11 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.16.0 | the doctrine mass is measured: every skill's closure (SKILL.md + cited refs) is computed against a 1500-line budget, so growth pays at merge time instead of degrading sessions in the field |
+| 6.15.0 | the messaging channel is declared, not discovered: version floors single-source in `foreman.md` → *Channel floors*, and the state-reporting skills say which branch is alive in this installation |
+| 6.14.0 | the doctrine splits by consumer — `common.md` core plus `contracts.md` and `foreman.md` — so a headless phase session drops from ~1140 to ~790 lines and reads the foreman layer only at its notify step |
+| 6.13.0 | sonnet leaves the model palette: field experience regretted every sonnet phase; mechanical work is `opus` at `low` effort, and legacy plans that carry sonnet still run |
+| 6.12.1 | sessions are not phases: the launcher's loop budget doubles the pending count so a `[>]` resume cannot starve the tail, and exhausting it is declared out loud |
 | 6.12.0 | the programme is a graph, not a chain: a contract lives from producer to consumer, every macro it crosses inherits it into `Must not break:`, and the judge and finalize check the luggage in transit |
 | 6.11.0 | the macro split is scoped, not just listed: a mini-scope per macro at split time, a fresh-eyes coherence judge on the itinerary (`Ends at:` ≡ next `Starts from:`) and the contract graph, and finalize checking the delivered border |
 | 6.10.1 | the programme contract reaches the unattended path too: light-mode phases and the run inspector's coherence look now read `Must not break:` and the roadmap |

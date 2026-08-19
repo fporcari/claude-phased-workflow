@@ -2336,6 +2336,18 @@ assert "S40: the guard fails when the report stops declaring the channel" \
   '[ -n "$(s40_guard "$S40_MUT" "$S24_REFS")" ]'
 rm -rf "$S40_MUT"
 
+echo "== S42: the version the README announces is the version that ships =="
+# plugin.json is bumped per release, CHANGELOG gets its entry — and the
+# README's own "**Version X**" line silently stayed at 6.12.0 for four
+# releases: the one surface a visitor reads first was the one nothing
+# checked. The three must agree.
+S42_V=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' \
+  "$TESTDIR/../../plugins/wf/.claude-plugin/plugin.json" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+assert "S42: README announces the shipped version ($S42_V)" \
+  'grep -q "\*\*Version $S42_V\*\*" "$TESTDIR/../../README.md"'
+assert "S42: CHANGELOG opens with the shipped version" \
+  '[ "$(grep -m1 -o "^## [0-9.]*" "$TESTDIR/../../CHANGELOG.md")" = "## $S42_V" ]'
+
 echo "== S41: the doctrine mass is measured, and growth pays its budget =="
 # check_doc_mass.py: a skill's closure (SKILL.md + every ref it cites) is the
 # doctrine a session ingests before working; the 6.14.0 split exists because
