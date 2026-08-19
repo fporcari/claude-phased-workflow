@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skil
 
 Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution — and a real doubt is asked **live, in this chat**, because here there is somebody who can answer. One class of doubt is routed first: an ambiguity in the *plan itself* goes to the foreman (`common.md` → *The foreman*, `clarify?`) before it reaches the user — the plan's author answers it better — and the user here confirms what the foreman decided.
 
-Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on a strong model — `opus` floor, never `sonnet`, which is also the standing rule for UI and declarative work.
+Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on a strong model — `opus` floor; `sonnet` is not in this plugin's palette.
 
 **The phase's `Run: <model> / <effort>` line** is the plan's advice for this session, decided during planning. Neither value can be changed from inside the session, so read it rather than reconsider it:
 

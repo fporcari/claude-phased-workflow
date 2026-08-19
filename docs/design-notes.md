@@ -127,6 +127,11 @@ The README states the inverted rule; the operative detail lives in
   sonnet pays only where first-pass success is likely. Marking a phase `sonnet`
   is a commitment about the *plan*, not the model — whatever the skill no
   longer spells out, that phase's `Details:`/`Done:` must.
+  *(Superseded 2026-08-19: field experience regretted every sonnet phase — the
+  first-pass-success bet kept losing. Sonnet left the palette; mechanical work
+  is opus at low effort, where light mode already strips the ritual that was
+  sonnet's supposed saving. The launcher still accepts legacy plans carrying
+  it.)*
 - Effort: start low and climb only for a reason. A phase that passed pre-flight
   is well-specified *by construction*, so high effort gets spent re-exploring
   decisions the plan already settled. `max` overthinks; effort levels copied

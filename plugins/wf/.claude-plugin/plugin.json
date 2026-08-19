@@ -1,7 +1,7 @@
 {
   "name": "wf",
   "description": "Phased development workflow for Claude Code \u2014 converse, plan, execute, finalize. One branch per plan, the plan committed in .phased/ as its first commit and one commit per phase, consolidated into a single commit at finalize.",
-  "version": "6.12.1",
+  "version": "6.13.0",
   "author": {
     "name": "Francesco Porcari"
   }

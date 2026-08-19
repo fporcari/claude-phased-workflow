@@ -32,11 +32,11 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
 5. **Fill the execution config table** (create it if the plan has none — it drives model, effort and cap per phase).
 
-   **Model** — default `opus`; the other two are exceptions:
-   - `sonnet` — mechanical work only: renames, extractions, moves, header updates, and implementations that merely follow a cited `Pattern:` with a test-enforced `Done:`. **Never for UI or declarative output — opus is the floor there.** Marking a phase `sonnet` is a commitment about the *plan*, not about the model: that phase's `Details:` and `Done:` must be spelled out until nothing is left to infer. If they aren't, write them out now or leave it `opus`.
+   **Model** — default `opus`; `fable` is the one exception:
    - `fable` — architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference (subject to credits; ask once if unsure).
-   - In doubt → `opus`. A failed sonnet phase costs a fable repair.
-   - The launcher steers each session for its model via `--append-system-prompt` (log-style silent output for all; opus: no scope creep or extra verification; sonnet: literal execution, a real spec gap closes the phase `[!]`; fable: act, don't re-derive settled decisions) — neither the plan nor the phases need to restate style or verbosity rules.
+   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a fable repair. Mechanical work is `opus` at `low` effort (light mode). Legacy plans that carry it still run, with the launcher's sonnet steering — accepted is not recommended.
+   - In doubt → `opus`.
+   - The launcher steers each session for its model via `--append-system-prompt` (log-style silent output for all; opus: no scope creep or extra verification; fable: act, don't re-derive settled decisions) — neither the plan nor the phases need to restate style or verbosity rules.
 
    **Effort** — **start low and climb only for a reason.** A phase that passed the check above is well-specified by construction, and that is where high effort buys least: it gets spent re-exploring and re-verifying decisions the plan already settled. `low` mechanical, `medium` the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` wide multi-file agentic work, `max` practically never (overthinking, diminishing returns). Effort levels copied from an older plan rarely transfer — re-decide them here.
 

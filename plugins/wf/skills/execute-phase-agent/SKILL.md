@@ -74,7 +74,7 @@ Green signal = test suite + linter scoped to the touched files. Both must pass.
 
 **The Done gate always runs.** Re-check the phase's `Done:` field literally, criterion by criterion — run the named test, the named lint, verify the named output. "Tests pass" is not enough if `Done:` says more. An unmet criterion is a failure: back to Step 4 if attempts remain, else `[!]` naming it in `> Issue:`. This is a contract check against a criterion you did not write — not a re-read of your own work.
 
-**An independent verifier runs only where it earns its keep**: the phase is marked `sonnet`, or its `Pattern:` is `new-pattern`. Otherwise skip it — you already check your own work as you go, and a second review pass on a well-specified phase mostly re-litigates settled decisions.
+**An independent verifier runs only where it earns its keep**: the phase's `Pattern:` is `new-pattern`, or the phase is marked `sonnet` (legacy plans only — sonnet left the palette). Otherwise skip it — you already check your own work as you go, and a second review pass on a well-specified phase mostly re-litigates settled decisions.
 
 When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general-purpose subagent told to stay read-only), given the phase objective and `Done:`, its `Pattern:` example, **only this phase's touched files**, and — where the plan carries them — the phase's contract-test paths, plan copy and in-tree copy. Findings: **MECHANICAL** (real bug, wrong API, divergence from the pattern) → fix, re-run the signal, same 3-attempt budget. **JUDGMENT** (design trade-off, human call) → do not fix; record as `> Review:`. Never blocks `[x]`.
 

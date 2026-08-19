@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.13.0 — 2026-08-19
+
+Sonnet leaves the model palette: field experience regretted every sonnet phase — the first-pass-success bet kept losing, and a failed sonnet phase costs a fable repair. Mechanical work is now `opus` at `low` effort, where light mode already strips the ritual that was sonnet's supposed saving. The launcher still accepts and steers legacy plans that carry it (accepted is not recommended), and the independent verifier keeps its sonnet trigger for those plans only.
+
 ## 6.12.1 — 2026-08-19
 
 Sessions are not phases: the launcher's loop budget was the initial `[ ]` count, so a phase resumed from `[>]` — or a repair round — consumed two iterations for one decrement and the tail of the plan silently never ran (S10 and S11 had even ratified the starvation). The bound is now twice the pending count, every deliberate stop names itself, and exhausting the bound with work still pending is declared out loud instead of reading like any other stop.
