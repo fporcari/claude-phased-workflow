@@ -31,7 +31,7 @@ Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" 
 - **Neither** → nothing to repair here: say so and stop.
 - It already has `> Repair attempted:` → say "Repair already attempted for Phase N — the next look is yours" and stop. Never loop repairs.
 
-**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`common.md` → *The foreman*). **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
+**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`foreman.md` → *The foreman*). **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
 
 **Then write the marker and commit it**, on the phase:
 
@@ -70,9 +70,9 @@ Show what it turned out to be, what changed, and which signal is green that was 
 On your ok, record the outcome for the way in:
 
 - **Came in `[!]`** → the phase closes: `[x]` + `> Repaired:`, as below.
-- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this chat sends the outcome to the phase chat (`wf:<slug>:phase-N` in `list_sessions` — `common.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. It does not touch anything else: the phase is not finished, and finishing it is that chat's job.
+- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this chat sends the outcome to the phase chat (`wf:<slug>:phase-N` in `list_sessions` — `foreman.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. It does not touch anything else: the phase is not finished, and finishing it is that chat's job.
 
-**One chat is one attempt.** If the repair eats this whole context without a green signal, the problem is not a bug: leave `[!]` + `> Repair attempted:`, send the foreman the `blocked` line (`common.md` → *The foreman*), and say plainly that this belongs in a re-planning conversation, not in another repair.
+**One chat is one attempt.** If the repair eats this whole context without a green signal, the problem is not a bug: leave `[!]` + `> Repair attempted:`, send the foreman the `blocked` line (`foreman.md` → *The foreman*), and say plainly that this belongs in a re-planning conversation, not in another repair.
 
 ## The outcome formats
 

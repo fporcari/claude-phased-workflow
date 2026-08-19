@@ -11,8 +11,8 @@ The fork already asked whether the plan targets autonomous execution — do not 
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/execute-phase-agent` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
-6. **`Verify:` only where human eyes are genuinely needed** — the mechanism is thin in this mode and most phases carry none, but it is never absent (contract: `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*); each step carries its *when* (`now` / `deferred: needs Phase M`).
-7. **Contract tests carry even more weight here** — nobody watches an unattended run, so where the option (main skill, Step 3) chose them, every phase's `Done:` opens with its plan tests and a test the phase cannot pass unchanged closes it `[!]` (`common.md` → *Contract tests*). The option is asked once, in the main skill — do not re-ask.
+6. **`Verify:` only where human eyes are genuinely needed** — the mechanism is thin in this mode and most phases carry none, but it is never absent (contract: `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*); each step carries its *when* (`now` / `deferred: needs Phase M`).
+7. **Contract tests carry even more weight here** — nobody watches an unattended run, so where the option (main skill, Step 3) chose them, every phase's `Done:` opens with its plan tests and a test the phase cannot pass unchanged closes it `[!]` (`contracts.md` → *Contract tests*). The option is asked once, in the main skill — do not re-ask.
 
 ## Honesty check
 
@@ -57,7 +57,7 @@ format, one block per macro:
 consumes it — and *Requires of earlier work* the backward half: when a later
 `/write-workflow` details a macro, it collects from the LATER macros'
 `Requires` lines everything that touches what this macro builds, and those
-become its `Must not break:` header (`common.md` → *Must not break:*) —
+become its `Must not break:` header (`contracts.md` → *Must not break:*) —
 confirmed from the roadmap, not reconstructed from memory.
 `Starts from:`/`Ends at:` are the **itinerary**: plan a European tour as
 Italy, France, Spain, and the Italy leg must not end in Puglia — internally
@@ -78,7 +78,7 @@ checks:
    stack kept parallel by one macro and assumed cut over by another).
    The edges hop: a `Requires` may point several legs back, and every
    macro the edge crosses inherits the constraint — what is in transit
-   must not be lost by a leg it merely crosses (`common.md` →
+   must not be lost by a leg it merely crosses (`contracts.md` →
    *Must not break:*, producer-to-consumer rule). Flag any intermediate
    macro whose scope plausibly destroys what crosses it.
 
@@ -98,7 +98,7 @@ The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff)
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: autonomous
-Must not break: <one line per contract owned by later work — common.md → *Must not break:*; omit only when no roadmap and no known consumer>
+Must not break: <one line per contract owned by later work — contracts.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
 [2-3 sentences]

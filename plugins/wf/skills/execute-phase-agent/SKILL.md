@@ -17,7 +17,7 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 - **The outcome in the plan is the exit condition**, not bookkeeping — under `/run-workflow` an independent evaluator re-checks it every turn.
 - One phase, one commit at the end, everything written in English — per the shared core.
 
-**Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md`.
+**Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`. The foreman layer is NOT read at start: only its message formats matter here, at the notify step, per the shared core.
 
 ## Step 0: Read the plan
 
@@ -58,7 +58,7 @@ Per the shared core, scaling exploration to the **Effort** column of the executi
 
 ## Step 3: Write tests
 
-Phases with contract tests start from them: copy `tests/phase-N/` verbatim and make them green — a skeleton's body is yours, the rest is read-only, and a test that cannot pass as written closes the phase `[!]` naming it (`common.md` → *Contract tests*); never edit a contract into passing. Then test the phase's remaining logic following the repo's existing test patterns. Purely UI/declarative phases with no testable logic → skip.
+Phases with contract tests start from them: copy `tests/phase-N/` verbatim and make them green — a skeleton's body is yours, the rest is read-only, and a test that cannot pass as written closes the phase `[!]` naming it (`contracts.md` → *Contract tests*); never edit a contract into passing. Then test the phase's remaining logic following the repo's existing test patterns. Purely UI/declarative phases with no testable logic → skip.
 
 ## Step 4: Convergence loop
 
@@ -80,7 +80,7 @@ When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general
 
 ## Step 6: Record, commit, stop
 
-Record the outcome and make the phase commit exactly as the shared core specifies. The `wf:phase-N:new` markers on new callables stay in place — nobody here can answer a naming question; `/finalize-workflow` runs the whole-workflow naming review (`common.md` → *New-method markers and minimality*). **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none. A `ui`-tagged phase reaching this skill lost its mockup gate and browser pass by construction (the tag belongs to interactive plans): note it, and hand the visual check to the human as a `Verify: now` step.
+Record the outcome and make the phase commit exactly as the shared core specifies. The `wf:phase-N:new` markers on new callables stay in place — nobody here can answer a naming question; `/finalize-workflow` runs the whole-workflow naming review (`contracts.md` → *New-method markers and minimality*). **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none. A `ui`-tagged phase reaching this skill lost its mockup gate and browser pass by construction (the tag belongs to interactive plans): note it, and hand the visual check to the human as a `Verify: now` step.
 
 Then the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
 

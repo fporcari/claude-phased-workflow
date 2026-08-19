@@ -9,7 +9,7 @@ Supervision and resume view of the work plan. **Read-only on source code** — t
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions plus the foreman protocol this skill takes command through.
 
 ## The map
 
@@ -43,16 +43,16 @@ The third command gives `BASE`, the commit that added the plan. Everything after
 ## Step 1b: The foreman
 
 Read `.phased/active/<slug>/foreman.json` (protocol, file format and
-take-command mechanics live once in `common.md` → *The foreman*):
+take-command mechanics live once in `foreman.md` → *The foreman*):
 
 - **Absent** → **assume command, without asking**: the normal state of every
   workflow that predates the protocol, and a workflow being resumed wants a
-  foreman. Take command per `common.md` — write the file, ONE `wf: foreman —
+  foreman. Take command per `foreman.md` — write the file, ONE `wf: foreman —
   takes command` commit, title this chat.
 - **Present, and no other session bears the title** (`list_sessions`) → the
   title is unclaimed: either it is this very chat (fine) or the old foreman
   is dead or renamed. Either way, claim it — same take-command step, which is
-  **idempotent by content** (`common.md`): the file already carries this
+  **idempotent by content** (`foreman.md`): the file already carries this
   exact title, so nothing is rewritten and no commit is made; at most, the
   chat re-applies the title to itself — the call returns the one it
   replaced, which is also how a chat learns it had drifted off it.
@@ -60,7 +60,7 @@ take-command mechanics live once in `common.md` → *The foreman*):
   query. Report it (Step 3 gets a *Foreman* line: who, since when).
   Offer the takeover through the Step 3 AskUserQuestion only when something
   actually needs action here, or the user says they want this chat in
-  charge. On yes: depose per `common.md` — best-effort farewell message and
+  charge. On yes: depose per `foreman.md` — best-effort farewell message and
   retitle of the old session — then take command (its own commit). The old
   chat may be long dead; nothing in this step is allowed to block on it.
 
@@ -86,7 +86,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`common.md` → *Verification*): report those, and that the phase closes when they pass. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two chats in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`contracts.md` → *Verification*): report those, and that the phase closes when they pass. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two chats in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Foreman** line closes the point: who commands (this chat, another session with its `since`, or just assumed per Step 1b).
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
@@ -122,4 +122,4 @@ git add .phased && git commit -q -m "wf: <what changed>"
 
 Leaving it uncommitted would break the clean-tree invariant the next phase's baseline check relies on.
 
-After any such commit, send the foreman one `plan changed` message per `common.md` → *The foreman* — best-effort, and naturally skipped when this chat is the foreman (`list_sessions` excludes it). A plan reshaped from a supervision chat must not surface for the first time at finalize.
+After any such commit, send the foreman one `plan changed` message per `foreman.md` → *The foreman* — best-effort, and naturally skipped when this chat is the foreman (`list_sessions` excludes it). A plan reshaped from a supervision chat must not surface for the first time at finalize.

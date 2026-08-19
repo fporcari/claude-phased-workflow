@@ -26,7 +26,7 @@
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
 # every skill inside its own allowed-tools (S15), the Done:/Verify: verification
-# contract single-source in common.md and cited by its consumers — the -agent
+# contract single-source in refs/contracts.md and cited by its consumers — the -agent
 # variants included — with the when vocabulary restated only verbatim (S27,
 # proven by mutation), no skill or ref addressing
 # ~/.claude/ (S21, check_home_paths.py, proven by mutation), every -agent
@@ -47,7 +47,7 @@
 # with no commit: ref; a healthy [>] draws zero warnings) and static (the
 # structured > WIP: format is single-source in refs/phase-execution.md,
 # cited by /execute-phase, never restated). S30 checks the foreman protocol
-# (chat hierarchy and cross-session messaging): single-source in common.md's
+# (chat hierarchy and cross-session messaging): single-source in refs/foreman.md's
 # '## The foreman', the shared core carrying the one 'Notify the foreman'
 # step, every taking/deposing/notifying skill citing it, resume-workflow
 # keeping the assume-command migration, no skill restating foreman.json, the
@@ -1161,12 +1161,12 @@ echo "== S27: the Done:/Verify: contract lives once and is cited, not restated =
 # for the human, each Verify: step carrying a when (now / deferred: needs Phase
 # M) and the deferred ones accumulating in verify.md. That contract is prose
 # spread over several files, which is exactly the shape that drifts (the 4.1.0
-# LIGHT_PROMPT defect was a second copy nobody updated). So: common.md owns it,
+# LIGHT_PROMPT defect was a second copy nobody updated). So: contracts.md owns it,
 # the consumers — the -agent variants included — cite it by section name and
 # name verify.md, and a consumer that restates the when vocabulary must
 # restate it VERBATIM: a paraphrase is drift and is flagged.
 s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
-  S27_C="$2/common.md"
+  S27_C="$2/contracts.md"
   grep -q '^## Verification: `Done:` and `Verify:`' "$S27_C" 2>/dev/null \
     || echo "$S27_C: missing the '## Verification: Done: and Verify:' section"
   grep -q 'deferred: needs Phase M' "$S27_C" 2>/dev/null \
@@ -1177,7 +1177,7 @@ s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   for S27_S in write-workflow execute-phase finalize-workflow; do
     S27_F="$1/$S27_S/SKILL.md"
     grep -q 'Verification' "$S27_F" 2>/dev/null \
-      || echo "$S27_F: does not cite common.md's Verification section"
+      || echo "$S27_F: does not cite contracts.md's Verification section"
   done
   # A consumer may restate the when vocabulary only VERBATIM — the source is
   # pinned above, and an unpinned copy is free to drift into a paraphrase the
@@ -1213,11 +1213,11 @@ sed -i.bak '/verify\.md/d' "$S27_MUT/execute-phase/SKILL.md" \
 assert "S27: the guard fails when a phase stops writing verify.md" \
   '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
 rm -rf "$S27_MUT"
-S27_MUT="$(mktemp -d)"; mkdir -p "$S27_MUT/refs"
+S27_MUT="$(mktemp -d)"; mkdir -p "$S27_MUT/refs"; cp "$S24_REFS"/*.md "$S27_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S27_MUT/"
-sed 's/^## Verification.*/## Verification (renamed)/' "$S24_REFS/common.md" \
-  > "$S27_MUT/refs/common.md"
-assert "S27: the guard fails when common.md stops owning the contract" \
+sed 's/^## Verification.*/## Verification (renamed)/' "$S24_REFS/contracts.md" \
+  > "$S27_MUT/refs/contracts.md"
+assert "S27: the guard fails when contracts.md stops owning the contract" \
   '[ -n "$(s27_guard "$S27_MUT" "$S27_MUT/refs")" ]'
 rm -rf "$S27_MUT"
 # A consumer's restated vocabulary drifts into a paraphrase — the copy defect
@@ -1328,12 +1328,12 @@ assert "S29i: /execute-phase cites WIP checkpoints and restates no format" \
 echo "== S30: the foreman protocol lives once and is cited, not restated =="
 # One chat commands each workflow (the foreman), executor chats message it —
 # file format, take-command mechanics and message formats are prose spread
-# over several skills, the exact shape that drifts. So: common.md owns the
+# over several skills, the exact shape that drifts. So: foreman.md owns the
 # protocol under '## The foreman', the shared core carries the one 'Notify
 # the foreman' step both execute modes cite, every skill that takes or hands
 # over command cites the section, and nobody restates the foreman.json body.
 s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
-  S30_C="$2/common.md"
+  S30_C="$2/foreman.md"
   grep -q '^## The foreman' "$S30_C" 2>/dev/null \
     || echo "$S30_C: missing the '## The foreman' section"
   grep -q 'foreman\.json' "$S30_C" 2>/dev/null \
@@ -1350,17 +1350,17 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
                execute-phase-agent finalize-workflow run-workflow; do
     S30_F="$1/$S30_S/SKILL.md"
     grep -qi 'foreman' "$S30_F" 2>/dev/null \
-      || echo "$S30_F: does not cite common.md's The foreman section"
+      || echo "$S30_F: does not cite foreman.md's The foreman section"
   done
   # resume-workflow owns the migration: no foreman on file → assume command.
   grep -q 'assume command' "$1/resume-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/resume-workflow/SKILL.md: lost the assume-command migration path"
-  # Nobody but common.md carries the foreman.json body or the message formats.
+  # Nobody but foreman.md carries the foreman.json body or the message formats.
   for S30_S in write-workflow import-workflow resume-workflow execute-phase \
                execute-phase-agent finalize-workflow run-workflow; do
     S30_F="$1/$S30_S/SKILL.md"
     if grep -qE '"foreman":|"since":|\[wf:' "$S30_F" 2>/dev/null; then
-      echo "$S30_F: restates the foreman.json body or message format (single source: common.md)"
+      echo "$S30_F: restates the foreman.json body or message format (single source: foreman.md)"
     fi
   done
   # The rename suggestion is restated only verbatim: the shared suffix must
@@ -1493,13 +1493,13 @@ S30_OUT="$(s30_guard "$SKILLS_DIR" "$S24_REFS")"
 [ -z "$S30_OUT" ] || echo "  offending: $S30_OUT"
 assert "S30: the foreman protocol is single-source and cited" '[ -z "$S30_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/^## The foreman.*/## The site manager (renamed)/' "$S24_REFS/common.md" \
-  > "$S30_MUT/refs/common.md"
+sed 's/^## The foreman.*/## The site manager (renamed)/' "$S24_REFS/foreman.md" \
+  > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
-assert "S30: the guard fails when common.md stops owning the protocol" \
+assert "S30: the guard fails when foreman.md stops owning the protocol" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 S30_MUT="$(mktemp -d)"
@@ -1509,9 +1509,9 @@ sed -i.bak '/[Ff]oreman/d' "$S30_MUT/resume-workflow/SKILL.md" \
 assert "S30: the guard fails when resume-workflow drops the takeover" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-cp "$S24_REFS/common.md" "$S30_MUT/refs/common.md"
+cp "$S24_REFS/foreman.md" "$S30_MUT/refs/foreman.md"
 sed '/^## Notify the foreman/,+7d' "$S24_REFS/phase-execution.md" \
   > "$S30_MUT/refs/phase-execution.md"
 assert "S30: the guard fails when the shared core stops notifying" \
@@ -1526,10 +1526,10 @@ assert "S30: the guard fails when a skill restates the foreman.json body" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # The commands-not-executes rule leaves the section.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed '/commands; it does not execute/d' "$S24_REFS/common.md" \
-  > "$S30_MUT/refs/common.md"
+sed '/commands; it does not execute/d' "$S24_REFS/foreman.md" \
+  > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the foreman may execute a phase" \
@@ -1544,18 +1544,18 @@ assert "S30: the guard fails when a skill sends the next phase back to this chat
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # clarify? leaves the section — the 5.18.0 channel disappears.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/clarify?//g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+sed 's/clarify?//g' "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
-assert "S30: the guard fails when common.md stops defining clarify?" \
+assert "S30: the guard fails when foreman.md stops defining clarify?" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 # The ask-user reply path leaves the section — the foreman-in-doubt branch dies.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/ask-user//g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+sed 's/ask-user//g' "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when clarify? loses the ask-user reply path" \
@@ -1571,9 +1571,9 @@ assert "S30: the guard fails when /execute-phase drops the clarify routing" \
 rm -rf "$S30_MUT"
 # Take-command stops advising the unattended permissions — the 6.0.1 field
 # finding: a foreman on default permissions decides and dies on the prompt.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/without asking//g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+sed 's/without asking//g' "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when take-command drops the permissions advice" \
@@ -1581,18 +1581,18 @@ assert "S30: the guard fails when take-command drops the permissions advice" \
 rm -rf "$S30_MUT"
 # The decision stops landing on disk before the reply — the 6.0.2 invariant
 # that saved the field test when both message channels died.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/BEFORE replying/when convenient/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+sed 's/BEFORE replying/when convenient/g' "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the decision no longer lands on disk first" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 # The timeout stops re-reading the disk — back to burning a decision that exists.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed 's/IS the reply/may exist/g' "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+sed 's/IS the reply/may exist/g' "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the clarify timeout stops re-reading the disk" \
@@ -1615,9 +1615,9 @@ assert "S30: the guard fails when repair stops asking the human" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # Closing short disappears: an overrun phase has nowhere to go but a handover.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-cp "$S24_REFS/common.md" "$S30_MUT/refs/common.md"
+cp "$S24_REFS/foreman.md" "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 sed 's/When the phase outgrows its chat/Checkpoints, again/' \
   "$S24_REFS/phase-execution.md" > "$S30_MUT/refs/phase-execution.md"
@@ -1625,20 +1625,20 @@ assert "S30: the guard fails when a phase cannot be closed short" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 # EXIST comes back, and with it the reading that a deferred tool is absent.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 sed 's/missing from your tool list is not/absent from your tool list is not/' \
-  "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+  "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when absence stops meaning a failed ToolSearch" \
   '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
 rm -rf "$S30_MUT"
 # The phase chat is allowed to supervise again.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 sed 's/executes; it does not supervise/does what it likes/' \
-  "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+  "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when a phase chat may supervise" \
@@ -1654,10 +1654,10 @@ assert "S30: the guard fails when a skill supervises from the phase chat" \
 rm -rf "$S30_MUT"
 # The section goes back to claiming a chat cannot rename itself — the stale
 # field test that cost the protocol its one manual step.
-S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 sed 's/A session cannot read its own id/A session can neither read its own id nor rename itself/' \
-  "$S24_REFS/common.md" > "$S30_MUT/refs/common.md"
+  "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
 cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
 assert "S30: the guard fails when the section denies the self-rename" \
@@ -1677,11 +1677,11 @@ echo "== S31: cross-phase awareness and the reporting register ship and are cite
 # queue: the shared core carries the plan-is-context paragraph (both execute
 # modes load it), and the light contract — which loads no skill — carries its
 # own cross-phase clause. (b) Reports to the decision-maker are phrased for
-# someone who does not know the implementation: common.md owns
+# someone who does not know the implementation: foreman.md owns
 # '## The reporting register', the presenting skills cite it, nobody restates
 # its rules.
 s31_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints one line per violation
-  S31_C="$2/common.md"
+  S31_C="$2/foreman.md"
   grep -q '^## The reporting register' "$S31_C" 2>/dev/null \
     || echo "$S31_C: missing the '## The reporting register' section"
   grep -q 'stay technical English' "$S31_C" 2>/dev/null \
@@ -1693,14 +1693,14 @@ s31_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints 
   for S31_S in finalize-workflow run-workflow; do
     S31_F="$1/$S31_S/SKILL.md"
     grep -qi 'reporting register' "$S31_F" 2>/dev/null \
-      || echo "$S31_F: does not cite common.md's reporting register"
+      || echo "$S31_F: does not cite foreman.md's reporting register"
   done
-  # Nobody but common.md carries the register's rules.
+  # Nobody but foreman.md carries the register's rules.
   for S31_S in write-workflow import-workflow resume-workflow execute-phase \
                execute-phase-agent finalize-workflow run-workflow; do
     S31_F="$1/$S31_S/SKILL.md"
     if grep -q 'Name things by what they do' "$S31_F" 2>/dev/null; then
-      echo "$S31_F: restates the reporting register (single source: common.md)"
+      echo "$S31_F: restates the reporting register (single source: foreman.md)"
     fi
   done
   return 0
@@ -1710,12 +1710,12 @@ S31_OUT="$(s31_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
 assert "S31: cross-phase awareness and the register are single-source and cited" \
   '[ -z "$S31_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
-S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"
+S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"; cp "$S24_REFS"/*.md "$S31_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S31_MUT/"
-sed 's/^## The reporting register.*/## How to talk (renamed)/' "$S24_REFS/common.md" \
-  > "$S31_MUT/refs/common.md"
+sed 's/^## The reporting register.*/## How to talk (renamed)/' "$S24_REFS/foreman.md" \
+  > "$S31_MUT/refs/foreman.md"
 cp "$S24_REFS/phase-execution.md" "$S31_MUT/refs/phase-execution.md"
-assert "S31: the guard fails when common.md stops owning the register" \
+assert "S31: the guard fails when foreman.md stops owning the register" \
   '[ -n "$(s31_guard "$S31_MUT" "$S31_MUT/refs" "$RUNNER_SRC")" ]'
 rm -rf "$S31_MUT"
 S31_MUT="$(mktemp -d)"
@@ -1730,8 +1730,8 @@ sed '/does not complicate later phases/d' "$RUNNER_SRC" > "$S31_MUT/run-workflow
 assert "S31: the guard fails when the light contract loses the cross-phase clause" \
   '[ -n "$(s31_guard "$SKILLS_DIR" "$S24_REFS" "$S31_MUT/run-workflow.sh")" ]'
 rm -rf "$S31_MUT"
-S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"
-cp "$S24_REFS/common.md" "$S31_MUT/refs/common.md"
+S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"; cp "$S24_REFS"/*.md "$S31_MUT/refs/"
+cp "$S24_REFS/foreman.md" "$S31_MUT/refs/foreman.md"
 sed '/The plan is context/d' "$S24_REFS/phase-execution.md" \
   > "$S31_MUT/refs/phase-execution.md"
 assert "S31: the guard fails when the shared core loses plan-is-context" \
@@ -1739,7 +1739,7 @@ assert "S31: the guard fails when the shared core loses plan-is-context" \
 rm -rf "$S31_MUT"
 
 echo "== S32: the closing report has a shape, a gate, and one detail question =="
-# Three 5.14.0 invariants. (a) common.md owns the report shape (one verdict
+# Three 5.14.0 invariants. (a) foreman.md owns the report shape (one verdict
 # line + one line per finding) and the per-channel delivery rule — the two
 # closing reports are a report page where one can render, the degraded chat
 # path gets exactly ONE detail question, one-way surfaces the short form
@@ -1749,7 +1749,7 @@ echo "== S32: the closing report has a shape, a gate, and one detail question ==
 # needs — and nobody restates the shape.
 S32_AGENTS="$TESTDIR/../../plugins/wf/agents"
 s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints one line per violation
-  S32_C="$2/common.md"
+  S32_C="$2/foreman.md"
   grep -q 'one verdict line' "$S32_C" 2>/dev/null \
     || echo "$S32_C: the register lost the report shape (one verdict line + one line per finding)"
   grep -q 'short form only' "$S32_C" 2>/dev/null \
@@ -1774,12 +1774,12 @@ s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints 
   done
   grep -q '^allowed-tools:.*Agent' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/run-workflow/SKILL.md: Agent missing from allowed-tools (the gate cannot run)"
-  # Nobody but common.md carries the shape rule.
+  # Nobody but foreman.md carries the shape rule.
   for S32_S in write-workflow import-workflow resume-workflow execute-phase \
                execute-phase-agent finalize-workflow run-workflow; do
     S32_F="$1/$S32_S/SKILL.md"
     if grep -q 'one verdict line' "$S32_F" 2>/dev/null; then
-      echo "$S32_F: restates the report shape (single source: common.md)"
+      echo "$S32_F: restates the report shape (single source: foreman.md)"
     fi
   done
   return 0
@@ -1789,10 +1789,10 @@ S32_OUT="$(s32_guard "$SKILLS_DIR" "$S24_REFS" "$S32_AGENTS")"
 assert "S32: the report shape, the gate and the question are single-source and cited" \
   '[ -z "$S32_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
-S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"
-sed 's/one verdict line/a verdict somewhere/' "$S24_REFS/common.md" \
-  > "$S32_MUT/refs/common.md"
-assert "S32: the guard fails when common.md loses the report shape" \
+S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"; cp "$S24_REFS"/*.md "$S32_MUT/refs/"
+sed 's/one verdict line/a verdict somewhere/' "$S24_REFS/foreman.md" \
+  > "$S32_MUT/refs/foreman.md"
+assert "S32: the guard fails when foreman.md loses the report shape" \
   '[ -n "$(s32_guard "$SKILLS_DIR" "$S32_MUT/refs" "$S32_AGENTS")" ]'
 rm -rf "$S32_MUT"
 S32_MUT="$(mktemp -d)"
@@ -1806,9 +1806,9 @@ S32_MUT="$(mktemp -d)"
 assert "S32: the guard fails when the report-judge agent is missing" \
   '[ -n "$(s32_guard "$SKILLS_DIR" "$S24_REFS" "$S32_MUT")" ]'
 rm -rf "$S32_MUT"
-S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"
-sed '/report page/d' "$S24_REFS/common.md" > "$S32_MUT/refs/common.md"
-assert "S32: the guard fails when common.md loses the report page" \
+S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"; cp "$S24_REFS"/*.md "$S32_MUT/refs/"
+sed '/report page/d' "$S24_REFS/foreman.md" > "$S32_MUT/refs/foreman.md"
+assert "S32: the guard fails when foreman.md loses the report page" \
   '[ -n "$(s32_guard "$SKILLS_DIR" "$S32_MUT/refs" "$S32_AGENTS")" ]'
 rm -rf "$S32_MUT"
 # A skill restates the shape rule — the copy defect single-source exists for.
@@ -1821,15 +1821,15 @@ assert "S32: the guard fails when a skill restates the report shape" \
 rm -rf "$S32_MUT"
 
 echo "== S33: the QA pass is a page and the review depth is the user's call =="
-# Two 5.16.0 invariants. (a) common.md owns the QA page — the checklist HTML
+# Two 5.16.0 invariants. (a) contracts.md owns the QA page — the checklist HTML
 # the user works through while exercising the result; a work sheet, not a
-# closing report, so the report-judge gate does not apply and only common.md
+# closing report, so the report-judge gate does not apply and only contracts.md
 # knows its filename. (b) finalize's pre-commit review asks its depth
 # (Extended / Light / None) instead of always paying the extended pass, Light
 # is scoped to cross-phase issues only, and the report-judge probe is skipped
 # on a clean review — the token cost tracks what a human has already vetted.
 s33_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
-  S33_C="$2/common.md"
+  S33_C="$2/contracts.md"
   grep -q 'QA page' "$S33_C" 2>/dev/null \
     || echo "$S33_C: the Verification section lost the QA page"
   grep -q -- '-qa\.html' "$S33_C" 2>/dev/null \
@@ -1845,10 +1845,10 @@ s33_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S33_F: Light lost its cross-phase-only scope"
   grep -q 'skip the probe when the review returns no findings' "$S33_F" 2>/dev/null \
     || echo "$S33_F: the zero-findings probe skip is gone"
-  # Nobody but common.md carries the page filename.
+  # Nobody but contracts.md carries the page filename.
   for S33_S in "$1"/*/SKILL.md; do
     if grep -q -- '-qa\.html' "$S33_S" 2>/dev/null; then
-      echo "$S33_S: hardcodes the QA page filename (single source: common.md)"
+      echo "$S33_S: hardcodes the QA page filename (single source: contracts.md)"
     fi
   done
   return 0
@@ -1858,9 +1858,9 @@ S33_OUT="$(s33_guard "$SKILLS_DIR" "$S24_REFS")"
 assert "S33: the QA page and the depth question are single-source and cited" \
   '[ -z "$S33_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
-S33_MUT="$(mktemp -d)"; mkdir -p "$S33_MUT/refs"
-sed '/QA page/d' "$S24_REFS/common.md" > "$S33_MUT/refs/common.md"
-assert "S33: the guard fails when common.md loses the QA page" \
+S33_MUT="$(mktemp -d)"; mkdir -p "$S33_MUT/refs"; cp "$S24_REFS"/*.md "$S33_MUT/refs/"
+sed '/QA page/d' "$S24_REFS/contracts.md" > "$S33_MUT/refs/contracts.md"
+assert "S33: the guard fails when contracts.md loses the QA page" \
   '[ -n "$(s33_guard "$SKILLS_DIR" "$S33_MUT/refs")" ]'
 rm -rf "$S33_MUT"
 S33_MUT="$(mktemp -d)"
@@ -1921,8 +1921,8 @@ s34_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S34_PE: missing the 'Awaiting the human's checks' mechanic"
   grep -q '> Testing:' "$S34_PE" 2>/dev/null \
     || echo "$S34_PE: the mechanic does not define the > Testing: note"
-  grep -q 'gates the close in interactive mode' "$2/common.md" 2>/dev/null \
-    || echo "$2/common.md: a Verify: now step no longer gates the close"
+  grep -q 'gates the close in interactive mode' "$2/contracts.md" 2>/dev/null \
+    || echo "$2/contracts.md: a Verify: now step no longer gates the close"
   for S34_S in execute-phase close-phase; do
     S34_F="$1/$S34_S/SKILL.md"
     grep -q 'Testing:' "$S34_F" 2>/dev/null \
@@ -1957,7 +1957,7 @@ s34_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
 S34_G="$(s34_guard "$SKILLS_DIR" "$S24_REFS")"
 [ -z "$S34_G" ] || echo "  offending: $S34_G"
 assert "S34: the gate is single-source and cited" '[ -z "$S34_G" ]'
-S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"; cp "$S24_REFS"/*.md "$S34_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S34_MUT/"
 cp "$S24_REFS/common.md" "$S34_MUT/refs/common.md"
 sed "s/Awaiting the human's checks/Checkpoints again/" \
@@ -1973,7 +1973,7 @@ assert "S34: the guard fails when a skill respells the note format" \
   '[ -n "$(s34_guard "$S34_MUT" "$S24_REFS")" ]'
 rm -rf "$S34_MUT"
 # [!] goes back to meaning whatever a session decides it means.
-S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"; cp "$S24_REFS"/*.md "$S34_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S34_MUT/"
 cp "$S24_REFS/phase-execution.md" "$S34_MUT/refs/phase-execution.md"
 sed 's/machine verdict, never a human one/state/' "$S24_REFS/common.md" \
@@ -1982,7 +1982,7 @@ assert "S34: the guard fails when [!] stops being a machine verdict" \
   '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
 rm -rf "$S34_MUT"
 # The gate stops holding the report back — a phase reported done unchecked.
-S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"; cp "$S24_REFS"/*.md "$S34_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S34_MUT/"
 cp "$S24_REFS/common.md" "$S34_MUT/refs/common.md"
 sed 's/Nothing is closed and nobody is told before/Close and report when/' \
@@ -1991,7 +1991,7 @@ assert "S34: the guard fails when the gate stops holding the report" \
   '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
 rm -rf "$S34_MUT"
 # The rejection has no line of its own to travel up on.
-S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"; cp "$S24_REFS"/*.md "$S34_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S34_MUT/"
 cp "$S24_REFS/phase-execution.md" "$S34_MUT/refs/phase-execution.md"
 sed 's/result rejected/done/g' "$S24_REFS/common.md" > "$S34_MUT/refs/common.md"
@@ -1999,7 +1999,7 @@ assert "S34: the guard fails when a rejected result travels up as a plain done" 
   '[ -n "$(s34_guard "$S34_MUT" "$S34_MUT/refs")" ]'
 rm -rf "$S34_MUT"
 # The gate loses the exit for a result the human rejects at the root.
-S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"
+S34_MUT="$(mktemp -d)"; mkdir -p "$S34_MUT/refs"; cp "$S24_REFS"/*.md "$S34_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S34_MUT/"
 cp "$S24_REFS/common.md" "$S34_MUT/refs/common.md"
 sed 's/Three ways out of the gate/Two ways out/' "$S24_REFS/phase-execution.md" \
@@ -2009,7 +2009,7 @@ assert "S34: the guard fails when the gate loses its rejection exit" \
 rm -rf "$S34_MUT"
 
 echo "== S35: the contract is authored once and no child rewrites it =="
-# Three 6.8.0 invariants. (a) common.md owns the contract-tests contract —
+# Three 6.8.0 invariants. (a) contracts.md owns the contract-tests contract —
 # plan-time tests under .phased at two precisions (executable / skeleton),
 # read-only for the child, integrity-checked at close — and owns the
 # authored-checks ownership rule (ui Verify: lists pre-established at
@@ -2020,7 +2020,7 @@ echo "== S35: the contract is authored once and no child rewrites it =="
 # and an unattended phase closes [!] rather than edit a contract into
 # passing.
 s35_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
-  S35_C="$2/common.md"
+  S35_C="$2/contracts.md"
   grep -q '^## Contract tests' "$S35_C" 2>/dev/null \
     || echo "$S35_C: missing the '## Contract tests' section"
   grep -q 'read-only for the child' "$S35_C" 2>/dev/null \
@@ -2044,20 +2044,20 @@ S35_OUT="$(s35_guard "$SKILLS_DIR" "$S24_REFS")"
 assert "S35: the contract fields are single-source, checked at gate and close" \
   '[ -z "$S35_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
-# common.md stops owning the contract-tests section.
-S35_MUT="$(mktemp -d)"; mkdir -p "$S35_MUT/refs"
+# contracts.md stops owning the contract-tests section.
+S35_MUT="$(mktemp -d)"; mkdir -p "$S35_MUT/refs"; cp "$S24_REFS"/*.md "$S35_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S35_MUT/"
-sed 's/^## Contract tests.*/## Tests, roughly/' "$S24_REFS/common.md" \
-  > "$S35_MUT/refs/common.md"
+sed 's/^## Contract tests.*/## Tests, roughly/' "$S24_REFS/contracts.md" \
+  > "$S35_MUT/refs/contracts.md"
 cp "$S24_REFS/phase-execution.md" "$S35_MUT/refs/phase-execution.md"
-assert "S35: the guard fails when common.md stops owning contract tests" \
+assert "S35: the guard fails when contracts.md stops owning contract tests" \
   '[ -n "$(s35_guard "$S35_MUT" "$S35_MUT/refs")" ]'
 rm -rf "$S35_MUT"
 # The child may edit the contract again.
-S35_MUT="$(mktemp -d)"; mkdir -p "$S35_MUT/refs"
+S35_MUT="$(mktemp -d)"; mkdir -p "$S35_MUT/refs"; cp "$S24_REFS"/*.md "$S35_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S35_MUT/"
-sed 's/read-only for the child/editable when needed/' "$S24_REFS/common.md" \
-  > "$S35_MUT/refs/common.md"
+sed 's/read-only for the child/editable when needed/' "$S24_REFS/contracts.md" \
+  > "$S35_MUT/refs/contracts.md"
 cp "$S24_REFS/phase-execution.md" "$S35_MUT/refs/phase-execution.md"
 assert "S35: the guard fails when the child may edit the contract" \
   '[ -n "$(s35_guard "$S35_MUT" "$S35_MUT/refs")" ]'
@@ -2136,7 +2136,7 @@ assert "S36: the guard fails when help stops routing to the doctor" \
 rm -rf "$S36_MUT"
 
 echo "== S37: a future consumer's contract travels backwards =="
-# Three 6.10.0 invariants (issue #15). (a) common.md owns 'Must not break:' —
+# Three 6.10.0 invariants (issue #15). (a) contracts.md owns 'Must not break:' —
 # the plan header field carrying contracts owned by later macro-phases — and
 # write-workflow asks the consumer question that fills it. (b) The gate's
 # compatibility line and the shared core treat those lines and the roadmap's
@@ -2144,8 +2144,8 @@ echo "== S37: a future consumer's contract travels backwards =="
 # roadmap check at macro close, and the doctor can turn a consumer measured
 # late into skeletons run against what an earlier macro built.
 s37_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints one line per violation
-  grep -q '^## Must not break:' "$2/common.md" 2>/dev/null \
-    || echo "$2/common.md: missing the 'Must not break:' section"
+  grep -q '^## Must not break:' "$2/contracts.md" 2>/dev/null \
+    || echo "$2/contracts.md: missing the 'Must not break:' section"
   grep -q 'Must not break' "$3" 2>/dev/null \
     || echo "$3: the light contract no longer carries the programme contract"
   grep -q 'Must not break' "$1/run-workflow/SKILL.md" 2>/dev/null \
@@ -2169,14 +2169,14 @@ S37_OUT="$(s37_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
 assert "S37: the programme contract is single-source and read at gate, close and doctor" \
   '[ -z "$S37_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
-# common.md stops owning the field.
-S37_MUT="$(mktemp -d)"; mkdir -p "$S37_MUT/refs"
+# contracts.md stops owning the field.
+S37_MUT="$(mktemp -d)"; mkdir -p "$S37_MUT/refs"; cp "$S24_REFS"/*.md "$S37_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S37_MUT/"
-sed 's/^## Must not break:.*/## Nice to keep/' "$S24_REFS/common.md" \
-  > "$S37_MUT/refs/common.md"
+sed 's/^## Must not break:.*/## Nice to keep/' "$S24_REFS/contracts.md" \
+  > "$S37_MUT/refs/contracts.md"
 cp "$S24_REFS/phase-execution.md" "$S37_MUT/refs/phase-execution.md"
 cp "$S24_REFS/write-workflow-autonomous.md" "$S37_MUT/refs/write-workflow-autonomous.md"
-assert "S37: the guard fails when common.md stops owning the field" \
+assert "S37: the guard fails when contracts.md stops owning the field" \
   '[ -n "$(s37_guard "$S37_MUT" "$S37_MUT/refs" "$RUNNER_SRC")" ]'
 rm -rf "$S37_MUT"
 # Planning stops asking who consumes the work.
@@ -2221,8 +2221,8 @@ s38_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S38_A: the split lost the fresh-eyes judge"
   grep -q 'in transit' "$S38_A" 2>/dev/null \
     || echo "$S38_A: the judge reads the graph as a chain (transit rule gone)"
-  grep -q 'in transit' "$2/common.md" 2>/dev/null \
-    || echo "$2/common.md: the contract lost its producer-to-consumer transit rule"
+  grep -q 'in transit' "$2/contracts.md" 2>/dev/null \
+    || echo "$2/contracts.md: the contract lost its producer-to-consumer transit rule"
   grep -q 'Requires of earlier work' "$1/write-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/write-workflow/SKILL.md: the consumer question no longer reads the roadmap's Requires"
   grep -q 'in transit' "$1/write-workflow/SKILL.md" 2>/dev/null \
@@ -2239,28 +2239,28 @@ assert "S38: the mini-scope, the judge and the border checks all ship" \
   '[ -z "$S38_OUT" ]'
 # Mutations re-run the SAME guard on a copy.
 # The itinerary fields disappear from the mini-scope.
-S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
+S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"; cp "$S24_REFS"/*.md "$S38_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S38_MUT/"
 sed '/Ends at:/d' "$S24_REFS/write-workflow-autonomous.md" \
   > "$S38_MUT/refs/write-workflow-autonomous.md"
-cp "$S24_REFS/common.md" "$S38_MUT/refs/common.md"
+cp "$S24_REFS/contracts.md" "$S38_MUT/refs/contracts.md"
 assert "S38: the guard fails when the itinerary fields disappear" \
   '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
 rm -rf "$S38_MUT"
 # The split goes unjudged.
-S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
+S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"; cp "$S24_REFS"/*.md "$S38_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S38_MUT/"
 sed 's/coherence judge/vibe check/g' "$S24_REFS/write-workflow-autonomous.md" \
   > "$S38_MUT/refs/write-workflow-autonomous.md"
-cp "$S24_REFS/common.md" "$S38_MUT/refs/common.md"
+cp "$S24_REFS/contracts.md" "$S38_MUT/refs/contracts.md"
 assert "S38: the guard fails when the split goes unjudged" \
   '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
 rm -rf "$S38_MUT"
 # The graph collapses back into a chain — the transit rule disappears.
-S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"
+S38_MUT="$(mktemp -d)"; mkdir -p "$S38_MUT/refs"; cp "$S24_REFS"/*.md "$S38_MUT/refs/"
 cp -R "$SKILLS_DIR"/. "$S38_MUT/"
 cp "$S24_REFS/write-workflow-autonomous.md" "$S38_MUT/refs/write-workflow-autonomous.md"
-sed 's/in transit/nearby/g' "$S24_REFS/common.md" > "$S38_MUT/refs/common.md"
+sed 's/in transit/nearby/g' "$S24_REFS/contracts.md" > "$S38_MUT/refs/contracts.md"
 assert "S38: the guard fails when the transit rule disappears" \
   '[ -n "$(s38_guard "$S38_MUT" "$S38_MUT/refs")" ]'
 rm -rf "$S38_MUT"

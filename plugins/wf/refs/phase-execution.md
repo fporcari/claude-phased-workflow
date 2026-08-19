@@ -29,7 +29,7 @@ refactoring.
 **New callables: minimal, and marked.** Introduce only the methods and
 functions the phase's `Done:` requires, and give every one of them the
 end-of-line marker on its definition line — `# wf:phase-N:new`, in the
-file's own comment token — per `refs/common.md` → *New-method markers and
+file's own comment token — per `refs/contracts.md` → *New-method markers and
 minimality*. The name you choose is a proposal: the naming review
 (`refs/naming-review.md`) is where a human accepts or rewords it —
 `/close-phase` in interactive runs, `/finalize-workflow` in autonomous
@@ -46,12 +46,12 @@ even when it is locally cheaper. Where the plan carries contract tests, the
 pending phases' `tests/phase-M/` are the sharpest statement of where the
 work is heading — read the ones this phase's choices could touch. The
 plan's `Must not break:` header and, on a programme, the roadmap's
-remaining macro-phases are successors of the same rank (`refs/common.md` →
+remaining macro-phases are successors of the same rank (`refs/contracts.md` →
 *Must not break:*): a choice that breaks one is wrong at the same price. Scope is
 unchanged: knowing Phase 5 exists never means implementing a piece of it
 here.
 
-**Contract tests, where the plan carries them** (`refs/common.md` →
+**Contract tests, where the plan carries them** (`refs/contracts.md` →
 *Contract tests*): copy `tests/phase-N/` verbatim into the repo's test tree
 before implementing — red is the starting state, green is part of `Done:`.
 A skeleton's body is yours to write; everything else is read-only here, and
@@ -105,14 +105,16 @@ leaves the failing code **in place**: repair has to see it.
 
 A choice the phase made that the plan did not settle — why this way, what was
 rejected — goes into `notes.md` under a `## Phase N` heading before the
-commit, per `refs/common.md` → *The foreman* (per-phase rationale): finalize
+commit, per `refs/foreman.md` → *The foreman* (per-phase rationale): finalize
 reads the file, not the memory of a chat that no longer exists.
 
 ## Notify the foreman
 
 After the phase commit, send the workflow's foreman chat one message with the
 outcome — done, FAILED, or blocked — in the exact format and by the exact
-mechanics of `refs/common.md` → *The foreman*. Best-effort: no
+mechanics of `refs/foreman.md` → *Sending to the foreman*. Read that section
+when you reach this step, not at start — it is the only part of the foreman
+layer an executing session needs. Best-effort: no
 `foreman.json`, no messaging tool, delivery refused → skip in silence. The
 notification never fails a phase and is never worth a retry loop.
 
@@ -218,7 +220,7 @@ own `Done:`. What `done:` claims and the diff confirms is not redone.
 
 **Look for the chat that had it, before reading the tree as an orphan.** A
 phase chat titles itself `wf:<slug>:phase-N — <title>`, so it is findable in
-`list_sessions` like the foreman is (`common.md` → *The foreman*, including
+`list_sessions` like the foreman is (`foreman.md` → *The foreman*, including
 the rule that a tool you have not loaded is not a tool that is absent). Alive
 → one message: *hand over — commit anything uncommitted, tell me what is not
 on disk, and stop working on this phase.* Its answer is a **supplement**: the

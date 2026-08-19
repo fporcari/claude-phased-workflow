@@ -8,7 +8,7 @@ allowed-tools: Bash(git:*), Bash(python3:*), Read, Grep, Glob
 
 The read-only half of `/finalize-workflow`, run in a clean context at the plan's root (launched via `agent-session.sh`, or `claude -p '/finalize-workflow-agent'` by hand). There is nobody here who can answer a question: **never ask — verify, review, report.** Every decision — base branch, worktree removal, commit wording, the squash itself — belongs to the parent chat.
 
-**Base skill: finalize-workflow.** This agent runs its Step 5 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md`.
+**Base skill: finalize-workflow.** This agent runs its Step 5 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`.
 
 **Hard limits: no Edit, no Write, no commit, no history operation of any kind.** Bash is for read-only checks (git log/diff/show, running tests and linters).
 

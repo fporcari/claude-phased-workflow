@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skil
 
 # Execute Phase
 
-Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution — and a real doubt is asked **live, in this chat**, because here there is somebody who can answer. One class of doubt is routed first: an ambiguity in the *plan itself* goes to the foreman (`common.md` → *The foreman*, `clarify?`) before it reaches the user — the plan's author answers it better — and the user here confirms what the foreman decided.
+Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution — and a real doubt is asked **live, in this chat**, because here there is somebody who can answer. One class of doubt is routed first: an ambiguity in the *plan itself* goes to the foreman (`foreman.md` → *The foreman*, `clarify?`) before it reaches the user — the plan's author answers it better — and the user here confirms what the foreman decided.
 
 Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on a strong model — `opus` floor; `sonnet` is not in this plugin's palette.
 
@@ -15,7 +15,7 @@ Two kinds of interruption, and only one is legitimate: a question that needs a *
 - **Effort** governs how wide you look before the gate — the scale is in Step 3. Missing line → treat as `high`.
 - **`fable`** means the phase kept inventive work of its own. Read this file as a contract on the *output* — the approval gate, one phase, one commit, the outcome format — not as a procedure to walk step by step, since a prescriptive step list is exactly what degrades that model. The settled `Decisions:` are input, not something to re-derive.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch, phase-selection semantics. **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` — selection, implementation discipline, outcome formats, the phase commit; `/execute-phase-agent` is this same skill with the gate replaced by unattended constraints.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md`, `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions, the contract layer (Done:/Verify:, contract tests), the foreman protocol this skill routes clarify? through. **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` — selection, implementation discipline, outcome formats, the phase commit; `/execute-phase-agent` is this same skill with the gate replaced by unattended constraints.
 
 ## Step 1: Find the plan and the phase
 
@@ -29,7 +29,7 @@ Act on `recommendation:` — `next: N` → proceed; `resume-candidate: N` → as
 
 Mark the phase `[>]` with `> In execution since <ISO timestamp>`.
 
-**Title this chat** `wf:<slug>:phase-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`common.md` → *The foreman*). Best-effort, like everything on that channel: no tool, no title, no consequence — nothing addresses a phase chat, the title is there so the session list reads as a workflow.
+**Title this chat** `wf:<slug>:phase-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`foreman.md` → *The foreman*). Best-effort, like everything on that channel: no tool, no title, no consequence — nothing addresses a phase chat, the title is there so the session list reads as a workflow.
 
 ## Step 2: `vast` phases only — read-only fan-out
 
@@ -43,16 +43,16 @@ Read the phase's `Pattern:` example first — don't re-explore what planning alr
 
 **The gate carries a compatibility line.** Before presenting, read the
 pending phases — their `Files:`, `Details:`, and contract tests where the
-plan carries them (`common.md` → *Contract tests*) — plus the plan's
+plan carries them (`contracts.md` → *Contract tests*) — plus the plan's
 `Must not break:` header and, when `.phased/roadmap.md` exists, its
-remaining macro-phases (`common.md` → *Must not break:*): premises of the
+remaining macro-phases (`contracts.md` → *Must not break:*): premises of the
 same rank. State in ONE line what this phase's approach leaves standing for
 them: the data shape a later phase builds on, the file a later `Files:`
 names, the behaviour a later test asserts. A conflict found here is a plan ambiguity: it goes up as `clarify?`
 (below) before any approval is asked — approving an approach nobody checked
 against the plan's own future is how a phase betrays it.
 
-**Plan ambiguities go up before the gate.** An open question about the plan itself — what the objective means, what `Done:` covers, a `Files:`/`Pattern:` that doesn't match the code — is not the user's first: send it to the foreman per `common.md` → *The foreman* (`clarify?` — precondition, reply paths, one-round cap and timeout all live there) and fold the answer into the gate as a settled decision, presented for confirmation. What the foreman sent back as the user's (`ask-user`), what it never answered, and every question outside that scope — local technical choices, the approval itself — joins the batch as today.
+**Plan ambiguities go up before the gate.** An open question about the plan itself — what the objective means, what `Done:` covers, a `Files:`/`Pattern:` that doesn't match the code — is not the user's first: send it to the foreman per `foreman.md` → *The foreman* (`clarify?` — precondition, reply paths, one-round cap and timeout all live there) and fold the answer into the gate as a settled decision, presented for confirmation. What the foreman sent back as the user's (`ask-user`), what it never answered, and every question outside that scope — local technical choices, the approval itself — joins the batch as today.
 
 Present in ONE message: what the phase will do, the files to create/modify/delete with their key changes, and **every open question batched** (anything `Decisions:`/`Details:` leave unsettled). Then ONE AskUserQuestion carrying approval plus those questions.
 
@@ -65,31 +65,31 @@ decision, and this is the one interruption that is legitimate by design. A
 text description of a UI is never a substitute: the stated purpose of the
 tag is judging the *look*. The authored `Verify:` checks stay as planned —
 the mockup loop refines the look, never the checklist: a check that no
-longer fits goes through the foreman (`common.md` → *Verification*, authored
+longer fits goes through the foreman (`contracts.md` → *Verification*, authored
 checks are foreman-owned). Approval of the phase IS approval of the mockup:
 save the approved version as `.phased/active/<slug>/mockups/phase-N.html` —
-the phase's visual contract (`common.md` → *Verification*), the reference
+the phase's visual contract (`contracts.md` → *Verification*), the reference
 for Step 5's judge, committed with the phase.
 
 **No file may be edited before approval. After approval, run to completion.**
 
 ## Step 4: Execute
 
-Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it. Same routing mid-phase as at the gate: a blocker that is a plan ambiguity goes to the foreman first (`clarify?`, per `common.md` → *The foreman*), and the ONE question to the user then presents the foreman's decision for confirmation — a rejection travels back up once, per the protocol.
+Implement only this phase. When a coherent, demonstrable sub-result lands and substantial work remains, checkpoint it per the shared core (*WIP checkpoints*) — the cost is a `partial` commit the squash will drop, the payoff is that a dying session loses minutes, not the phase. If something the plan doesn't cover comes up and a wrong default would be costly, ask ONE batched question and record the answer in Notes; otherwise take the conservative option and note it. Same routing mid-phase as at the gate: a blocker that is a plan ambiguity goes to the foreman first (`clarify?`, per `foreman.md` → *The foreman*), and the ONE question to the user then presents the foreman's decision for confirmation — a rejection travels back up once, per the protocol.
 
-**The stop-loss.** Struggle is itself a routing signal, per the same section of `common.md`: the second failed attempt at one obstacle, or an exchange with the user that has turned from deciding into diagnosing why the approach does not work, stops the work — checkpoint (*WIP checkpoints*), then the suspected presupposition goes up as a `clarify?`; never a third attempt, never another diagnostic message here. The answer decides between the two known exits: a defect leaves the chat (`refs/phase-execution.md` → *Handing a defect to repair*), a wrong plan follows the rejection road.
+**The stop-loss.** Struggle is itself a routing signal, per the same section of `foreman.md`: the second failed attempt at one obstacle, or an exchange with the user that has turned from deciding into diagnosing why the approach does not work, stops the work — checkpoint (*WIP checkpoints*), then the suspected presupposition goes up as a `clarify?`; never a third attempt, never another diagnostic message here. The answer decides between the two known exits: a defect leaves the chat (`refs/phase-execution.md` → *Handing a defect to repair*), a wrong plan follows the rejection road.
 
-**When an answer changes the plan itself** — a phase reshaped, a decision reversed, scope moved — the plan edit gets committed as usual, and the foreman chat is told: one `plan changed at phase N` message per the protocol in `common.md` → *The foreman*, best-effort. The father must not discover a deviation at finalize.
+**When an answer changes the plan itself** — a phase reshaped, a decision reversed, scope moved — the plan edit gets committed as usual, and the foreman chat is told: one `plan changed at phase N` message per the protocol in `foreman.md` → *The foreman*, best-effort. The father must not discover a deviation at finalize.
 
 ## Step 5: Verify
 
 - Phases with contract tests start from them: copied verbatim and green per the shared core (`refs/phase-execution.md` → *Implement*); edits to their contract only ever arrive as a foreman `clarify:` decision.
 - Testable logic → write/update tests in the repo's existing style, run the suite. A failure that doesn't touch this phase's `Files:` is probably pre-existing: check before absorbing it, and tell the user instead. Fix and re-run, ONE retry; still red → `[!]`.
-- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool), where installed, drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't — and when it is not installed, apply the declared fallback in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: those checks go to the human as `Verify: now` steps, said out loud. **Login-gated target → the human performs the login, always** — first establish whether there is one, then hand over (`common.md` → *Verification*).
+- Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool), where installed, drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't — and when it is not installed, apply the declared fallback in `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*: those checks go to the human as `Verify: now` steps, said out loud. **Login-gated target → the human performs the login, always** — first establish whether there is one, then hand over (`contracts.md` → *Verification*).
 - `ui`-tagged → the browser pass above takes `mockups/phase-N.html` as its reference and must return **screenshots of the key states** (saved next to the mockup). Then ONE `ui-judge` subagent (Agent tool; fallback: a general-purpose subagent told to stay read-only), given the mockup path, the screenshot paths, and a one-line phase brief. Findings: **MECHANICAL** (element missing or plainly wrong vs the mockup) → fix now, re-run the check; **JUDGMENT** (a deviation that may be legitimate, an aesthetic call) → record as `> Review:`, never block. No browser surface available → the judge is skipped too; say so and hand the comparison to the human as a `Verify: now` step with both paths.
 - `vast` → optionally re-run the read-only fan-out to confirm no site was missed, then test as usual.
 
-What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
+What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/finalize-workflow` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.
 
 ## Step 6: Hand over for testing, then close
 
@@ -102,9 +102,9 @@ What is left after that — aesthetics, "is this interaction right?", UX ambigui
 
 **Nothing left for the human** — the suite covered it — closes straight away, as before.
 
-A phase that reached its `Done:` closes through the `close-phase` skill (Skill tool): naming review of the methods this phase marked (`common.md` → *New-method markers and minimality* — accept-all is one keypress), the Done gate re-run, the `[x]` record with the Step 5 `> Verify:` notes, the ONE phase commit, the foreman message and the desktop notification — all per the shared cores it cites. Hand it the outcome material (touched files, `> Review:`/`> Verify:` notes); do not restate its mechanics here. Its closing line names the next step; add beside it what it does not carry — what was done, test results, the manual checks left to the user.
+A phase that reached its `Done:` closes through the `close-phase` skill (Skill tool): naming review of the methods this phase marked (`contracts.md` → *New-method markers and minimality* — accept-all is one keypress), the Done gate re-run, the `[x]` record with the Step 5 `> Verify:` notes, the ONE phase commit, the foreman message and the desktop notification — all per the shared cores it cites. Hand it the outcome material (touched files, `> Review:`/`> Verify:` notes); do not restate its mechanics here. Its closing line names the next step; add beside it what it does not carry — what was done, test results, the manual checks left to the user.
 
-A phase ending `[!]` or `[~]` never routes through `close-phase`: record and commit it directly, exactly as the shared core (`refs/phase-execution.md`) specifies, and send the foreman message per `common.md` → *The foreman*, best-effort.
+A phase ending `[!]` or `[~]` never routes through `close-phase`: record and commit it directly, exactly as the shared core (`refs/phase-execution.md`) specifies, and send the foreman message per `foreman.md` → *The foreman*, best-effort.
 
 ## Handing over
 
@@ -115,7 +115,7 @@ The handover itself is a move the user can call at any time — *"pass the baton
 Handing over is three things, in order:
 
 1. **Checkpoint** exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
-2. **Write down what four keys cannot hold**: decisions taken and why, roads tried that do not work, what the next chat must not redo — into `notes.md` under the phase's `## Phase N` heading (`common.md` → *The foreman*, per-phase rationale), committed with the checkpoint. This is the part that dies with the chat if nobody writes it.
+2. **Write down what four keys cannot hold**: decisions taken and why, roads tried that do not work, what the next chat must not redo — into `notes.md` under the phase's `## Phase N` heading (`foreman.md` → *The foreman*, per-phase rationale), committed with the checkpoint. This is the part that dies with the chat if nobody writes it.
 3. **Stop.** Say to open a new chat on `/wf:execute-phase`, and touch nothing further: from here the working tree belongs to whoever picks the phase up.
 
 The arriving chat finds the phase `[>]`, and may reach back to this one while it is alive — the shared core's *Resuming a `[>]` phase* says how, and answering that message is the last thing this chat does.

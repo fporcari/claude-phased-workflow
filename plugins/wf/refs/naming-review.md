@@ -4,7 +4,7 @@ The procedure that turns `wf:phase-N:new` markers into final names. Loaded
 by `/close-phase` (scope: one phase's touched files) and by
 `/finalize-workflow` (scope: every file the workflow touched). The marker
 contract itself — format, minimality, which mode strips when — is
-`refs/common.md` → *New-method markers and minimality*; the skills cite
+`refs/contracts.md` → *New-method markers and minimality*; the skills cite
 these two files, they never restate them.
 
 The review exists for one reason: agent-chosen names are the part of a diff
@@ -35,7 +35,7 @@ part, if any, is free). Detecting it is the caller's context: the phase's
 `Pattern:` reference and the file's own conventions say which name shapes
 are magic — never guess a framework rule the code does not show.
 
-**Necessity** is the minimality contract (`refs/common.md` → *New-method
+**Necessity** is the minimality contract (`refs/contracts.md` → *New-method
 markers and minimality*) applied to each entry, now that every new callable
 sits in one view — the vantage point no single phase had. Read each one
 against its phase's objective and `Done:`: required → the column stays

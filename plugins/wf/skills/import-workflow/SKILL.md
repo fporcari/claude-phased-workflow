@@ -9,7 +9,7 @@ allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Wr
 
 Turn an existing plan or a handoff document into a `.phased/` workflow. This is an **adapter, not a planner**: it maps what the source already says onto the plan format and reports what is missing. It never invents phases, and it never writes source code.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions plus the take-command protocol this import runs.
 
 Typical sources: a pre-4.0 `.claude/MEMORY.md`, a parallel `memory_<name>.md` from the same era, or a free-form handoff written by a previous session or another person.
 
@@ -74,7 +74,7 @@ git add .phased && git commit -m "wf: import plan for <slug>"
 ```
 
 **Importing is taking command**: write `foreman.json` alongside the plan, per
-`common.md` → *The foreman* — the file rides the import commit above, no
+`foreman.md` → *The foreman* — the file rides the import commit above, no
 second commit; the title suggestion to the user is in the Step 5 close. An
 imported workflow is thereby born with a foreman, exactly like a written one.
 
@@ -92,4 +92,4 @@ Source left at <path> — superseded, delete it whenever you like.
 To carry on, launch /execute-phase in a new chat — this one stays the board.
 ```
 
-Where the title could not be set — the tool is absent — that line becomes the ask instead, per `common.md` → *The foreman*, take-command step 3.
+Where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.

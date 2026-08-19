@@ -21,8 +21,11 @@ Three ways in, one mechanic:
   finished but never closed; before this skill, the only honest move was
   resetting completed work to `[ ]`.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at
-start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and
+`${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start — core conventions
+plus the contract layer this close verifies (Done gate, contract-test
+integrity, markers). The foreman message formats live in `refs/foreman.md` →
+*Sending to the foreman*; read that section at the notify step.
 **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
 (outcome format, the phase commit, the foreman message) and
 `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` (the naming review) — cited,
@@ -58,7 +61,7 @@ blocks the close: report it and stop, leaving the phase `[>]`. In the
 is what makes `[x]` a contract instead of a claim.
 
 **Contract tests gate the close too.** Where the plan carries
-`tests/phase-N/` for this phase (`common.md` → *Contract tests*), check the
+`tests/phase-N/` for this phase (`contracts.md` → *Contract tests*), check the
 in-tree copies against the plan copies: executable tests byte-identical,
 skeletons with their names and every `wf:contract:` line surviving verbatim
 and no red body left. A divergence not covered by a foreman decision in
@@ -88,7 +91,7 @@ ref before anything commits.
 
 A phase held open for the human's checks carries a `> Testing:` note (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` → *Awaiting the human's checks*): drop it here — `[x]` and the note contradict each other, and the checks it was waiting for are recorded as `> Verify:` like every other.
 
-**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the foreman message is the `result rejected` one instead of the `done` one (`common.md` → *The foreman*), because what follows is a re-planning, not the next phase. The closing line says the same: the next step is `/resume-workflow`, **in the foreman chat** — never here (`common.md` → *The foreman*: a phase chat executes, it does not supervise).
+**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the foreman message is the `result rejected` one instead of the `done` one (`foreman.md` → *The foreman*), because what follows is a re-planning, not the next phase. The closing line says the same: the next step is `/resume-workflow`, **in the foreman chat** — never here (`foreman.md` → *The foreman*: a phase chat executes, it does not supervise).
 
 Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
 phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,

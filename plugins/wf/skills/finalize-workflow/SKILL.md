@@ -8,7 +8,7 @@ allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), B
 
 Verify the work plan is complete and turn the working tree into one clean commit. **Never edit source code here** — findings get reported and delegated. One declared exception: Step 3's naming review, whose edits are the user's own naming decisions plus marker removal.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md`, `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions, the contract layer (verify.md, markers, Must not break:), the reporting register and foreman messaging.
 
 ## Step 1: Find the plan and the base
 
@@ -35,13 +35,13 @@ git rev-list --count "$BASE"^..<parent>                         # 0 => BASE is t
 
 All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
-**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification*). Deliver them as the **QA page** defined there: ONE checklist, grouped by phase, each check with the action to exercise and the result the user should see; a deferred step whose phase has since landed is now due. Phrase every item per `common.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding. **Keep the answer**: whether a human exercises the result is one of the inputs Step 5's recommendation reads.
+**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*). Deliver them as the **QA page** defined there: ONE checklist, grouped by phase, each check with the action to exercise and the result the user should see; a deferred step whose phase has since landed is now due. Phrase every item per `foreman.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the workflow closes with those checks outstanding. **Keep the answer**: whether a human exercises the result is one of the inputs Step 5's recommendation reads.
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
 ## Step 3: Naming review
 
-Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases created — nobody could answer a naming question mid-run (`common.md` → *New-method markers and minimality*). Collect them over the union of every phase's `> Files:` (`grep -rn "wf:phase-[0-9]*:new" <files>`); none → skip in one line. Found → run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` for the whole workflow: ONE map, accept-all as the recommended fast path, renames applied with their call sites, markers stripped, the narrow signal re-run when anything was renamed. Commit the result on the workflow branch:
+Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases created — nobody could answer a naming question mid-run (`contracts.md` → *New-method markers and minimality*). Collect them over the union of every phase's `> Files:` (`grep -rn "wf:phase-[0-9]*:new" <files>`); none → skip in one line. Found → run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` for the whole workflow: ONE map, accept-all as the recommended fast path, renames applied with their call sites, markers stripped, the narrow signal re-run when anything was renamed. Commit the result on the workflow branch:
 
 ```bash
 git add -A && git commit -q -m "wf: method naming review"
@@ -59,7 +59,7 @@ The tree must be clean. If `git status --short` shows anything, a phase closed w
 what this macro actually built — the diff above, read against the plan's
 `Must not break:` lines — with the remaining macro-phases' mini-scopes:
 every shape a later macro would have to undo or work around is a finding
-(`common.md` → *Must not break:*). Where the roadmap declares an `Ends at:`
+(`contracts.md` → *Must not break:*). Where the roadmap declares an `Ends at:`
 for this macro, compare it with the state actually delivered — a leg about
 to close in Puglia is caught at the close of the leg, not at the departure
 of the next. Contracts in transit across this macro — produced by an
@@ -98,7 +98,7 @@ Extended also hunts cross-phase issues — Light's whole scope is a subset of Ex
 
 The worktree path above is exempt from the question: the agent's prompt ships fixed in the plugin, and that is what keeps its review independent.
 
-Findings → present them per `common.md` → *The reporting register*: the short form (verdict line, one line per finding, its consequence for the user), passed through the `report-judge` comprehension probe before showing — **skip the probe when the review returns no findings**: a clean verdict line has nothing to misread — delivered as the register's report page where the session can render one. Then ONE question — *"The pre-commit review found N problems. Fix them first, or shall I go on to the commit?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Expand the details before deciding*), never as a second question. Fixing is delegated, not done here; then re-run `/finalize-workflow`.
+Findings → present them per `foreman.md` → *The reporting register*: the short form (verdict line, one line per finding, its consequence for the user), passed through the `report-judge` comprehension probe before showing — **skip the probe when the review returns no findings**: a clean verdict line has nothing to misread — delivered as the register's report page where the session can render one. Then ONE question — *"The pre-commit review found N problems. Fix them first, or shall I go on to the commit?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Expand the details before deciding*), never as a second question. Fixing is delegated, not done here; then re-run `/finalize-workflow`.
 
 This step is the only whole-diff review on the "Merge into parent" and "Commit only" paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 
@@ -106,7 +106,7 @@ This step is the only whole-diff review on the "Merge into parent" and "Commit o
 
 **This step is mandatory and runs before anything is archived or removed.** `.phased/` never reaches the parent, and the workflow branch is deletable at Step 8 — so this is the only path by which anything learned during the run outlives it. Skipping it silently is how the loop stops learning across runs.
 
-Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`common.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
+Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`foreman.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
 
 
 One bar: **would this have saved a future session real work, in a way the repo and git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" → yes. Bugs specific to this diff, anything visible by opening the file → no.
@@ -181,7 +181,7 @@ Then: *"Branch pushed. Launch `/pull-request` to open the PR to `<parent>`."*
 
 **Commit only** → nothing else happens; the workflow branch holds everything.
 
-Whichever path ran: send the foreman the closing `workflow finalized` message per `common.md` → *The foreman* — best-effort. `list_sessions` excludes the current session, so when this chat IS the foreman the title lookup finds nothing and the skip is automatic.
+Whichever path ran: send the foreman the closing `workflow finalized` message per `foreman.md` → *The foreman* — best-effort. `list_sessions` excludes the current session, so when this chat IS the foreman the title lookup finds nothing and the skip is automatic.
 
 After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"The roadmap has further macro-phases. Next step: a new chat and `/write-workflow` to detail the next one — with the hindsight of the one just committed."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
 

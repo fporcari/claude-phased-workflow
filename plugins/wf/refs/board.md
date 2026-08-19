@@ -7,7 +7,7 @@ does the work stand — and the answer is read, not operated.
 It was a working view once: per-phase status pickers the user drove, a remarks
 box on every card, a button that exported them as one prompt. That shape was
 built when the chats could not talk to each other and a widget was the only
-place to put a remark. They talk now (`common.md` → *The foreman*), so a
+place to put a remark. They talk now (`foreman.md` → *The foreman*), so a
 remark goes where remarks go — into the conversation, which keeps them,
 carries them upward and can be argued with. Controls that die with the
 message they were drawn in cannot compete with that.
@@ -25,7 +25,7 @@ message they were drawn in cannot compete with that.
   finding badly.
 - **Never on an incoming message**, whatever it carries. A foreman told that a phase
   closed — or that its result was rejected and the plan needs re-planning — answers
-  with the delta (`common.md` → *The foreman*). The board is drawn when the **person**
+  with the delta (`foreman.md` → *The foreman*). The board is drawn when the **person**
   asks where the work stands, and after a re-planning is committed, once. Drawing it
   because the shape is *about to* change shows a position nobody will act on.
 

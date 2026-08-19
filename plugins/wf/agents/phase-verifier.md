@@ -24,7 +24,7 @@ Verify, in order:
    unused imports, leftover debug output.
 4. **Marker discipline** — every method or function ADDED by this phase
    carries the `wf:phase-N:new` end-of-line marker on its definition line
-   (the contract is `refs/common.md` → *New-method markers and minimality*).
+   (the contract is `refs/contracts.md` → *New-method markers and minimality*).
    A new callable without it escapes the naming review: MECHANICAL, fix:
    add the marker.
 5. **Necessity** — the phase may introduce only the callables its objective

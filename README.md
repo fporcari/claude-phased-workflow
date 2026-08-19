@@ -173,7 +173,7 @@ The ambiguity does not have to be recognized to be routed. A phase chat that kee
 | `[!]` | failed with the bounded attempts exhausted — one automatic fresh-eyes repair, then it waits for you. A machine verdict only: a result *you* judge wrong never lands here, it becomes new phases |
 | `[~]` | blocked on a red baseline no phase owns — the chain has no mandate over it, so it goes to the human |
 
-Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `> Issue:`, `> Attempted:`, `> Repaired:`, `> Review:`, `> Verify:`, `> Testing:`) — the machine-readable evidence that makes fresh-eyes repair and the final review possible. The full vocabulary lives in [refs/common.md](plugins/wf/refs/common.md).
+Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `> Issue:`, `> Attempted:`, `> Repaired:`, `> Review:`, `> Verify:`, `> Testing:`) — the machine-readable evidence that makes fresh-eyes repair and the final review possible. The full vocabulary lives in [refs/common.md](plugins/wf/refs/common.md), with the contract layer in [refs/contracts.md](plugins/wf/refs/contracts.md) and the foreman protocol in [refs/foreman.md](plugins/wf/refs/foreman.md).
 
 ## Where the plan lives
 

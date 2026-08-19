@@ -11,7 +11,7 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
 2. **Do not implement.** The user runs `/execute-phase` afterwards.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start — language, AskUserQuestion style, plan directory, workflow branch. **The board** an interactive plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md`, `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions, the contract layer planning authors, the take-command protocol. **The board** an interactive plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
 
 ## Step 1: Where are we
 
@@ -65,7 +65,7 @@ work — behaviour that must survive is exactly what a test states best;
 where a signature is not settled yet, author that test as a skeleton
 (`wf:contract:` comment lines + red body) instead of guessing. The whole
 contract — the two precisions, where the tests live, the child's read-only
-rule, the integrity check at close — lives once in `common.md` → *Contract
+rule, the integrity check at close — lives once in `contracts.md` → *Contract
 tests*; writing them inside `.phased/` keeps this skill's own first rule
 intact. Authoring them is plan-time work: derive each phase's tests from its
 `Details:` and `Done:`, in the repo's own test style, and present them with
@@ -77,13 +77,13 @@ plan's output — ask it with the Decisions batch: *who consumes what this
 workflow builds, and what will they require of it?* The answer becomes the
 plan's `Must not break:` header lines, backed by skeleton contract tests
 where a requirement can be stated as behaviour; "nobody yet" is written
-down too. Field semantics live once in `common.md` → *Must not break:*.
+down too. Field semantics live once in `contracts.md` → *Must not break:*.
 On a roadmap carrying mini-scopes, the answer starts there, confirmed
 rather than reconstructed: collect the lines of `Requires of earlier work`
 from the later macros that touch this plan's output, **inherit the
 contracts in transit across this macro** — produced by an earlier one,
 consumed by a later one, they enter this plan's `Must not break:` too
-(`common.md` → *Must not break:*, producer-to-consumer rule) — and take
+(`contracts.md` → *Must not break:*, producer-to-consumer rule) — and take
 the macro's own `Ends at:` as a planning constraint: the last phases must
 land the system at that border.
 
@@ -97,11 +97,11 @@ Either way:
 1. Too small to verify alone (a model half, a migration, a schema)? Merge it into the phase that makes it verifiable — a phase boundary the user cannot verify is a boundary in the wrong place.
 2. **Split** — two concerns in one phase: just write more phases, no tag.
 3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the file ceiling is lifted for it only.
-4. **`ui`** — a phase whose deliverable is judged by eye: a page, a form, a dashboard. Interactive plans only (an autonomous run has nobody to approve a mockup). At execution the approval gate includes a rendered HTML mockup iterated with the user, and verification adds a browser pass plus a fidelity judge against that mockup (`common.md` → *Verification*). Tag it here so the executing chat knows before exploring.
+4. **`ui`** — a phase whose deliverable is judged by eye: a page, a form, a dashboard. Interactive plans only (an autonomous run has nobody to approve a mockup). At execution the approval gate includes a rendered HTML mockup iterated with the user, and verification adds a browser pass plus a fidelity judge against that mockup (`contracts.md` → *Verification*). Tag it here so the executing chat knows before exploring.
 
 The split-vs-`vast` call and the `ui` tag materially change execution — batch them into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
 
-**Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/common.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list. On a `ui` phase the `Verify:` list is authored COMPLETE here — the checks the human will run at that phase are pre-established now, and execution may add but never drop or reword them (`common.md` → *Verification*, authored checks are foreman-owned).
+**Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list. On a `ui` phase the `Verify:` list is authored COMPLETE here — the checks the human will run at that phase are pre-established now, and execution may add but never drop or reword them (`contracts.md` → *Verification*, authored checks are foreman-owned).
 
 **Run hint.** Every phase carries a `Run: <model> / <effort>` line: advice for the human who opens that chat, never something the plan enforces — the model is picked when the session starts, before any skill has read the plan. That is also why it is written down instead of only said here: the chat that needs it is opened days later, and by then this conversation is gone.
 
@@ -131,13 +131,13 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `common.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
 
 ```
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: interactive
-Must not break: <one line per contract owned by later work — common.md → *Must not break:*; omit only when no roadmap and no known consumer>
+Must not break: <one line per contract owned by later work — contracts.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
 [2-3 sentences]
@@ -186,7 +186,7 @@ To run it, launch /execute-phase in a new chat — this one stays the board.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 
-Where the title could not be set — the tool is absent — that line becomes the ask instead, per `common.md` → *The foreman*, take-command step 3.
+Where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.
 
 The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
 

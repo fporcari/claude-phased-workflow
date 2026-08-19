@@ -21,9 +21,10 @@ the remedies belong to `/resume-workflow` (re-planning) and `/repair-phase`
 retro-test on a `[x]` phase is the *result rejected* family (`common.md` →
 *Failure and repair notes*), not a `[!]`.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at
-start — language, AskUserQuestion style, plan directory, the contract-tests
-contract (*Contract tests*), the reporting register.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and
+`${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start — language, plan
+directory, the contract-tests contract. The reporting register lives in
+`refs/foreman.md`; read that section at the findings step.
 
 ## Step 1: Find the plan, read it whole
 
@@ -54,12 +55,12 @@ tree says instead*. This is the retrospective counterpart of
 
 On a programme (`.phased/roadmap.md` exists) the audit widens: the plan's
 `Must not break:` header and the roadmap's remaining macro-phases are
-premises of the same rank (`common.md` → *Must not break:*) — check the
+premises of the same rank (`contracts.md` → *Must not break:*) — check the
 landed work against them too.
 
 ## Step 3: Contract-test integrity (where the plan carries them)
 
-Per `common.md` → *Contract tests*: for each `[x]` phase with
+Per `contracts.md` → *Contract tests*: for each `[x]` phase with
 `tests/phase-N/`, check the in-tree copies against the plan copies —
 executable tests byte-identical; skeletons with names and every
 `wf:contract:` line surviving verbatim, no red body left — then re-run them.
@@ -81,7 +82,7 @@ agents with two different blindfolds:
    `Files:`, not the code the phases wrote. Blindness is the point — a test
    written from the code ratifies the code's own deviations; written from
    the plan, it embodies the promise. It authors `tests/phase-N/` for every
-   phase, at the two precisions of `common.md` → *Contract tests*:
+   phase, at the two precisions of `contracts.md` → *Contract tests*:
    executable where the plan fixes the signatures, `wf:contract:` skeletons
    where it does not.
 2. **The sighted verifier** — a second subagent, on the `[x]` phases only,
@@ -100,7 +101,7 @@ become the gate of their own phase, exactly as on a plan born with them.
 later macro-phase's requirements are known — measured during its planning,
 or stated by the user in this chat — hand them to the blind author as
 `wf:contract:` skeletons against the component that must serve them
-(`common.md` → *Must not break:*), and let the sighted verifier run them
+(`contracts.md` → *Must not break:*), and let the sighted verifier run them
 against what the earlier macro actually built. The reds enumerate exactly
 which requirements the landed shape cannot carry — "the decision must be
 revisited" becomes a measured list, which is what the remedy phases are
@@ -111,7 +112,7 @@ Commit the authored tests and the filled bodies together, ONE commit:
 
 ## Step 5: Report and persist
 
-Findings, in the reporting register (`common.md`), one verdict line first —
+Findings, in the reporting register (`foreman.md`), one verdict line first —
 coherent or not, and the single fact that matters — then one line per
 finding, classified:
 
