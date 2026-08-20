@@ -46,6 +46,12 @@ elif op == 'repair_ok_claim':
     s = s.replace(CLAIM_BLOCK,
                   '- [x] **Phase 1**: phase one\n  > Done: repaired\n'
                   '  > Repaired: the claim dissolved — the contract was implementable as written', 1)
+elif op == 'apply_ok':
+    # The foreman's apply road (S49): the claim's own edit landed, the Done
+    # re-ran green, the phase flips [x] with an Applied note.
+    s = s.replace(CLAIM_BLOCK,
+                  '- [x] **Phase 1**: phase one\n  > Done: applied, Done re-run green\n'
+                  '  > Applied: plan-defect edit — premise corrected in place', 1)
 elif op == 'noop':
     pass
 open(mem, 'w').write(s)

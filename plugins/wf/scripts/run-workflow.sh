@@ -294,6 +294,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   # Per-iteration flags. MUST be initialised before the selector below, which
   # can clear RUN_PHASE.
   REPAIRED_THIS_ROUND=0
+  FOREMAN_APPLIED=0
   RUN_PHASE=1
 
   # Ask next-phase.py which phase is next — the SAME selector the sub-session
@@ -484,11 +485,16 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       CONSULT_SLUG=$(basename "$PLAN_DIR")
       CONSULT_DIR="${TMPDIR:-/tmp}/phased-workflow"
       ANSWER_FILE="$CONSULT_DIR/$CONSULT_SLUG-foreman-answer"
+      APPLY_OUTCOME_FILE="$CONSULT_DIR/$CONSULT_SLUG-apply-outcome"
       CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"
       mkdir -p "$CONSULT_DIR"
-      rm -f "$ANSWER_FILE"   # a stale answer from an earlier consult is not an answer
+      # Stale answers/outcomes from an earlier consult are not answers. The
+      # outcome file is cleaned HERE, before the EVENT announces the consult:
+      # cleaning it inside the apply branch would race a fast applier that
+      # writes it right after the answer.
+      rm -f "$ANSWER_FILE" "$APPLY_OUTCOME_FILE"
       echo "EVENT: phase-needs-foreman $FAILED_PHASE"
-      echo "Phase $FAILED_PHASE claims a plan defect — waiting up to ${CONSULT_TIMEOUT}s for the foreman's answer ($ANSWER_FILE: repair|stop)..."
+      echo "Phase $FAILED_PHASE claims a plan defect — waiting up to ${CONSULT_TIMEOUT}s for the foreman's answer ($ANSWER_FILE: repair|apply|stop)..."
       FOREMAN_ANSWER=""
       CONSULT_WAITED=0
       while [ "$CONSULT_WAITED" -lt "$CONSULT_TIMEOUT" ]; do
@@ -509,56 +515,90 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
         repair)
           echo "Foreman answered: repair — proceeding to the fresh-eyes session."
           ;;
+        apply)
+          # The foreman applies the claim's own before→after edit itself (the
+          # inspector's hands, both contract copies), re-runs the phase's Done
+          # and reports on a second file. Green means the phase is already
+          # flipped [x] on disk — no repair; anything else falls through to
+          # the repair, which judges the claim as usual.
+          APPLY_TIMEOUT="${RUN_WORKFLOW_APPLY_TIMEOUT:-900}"
+          echo "Foreman answered: apply — holding while the declared edit is applied and the Done re-run ($APPLY_OUTCOME_FILE: green|red, up to ${APPLY_TIMEOUT}s)..."
+          APPLY_OUTCOME=""
+          APPLY_WAITED=0
+          while [ "$APPLY_WAITED" -lt "$APPLY_TIMEOUT" ]; do
+            if [ -f "$APPLY_OUTCOME_FILE" ]; then
+              APPLY_OUTCOME=$(head -1 "$APPLY_OUTCOME_FILE" | tr -d '[:space:]')
+              rm -f "$APPLY_OUTCOME_FILE"
+              break
+            fi
+            sleep 1
+            APPLY_WAITED=$((APPLY_WAITED + 1))
+          done
+          if [ "$APPLY_OUTCOME" = "green" ] && ! phase_any '!'; then
+            echo "Apply landed green — the phase closed under the foreman's edit; continuing with the next phase."
+            FOREMAN_APPLIED=1
+          elif [ "$APPLY_OUTCOME" = "green" ]; then
+            echo "Apply reported green but the plan still shows a [!] phase — proceeding to repair: fresh eyes judge the claim."
+          elif [ -n "$APPLY_OUTCOME" ]; then
+            echo "Apply outcome: $APPLY_OUTCOME — proceeding to repair: fresh eyes judge the claim."
+          else
+            echo "No apply outcome within ${APPLY_TIMEOUT}s — proceeding to repair: fresh eyes judge the claim."
+          fi
+          ;;
         *)
           echo "No foreman answer within ${CONSULT_TIMEOUT}s — proceeding to repair: fresh eyes judge the claim."
           ;;
       esac
     fi
 
-    # Repair runs on the strongest model: it is by definition the case where
-    # the phase's model already failed once. Fallback to opus only if the
-    # fable session cannot start (e.g. no credits — claude exits non-zero
-    # without touching the plan).
-    echo ""
-    echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
-    REPAIR_BUDGET_ARGS=()
-    [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
-    set -o pipefail
-    T0=$SECONDS
-    claude -p "$REPAIR_PROMPT" \
-      --model fable \
-      --effort max \
-      --permission-mode auto \
-      "${REPAIR_BUDGET_ARGS[@]}" \
-      --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-fable.txt"
-    REPAIR_EXIT=$?
-    set +o pipefail
-    add_timing "repair phase $FAILED_PHASE (fable/max)" "$((SECONDS - T0))"
-
-    # Only fall back if the fable session never ran at all (non-zero exit AND no
-    # outcome written). If it ran and gave up, it left the marker — do not
-    # spend a second repair on the same phase.
-    if [ "$REPAIR_EXIT" -ne 0 ] && ! first_bang_block | grep -q 'Repair attempted:'; then
-      echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
+    # A landed apply already closed the phase under the foreman's own edit —
+    # launching a repair on top of it would spend a session on a solved plan.
+    if [ "$FOREMAN_APPLIED" -eq 0 ]; then
+      # Repair runs on the strongest model: it is by definition the case where
+      # the phase's model already failed once. Fallback to opus only if the
+      # fable session cannot start (e.g. no credits — claude exits non-zero
+      # without touching the plan).
+      echo ""
+      echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
       REPAIR_BUDGET_ARGS=()
-      [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+      [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
+      set -o pipefail
       T0=$SECONDS
       claude -p "$REPAIR_PROMPT" \
-        --model opus \
+        --model fable \
         --effort max \
         --permission-mode auto \
         "${REPAIR_BUDGET_ARGS[@]}" \
-        --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-opus.txt"
-      add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
-    fi
+        --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-fable.txt"
+      REPAIR_EXIT=$?
+      set +o pipefail
+      add_timing "repair phase $FAILED_PHASE (fable/max)" "$((SECONDS - T0))"
 
-    if phase_any '!'; then
-      echo ""
-      echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
-      STOP_REASON="repair-failed"
-      break
+      # Only fall back if the fable session never ran at all (non-zero exit AND no
+      # outcome written). If it ran and gave up, it left the marker — do not
+      # spend a second repair on the same phase.
+      if [ "$REPAIR_EXIT" -ne 0 ] && ! first_bang_block | grep -q 'Repair attempted:'; then
+        echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
+        REPAIR_BUDGET_ARGS=()
+        [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+        T0=$SECONDS
+        claude -p "$REPAIR_PROMPT" \
+          --model opus \
+          --effort max \
+          --permission-mode auto \
+          "${REPAIR_BUDGET_ARGS[@]}" \
+          --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-opus.txt"
+        add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
+      fi
+
+      if phase_any '!'; then
+        echo ""
+        echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
+        STOP_REASON="repair-failed"
+        break
+      fi
+      echo "Repair succeeded — continuing with next phase."
     fi
-    echo "Repair succeeded — continuing with next phase."
     REPAIRED_THIS_ROUND=1
   fi
 

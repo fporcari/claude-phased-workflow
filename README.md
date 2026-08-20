@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.22.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.23.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -347,6 +347,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.23.0 | the plan-defect consult gains `apply`: when the claim carries its edit as before→after, the inspector applies it under the launcher's hold, re-runs the `Done:`, and a green resumes the run — no repair session, no dead run |
 | 6.22.0 | the run stops cleanly on request: a `<slug>-stop-request` file checked between sessions ("finish the phase in flight, then stop") and `RUN_WORKFLOW_MAX_PHASES=N` as an upfront bound, both ending as `run-end stopped-by-request` |
 | 6.21.0 | a negative assertion in a plan-time contract test is swept against every other phase's `Decisions:`/`Done:` at authoring, and the run inspector re-reads pending contract tests when a phase closes on a bent decision |
 | 6.20.0 | a killed unattended run names itself at resume: a stale `[>]` plus the run log in `${TMPDIR}/phased-workflow/` reads as "a run was in flight when everything died", and the reset + relaunch is offered as one option |

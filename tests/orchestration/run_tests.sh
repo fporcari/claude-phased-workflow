@@ -2643,6 +2643,115 @@ assert "S48: the guard fails when the skill loses the stop channel" \
   '[ -n "$(s48_guard "$S48_MUT" "$RUNNER_SRC")" ]'
 rm -rf "$S48_MUT"
 
+echo "== S49: plan-defect apply — the foreman's edit lands without a repair =="
+# 6.23.0: when the claim carries its own before→after edit, a repair session
+# is disproportionate spend and a stop kills the rest of the run. Third verb:
+# apply — the launcher keeps holding on a second file while the inspector
+# applies the edit, re-runs the Done and reports; green → the phase is
+# already [x] on disk and the run continues, anything else → the repair
+# judges the claim as usual.
+S49_ANS="${TMPDIR:-/tmp}/phased-workflow/toy-foreman-answer"
+S49_OUTF="${TMPDIR:-/tmp}/phased-workflow/toy-apply-outcome"
+# (a) apply → green: no repair, the run continues to completion
+setup S49a; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$S49_ANS" "$S49_OUTF"
+( for _ in $(seq 1 150); do
+    if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
+      echo apply > "$S49_ANS"
+      MEM=.phased/active/toy/plan.md python3 "$OPS" apply_ok
+      echo green > "$S49_OUTF"
+      break
+    fi; sleep 0.2; done ) &
+S49_W=$!
+RUN_WORKFLOW_CONSULT_TIMEOUT=30 RUN_WORKFLOW_APPLY_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+wait "$S49_W" 2>/dev/null
+assert "S49: the apply answer is honoured and the hold declared" 'grep -q "Foreman answered: apply" out.log'
+assert "S49: green lands the phase without a repair" \
+  'grep -q "Apply landed green" out.log && ! grep -q "repair-phase-agent skill" .claude/invocations.log'
+assert "S49: the applied phase carries the Applied note and the run completed" \
+  'grep -q "> Applied:" .phased/active/toy/plan.md && grep -q "^EVENT: run-end ok 2/2$" out.log'
+assert "S49: the applied phase still emits phase-done" 'grep -q "^EVENT: phase-done 1 1/2$" out.log'
+assert "S49: the outcome file was consumed" '[ ! -f "$S49_OUTF" ]'
+# (b) apply → red: the applier stood down, the repair judges the claim
+setup S49b; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$S49_ANS" "$S49_OUTF"
+( for _ in $(seq 1 150); do
+    if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
+      echo apply > "$S49_ANS"
+      echo red > "$S49_OUTF"
+      break
+    fi; sleep 0.2; done ) &
+S49_W=$!
+RUN_WORKFLOW_CONSULT_TIMEOUT=30 RUN_WORKFLOW_APPLY_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+wait "$S49_W" 2>/dev/null
+assert "S49: a red outcome falls through to the repair" \
+  'grep -q "Apply outcome: red — proceeding to repair" out.log && grep -q "Repair succeeded" out.log'
+assert "S49: the run completed after the red apply" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
+# (c) apply → no outcome in the window: declared, the repair proceeds
+setup S49c; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$S49_ANS" "$S49_OUTF"
+( for _ in $(seq 1 150); do
+    if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
+      echo apply > "$S49_ANS"
+      break
+    fi; sleep 0.2; done ) &
+S49_W=$!
+RUN_WORKFLOW_CONSULT_TIMEOUT=30 RUN_WORKFLOW_APPLY_TIMEOUT=1 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+wait "$S49_W" 2>/dev/null
+assert "S49: the apply window is declared when it closes empty" \
+  'grep -q "No apply outcome within 1s" out.log && grep -q "Repair succeeded" out.log'
+# (d) green claimed but the plan still shows [!]: declared, the repair judges
+setup S49d; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$S49_ANS" "$S49_OUTF"
+( for _ in $(seq 1 150); do
+    if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
+      echo apply > "$S49_ANS"
+      echo green > "$S49_OUTF"
+      break
+    fi; sleep 0.2; done ) &
+S49_W=$!
+RUN_WORKFLOW_CONSULT_TIMEOUT=30 RUN_WORKFLOW_APPLY_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+wait "$S49_W" 2>/dev/null
+assert "S49: a green that left the [!] standing is not believed" \
+  'grep -q "Apply reported green but the plan still shows" out.log && grep -q "Repair succeeded" out.log'
+# Static half: the apply road is owned by foreman.md, spoken by the inspector,
+# licensed by the claim's before→after form in contracts.md, and present in
+# the launcher.
+s49_guard() {  # $1 = refs dir, $2 = skills dir, $3 = launcher; one line per gap
+  grep -q 'plan-defect: apply' "$1/foreman.md" 2>/dev/null \
+    || echo "foreman.md: the apply road is gone"
+  grep -q 'apply-outcome' "$1/foreman.md" 2>/dev/null \
+    || echo "foreman.md: the outcome file is gone"
+  grep -q 'needs, as before-text' "$1/contracts.md" 2>/dev/null \
+    || echo "contracts.md: the claim no longer demands the before→after form"
+  grep -q 'plan-defect: apply' "$2/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the inspector no longer speaks the apply verb"
+  grep -q 'apply-outcome' "$2/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the outcome file is undocumented"
+  grep -q 'RUN_WORKFLOW_APPLY_TIMEOUT' "$3" 2>/dev/null \
+    || echo "launcher: the apply window is gone"
+  grep -q 'apply-outcome' "$3" 2>/dev/null \
+    || echo "launcher: the outcome file left the gate"
+}
+S49_OUT="$(s49_guard "$S24_REFS" "$SKILLS_DIR" "$RUNNER_SRC")"
+[ -z "$S49_OUT" ] || echo "  offending: $S49_OUT"
+assert "S49: the apply road is owned, spoken, licensed and shipped" '[ -z "$S49_OUT" ]'
+# Mutation: foreman.md losing the apply road must bite.
+S49_MUT="$(mktemp -d)"
+cp -R "$S24_REFS"/. "$S49_MUT/"
+sed -i.bak 's/plan-defect: apply/gone/g' "$S49_MUT/foreman.md" && rm -f "$S49_MUT/foreman.md.bak"
+assert "S49: the guard fails when foreman.md loses the apply road" \
+  '[ -n "$(s49_guard "$S49_MUT" "$SKILLS_DIR" "$RUNNER_SRC")" ]'
+rm -rf "$S49_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

@@ -243,20 +243,38 @@ the child's word nor judges alone — field datum from the first run: both
 claims were wrong, the foreman believed both, and the repair found the
 better design each time. It puts ONE AskUserQuestion to its user, claim and
 evidence attached: **Authorize repair** (recommended default — a fresh-eyes
-session *testing* implementability beats either armchair verdict) or **Stop
-the run** (when the claim matches an ambiguity the foreman knows it left in
-the plan). The reply travels on the message's own reply path — `plan-defect:
-repair` or `plan-defect: stop` — and the inspector turns it into the answer
+session *testing* implementability beats either armchair verdict), **Apply
+the declared edit** (offered ONLY when the claim carries its edit as
+before-text → after-text — the case where a repair session is spend
+disproportionate to a one-line fix; never the door to rewriting the
+contract), or **Stop the run** (when the claim matches an ambiguity the
+foreman knows it left in the plan). The reply travels on the message's own
+reply path — `plan-defect: repair`, `plan-defect: apply` or `plan-defect:
+stop` — and the inspector turns it into the answer
 file the launcher waits on. No reply → the gate's timeout proceeds to
-repair, as if nothing was asked. **After a granted stop the work is the
+repair, as if nothing was asked. **On apply the hands are the inspector's**:
+the launcher keeps holding on a second file while the run's inspector —
+the one session attached to the workspace — applies exactly the declared
+edit to BOTH contract copies (the plan's `tests/phase-N/` and the in-tree
+copy, byte-identical), re-runs the phase's `Done:`, and reports the outcome
+in `<slug>-apply-outcome`: on green it has already flipped the phase `[x]`
+(`> Done:` re-stated as re-run, `> Applied: plan-defect edit — <one line>`,
+the `> Issue:` kept for the record) and committed `wf: plan defect phase
+N — applied — <one line>`; red — or the window closing
+(`RUN_WORKFLOW_APPLY_TIMEOUT`, a hard deadline: reset what was touched,
+write `red`, stand down) — hands the claim to the repair as usual. The hold
+is the one sanctioned mid-run write: the tree is the applier's from the
+`apply` answer to the outcome file, for the declared edit and nothing more —
+an apply that grows into a rewrite is a stop wearing apply's clothes.
+**After a granted stop the work is the
 foreman's**: the run is dead and the tree free, so it clarifies with its
 user, edits the plan AND the contract tests itself (before-text →
 after-text discipline, committed as `wf: plan defect phase N — <one
 line>`), then decides whether the code the phase already committed needs
 `/repair-phase` — launched by the foreman, not left implicit — and
-relaunches `/run-workflow`. Either outcome is a ledger moment: a claim that
-was true means `/write-workflow` let the defect through; a false one means
-the child's own gate cried wolf.
+relaunches `/run-workflow`. Every outcome is a ledger moment: a claim that
+was true — apply included — means `/write-workflow` let the defect through;
+a false one means the child's own gate cried wolf.
 
 **Replying on the desktop**: the reply travels by `send_message`
 (session-management) with the incoming message's `from` attribute as the

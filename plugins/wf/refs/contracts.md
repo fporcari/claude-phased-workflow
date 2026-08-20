@@ -177,13 +177,15 @@ The rules, in both execution modes:
   `wf: clarify phase N — <one line>`. Unattended phases have nobody to ask
   mid-phase: the phase closes `[!]` with `> Issue: plan-defect claim — <the
   test, the premise it believes wrong, and the exact edit it thinks the plan
-  needs>` — the words `plan-defect claim` verbatim, they are what the
-  launcher's consult gate greps for (`refs/foreman.md` → *Plan-defect
-  claims*). A **claim, never a verdict**: the first field run made it twice
+  needs, as before-text → after-text>` — the words `plan-defect claim`
+  verbatim, they are what the launcher's consult gate greps for
+  (`refs/foreman.md` → *Plan-defect claims*), and the before→after form is
+  what licenses the foreman's apply road there. A **claim, never a
+  verdict**: the first field run made it twice
   and was wrong twice — the "impossible" contract was implementable
   in-dialect both times, and the repair found the better design. The claim
   is judged upstream — the foreman through the gate, or fresh repair eyes on
-  its timeout — and in no case by editing the contract.
+  its timeout — and in no case by the child editing the contract.
 - **The close verifies the copy.** `/close-phase`'s Done gate (and the
   phase-verifier, where it runs) checks the in-tree copy against the plan
   copy: executable tests byte-identical; skeletons with their test names and
