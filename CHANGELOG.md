@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.21.0 — 2026-08-20
+
+A contract test's prohibition is now checked against the other phases' law before the plan ships: the sql-recipe-pipeline run planned a phase-7 test banning a name form that phase 4's golden file and phase 6's round-trip made mandatory — a defect present since planning, surfaced only as a mid-run consult at the price of a failed session. `/write-workflow`'s autonomous branch gains a dedicated negative-assertion sweep after contract-test authoring: every forbidden substring or shape is compared with the `Decisions:` and `Done:` of every other phase — golden files and round-trips included, whose outputs are law for the phases that follow — and a prohibition another phase's law can force is resolved before launch. `/run-workflow`'s inspector complements it at runtime: a phase that closes on a bent decision triggers a re-read of the pending phases' contract tests against the bend, so the collision surfaces while stopping is still cheap. S47 guards both ends, proven by mutation.
+
 ## 6.20.0 — 2026-08-20
 
 A killed unattended run now names itself at resume: a host-app restart takes the launcher, its Monitor and the phase session down in one blow (sql-recipe-pipeline field run), and the only channel that survives is the EVENT log the launcher tees outside the repo. `/resume-workflow`, on finding a stale `[>]` alongside a run log at `${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log`, now says explicitly that an unattended run was in flight when everything died, reads the log's last `EVENT:` lines to report how far it got, and offers the reset + relaunch as one option — Step 4's stale-`[>]` reset, then a fresh `/run-workflow` over what remains — because the reset alone leaves the user without the path back. S46 guards it (the shared log path on both skills, the mid-flight wording, the offer), proven by mutation.

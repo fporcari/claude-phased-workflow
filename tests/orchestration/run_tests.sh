@@ -2545,6 +2545,34 @@ assert "S46: the guard fails when resume-workflow stops checking the log" \
   '[ -n "$(s46_guard "$S46_MUT")" ]'
 rm -rf "$S46_MUT"
 
+echo "== S47: negative assertions are swept against the other phases' law =="
+# 6.21.0 (sql-recipe-pipeline): a plan-time contract test banned a substring
+# that another phase's golden file and a third's round-trip made mandatory —
+# a defect present since planning, surfaced mid-run as a consult at the price
+# of a failed session. Static guard: the autonomous planning ref runs the
+# sweep after contract-test authoring, and the run inspector re-reads the
+# pending phases' contract tests when a phase closes on a bent decision.
+s47_guard() {  # $1 = refs dir, $2 = skills dir; one line per gap
+  grep -q 'negative assertion' "$1/write-workflow-autonomous.md" 2>/dev/null \
+    || echo "write-workflow-autonomous: the negative-assertion sweep is gone"
+  grep -q 'every OTHER phase' "$1/write-workflow-autonomous.md" 2>/dev/null \
+    || echo "write-workflow-autonomous: the sweep no longer crosses phases"
+  grep -q 'negative assertion' "$2/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the inspector no longer re-reads negative assertions"
+  grep -q 'bent decision' "$2/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the bent-decision trigger is gone"
+}
+S47_OUT="$(s47_guard "$S24_REFS" "$SKILLS_DIR")"
+[ -z "$S47_OUT" ] || echo "  offending: $S47_OUT"
+assert "S47: the sweep is planned and the inspector re-checks on a bend" '[ -z "$S47_OUT" ]'
+# Mutation: the planning ref losing the sweep must bite.
+S47_MUT="$(mktemp -d)"; mkdir -p "$S47_MUT/refs"; cp "$S24_REFS"/*.md "$S47_MUT/refs/"
+sed -i.bak 's/negative assertion/gone/g' "$S47_MUT/refs/write-workflow-autonomous.md" \
+  && rm -f "$S47_MUT/refs/write-workflow-autonomous.md.bak"
+assert "S47: the guard fails when the sweep leaves the planning ref" \
+  '[ -n "$(s47_guard "$S47_MUT/refs" "$SKILLS_DIR")" ]'
+rm -rf "$S47_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

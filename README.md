@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.20.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.21.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -347,6 +347,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.21.0 | a negative assertion in a plan-time contract test is swept against every other phase's `Decisions:`/`Done:` at authoring, and the run inspector re-reads pending contract tests when a phase closes on a bent decision |
 | 6.20.0 | a killed unattended run names itself at resume: a stale `[>]` plus the run log in `${TMPDIR}/phased-workflow/` reads as "a run was in flight when everything died", and the reset + relaunch is offered as one option |
 | 6.19.0 | minimality covers surface and prose: the named over-engineering idioms (accessors for public attributes, delegate-only wrappers, narrating comments) are prevented by the steer and hunted by the verifier and the naming review |
 | 6.18.0 | the close splits in two: `/quality-check` (QA pass, naming review, whole-diff review — stamps the plan) and a `/finalize-workflow` that only closes, gating on the stamp |
