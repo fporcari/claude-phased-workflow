@@ -41,7 +41,10 @@ sits in one view — the vantage point no single phase had. Read each one
 against its phase's objective and `Done:`: required → the column stays
 empty; a helper with a single caller that could be inlined, a speculative
 abstraction, a parameter nothing passes, a duplicate of something an
-earlier phase already built → `⚠` with the reason, stated in half a line.
+earlier phase already built, an accessor for an attribute the language
+already exposes as public, a wrapper that only delegates (the named
+anti-patterns of the contract) → `⚠` with the reason, stated in half a
+line.
 The flags sit in the map, ABOVE the question: the accept-all user has seen
 them before pressing enter.
 

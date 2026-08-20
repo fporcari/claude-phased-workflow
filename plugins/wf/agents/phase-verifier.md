@@ -28,11 +28,18 @@ Verify, in order:
    A new callable without it escapes the naming review: MECHANICAL, fix:
    add the marker.
 5. **Necessity** — the phase may introduce only the callables its objective
-   and `Done:` require. A helper with a single caller that could be inlined,
-   a speculative abstraction, a parameter nothing passes, a code path
-   nothing exercises — over-engineering is a finding: JUDGMENT (needs: a
-   human to decide whether the extra surface stays), except plainly dead
-   code, which is MECHANICAL (fix: remove it).
+   and `Done:` require, and no more prose than the repo's own files carry
+   (the contract, anti-patterns named, is `refs/contracts.md` → *New-method
+   markers and minimality*). A helper with a single caller that could be
+   inlined, a speculative abstraction, a parameter nothing passes, a code
+   path nothing exercises, an accessor for an attribute the language
+   already exposes as public, a wrapper that only delegates —
+   over-engineering is a finding: JUDGMENT (needs: a human to decide
+   whether the extra surface stays), except plainly dead code, which is
+   MECHANICAL (fix: remove it). Prose that adds nothing over the code —
+   a comment narrating the line below it, a docstring restating the
+   signature — is MECHANICAL (fix: remove it, matching the surrounding
+   files' comment density).
 6. **Contract-test integrity** — when the caller names plan-authored
    contract tests, compare each in-tree copy against its plan copy:
    executable tests byte-identical; skeletons with their test names and

@@ -260,6 +260,14 @@ a second code path nothing exercises — that is scope the plan did not buy,
 and the phase verifier reports it. When in doubt, inline the code: a future
 phase can extract the helper the day two callers exist.
 
+Minimality covers **surface and prose alike** — the named anti-patterns,
+so no check has to re-derive them: accessor methods (setters/getters) for
+attributes the language already exposes as public; wrapper methods that
+only delegate; comments that narrate the line below them; docstrings that
+restate the signature; defensive guards for states the code cannot reach.
+Each is verbosity the plan did not buy. The measure of comment density is
+the repo's own, never a general taste: match the surrounding files.
+
 **The marker.** Every new method or function carries, on its definition
 line, an end-of-line comment in the file's own comment token:
 

@@ -2480,6 +2480,41 @@ assert "S44: the guard fails when finalize stops gating on the stamp" \
   '[ -n "$(s44_guard "$S44_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
 rm -rf "$S44_MUT"
 
+echo "== S45: minimality covers surface AND prose, named once, checked everywhere =="
+# 6.19.0: the minimality contract names the over-engineering idioms (accessors
+# for public attributes, delegate-only wrappers, narrating comments, docstrings
+# restating the signature) so no check re-derives them. contracts.md owns the
+# list; the phase verifier hunts it (surface JUDGMENT, prose MECHANICAL), the
+# launcher steer prevents it on every unattended session, and the naming
+# review's Necessity column cites the named anti-patterns.
+s45_guard() {  # $1 = refs dir, $2 = agents dir, $3 = launcher; one line per gap
+  grep -q 'surface and prose alike' "$1/contracts.md" 2>/dev/null \
+    || echo "contracts.md: minimality no longer covers prose"
+  grep -q 'attributes the language already exposes' "$1/contracts.md" 2>/dev/null \
+    || echo "contracts.md: the accessor anti-pattern is gone"
+  grep -q 'narrate the line below' "$1/contracts.md" 2>/dev/null \
+    || echo "contracts.md: the narrating-comment anti-pattern is gone"
+  grep -q 'already exposes as public' "$2/phase-verifier.md" 2>/dev/null \
+    || echo "phase-verifier: no longer hunts the accessor anti-pattern"
+  grep -q 'comment density' "$2/phase-verifier.md" 2>/dev/null \
+    || echo "phase-verifier: prose findings lost the repo-density measure"
+  grep -q 'no accessor methods for attributes the language already exposes' "$3" 2>/dev/null \
+    || echo "launcher: the steer lost the minimal-code line"
+  grep -q 'already exposes as public' "$1/naming-review.md" 2>/dev/null \
+    || echo "naming-review.md: the Necessity column lost the named anti-patterns"
+}
+S45_AGENTS="$TESTDIR/../../plugins/wf/agents"
+S45_OUT="$(s45_guard "$S24_REFS" "$S45_AGENTS" "$RUNNER_SRC")"
+[ -z "$S45_OUT" ] || echo "  offending: $S45_OUT"
+assert "S45: the verbosity anti-patterns are single-source and checked everywhere" '[ -z "$S45_OUT" ]'
+# Mutation: contracts.md losing the prose half must bite.
+S45_MUT="$(mktemp -d)"; mkdir -p "$S45_MUT/refs"; cp "$S24_REFS"/*.md "$S45_MUT/refs/"
+sed 's/surface and prose alike/callables only/' "$S24_REFS/contracts.md" \
+  > "$S45_MUT/refs/contracts.md"
+assert "S45: the guard fails when minimality stops covering prose" \
+  '[ -n "$(s45_guard "$S45_MUT/refs" "$S45_AGENTS" "$RUNNER_SRC")" ]'
+rm -rf "$S45_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

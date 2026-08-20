@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.18.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.19.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -347,6 +347,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.19.0 | minimality covers surface and prose: the named over-engineering idioms (accessors for public attributes, delegate-only wrappers, narrating comments) are prevented by the steer and hunted by the verifier and the naming review |
 | 6.18.0 | the close splits in two: `/quality-check` (QA pass, naming review, whole-diff review — stamps the plan) and a `/finalize-workflow` that only closes, gating on the stamp |
 | 6.17.0 | a "the plan is wrong" claim from an unattended phase is routed to the foreman before any repair: the launcher holds, the foreman decides — authorize the fresh-eyes repair (the default; both field claims proved wrong) or stop and fix plan and tests itself |
 | 6.16.0 | the doctrine mass is measured: every skill's closure (SKILL.md + cited refs) is computed against a 1500-line budget, so growth pays at merge time instead of degrading sessions in the field |
