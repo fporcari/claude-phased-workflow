@@ -19,6 +19,7 @@ import sys
 # the ceiling grants headroom for honest growth but fails the next monolith.
 CEILING = 1500
 
+
 def closure(skill_path, refs_dir, violations):
     # Direct citations only: the refs the SKILL.md itself names are what the
     # skill can cause a session to ingest. A ref pointing at a section of
@@ -42,6 +43,7 @@ def closure(skill_path, refs_dir, violations):
         lines += open(ref_path).read().count("\n")
     return lines, sorted(seen)
 
+
 def main():
     args = [a for a in sys.argv[1:] if a != "--report"]
     report = "--report" in sys.argv
@@ -64,6 +66,7 @@ def main():
         sys.stdout.write("\n".join(table) + "\n")
     elif violations:
         sys.stdout.write("\n".join(violations) + "\n")
+
 
 if __name__ == "__main__":
     main()
