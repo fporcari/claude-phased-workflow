@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run a shipped skill in a fresh `claude` sub-session at the plan's root.
 # One launcher, callable by any skill that needs a clean-context session
-# anchored to the plan — today /finalize-workflow (its read-only verify
+# anchored to the plan — today /quality-check (its read-only verify
 # agent). The sub-session's prompt is SHIPPED here, never composed by the
 # calling chat: independence is structural, not a matter of the caller's
 # honesty.

@@ -2,7 +2,7 @@
 
 The procedure that turns `wf:phase-N:new` markers into final names. Loaded
 by `/close-phase` (scope: one phase's touched files) and by
-`/finalize-workflow` (scope: every file the workflow touched). The marker
+`/quality-check` (scope: every file the workflow touched). The marker
 contract itself — format, minimality, which mode strips when — is
 `refs/contracts.md` → *New-method markers and minimality*; the skills cite
 these two files, they never restate them.
@@ -19,7 +19,7 @@ grep -rn "wf:phase-[0-9]*:new" <scope files>
 ```
 
 Scope is the caller's: the phase's `Files:` list for `/close-phase`, the
-union of every completed phase's `> Files:` for `/finalize-workflow`. No
+union of every completed phase's `> Files:` for `/quality-check`. No
 hits → say so in one line and stop; the review has nothing to do.
 
 ## The map

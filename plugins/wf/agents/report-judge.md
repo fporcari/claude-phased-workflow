@@ -1,6 +1,6 @@
 ---
 name: report-judge
-description: Comprehension probe for a closing report addressed to the decision-maker. Use before presenting /run-workflow's run-end summary or /finalize-workflow's findings — answers the decision-maker's questions from the draft alone, so the caller can check what the report actually carries. Fresh context by design; the author of a report is the worst judge of its own clarity.
+description: Comprehension probe for a closing report addressed to the decision-maker. Use before presenting /run-workflow's run-end summary or /quality-check's findings — answers the decision-maker's questions from the draft alone, so the caller can check what the report actually carries. Fresh context by design; the author of a report is the worst judge of its own clarity.
 tools: Read
 model: opus
 ---

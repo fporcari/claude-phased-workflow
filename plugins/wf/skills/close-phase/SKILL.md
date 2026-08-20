@@ -107,7 +107,7 @@ osascript -e 'display notification "Phase N closed: <title>" with title "Claude 
 ```
 
 Close with the next step, always: the next phase with its `Run:` hint
-quoted, or `/finalize-workflow` when this was the last. The user must never
+quoted, or `/quality-check` (then `/finalize-workflow`) when this was the last. The user must never
 need to know the flow by heart to keep moving.
 
 ## Rules

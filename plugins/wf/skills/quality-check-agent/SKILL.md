@@ -1,20 +1,20 @@
 ---
-description: Read-only finalize verification in a clean sub-session — returns classified findings, never touches history
+description: Read-only quality-check verification in a clean sub-session — returns classified findings, never touches history
 disable-model-invocation: true
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Grep, Glob
 ---
 
-# Finalize Workflow — Agent
+# Quality Check — Agent
 
-The read-only half of `/finalize-workflow`, run in a clean context at the plan's root (launched via `agent-session.sh`, or `claude -p '/finalize-workflow-agent'` by hand). There is nobody here who can answer a question: **never ask — verify, review, report.** Every decision — base branch, worktree removal, commit wording, the squash itself — belongs to the parent chat.
+The read-only half of `/quality-check`, run in a clean context at the plan's root (launched via `agent-session.sh`, or `claude -p '/quality-check-agent'` by hand). There is nobody here who can answer a question: **never ask — verify, review, report.** Every decision — the review's consequences, the stamp itself, everything downstream — belongs to the parent chat.
 
-**Base skill: finalize-workflow.** This agent runs its Step 5 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`.
+**Base skill: quality-check.** This agent runs its Step 5 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`.
 
 **Hard limits: no Edit, no Write, no commit, no history operation of any kind.** Bash is for read-only checks (git log/diff/show, running tests and linters).
 
 ## Step 1: Locate
 
-Resolve the plan and `BASE` exactly as `finalize-workflow` Step 1 does (`--resolve`, plan `Parent:`, `BASE` = the commit that added the plan). Report branch shape (dedicated vs adopted) as a fact.
+Resolve the plan and `BASE` exactly as `quality-check` Step 1 does (`--resolve`, plan `Parent:`, `BASE` = the commit that added the plan). Report branch shape (dedicated vs adopted) as a fact.
 
 ## Step 2: Verify completion
 

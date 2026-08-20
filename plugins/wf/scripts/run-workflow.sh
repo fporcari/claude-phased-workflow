@@ -226,7 +226,7 @@ REMAINING=$(phase_count ' ')
 REMAINING=${REMAINING:-0}   # unreadable file → empty var → treat as 0
 
 if [ "$REMAINING" -eq 0 ]; then
-  echo "No phases remaining. Run /finalize-workflow."
+  echo "No phases remaining. Run /quality-check, then /finalize-workflow."
   exit 0
 fi
 
@@ -592,7 +592,7 @@ fi
 # separates this workflow from the work that preceded it.
 PLAN_BASE=$(git log -1 --diff-filter=A --format=%H -- "$PLAN" 2>/dev/null)
 if [ -n "$PLAN_BASE" ]; then
-  echo "Phase commits (consolidate via /finalize-workflow):"
+  echo "Phase commits (quality-check, then consolidate via /finalize-workflow):"
   git log --oneline "$PLAN_BASE"..HEAD | head -15
 else
   echo "Working tree changes (uncommitted — consolidate via /finalize-workflow):"

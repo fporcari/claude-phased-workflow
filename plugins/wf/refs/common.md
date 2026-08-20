@@ -8,7 +8,7 @@ consumer, so a session pays only for the layers its skill actually uses:
   directory and its location, the workflow branch, phase selection, failure
   and repair notes. Everyone reads it.
 - `refs/contracts.md` — `Done:`/`Verify:`, contract tests, `Must not break:`,
-  new-method markers. Planning, execution, close, doctor, finalize.
+  new-method markers. Planning, execution, close, doctor, quality check, finalize.
 - `refs/foreman.md` — chat hierarchy and messaging, the wf-lessons ledger,
   the reporting register, notifications. The skills that supervise or report.
 
@@ -230,12 +230,12 @@ Note fields the autonomous chain writes on phases, and what consumes them:
   human review when this note exists. Deleting the note grants another
   repair round after manual intervention.
 - `> Review:` — judgment-level findings from the per-phase independent
-  verification, flagged for the human at finalize; they never block `[x]`.
+  verification, flagged for the human at the quality check; they never block `[x]`.
 - `> Verify:` — one manual check left to the human, carrying its *when*
   (`now` / `deferred: needs Phase M`); written by the executing skill —
   thick in `/execute-phase`, thin in `/execute-phase-agent` — deferred
   ones copied into `verify.md`, all of them collected by
-  `/finalize-workflow`. Semantics in `refs/contracts.md` → *Verification*.
+  `/quality-check`. Semantics in `refs/contracts.md` → *Verification*.
 - `> Verified:` — optional record of the verification evidence a phase ran
   (which test, which check, what confirmed the `Done:`).
 

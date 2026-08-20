@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.17.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.18.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -15,7 +15,8 @@
 > /write-workflow      # asks: interactive or autonomous? then branch + plan
 > /execute-phase       # interactive: one phase per chat
 > /run-workflow        # autonomous: the whole plan, unattended
-> /finalize-workflow   # QA, whole-diff review, one clean commit
+> /quality-check       # QA page, whole-diff review — stamps the plan
+> /finalize-workflow   # lessons, archive, one clean commit
 > /resume-workflow     # lost? this reads the branch and tells you where you are
 > /help                # the map: from where you are to the command that comes next
 ```
@@ -81,17 +82,17 @@ In autonomous mode every phase goes through a fixed cycle. Verification is done 
 
 ![The phase loop: execute, verify with fresh eyes, one repair, then stop](docs/img/loop.svg)
 
-## The close: finalize is a phase of its own
+## The close: quality first, then finalize
 
 *And when the plan is done — who looks at the whole?*
 
 While the robot runs, every check that only a human eye can do — "is the page what it should be?" — does not stop the train: it is **put on the bill**, in a `verify.md` file that accumulates phase by phase. When the plan is done, the first thing you do is the eye check against that list: like at a restaurant, the bill arrives once, at the till — not one course at a time. The bill comes as a **QA page** — a rendered checklist, one checkbox per check, each with the action to exercise and the result you should see — so you work through it at your own pace and tick as you go.
 
-Then you run `/finalize-workflow` — and here is the point that is easy to miss: up to now **nobody has ever seen the work as a whole**. Every phase was born in a fresh session and was checked in isolation: that is the price of always-clean context. Finalize pays it in one pass, with a review of the entire diff that hunts precisely the problems *between* phases — one phase breaking another's assumption, the same helper written twice by sessions that never met, style drifting along the way.
+Then you run `/quality-check` — and here is the point that is easy to miss: up to now **nobody has ever seen the work as a whole**. Every phase was born in a fresh session and was checked in isolation: that is the price of always-clean context. The quality check pays it in one pass, with a review of the entire diff that hunts precisely the problems *between* phases — one phase breaking another's assumption, the same helper written twice by sessions that never met, style drifting along the way. When it is done, it **stamps the plan** — date, depth, QA answer, findings — and that stamp is what lets the close be honest about what was checked.
 
-**How deep that review goes is your call, not a fixed cost.** Finalize asks once — extended, light, or none — and recommends from what it knows: when a human eye lands on the result anyway (you vetted each phase as it ran, or the QA page exercises what was built), the light pass hunts only the between-phases residue at a fraction of the tokens; when nothing human ever looks at the work, the extended pass is the only eye it gets and earns its price. On large autonomous jobs a fourth option appears, the **panel**: four reviewers in parallel (correctness, cross-phase coherence, pattern conformance, test coverage), and every finding then faces three skeptics instructed to *refute* it — only what survives reaches you. And finalize **never touches the code**: it reports and delegates; the decisions stay yours.
+**How deep that review goes is your call, not a fixed cost.** The quality check asks once — extended, light, or none — and recommends from what it knows: when a human eye lands on the result anyway (you vetted each phase as it ran, or the QA page exercises what was built), the light pass hunts only the between-phases residue at a fraction of the tokens; when nothing human ever looks at the work, the extended pass is the only eye it gets and earns its price. On large autonomous jobs a fourth option appears, the **panel**: four reviewers in parallel (correctness, cross-phase coherence, pattern conformance, test coverage), and every finding then faces three skeptics instructed to *refute* it — only what survives reaches you. And the quality check **never touches the code** (one declared exception: the naming review applies your own naming decisions); it reports and delegates — the decisions stay yours.
 
-Before closing, two more gestures: the **lessons of the run** are rescued (the traps discovered, the "why the first attempts missed") — because the workflow branch gets thrown away, and without this step the method never learns — and the whole job becomes **one clean commit**, with three exits to choose from: pull request, direct merge on the parent, or "just commit, I'll decide later".
+The close itself is `/finalize-workflow`, and it does only the closing: it gates on the stamp (no quality check on file → it asks whether to run one first), rescues the **lessons of the run** (the traps discovered, the "why the first attempts missed") — because the workflow branch gets thrown away, and without this step the method never learns — and turns the whole job into **one clean commit**, with three exits to choose from: pull request, direct merge on the parent, or "just commit, I'll decide later".
 
 ## Git is the memory, not an archive
 
@@ -202,7 +203,8 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | `/execute-phase` | interactive execution | one phase per chat: one approval gate up front (with a rendered mockup on `ui` phases), then no interruptions |
 | `/close-phase` | the phase's work is finished | naming review of the new methods (accept-all is one keypress), Done gate, `[x]` record, one phase commit — invoked by `/execute-phase`, by the model when the work is done, or manually on a `[>]` phase a dead session left complete |
 | `/resume-workflow` | "where were we?" | read-only audit of plan vs git: drift, stale phases, next step — and the board strip, on interactive plans |
-| `/finalize-workflow` | all phases done | QA page from `verify.md` (a checklist you tick as you exercise), naming review of what autonomous phases created, whole-diff review at the depth you choose, lessons, one clean commit — PR, merge, or leave it |
+| `/quality-check` | all phases done | QA page from `verify.md` (a checklist you tick as you exercise), naming review of what autonomous phases created, whole-diff review at the depth you choose — then it stamps the plan |
+| `/finalize-workflow` | quality check stamped | gates on the stamp (offers `/quality-check` when it is missing or stale), lessons, plan archive, one clean commit — PR, merge, or leave it |
 | `/pull-request` | delivering by PR | maintainer-grade review, then creates the PR |
 
 ### Autonomous execution
@@ -289,6 +291,7 @@ claude
 # interactive: a new chat per phase        autonomous: one command
 > /execute-phase                           > /run-workflow
 # when every phase is done:
+> /quality-check
 > /finalize-workflow
 ```
 
@@ -325,7 +328,8 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | hand a long phase to a fresh chat | say *"pass the baton"* | it commits, writes down the why, and stops |
 | close a phase on what it reached | `/close-phase` | when the rest deserves a phase of its own |
 | ask where the work stands | `/resume-workflow` | the foreman chat — never the one running a phase |
-| close the job: QA page, whole-diff review, one commit | `/finalize-workflow` | when every phase is `[x]` |
+| check the job: QA page, whole-diff review, the stamp | `/quality-check` | when every phase is `[x]` |
+| close the job: lessons, archive, one commit | `/finalize-workflow` | when the quality check is stamped |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
 | find the right command from wherever you are | `/help` | the routing map — reads no state |
 
@@ -343,6 +347,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.18.0 | the close splits in two: `/quality-check` (QA pass, naming review, whole-diff review — stamps the plan) and a `/finalize-workflow` that only closes, gating on the stamp |
 | 6.17.0 | a "the plan is wrong" claim from an unattended phase is routed to the foreman before any repair: the launcher holds, the foreman decides — authorize the fresh-eyes repair (the default; both field claims proved wrong) or stop and fix plan and tests itself |
 | 6.16.0 | the doctrine mass is measured: every skill's closure (SKILL.md + cited refs) is computed against a 1500-line budget, so growth pays at merge time instead of degrading sessions in the field |
 | 6.15.0 | the messaging channel is declared, not discovered: version floors single-source in `foreman.md` → *Channel floors*, and the state-reporting skills say which branch is alive in this installation |

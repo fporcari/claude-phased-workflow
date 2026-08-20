@@ -21,7 +21,7 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 
 ## Step 0: Read the plan
 
-Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`; from outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*) and read it. No `[ ]` phases left → print "All phases completed. Run /finalize-workflow." and exit.
+Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`, see `common.md`; from outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*) and read it. No `[ ]` phases left → print "All phases completed. Run /quality-check, then /finalize-workflow." and exit.
 
 ## Step 0.2: Baseline check (before any edit)
 
@@ -80,7 +80,7 @@ When it does run: ONE `phase-verifier` subagent (Agent tool; fallback: a general
 
 ## Step 6: Record, commit, stop
 
-Record the outcome and make the phase commit exactly as the shared core specifies. The `wf:phase-N:new` markers on new callables stay in place — nobody here can answer a naming question; `/finalize-workflow` runs the whole-workflow naming review (`contracts.md` → *New-method markers and minimality*). **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none. A `ui`-tagged phase reaching this skill lost its mockup gate and browser pass by construction (the tag belongs to interactive plans): note it, and hand the visual check to the human as a `Verify: now` step.
+Record the outcome and make the phase commit exactly as the shared core specifies. The `wf:phase-N:new` markers on new callables stay in place — nobody here can answer a naming question; `/quality-check` runs the whole-workflow naming review (`contracts.md` → *New-method markers and minimality*). **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none. A `ui`-tagged phase reaching this skill lost its mockup gate and browser pass by construction (the tag belongs to interactive plans): note it, and hand the visual check to the human as a `Verify: now` step.
 
 Then the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
 

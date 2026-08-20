@@ -71,7 +71,7 @@ skill — failure never routes through `/close-phase`.
 - [x] **Phase N**: title
   > Done: brief description
   > Files: path/a.py, path/b.py, ...
-  > Review: judgment-level findings flagged for finalize (omit if none)
+  > Review: judgment-level findings flagged for the quality check (omit if none)
 ```
 
 ```

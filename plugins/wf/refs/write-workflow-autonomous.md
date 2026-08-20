@@ -26,7 +26,7 @@ The user picks autonomous when the task suits it, so friction usually means a mi
 
 ## Macro-phases (rolling wave)
 
-Split when more than ~8-10 phases would be needed, or a phase can only be written concretely after an earlier one lands, or the combined diff would be too large for one finalize review.
+Split when more than ~8-10 phases would be needed, or a phase can only be written concretely after an earlier one lands, or the combined diff would be too large for one quality-check review.
 
 Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phased/roadmap.md` — a file of its own, one level above `active/`, because the roadmap has to outlive the macro currently being worked: when `/finalize-workflow` moves `active/<slug>/` into `done/`, the roadmap stays where the next `/write-workflow` will look for it.
 
@@ -88,7 +88,7 @@ seams.
 
 Keeping the roadmap out of `plan.md` also means the launcher cannot mistake its blocks for phase lines: the separation is structural (no `[ ]` markers here), not a matter of formatting.
 
-The cycle: `/run-workflow` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight — **starting from its mini-scope**: the `Open decisions` are its scoping agenda, the later macros' `Requires` become its `Must not break:`, and its `Ends at:` is a planning constraint — the last phases must land the system there. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
+The cycle: `/run-workflow` → `/quality-check` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight — **starting from its mini-scope**: the `Open decisions` are its scoping agenda, the later macros' `Requires` become its `Must not break:`, and its `Ends at:` is a planning constraint — the last phases must land the system there. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
 
 ## Plan format
 

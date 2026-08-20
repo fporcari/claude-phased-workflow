@@ -896,7 +896,7 @@ rm -rf "$S23_MUT"
 S23_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S23_MUT/"
 awk 'BEGIN{for(i=0;i<101;i++) print "- padding: a body large enough to be a copy"}' \
-  >> "$S23_MUT/finalize-workflow-agent/SKILL.md"
+  >> "$S23_MUT/quality-check-agent/SKILL.md"
 assert "S23: the guard fails when an -agent variant grows a full body" \
   '[ -n "$(s23_guard "$S23_MUT")" ]'
 rm -rf "$S23_MUT"
@@ -1175,7 +1175,7 @@ s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   grep -q 'verify\.md' "$S27_C" 2>/dev/null \
     || echo "$S27_C: the Verification section does not name verify.md"
   # Every consumer of the contract cites the section instead of re-deriving it.
-  for S27_S in write-workflow execute-phase finalize-workflow; do
+  for S27_S in write-workflow execute-phase quality-check; do
     S27_F="$1/$S27_S/SKILL.md"
     grep -q 'Verification' "$S27_F" 2>/dev/null \
       || echo "$S27_F: does not cite contracts.md's Verification section"
@@ -1184,7 +1184,7 @@ s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # pinned above, and an unpinned copy is free to drift into a paraphrase the
   # executor would then write into real plans. Concrete instances
   # ("deferred: needs Phase 3") are the vocabulary applied, not a paraphrase.
-  for S27_S in write-workflow execute-phase execute-phase-agent finalize-workflow; do
+  for S27_S in write-workflow execute-phase execute-phase-agent quality-check; do
     S27_F="$1/$S27_S/SKILL.md"
     if grep 'deferred:' "$S27_F" 2>/dev/null \
         | grep -vE 'deferred: needs Phase ([0-9]+|M)' | grep -q .; then
@@ -1197,10 +1197,10 @@ s27_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$1/execute-phase/SKILL.md: does not append deferred checks to verify.md"
   grep -q 'verify\.md' "$1/execute-phase-agent/SKILL.md" 2>/dev/null \
     || echo "$1/execute-phase-agent/SKILL.md: does not append deferred checks to verify.md"
-  grep -q 'verify\.md' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
-    || echo "$1/finalize-workflow/SKILL.md: does not present verify.md"
-  grep -q 'verify\.md' "$1/finalize-workflow-agent/SKILL.md" 2>/dev/null \
-    || echo "$1/finalize-workflow-agent/SKILL.md: does not collect verify.md"
+  grep -q 'verify\.md' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "$1/quality-check/SKILL.md: does not present verify.md"
+  grep -q 'verify\.md' "$1/quality-check-agent/SKILL.md" 2>/dev/null \
+    || echo "$1/quality-check-agent/SKILL.md: does not collect verify.md"
   return 0
 }
 S27_OUT="$(s27_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -1230,13 +1230,13 @@ sed -i.bak 's/deferred: needs Phase M/deferred: after Phase M/g' \
 assert "S27: the guard fails when a consumer paraphrases the when vocabulary" \
   '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
 rm -rf "$S27_MUT"
-# The finalize AGENT stops collecting verify.md — on the worktree path that
-# silently empties the QA pass, so the guard covers the -agent consumers too.
+# The quality-check AGENT stops collecting verify.md — on the worktree path
+# that silently empties the QA pass, so the guard covers the -agent consumers too.
 S27_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S27_MUT/"
-sed -i.bak '/verify\.md/d' "$S27_MUT/finalize-workflow-agent/SKILL.md" \
-  && rm -f "$S27_MUT/finalize-workflow-agent/SKILL.md.bak"
-assert "S27: the guard fails when the finalize agent stops collecting verify.md" \
+sed -i.bak '/verify\.md/d' "$S27_MUT/quality-check-agent/SKILL.md" \
+  && rm -f "$S27_MUT/quality-check-agent/SKILL.md.bak"
+assert "S27: the guard fails when the quality-check agent stops collecting verify.md" \
   '[ -n "$(s27_guard "$S27_MUT" "$S24_REFS")" ]'
 rm -rf "$S27_MUT"
 
@@ -1691,14 +1691,14 @@ s31_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints 
     || echo "$2/phase-execution.md: missing the plan-is-context paragraph"
   grep -q 'does not complicate later phases' "$3" 2>/dev/null \
     || echo "$3: the light contract lost its cross-phase clause"
-  for S31_S in finalize-workflow run-workflow; do
+  for S31_S in quality-check finalize-workflow run-workflow; do
     S31_F="$1/$S31_S/SKILL.md"
     grep -qi 'reporting register' "$S31_F" 2>/dev/null \
       || echo "$S31_F: does not cite foreman.md's reporting register"
   done
   # Nobody but foreman.md carries the register's rules.
   for S31_S in write-workflow import-workflow resume-workflow execute-phase \
-               execute-phase-agent finalize-workflow run-workflow; do
+               execute-phase-agent quality-check finalize-workflow run-workflow; do
     S31_F="$1/$S31_S/SKILL.md"
     if grep -q 'Name things by what they do' "$S31_F" 2>/dev/null; then
       echo "$S31_F: restates the reporting register (single source: foreman.md)"
@@ -1768,7 +1768,7 @@ s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints 
     grep -qi 'fresh context' "$S32_A" 2>/dev/null \
       || echo "$S32_A: lost the fresh-context clause"
   fi
-  for S32_S in finalize-workflow run-workflow; do
+  for S32_S in quality-check run-workflow; do
     S32_F="$1/$S32_S/SKILL.md"
     grep -q 'report-judge' "$S32_F" 2>/dev/null \
       || echo "$S32_F: does not cite the report-judge gate"
@@ -1777,7 +1777,7 @@ s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints 
     || echo "$1/run-workflow/SKILL.md: Agent missing from allowed-tools (the gate cannot run)"
   # Nobody but foreman.md carries the shape rule.
   for S32_S in write-workflow import-workflow resume-workflow execute-phase \
-               execute-phase-agent finalize-workflow run-workflow; do
+               execute-phase-agent quality-check finalize-workflow run-workflow; do
     S32_F="$1/$S32_S/SKILL.md"
     if grep -q 'one verdict line' "$S32_F" 2>/dev/null; then
       echo "$S32_F: restates the report shape (single source: foreman.md)"
@@ -1825,7 +1825,7 @@ echo "== S33: the QA pass is a page and the review depth is the user's call =="
 # Two 5.16.0 invariants. (a) contracts.md owns the QA page — the checklist HTML
 # the user works through while exercising the result; a work sheet, not a
 # closing report, so the report-judge gate does not apply and only contracts.md
-# knows its filename. (b) finalize's pre-commit review asks its depth
+# knows its filename. (b) quality-check's pre-commit review asks its depth
 # (Extended / Light / None) instead of always paying the extended pass, Light
 # is scoped to cross-phase issues only, and the report-judge probe is skipped
 # on a clean review — the token cost tracks what a human has already vetted.
@@ -1837,7 +1837,7 @@ s33_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S33_C: the QA page lost its out-of-tree filename"
   grep -q 'work sheet, not a closing report' "$S33_C" 2>/dev/null \
     || echo "$S33_C: the QA page lost the work-sheet clause (report-judge would creep in)"
-  S33_F="$1/finalize-workflow/SKILL.md"
+  S33_F="$1/quality-check/SKILL.md"
   grep -q 'QA page' "$S33_F" 2>/dev/null \
     || echo "$S33_F: Step 2 no longer delivers the QA pass as the QA page"
   grep -qE 'AskUserQuestion.+Extended.+Light.+None' "$S33_F" 2>/dev/null \
@@ -1867,8 +1867,8 @@ rm -rf "$S33_MUT"
 S33_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S33_MUT/"
 sed -i.bak 's/Extended\*\* \/ \*\*Light\*\* \/ \*\*None/one depth/' \
-  "$S33_MUT/finalize-workflow/SKILL.md" && rm -f "$S33_MUT/finalize-workflow/SKILL.md.bak"
-assert "S33: the guard fails when finalize drops the depth question" \
+  "$S33_MUT/quality-check/SKILL.md" && rm -f "$S33_MUT/quality-check/SKILL.md.bak"
+assert "S33: the guard fails when quality-check drops the depth question" \
   '[ -n "$(s33_guard "$S33_MUT" "$S24_REFS")" ]'
 rm -rf "$S33_MUT"
 S33_MUT="$(mktemp -d)"
@@ -2141,7 +2141,7 @@ echo "== S37: a future consumer's contract travels backwards =="
 # the plan header field carrying contracts owned by later macro-phases — and
 # write-workflow asks the consumer question that fills it. (b) The gate's
 # compatibility line and the shared core treat those lines and the roadmap's
-# remaining macros as premises of pending-phase rank. (c) finalize runs the
+# remaining macros as premises of pending-phase rank. (c) quality-check runs the
 # roadmap check at macro close, and the doctor can turn a consumer measured
 # late into skeletons run against what an earlier macro built.
 s37_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints one line per violation
@@ -2159,8 +2159,8 @@ s37_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints 
     || echo "$1/execute-phase/SKILL.md: the compatibility line no longer reads the programme contract"
   grep -q 'Must not break:' "$2/phase-execution.md" 2>/dev/null \
     || echo "$2/phase-execution.md: plan-is-context no longer ranks the programme contract"
-  grep -q 'roadmap check' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
-    || echo "$1/finalize-workflow/SKILL.md: the macro close lost the roadmap check"
+  grep -q 'roadmap check' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "$1/quality-check/SKILL.md: the macro close lost the roadmap check"
   grep -q 'measured late' "$1/doctor/SKILL.md" 2>/dev/null \
     || echo "$1/doctor/SKILL.md: the doctor lost the late-consumer road"
   return 0
@@ -2191,8 +2191,8 @@ rm -rf "$S37_MUT"
 # The macro closes without looking at the roadmap.
 S37_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S37_MUT/"
-sed -i.bak '/roadmap check/d' "$S37_MUT/finalize-workflow/SKILL.md" \
-  && rm -f "$S37_MUT/finalize-workflow/SKILL.md.bak"
+sed -i.bak '/roadmap check/d' "$S37_MUT/quality-check/SKILL.md" \
+  && rm -f "$S37_MUT/quality-check/SKILL.md.bak"
 assert "S37: the guard fails when the macro close skips the roadmap" \
   '[ -n "$(s37_guard "$S37_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
 rm -rf "$S37_MUT"
@@ -2210,7 +2210,7 @@ echo "== S38: the split is scoped, judged, and lands at the right border =="
 # (Delivers / Requires of earlier work). (b) A fresh-context coherence judge
 # checks the itinerary and the contract graph before the split is presented.
 # (c) Downstream, the consumer question reads the later macros' Requires
-# lines instead of memory, and finalize compares the delivered state with
+# lines instead of memory, and quality-check compares the delivered state with
 # the macro's declared Ends at:.
 s38_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S38_A="$2/write-workflow-autonomous.md"
@@ -2228,10 +2228,10 @@ s38_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$1/write-workflow/SKILL.md: the consumer question no longer reads the roadmap's Requires"
   grep -q 'in transit' "$1/write-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/write-workflow/SKILL.md: a macro no longer inherits the contracts crossing it"
-  grep -q 'Ends at:' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
-    || echo "$1/finalize-workflow/SKILL.md: the macro close no longer checks the delivered border"
-  grep -q 'in transit' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
-    || echo "$1/finalize-workflow/SKILL.md: the macro close no longer checks the luggage in transit"
+  grep -q 'Ends at:' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "$1/quality-check/SKILL.md: the macro close no longer checks the delivered border"
+  grep -q 'in transit' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "$1/quality-check/SKILL.md: the macro close no longer checks the luggage in transit"
   return 0
 }
 S38_OUT="$(s38_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -2268,8 +2268,8 @@ rm -rf "$S38_MUT"
 # The macro closes without looking at its own border.
 S38_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S38_MUT/"
-sed -i.bak '/Ends at:/d' "$S38_MUT/finalize-workflow/SKILL.md" \
-  && rm -f "$S38_MUT/finalize-workflow/SKILL.md.bak"
+sed -i.bak '/Ends at:/d' "$S38_MUT/quality-check/SKILL.md" \
+  && rm -f "$S38_MUT/quality-check/SKILL.md.bak"
 assert "S38: the guard fails when the close skips the delivered border" \
   '[ -n "$(s38_guard "$S38_MUT" "$S24_REFS")" ]'
 rm -rf "$S38_MUT"
@@ -2446,6 +2446,39 @@ sed -i.bak 's/plan-defect claim/gone/g' "$S43_MUT/contracts.md" && rm -f "$S43_M
 assert "S43: the guard fails when contracts.md loses the claim token" \
   '[ -n "$(s43_guard "$S43_MUT" "$SKILLS_DIR" "$RUNNER_SRC")" ]'
 rm -rf "$S43_MUT"
+
+echo "== S44: the quality-check stamp is single-source and gates finalize =="
+# 6.18.0 split /finalize-workflow: the quality work (QA pass, naming review,
+# scope coherence, pre-commit review) moved to /quality-check, which stamps
+# the plan; finalize gates on the stamp and asks before closing without one.
+# Static guard: contracts.md owns the stamp format, quality-check writes it,
+# finalize greps for it and keeps the missing-stamp question; the launcher's
+# closing pointer names quality-check so autonomous runs land on the new path.
+s44_guard() {  # $1 = skills dir, $2 = refs dir, $3 = launcher; one line per gap
+  grep -q 'The quality-check stamp' "$2/contracts.md" 2>/dev/null \
+    || echo "contracts.md: the stamp section is gone"
+  grep -q '> Quality check:' "$2/contracts.md" 2>/dev/null \
+    || echo "contracts.md: the stamp format line is gone"
+  grep -q '> Quality check:' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "quality-check: no longer writes the stamp"
+  grep -q '> Quality check:' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "finalize-workflow: no longer gates on the stamp"
+  grep -q 'Run `/quality-check` first' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "finalize-workflow: lost the missing-stamp question"
+  grep -q 'quality-check' "$3" 2>/dev/null \
+    || echo "launcher: the closing pointer no longer names quality-check"
+}
+S44_OUT="$(s44_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
+[ -z "$S44_OUT" ] || echo "  offending: $S44_OUT"
+assert "S44: the stamp is single-source, written and gated on" '[ -z "$S44_OUT" ]'
+# Mutation: finalize losing the gate must bite.
+S44_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S44_MUT/"
+sed -i.bak '/> Quality check:/d' "$S44_MUT/finalize-workflow/SKILL.md" \
+  && rm -f "$S44_MUT/finalize-workflow/SKILL.md.bak"
+assert "S44: the guard fails when finalize stops gating on the stamp" \
+  '[ -n "$(s44_guard "$S44_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
+rm -rf "$S44_MUT"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

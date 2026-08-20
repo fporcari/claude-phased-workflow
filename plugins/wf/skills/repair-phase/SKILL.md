@@ -83,7 +83,7 @@ On your ok, record the outcome for the way in:
   > Done: brief description
   > Repaired: <the actual root cause, and why the previous attempts missed it>
   > Files: <complete list — previous session's plus yours>
-  > Review: judgment-level findings flagged for finalize (omit if none)
+  > Review: judgment-level findings flagged for the quality check (omit if none)
 ```
 
 **Still failing** — keep `[!]` and the existing `> Issue:` / `> Attempted:` / `> Files:` notes (extend `> Attempted:` with yours), and append:

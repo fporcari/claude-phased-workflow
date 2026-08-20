@@ -25,7 +25,8 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 | `/run-workflow` | run every remaining phase unattended (`Mode: autonomous` plans) |
 | `/repair-phase` | a phase is `[!]` and needs fresh eyes |
 | `/doctor` | the work and the plan may have drifted apart — coherence audit, contract-test integrity, blind retro-fit of missing tests |
-| `/finalize-workflow` | every phase is `[x]` — consolidate into one commit |
+| `/quality-check` | every phase is `[x]` — QA pass, naming review, whole-diff review; stamps the plan |
+| `/finalize-workflow` | quality check stamped — lessons, archive, consolidate into one commit |
 | `/pull-request` | the branch is ready to open a PR |
 
 ## Step 1: Find the plan and the base

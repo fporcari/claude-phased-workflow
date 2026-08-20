@@ -4,7 +4,7 @@ The verification and contract sections of the shared conventions, split out
 so that only their consumers pay for them: planning (`/write-workflow`),
 execution (`/execute-phase`, `/execute-phase-agent`), the close
 (`/close-phase`), the audit (`/doctor`) and the consolidation
-(`/finalize-workflow`) read this file; the purely operational skills do not.
+(`/quality-check`, `/finalize-workflow`) read this file; the purely operational skills do not.
 Core conventions stay in `refs/common.md`; the chat hierarchy and messaging
 in `refs/foreman.md`.
 
@@ -71,7 +71,7 @@ a human call lands in `> Review:`; what remains for human eyes (taste beyond
 the mockup) stays on the `Verify:` list.
 
 **Deferred steps accumulate in `verify.md`** in the plan directory, appended per
-phase, and `/finalize-workflow` presents the file as one QA pass at the end
+phase, and `/quality-check` presents the file as one QA pass at the end
 instead of scattering checks the user cannot yet perform.
 
 **The QA pass is delivered as a QA page** where the session can render a file
@@ -106,6 +106,26 @@ working as written: both report to the foreman by construction.
 `verify.md` and `review.md` are siblings, not duplicates: `review.md` says
 *"here is what I noticed and will not decide for you"* — the user reads and
 judges; `verify.md` says *"here is what you must exercise"* — the user does.
+
+## The quality-check stamp
+
+The fact that the quality work ran, on disk where the closing skill can read
+it. **This section is the single source of the stamp** — the two skills cite
+it, they never restate it. `/quality-check` appends it to `plan.md` under a
+`## Quality check` heading (created on first use, one line per run — the
+last line governs) and commits it alone as `wf: quality check — <depth>`:
+
+```
+> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>
+```
+
+The stamp records outcomes, never grants: a declined QA and a `none` review
+are stamped too — facts, not omissions. The `commit` hash is HEAD at stamp
+time; `/finalize-workflow` gates on the stamp and treats commits landed
+after the stamp's own commit as staleness — the check saw a tree that no
+longer exists. Missing or stale, finalize asks ONE question: run
+`/quality-check` first (recommended), or close without it with the price
+stated. It never runs the quality work itself.
 
 ## Contract tests — the executable contract
 
@@ -217,7 +237,7 @@ the wrong side of the programme.
   roadmap exists, its remaining macro-phases — as premises of the same rank
   as a pending phase's: a choice that breaks one goes up as `clarify?`
   before any approval.
-- **Checked at the close of the macro.** `/finalize-workflow`'s roadmap
+- **Checked at the close of the macro.** `/quality-check`'s roadmap
   check compares what was built against this field and the roadmap's
   remaining macro-phases, and reports every shape a later macro would have
   to undo — the last cheap moment to act, since the next macro is planned
@@ -259,7 +279,7 @@ reaches the parent branch:
 - **interactive runs** — `/close-phase` runs the naming review at the end
   of each phase; accepted or renamed, the markers die with the phase commit.
 - **autonomous runs** — nobody can answer a naming question mid-run, so
-  markers accumulate in the phase commits and `/finalize-workflow` runs ONE
+  markers accumulate in the phase commits and `/quality-check` runs ONE
   naming review for the whole workflow before consolidating.
 
 The sweep is blocking either way: before a phase commit closes the review,

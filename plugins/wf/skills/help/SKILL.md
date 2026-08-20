@@ -27,7 +27,7 @@ and the table below are the canon of what to say, not a page to paste.
 - **A plan exists, run it unattended.** `/wf:run-workflow` from the foreman
   chat: one sub-session per phase, one automatic repair on failure, stop
   conditions. The `-agent` variants (`/wf:execute-phase-agent`,
-  `/wf:repair-phase-agent`, `/wf:finalize-workflow-agent`) are its workers —
+  `/wf:repair-phase-agent`, `/wf:quality-check-agent`) are its workers —
   launchable by hand, but nobody has to.
 - **Something is demonstrably broken** — a red `Done:`, a defect that
   reproduces → `/wf:repair-phase` in a chat of its own; the phase chat
@@ -47,9 +47,11 @@ and the table below are the canon of what to say, not a page to paste.
   contract tests and you want the verdict instead of the suspicion →
   `/wf:doctor`: coherence audit, contract-test integrity, and a blind
   retro-fit of the missing tests, verified phase by phase.
-- **Every phase is `[x]`** — `/wf:finalize-workflow`: verification, the QA
-  pass of the deferred human checks, one consolidated commit on the parent —
-  then PR, merge, or leave it.
+- **Every phase is `[x]`** — `/wf:quality-check` first: the QA pass of the
+  deferred human checks, the naming review, the whole-diff review at the
+  depth you choose — it stamps the plan. Then `/wf:finalize-workflow`:
+  lessons, archive, one consolidated commit on the parent — then PR, merge,
+  or leave it.
 
 ## The commands, one line each
 
@@ -67,8 +69,9 @@ and the table below are the canon of what to say, not a page to paste.
 | `/wf:repair-phase-agent` | repair the first `[!]` phase, unattended |
 | `/wf:resume-workflow` | where the work stands, and which command takes it forward |
 | `/wf:doctor` | is the work still coherent with the plan — audit, test integrity, blind retro-fit |
-| `/wf:finalize-workflow` | verify everything, QA pass, consolidate into one commit |
-| `/wf:finalize-workflow-agent` | the read-only finalize verification, in a clean sub-session |
+| `/wf:quality-check` | QA pass, naming review, whole-diff review — stamps the plan |
+| `/wf:quality-check-agent` | the read-only quality verification, in a clean sub-session |
+| `/wf:finalize-workflow` | quality gate, lessons, archive, consolidate into one commit |
 | `/wf:pull-request` | open the PR after a maintainer-grade review |
 | `/wf:help` | this map |
 

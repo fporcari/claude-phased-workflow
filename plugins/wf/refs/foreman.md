@@ -292,7 +292,7 @@ old chat may be dead; nothing here is allowed to block on it.
 
 **Per-phase rationale.** A phase that makes a non-obvious choice appends it
 to `notes.md` under a `## Phase N` heading — why this way, what was rejected.
-That is what `/finalize-workflow`'s lessons pass (its Step 6) reads: executor
+That is what `/finalize-workflow`'s lessons pass reads: executor
 chats are gone by then, and they carry no title to be reached at anyway —
 the file is the only mechanism.
 
@@ -334,7 +334,7 @@ skip in silence. A lesson never blocks a reply, a phase, or a run.
 ## The reporting register
 
 Every report addressed to the person who decides — the foreman one-liners,
-`/finalize-workflow`'s QA pass and findings presentation, the `stop-work?`
+`/quality-check`'s QA pass and findings presentation, the `stop-work?`
 question, a run's closing summary — assumes the reader does NOT know the
 implementation details. They were not in the session that wrote the code;
 in an autonomous run, nobody was. **This section is the single source of
@@ -354,7 +354,7 @@ the register** — the skills cite it, they never restate it.
 
 The register applies at *presentation* time, when plan artifacts are turned
 into prose for the human, in their language. The artifacts themselves (`> Issue:`,
-`> Review:`, `> Verify:` notes, `notes.md`, the finalize agent's report)
+`> Review:`, `> Verify:` notes, `notes.md`, the quality-check agent's report)
 stay technical English: repair sessions and reviews read them, and
 periphrasis would cost them precision.
 
@@ -365,7 +365,7 @@ volunteered: the artifacts hold it, the reader pulls it through the question
 below. A wall of clear sentences is still a wall.
 
 **Delivery depends on the channel.** The closing reports —
-`/run-workflow`'s run-end summary, `/finalize-workflow`'s findings
+`/run-workflow`'s run-end summary, `/quality-check`'s findings
 presentation — are hypertext where the session can render a file to the
 user (SendUserFile on the desktop): a **report page**, the verdict on top,
 one line per finding, each finding a closed `<details>` expansion opening
