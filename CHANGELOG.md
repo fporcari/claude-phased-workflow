@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.20.0 — 2026-08-20
+
+A killed unattended run now names itself at resume: a host-app restart takes the launcher, its Monitor and the phase session down in one blow (sql-recipe-pipeline field run), and the only channel that survives is the EVENT log the launcher tees outside the repo. `/resume-workflow`, on finding a stale `[>]` alongside a run log at `${TMPDIR:-/tmp}/phased-workflow/<slug>-run.log`, now says explicitly that an unattended run was in flight when everything died, reads the log's last `EVENT:` lines to report how far it got, and offers the reset + relaunch as one option — Step 4's stale-`[>]` reset, then a fresh `/run-workflow` over what remains — because the reset alone leaves the user without the path back. S46 guards it (the shared log path on both skills, the mid-flight wording, the offer), proven by mutation.
+
 ## 6.19.0 — 2026-08-20
 
 Minimality covers surface and prose alike: the contract names the over-engineering idioms once — accessor methods for attributes the language already exposes as public, wrappers that only delegate, comments narrating the line below, docstrings restating the signature, guards for unreachable states — with the repo's own comment density as the only measure. The phase verifier hunts them (extra surface stays JUDGMENT, empty prose is MECHANICAL: remove), the naming review's Necessity column flags the named idioms with every new callable in one view, and the launcher's common steer prevents them on every unattended session — light mode included, which no verifier ever sees. No new pass and no extra sessions: prevention in the steer, detection where the checks already run. S45 guards the chain (contract → verifier → steer → naming review), proven by mutation.

@@ -2515,6 +2515,36 @@ assert "S45: the guard fails when minimality stops covering prose" \
   '[ -n "$(s45_guard "$S45_MUT/refs" "$S45_AGENTS" "$RUNNER_SRC")" ]'
 rm -rf "$S45_MUT"
 
+echo "== S46: a killed unattended run names itself at resume =="
+# 6.20.0: a host-app restart killed launcher, Monitor and phase session in one
+# blow (sql-recipe-pipeline); the EVENT log outside the repo was the only
+# surviving channel, and /resume-workflow's report never said a run had been
+# in flight. Static guard: run-workflow tees to the shared log path, and
+# resume-workflow checks that same path, names the mid-flight death, and
+# offers the reset + relaunch as one option.
+s46_guard() {  # $1 = skills dir; one line per gap
+  grep -q 'phased-workflow/<slug>-run\.log' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the log left the shared path"
+  grep -q 'phased-workflow/<slug>-run\.log' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "resume-workflow: no longer checks the run log path"
+  grep -q 'unattended run was in flight' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "resume-workflow: the mid-flight death is not named"
+  grep -q 'reset + relaunch' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "resume-workflow: the reset + relaunch path is not offered"
+  return 0
+}
+S46_OUT="$(s46_guard "$SKILLS_DIR")"
+[ -z "$S46_OUT" ] || echo "  offending: $S46_OUT"
+assert "S46: the run log is checked, the death named, the relaunch offered" '[ -z "$S46_OUT" ]'
+# Mutation: resume-workflow losing the run-log check must bite.
+S46_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S46_MUT/"
+sed -i.bak 's|phased-workflow/<slug>-run\.log|gone|g' "$S46_MUT/resume-workflow/SKILL.md" \
+  && rm -f "$S46_MUT/resume-workflow/SKILL.md.bak"
+assert "S46: the guard fails when resume-workflow stops checking the log" \
+  '[ -n "$(s46_guard "$S46_MUT")" ]'
+rm -rf "$S46_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"
