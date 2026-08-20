@@ -2573,6 +2573,76 @@ assert "S47: the guard fails when the sweep leaves the planning ref" \
   '[ -n "$(s47_guard "$S47_MUT/refs" "$SKILLS_DIR")" ]'
 rm -rf "$S47_MUT"
 
+echo "== S48: graceful stop — finish the phase in flight, then stop =="
+# 6.22.0: with credits counted, "close the current phase and do not launch the
+# next" had no channel — the field workaround was an external kill on the
+# closing EVENT, racing the next launch. The launcher now checks a stop-request
+# file between sessions (same transport as the consult answer) and honours
+# RUN_WORKFLOW_MAX_PHASES=N as an upfront bound.
+S48_STOP="${TMPDIR:-/tmp}/phased-workflow/toy-stop-request"
+# (a) request armed mid-run (by the first phase's own session here) → the
+# launched phase completes, the next never starts, the file is consumed
+setup S48a; fixture2
+rm -f "$S48_STOP"
+printf '%s\n' "python3 \"\$OPS\" complete; echo stop > '$S48_STOP'; exit 0" 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S48: the stop request is honoured between sessions" 'grep -q "Stop requested" out.log'
+assert "S48: the phase in flight completed, the next never launched" \
+  '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 1 ] && [ "$(grep -c -- "-p /goal" .claude/invocations.log)" = 1 ]'
+assert "S48: run-end says stopped-by-request 1/2" 'grep -q "^EVENT: run-end stopped-by-request 1/2$" out.log'
+assert "S48: the stop request was consumed" '[ ! -f "$S48_STOP" ]'
+# (b) a stale request from an earlier run is removed at start, declared, and
+# does not stop the fresh run
+setup S48b; fixture2
+echo stop > "$S48_STOP"
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S48: a stale request is removed at start, declared" 'grep -q "stale stop request" out.log'
+assert "S48: the fresh run completes despite the stale file" 'grep -q "^EVENT: run-end ok 2/2$" out.log'
+# (c) RUN_WORKFLOW_MAX_PHASES=1 → one phase lands, the run stops naming the bound
+setup S48c; fixture2
+printf '%s\n' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+RUN_WORKFLOW_MAX_PHASES=1 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S48: the phase budget stop names the bound" 'grep -q "Phase budget reached: 1 done as requested (RUN_WORKFLOW_MAX_PHASES=1)" out.log'
+assert "S48: one phase landed, one stayed pending" \
+  '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 1 ] && grep -q "^EVENT: run-end stopped-by-request 1/2$" out.log'
+# (d) a budget larger than the work never fires — the run ends ok
+setup S48d; fixture2
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+RUN_WORKFLOW_MAX_PHASES=5 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S48: an unspent budget leaves the run an ordinary completion" \
+  '! grep -q "Phase budget reached" out.log && grep -q "^EVENT: run-end ok 2/2$" out.log'
+# (e) a non-numeric budget is ignored, declared
+setup S48e; fixture2
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+RUN_WORKFLOW_MAX_PHASES=soon PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S48: a non-numeric budget is ignored, declared" \
+  'grep -q "not a positive number" out.log && grep -q "^EVENT: run-end ok 2/2$" out.log'
+# Static half: the channel and the bound are documented where the inspector
+# reads them, and present in the launcher.
+s48_guard() {  # $1 = skills dir, $2 = launcher; one line per gap
+  grep -q 'stop-request' "$2" 2>/dev/null || echo "launcher: the stop-request channel is gone"
+  grep -q 'RUN_WORKFLOW_MAX_PHASES' "$2" 2>/dev/null || echo "launcher: the phase budget is gone"
+  grep -q 'phased-workflow/<slug>-stop-request' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the stop channel is undocumented"
+  grep -q 'RUN_WORKFLOW_MAX_PHASES' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the phase budget is undocumented"
+}
+S48_OUT="$(s48_guard "$SKILLS_DIR" "$RUNNER_SRC")"
+[ -z "$S48_OUT" ] || echo "  offending: $S48_OUT"
+assert "S48: stop channel and phase budget shipped and documented" '[ -z "$S48_OUT" ]'
+# Mutation: the skill losing the stop channel must bite.
+S48_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S48_MUT/"
+sed -i.bak 's|phased-workflow/<slug>-stop-request|gone|g' "$S48_MUT/run-workflow/SKILL.md" \
+  && rm -f "$S48_MUT/run-workflow/SKILL.md.bak"
+assert "S48: the guard fails when the skill loses the stop channel" \
+  '[ -n "$(s48_guard "$S48_MUT" "$RUNNER_SRC")" ]'
+rm -rf "$S48_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

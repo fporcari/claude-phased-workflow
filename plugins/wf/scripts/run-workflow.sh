@@ -39,11 +39,14 @@ PLUGIN_NAME=${PLUGIN_NAME:-wf}
 # not only the happy loop; the EXIT trap is what makes "exactly one per run"
 # true by construction, and the flag keeps it single. Status is `ok` only when
 # the launcher itself exits 0 AND every phase reached [x] — a validation
-# failure on an all-[x] plan is still a stopped run. Before the plan (or the
-# helpers) exist, it reports `stopped 0/0`. Counts come from the phase
-# helpers, never a fresh grep of the plan.
+# failure on an all-[x] plan is still a stopped run; a deliberate user stop
+# (stop request, phase budget) refines `stopped` into `stopped-by-request` via
+# RUN_END_STATUS, never the other way. Before the plan (or the helpers) exist,
+# it reports `stopped 0/0`. Counts come from the phase helpers, never a fresh
+# grep of the plan.
 RUN_END_EMITTED=""
 LAUNCHER_RC=0
+RUN_END_STATUS=""
 emit_run_end() {
   [ -n "$RUN_END_EMITTED" ] && return 0
   RUN_END_EMITTED=1
@@ -56,6 +59,7 @@ emit_run_end() {
       RUN_STATUS=ok
     fi
   fi
+  [ "$RUN_STATUS" = stopped ] && [ -n "$RUN_END_STATUS" ] && RUN_STATUS="$RUN_END_STATUS"
   echo "EVENT: run-end $RUN_STATUS $DONE_COUNT/$TOTAL_COUNT"
 }
 trap 'LAUNCHER_RC=$?; emit_run_end' EXIT
@@ -116,6 +120,16 @@ fi
 PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
 mkdir -p "$PLAN_DIR/log"
+
+# Graceful stop channel: "finish the phase in flight, then stop". The request
+# rides a file OUTSIDE the repo (same transport as the consult answer — nothing
+# dirties the tree), checked between sessions, consumed on read. A stale
+# request from an earlier run is not a request: remove it at start, declared.
+STOP_REQUEST="${TMPDIR:-/tmp}/phased-workflow/$(basename "$PLAN_DIR")-stop-request"
+if [ -f "$STOP_REQUEST" ]; then
+  rm -f "$STOP_REQUEST"
+  echo "NOTE: stale stop request from an earlier run removed ($STOP_REQUEST)."
+fi
 
 # Phase-state matching lives in ONE place. A plain "- [!]" bullet in a
 # ## Notes section is prose, not a phase; before this was centralised such a
@@ -233,6 +247,19 @@ fi
 echo "Found $REMAINING phases to execute."
 echo ""
 
+# RUN_WORKFLOW_MAX_PHASES=N runs at most N more phases, then stops cleanly
+# between sessions — "only phase 8, hold phase 9" said in advance, without
+# arming a kill. Counted on phases landed ([x] growth), not sessions: a [>]
+# resume is one phase, however many sessions it takes.
+MAX_PHASES="${RUN_WORKFLOW_MAX_PHASES:-}"
+case "$MAX_PHASES" in
+  '') ;;
+  *[!0-9]*|0)
+    echo "NOTE: RUN_WORKFLOW_MAX_PHASES='$MAX_PHASES' is not a positive number — ignored."
+    MAX_PHASES="" ;;
+esac
+PHASES_THIS_RUN=0
+
 # Sessions are NOT phases: a phase that dies mid-work leaves [>] and its resume
 # consumes a second session for a single [ ]->[x] decrement, so a budget equal
 # to the pending count starves the tail of the plan. Twice the count gives every
@@ -250,6 +277,17 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   if ! phase_any ' '; then
     echo ""
     echo "All phases completed!"
+    break
+  fi
+
+  # The graceful stop: checked between sessions, never mid-phase — a request
+  # armed while a phase runs stops the run before the NEXT launch.
+  if [ -f "$STOP_REQUEST" ]; then
+    rm -f "$STOP_REQUEST"
+    echo ""
+    echo "Stop requested ($STOP_REQUEST) — ending the run before the next phase. Relaunch /run-workflow to continue."
+    STOP_REASON="stop-requested"
+    RUN_END_STATUS="stopped-by-request"
     break
   fi
 
@@ -546,6 +584,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   if [ "$AFTER_DONE" -gt "$BEFORE_DONE" ]; then
     TOTAL_NOW=$(phase_lines | grep -c .); TOTAL_NOW=${TOTAL_NOW:-0}
     echo "EVENT: phase-done $NEXT_PHASE $AFTER_DONE/$TOTAL_NOW"
+    PHASES_THIS_RUN=$((PHASES_THIS_RUN + AFTER_DONE - BEFORE_DONE))
   fi
   # A Case A reopen (a completed phase sent back to [!] by a later phase's
   # baseline check) makes the [x] count DROP, so a successful repair only
@@ -562,6 +601,18 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       STOP_REASON="no-progress"
       break
     fi
+  fi
+
+  # The phase budget: enough phases landed → stop cleanly between sessions,
+  # same exit as the stop request. Work all done anyway → let the next
+  # iteration close the run as the ordinary completion it is.
+  if [ -n "$MAX_PHASES" ] && [ "$PHASES_THIS_RUN" -ge "$MAX_PHASES" ] \
+     && { phase_any ' ' || phase_any '>'; }; then
+    echo ""
+    echo "Phase budget reached: $PHASES_THIS_RUN done as requested (RUN_WORKFLOW_MAX_PHASES=$MAX_PHASES) — relaunch /run-workflow to continue."
+    STOP_REASON="max-phases"
+    RUN_END_STATUS="stopped-by-request"
+    break
   fi
 
   echo ""
