@@ -58,7 +58,7 @@ Per the shared core, scaling exploration to the **Effort** column of the executi
 
 ## Step 3: Write tests
 
-Phases with contract tests start from them: copy `tests/phase-N/` verbatim and make them green — a skeleton's body is yours, the rest is read-only, and a test that cannot pass as written closes the phase `[!]` naming it (`contracts.md` → *Contract tests*); never edit a contract into passing. Then test the phase's remaining logic following the repo's existing test patterns. Purely UI/declarative phases with no testable logic → skip.
+Phases with contract tests start from them: copy `tests/phase-N/` verbatim and make them green — a skeleton's body is yours, the rest is read-only, and a test that cannot pass as written closes the phase `[!]` with `> Issue: plan-defect claim — …` (`contracts.md` → *Contract tests*: the exact wording, and why it is a claim the launcher routes upstream, never your verdict); never edit a contract into passing. The same claim format applies when the blocker is the plan itself — a `Done:` premise that turns out false, a pre-made decision that cannot be implemented. Then test the phase's remaining logic following the repo's existing test patterns. Purely UI/declarative phases with no testable logic → skip.
 
 ## Step 4: Convergence loop
 

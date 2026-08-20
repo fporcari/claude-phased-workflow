@@ -50,12 +50,13 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 ## Step 3: Diagnose from scratch
 
 1. Re-read the phase objective, `Details:`, `Done:` and its `Pattern:` example.
-2. Reproduce the failure and confirm the recorded error signature still holds.
-3. **Establish whose failure it is.** The failed phase committed its own work as `wf(phase N): FAILED — <title>`, so its boundaries are exact: `git show --stat HEAD` is everything it changed, and `HEAD^` is the tree before it started. Re-run the green signal at `HEAD^` — a failure that reproduces there is **not this phase's**. Don't patch it here: keep the phase `[!]` with a `> Repair attempted:` note naming the real culprit, so the human fixes the right thing.
+2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified — in the first field run both such claims dissolved under fresh eyes (the contract was implementable in-dialect both times). Your first job is trying to satisfy the contract AS WRITTEN; the contract stays read-only either way (`refs/contracts.md` → *Contract tests*). Only a claim that survives your own attempt ends the repair `[!]` with `> Repair attempted: plan-defect confirmed — <what you tried, why the contract truly cannot hold>` — the foreman fixes plan and tests from there, never you.
+3. Reproduce the failure and confirm the recorded error signature still holds.
+4. **Establish whose failure it is.** The failed phase committed its own work as `wf(phase N): FAILED — <title>`, so its boundaries are exact: `git show --stat HEAD` is everything it changed, and `HEAD^` is the tree before it started. Re-run the green signal at `HEAD^` — a failure that reproduces there is **not this phase's**. Don't patch it here: keep the phase `[!]` with a `> Repair attempted:` note naming the real culprit, so the human fixes the right thing.
 
    `HEAD` is that commit only if nothing landed after it, which is the normal case (a `[!]` phase stops the run). Otherwise find it by message rather than assuming: `git log --format='%H %s' | grep "phase N"`.
-4. Root-cause first: grep the callers of the touched functions, compare against the pattern reference, and ask whether the previous fixes aimed at a symptom.
-5. Scale exploration to the phase's Effort as in `/execute-phase-agent` Step 2.
+5. Root-cause first: grep the callers of the touched functions, compare against the pattern reference, and ask whether the previous fixes aimed at a symptom.
+6. Scale exploration to the phase's Effort as in `/execute-phase-agent` Step 2.
 
 ## Step 4: Fix and converge
 

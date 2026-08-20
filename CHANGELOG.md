@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.17.0 — 2026-08-20
+
+A child claiming the plan is at fault no longer walks straight into an unattended repair: it closes `[!]` with `> Issue: plan-defect claim — …` (the token is single-source in `contracts.md`), and the launcher holds the repair, emits `EVENT: phase-needs-foreman` and polls an answer file outside the repo while the run's inspector relays the claim to the foreman as the third question, `plan-defect?`. The foreman puts one question to its user — authorize the repair (the recommended default) or stop the run — and on a stop the plan fix is the foreman's own work: it edits plan and contract tests, commits, launches `/repair-phase` itself where the committed code needs it, and relaunches. No answer within the window (`RUN_WORKFLOW_CONSULT_TIMEOUT`, default 600s) falls through to the repair — deliberately: in the first field run (sql-recipe-pipeline) both claims were wrong and the fresh-eyes repair found the better design each time, so repair also gained the twin duty of *testing* the claim as written before confirming it (`> Repair attempted: plan-defect confirmed`). Repair transcripts now land per phase (`log/repair-N-fable.txt`) — the old fixed name let one repair overwrite another's only record. S43 guards the gate live (timeout, stop, repair, no-claim bypass) and static (token single-source, spoken by every consumer), proven by mutation.
+
 ## 6.16.0 — 2026-08-19
 
 The doctrine mass becomes a measured quantity: `check_doc_mass.py` computes every skill's closure — its SKILL.md plus every ref it cites, the doctrine a session ingests before working — and S41 fails the suite when a closure exceeds the 1500-line budget or cites a ref that does not ship (`--report` prints the table). Growth now pays its budget at merge time instead of degrading sessions in the field; today's worst case is close-phase at 1392.

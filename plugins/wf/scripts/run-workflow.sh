@@ -433,6 +433,50 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       break
     fi
 
+    # Foreman consult gate: a child claiming the PLAN is at fault (its
+    # > Issue: leads with "plan-defect claim") is judging above its pay grade —
+    # both such claims in the first field run were wrong, and the repair found
+    # the better design each time. The claim is routed to the foreman through
+    # the parent session watching this log (the -p children reach nobody, and
+    # this EVENT log is the one channel that survived a host restart). The
+    # answer travels back as a file OUTSIDE the repo, so nothing dirties the
+    # tree; no answer within the window defaults to the repair — today's path,
+    # and the empirically better armchair-free verdict.
+    if first_bang_block | grep -qi 'plan-defect claim'; then
+      CONSULT_SLUG=$(basename "$PLAN_DIR")
+      CONSULT_DIR="${TMPDIR:-/tmp}/phased-workflow"
+      ANSWER_FILE="$CONSULT_DIR/$CONSULT_SLUG-foreman-answer"
+      CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"
+      mkdir -p "$CONSULT_DIR"
+      rm -f "$ANSWER_FILE"   # a stale answer from an earlier consult is not an answer
+      echo "EVENT: phase-needs-foreman $FAILED_PHASE"
+      echo "Phase $FAILED_PHASE claims a plan defect — waiting up to ${CONSULT_TIMEOUT}s for the foreman's answer ($ANSWER_FILE: repair|stop)..."
+      FOREMAN_ANSWER=""
+      CONSULT_WAITED=0
+      while [ "$CONSULT_WAITED" -lt "$CONSULT_TIMEOUT" ]; do
+        if [ -f "$ANSWER_FILE" ]; then
+          FOREMAN_ANSWER=$(head -1 "$ANSWER_FILE" | tr -d '[:space:]')
+          rm -f "$ANSWER_FILE"
+          break
+        fi
+        sleep 1
+        CONSULT_WAITED=$((CONSULT_WAITED + 1))
+      done
+      case "$FOREMAN_ANSWER" in
+        stop)
+          echo "Foreman answered: stop. The plan-defect claim is the foreman's to resolve — fix plan and contract tests, then relaunch /run-workflow."
+          STOP_REASON="foreman-stop"
+          break
+          ;;
+        repair)
+          echo "Foreman answered: repair — proceeding to the fresh-eyes session."
+          ;;
+        *)
+          echo "No foreman answer within ${CONSULT_TIMEOUT}s — proceeding to repair: fresh eyes judge the claim."
+          ;;
+      esac
+    fi
+
     # Repair runs on the strongest model: it is by definition the case where
     # the phase's model already failed once. Fallback to opus only if the
     # fable session cannot start (e.g. no credits — claude exits non-zero
@@ -448,7 +492,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       --effort max \
       --permission-mode auto \
       "${REPAIR_BUDGET_ARGS[@]}" \
-      --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-fable.txt"
+      --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-fable.txt"
     REPAIR_EXIT=$?
     set +o pipefail
     add_timing "repair phase $FAILED_PHASE (fable/max)" "$((SECONDS - T0))"
@@ -466,7 +510,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
         --effort max \
         --permission-mode auto \
         "${REPAIR_BUDGET_ARGS[@]}" \
-        --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-opus.txt"
+        --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-opus.txt"
       add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
     fi
 

@@ -10,7 +10,8 @@
 # malformed line rejected, interactive-plus-table warned, no header reading as
 # interactive; S20 the announced fallbacks (missing selector, unknown
 # model/effort); S25 the EVENT contract — the stable EVENT: lines the parent
-# Monitor watches (phase-done, phase-failed, phase-blocked, run-end), each emitted verbatim
+# Monitor watches (phase-done, phase-failed, phase-needs-foreman, phase-blocked,
+# run-end), each emitted verbatim
 # at its site, run-end on EVERY exit path (early exits included) with the phase
 # number read by an anchored sed (live), plus a static drift guard coupling
 # those tokens to run-workflow/SKILL.md in BOTH directions, proven by
@@ -992,7 +993,7 @@ S25_SKILL="$SKILLS_DIR/run-workflow/SKILL.md"
 S25_STATIC_OUT="$(s25_static_guard "$S25_SKILL")"
 [ -z "$S25_STATIC_OUT" ] || echo "  offending: $S25_STATIC_OUT"
 assert "S25: run-workflow/SKILL.md names every EVENT token the launcher emits" '[ -z "$S25_STATIC_OUT" ]'
-assert "S25: token extraction found all four events" '[ "$(s25_tokens | wc -l | tr -d " ")" = 4 ]'
+assert "S25: token extraction found all five events" '[ "$(s25_tokens | wc -l | tr -d " ")" = 5 ]'
 # Mutation re-runs the SAME guard on a copy with the phase-failed token dropped.
 S25_MUT="$(mktemp -d)"
 cp "$S25_SKILL" "$S25_MUT/SKILL.md"
@@ -1005,7 +1006,7 @@ rm -rf "$S25_MUT"
 # for a line that never comes. Tokens are read from the skill's EVENT-speaking
 # lines only; `run-workflow` (the skill's own name) is excluded by name.
 s25_skill_tokens() {
-  grep 'EVENT' "$1" 2>/dev/null | grep -oE '\b(phase|run)-[a-z]+\b' \
+  grep 'EVENT' "$1" 2>/dev/null | grep -oE '\b(phase|run)-[a-z-]+\b' \
     | grep -vx 'run-workflow' | sort -u
 }
 s25_reverse_guard() {  # $1 = a run-workflow SKILL.md; one line per ghost token
@@ -2378,6 +2379,73 @@ printf '\nSee ${CLAUDE_PLUGIN_ROOT}/refs/ghost-layer.md for details.\n' \
 assert "S41: the guard fails on a citation of a ref that does not ship" \
   '[ -n "$(python3 "$TESTDIR/check_doc_mass.py" "$S41_MUT" "$S24_REFS")" ]'
 rm -rf "$S41_MUT"
+
+echo "== S43: plan-defect claim — the foreman consult gate before repair =="
+# Live: a [!] whose > Issue: leads with "plan-defect claim" makes the launcher
+# emit phase-needs-foreman and HOLD the repair, polling the answer file outside
+# the repo. stop → no repair, foreman-stop; repair → fresh-eyes session; no
+# answer → timeout falls through to the repair (today's path — both field
+# claims were wrong and the repair found the better design). An ordinary [!]
+# never touches the gate.
+S43_ANS="${TMPDIR:-/tmp}/phased-workflow/toy-foreman-answer"
+# (a) timeout → repair proceeds
+setup S43a; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+RUN_WORKFLOW_CONSULT_TIMEOUT=1 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S43: the claim emits 'EVENT: phase-needs-foreman 1'" 'grep -q "^EVENT: phase-needs-foreman 1$" out.log'
+assert "S43: the timeout is declared and falls through to repair" 'grep -q "No foreman answer within 1s" out.log && grep -q "Repair succeeded" out.log'
+assert "S43: the run completed after the timed-out consult" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
+# (b) foreman answers stop → no repair, phase kept [!], answer file consumed
+setup S43b; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$S43_ANS"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo stop > "$S43_ANS"; break; }; sleep 0.2; done ) &
+S43_W=$!
+RUN_WORKFLOW_CONSULT_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+wait "$S43_W" 2>/dev/null
+assert "S43: the foreman's stop is honoured" 'grep -q "Foreman answered: stop" out.log'
+assert "S43: no repair launched on a foreman stop" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
+assert "S43: the phase stays [!] for the foreman" 'grep -q "^- \[!\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
+assert "S43: the answer file was consumed" '[ ! -f "$S43_ANS" ]'
+# (c) foreman answers repair → fresh-eyes session runs, no timeout wait
+setup S43c; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$S43_ANS"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo repair > "$S43_ANS"; break; }; sleep 0.2; done ) &
+S43_W=$!
+RUN_WORKFLOW_CONSULT_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+wait "$S43_W" 2>/dev/null
+assert "S43: the foreman's repair answer is honoured" 'grep -q "Foreman answered: repair" out.log'
+assert "S43: repair ran and the run completed" 'grep -q "Repair succeeded" out.log && [ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
+# (d) an ordinary [!] (no claim) never opens the gate
+setup S43d; fixture2
+printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+RUN_WORKFLOW_CONSULT_TIMEOUT=1 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S43: an ordinary [!] skips the gate entirely" '! grep -q "phase-needs-foreman" out.log'
+# Static half: the claim token is single-source in contracts.md and spoken by
+# every consumer — the launcher's gate grep, the child that writes it, the
+# repair that tests it, the foreman section that judges it.
+s43_guard() {  # $1 = refs dir, $2 = skills dir, $3 = launcher; one line per gap
+  grep -q 'plan-defect claim' "$1/contracts.md" 2>/dev/null || echo "contracts.md: claim token missing"
+  grep -q 'Plan-defect claims' "$1/foreman.md" 2>/dev/null || echo "foreman.md: claims section missing"
+  grep -qi 'plan-defect claim' "$3" 2>/dev/null || echo "launcher: gate grep missing"
+  grep -q 'plan-defect claim' "$2/execute-phase-agent/SKILL.md" 2>/dev/null || echo "execute-phase-agent: claim token missing"
+  grep -q 'plan-defect claim' "$2/repair-phase/SKILL.md" 2>/dev/null || echo "repair-phase: claim token missing"
+}
+S43_OUT="$(s43_guard "$S24_REFS" "$SKILLS_DIR" "$RUNNER_SRC")"
+[ -z "$S43_OUT" ] || echo "  offending: $S43_OUT"
+assert "S43: the claim token is single-source and spoken by every consumer" '[ -z "$S43_OUT" ]'
+# Mutation: dropping the token from contracts.md must bite.
+S43_MUT="$(mktemp -d)"
+cp -R "$S24_REFS"/. "$S43_MUT/"
+sed -i.bak 's/plan-defect claim/gone/g' "$S43_MUT/contracts.md" && rm -f "$S43_MUT/contracts.md.bak"
+assert "S43: the guard fails when contracts.md loses the claim token" \
+  '[ -n "$(s43_guard "$S43_MUT" "$SKILLS_DIR" "$RUNNER_SRC")" ]'
+rm -rf "$S43_MUT"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

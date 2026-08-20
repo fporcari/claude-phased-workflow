@@ -141,17 +141,19 @@ header line first:
 [wf:<slug>] workflow finalized — <consolidation outcome, one line>.
 [wf:<slug>] stop-work? — <what looks wrong, one line; the run keeps burning until answered>.
 [wf:<slug>] clarify? phase N — <the plan ambiguity, one line; the phase waits until answered>.
+[wf:<slug>] plan-defect? phase N — <the child's claim, one line; repair proceeds on the gate's timeout unless answered>.
 ```
 
 The `<one line>` slots — the Issue, the blocked reason, the stop-work
 reason — are written in the reporting register (below): the consequence
 first, no bare identifiers.
 
-**Two of the messages are questions, not reports** — `stop-work?` and
-`clarify?`. They ride the same upward channel and carry OPPOSITE decision
-policies, and the human sits at opposite ends: at the foreman for
-`stop-work?` (its children are `claude -p`, with nobody in front of them),
-at the child for `clarify?` (an interactive phase, with its user watching).
+**Three of the messages are questions, not reports** — `stop-work?`,
+`clarify?` and `plan-defect?`. They ride the same upward channel and carry
+DIFFERENT decision policies, and the human sits at opposite ends: at the
+foreman for `stop-work?` and `plan-defect?` (their children are `claude -p`,
+with nobody in front of them), at the child for `clarify?` (an interactive
+phase, with its user watching).
 Unlike the reports, a question expects a reply on the message's own reply
 path — the silent-skip rule below still governs *sending* it, never
 answering the human in its place.
@@ -232,6 +234,30 @@ also a skill gap made visible — the plan carried an ambiguity nothing
 surfaced earlier — so after the reply the foreman appends a ledger entry,
 best-effort, per *Skill lessons — the wf-lessons ledger* below.
 
+**Plan-defect claims.** An unattended phase that believes the PLAN is at
+fault — a contract test premise, a `Done:` built on a false assumption —
+closes `[!]` with `> Issue: plan-defect claim — …` (`refs/contracts.md` →
+*Contract tests*), and the launcher holds the repair while `/run-workflow`'s
+inspector relays the claim here as `plan-defect?`. The foreman neither takes
+the child's word nor judges alone — field datum from the first run: both
+claims were wrong, the foreman believed both, and the repair found the
+better design each time. It puts ONE AskUserQuestion to its user, claim and
+evidence attached: **Authorize repair** (recommended default — a fresh-eyes
+session *testing* implementability beats either armchair verdict) or **Stop
+the run** (when the claim matches an ambiguity the foreman knows it left in
+the plan). The reply travels on the message's own reply path — `plan-defect:
+repair` or `plan-defect: stop` — and the inspector turns it into the answer
+file the launcher waits on. No reply → the gate's timeout proceeds to
+repair, as if nothing was asked. **After a granted stop the work is the
+foreman's**: the run is dead and the tree free, so it clarifies with its
+user, edits the plan AND the contract tests itself (before-text →
+after-text discipline, committed as `wf: plan defect phase N — <one
+line>`), then decides whether the code the phase already committed needs
+`/repair-phase` — launched by the foreman, not left implicit — and
+relaunches `/run-workflow`. Either outcome is a ledger moment: a claim that
+was true means `/write-workflow` let the defect through; a false one means
+the child's own gate cried wolf.
+
 **Replying on the desktop**: the reply travels by `send_message`
 (session-management) with the incoming message's `from` attribute as the
 `session_id`. `SendMessage` does not resolve desktop sessions or their
@@ -246,7 +272,8 @@ session bearing the title, delivery refused → skip in silence and move on. A n
 the user anything, and never becomes a retry loop. An undeliverable or
 unanswered *question* is the one exception to the silence — it falls back as
 its own paragraph states (for `clarify?`, to the disk re-read and then the
-child's user; for `stop-work?`, to the run's own stop conditions) — and even
+child's user; for `stop-work?`, to the run's own stop conditions; for
+`plan-defect?`, to the gate's timeout and the repair) — and even
 a question is never worth a retry loop. A foreman receiving one
 re-reads `.phased/` before answering — the plan on disk, not the message
 text, is the state — and answers with the DELTA, not the board: what
@@ -384,7 +411,8 @@ How a skill surfaces state depends on whether the user is at the keyboard:
   background run they are meant to walk away from. Where the push lands is the
   user's own notification setup, never this chain's business. Reserve it for
   what is worth an interruption: the
-  **first** failure of a run, any blocked phase, and the run ending — routine
-  per-phase progress is not pushed. Each message leads with what the user would
+  **first** failure of a run, any plan-defect consult (the run holds for the
+  gate's window — the one push the user can still act on), any blocked phase,
+  and the run ending — routine per-phase progress is not pushed. Each message leads with what the user would
   act on, one line under 200 characters, no markdown.
 

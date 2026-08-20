@@ -32,6 +32,14 @@ elif op == 'wip1':
 elif op == 'resume1':
     s = s.replace('- [>] **Phase 1**: phase one',
                   '- [x] **Phase 1**: phase one', 1)
+elif op == 'fail_claim':
+    # The child judges the PLAN at fault: the Issue leads with the claim token
+    # the launcher's foreman consult gate greps for.
+    s = s.replace('- [ ] **Phase 1**: phase one',
+                  '- [!] **Phase 1**: phase one\n  > Issue: plan-defect claim — the contract test premise is wrong\n  > Attempted: 1) fix A -> err1', 1)
+elif op == 'repair_ok_claim':
+    s = s.replace('- [!] **Phase 1**: phase one\n  > Issue: plan-defect claim — the contract test premise is wrong\n  > Attempted: 1) fix A -> err1',
+                  '- [x] **Phase 1**: phase one\n  > Done: repaired\n  > Repaired: the claim dissolved — the contract was implementable as written', 1)
 elif op == 'noop':
     pass
 open(mem, 'w').write(s)
