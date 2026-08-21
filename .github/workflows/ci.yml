@@ -62,3 +62,6 @@ jobs:
 
       - name: Validate the benchmark fixture plan
         run: python3 plugins/wf/scripts/next-phase.py --validate tests/benchmark/fixture/.phased/active/bench/plan.md
+
+      - name: GenroPy worktree companion — activation end to end
+        run: bash plugins/genropy-worktree/tests/test_activate_gnr_context.sh
