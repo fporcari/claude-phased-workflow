@@ -38,10 +38,11 @@ if [ -z "$_gnr_config_dir" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# Port offset: deterministic from the worktree name, so reopening a terminal
-# on the same worktree always gives back the same URL. 1..49, never 0: the
-# main repo keeps the standard 8080/40404.
-_gnr_offset=$(( $(printf '%s' "$(basename "$WORKTREE_ROOT")" | cksum | cut -d' ' -f1) % 49 + 1 ))
+# Derived from the worktree name, so reopening a terminal on the same worktree
+# always gives back the same URL and the same window colour.
+_gnr_name_hash=$(printf '%s' "$(basename "$WORKTREE_ROOT")" | cksum | cut -d' ' -f1)
+# Port offset 1..49, never 0: the main repo keeps the standard 8080/40404.
+_gnr_offset=$(( _gnr_name_hash % 49 + 1 ))
 _gnr_http_port=$(( 8080 + _gnr_offset ))
 _gnr_daemon_port=$(( 40404 + _gnr_offset ))
 
@@ -201,6 +202,77 @@ for key, var in (('GNR_DB_DSN', 'GNR_WT_DSN'), ('PYTHONPATH', 'GNR_WT_PYPATH')):
 p.write_text(json.dumps(data, indent=2) + '\n')
 PY
 
+# The VS Code window. A coloured title bar tells a worktree window apart from
+# the main repo at a glance, and the terminal env makes `gnr` in its terminals
+# address this worktree even in a shell that never sourced this script. Both
+# keys are merged into .vscode/settings.json — genropy tracks that file — and a
+# colour the user chose is left standing.
+case "$(uname -s)" in
+    Darwin) _gnr_term_key='terminal.integrated.env.osx' ;;
+    Linux) _gnr_term_key='terminal.integrated.env.linux' ;;
+    *) _gnr_term_key='terminal.integrated.env.windows' ;;
+esac
+_gnr_vscode_state=$(GNR_WT_VSCODE="$WORKTREE_ROOT/.vscode/settings.json" \
+GNR_WT_COLOR_INDEX="$(( _gnr_name_hash % 6 ))" \
+GNR_WT_TERM_KEY="$_gnr_term_key" \
+GNR_WT_GNRFOLDER="$GENRO_GNRFOLDER" \
+GNR_WT_PROJECTS="$GNR_LOCAL_PROJECTS" \
+GNR_WT_PYPATH="$([ -d "$WORKTREE_ROOT/gnrpy" ] && echo "$WORKTREE_ROOT/gnrpy" || echo '')" \
+python3 - <<'VSCODE'
+import json
+import os
+import pathlib
+
+# Six hues, picked by the worktree name: two windows side by side get
+# different title bars, and one worktree keeps its own across reopenings.
+PALETTE = ['#1f6f93', '#8c931f', '#93481f', '#5b1f93', '#1f934f', '#931f4a']
+
+p = pathlib.Path(os.environ['GNR_WT_VSCODE'])
+data = {}
+if p.exists():
+    try:
+        data = json.loads(p.read_text())
+    except ValueError:
+        # A settings.json carrying comments, or hand-broken: rewriting it would
+        # drop what it already holds. Leave it alone and report it.
+        print('unparsable')
+        raise SystemExit(0)
+
+color = PALETTE[int(os.environ['GNR_WT_COLOR_INDEX']) % len(PALETTE)]
+had_color = 'workbench.colorCustomizations' in data
+data.setdefault('workbench.colorCustomizations', {
+    'titleBar.activeBackground': color,
+    'titleBar.activeForeground': '#ffffff',
+    'titleBar.inactiveBackground': f'{color}99',
+    'titleBar.inactiveForeground': '#ffffffcc',
+})
+env = data.setdefault(os.environ['GNR_WT_TERM_KEY'], {})
+env['GENRO_GNRFOLDER'] = os.environ['GNR_WT_GNRFOLDER']
+env['GNR_LOCAL_PROJECTS'] = os.environ['GNR_WT_PROJECTS']
+if os.environ['GNR_WT_PYPATH']:
+    env['PYTHONPATH'] = os.environ['GNR_WT_PYPATH']
+else:
+    env.pop('PYTHONPATH', None)
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(json.dumps(data, indent=4) + '\n')
+print('kept' if had_color else color)
+VSCODE
+)
+
+# A tracked settings.json must not ride into a commit: it would dirty the
+# branch a workflow is about to close. The index is per-worktree, so this
+# hides the stamp here and in no other checkout.
+if [ "$_gnr_vscode_state" != 'unparsable' ] &&
+        git -C "$WORKTREE_ROOT" ls-files --error-unmatch .vscode/settings.json >/dev/null 2>&1; then
+    git -C "$WORKTREE_ROOT" update-index --skip-worktree .vscode/settings.json
+fi
+
+case "$_gnr_vscode_state" in
+    unparsable) _gnr_vscode_line='.vscode/settings.json is not plain JSON, left untouched' ;;
+    kept) _gnr_vscode_line='terminal env written, own title-bar colour kept' ;;
+    *) _gnr_vscode_line="terminal env written, title bar $_gnr_vscode_state" ;;
+esac
+
 if [ -d "$WORKTREE_ROOT/gnrpy" ]; then
     export PYTHONPATH="$WORKTREE_ROOT/gnrpy${PYTHONPATH:+:$PYTHONPATH}"
     echo "GenroPy activated: $WORKTREE_ROOT"
@@ -214,6 +286,7 @@ echo "                   http://127.0.0.1:$_gnr_http_port  (same server, differe
 echo "  gnrdaemon:       localhost:$_gnr_daemon_port"
 echo "  DB:              $_gnr_db_line"
 echo "  Claude Code:     env written to .claude/settings.local.json"
+echo "  VS Code:         $_gnr_vscode_line"
 if [ -n "${GNR_WT_DB:-}" ]; then
     echo
     echo "  Create it once (main server stopped), then align the schema:"
@@ -221,4 +294,4 @@ if [ -n "${GNR_WT_DB:-}" ]; then
     echo "    gnr db setup <instance>"
 fi
 
-unset _gnr_offset _gnr_http_port _gnr_daemon_port _gnr_db_line _gnr_branch_slug _gnr_wt_dbname _gnr_config_dir _gnr_candidate
+unset _gnr_offset _gnr_http_port _gnr_daemon_port _gnr_db_line _gnr_branch_slug _gnr_wt_dbname _gnr_config_dir _gnr_candidate _gnr_name_hash _gnr_term_key _gnr_vscode_state _gnr_vscode_line
