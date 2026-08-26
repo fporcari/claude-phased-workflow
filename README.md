@@ -280,7 +280,7 @@ claude plugin marketplace add ./claude-phased-workflow
 claude plugin install wf@claude-phased-workflow
 ```
 
-Installing the plugin is the whole install — skills, launcher, phase selector, verifier subagent and shared refs all resolve through `${CLAUDE_PLUGIN_ROOT}`. **Never copy the skills into `~/.claude/commands/`**: a flat copy wins the bare `/<name>` over the plugin and keeps an old version running without you noticing. Migrating from ≤ 4.0.0? A one-time `install.sh` in the plugin cache moves the superseded flat copies aside — moving, never deleting.
+Installing the plugin is the whole install — skills, launcher, phase selector, verifier subagent and shared refs all resolve through `${CLAUDE_PLUGIN_ROOT}`. **Never copy the skills into `~/.claude/commands/`**: a flat copy wins the bare `/<name>` over the plugin and keeps an old version running without you noticing. A machine that still carries one from an older flat install fixes it by moving that file out of `~/.claude/commands/` — nothing in the plugin can see it from the inside.
 
 First use:
 

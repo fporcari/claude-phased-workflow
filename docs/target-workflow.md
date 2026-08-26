@@ -74,8 +74,7 @@ The healthy-workflow case ("just tell me where we are") is not a reason to keep 
 
 Retirement follows the path `b0fb06e` already established for the four worktree
 commands: remove the skill directory, drop it from `tools/kb-sync.py` MAPPING (`S16`
-asserts every shipped skill is mapped), add it to `RETIRED_NAMES` in `install.sh` so a
-stale `~/.claude/commands/check-phase-context.md` stops answering, and update the seven
+asserts every shipped skill is mapped), and update the seven
 prose references — `README.md` (the mermaid diagram, the command table, its own
 section, the traceability claim, the FAQ answer), `refs/common.md` (twice) and
 `article-medium.md`.
@@ -92,7 +91,7 @@ vocabulary is the same leak as the worktree the user does not want to notice.
 
 Cost is distribution, not code, and `b0fb06e` already established the path: rename the
 skill directory and the launcher script, `tools/kb-sync.py` MAPPING (+ `S16`),
-`RETIRED_NAMES` in `install.sh`, `RUNNER_SRC` in `tests/orchestration/run_tests.sh`,
+`RUNNER_SRC` in `tests/orchestration/run_tests.sh`,
 `tests/benchmark/bench.sh`, and the prose in `README.md`, `docs/loop-engineering.md`,
 both `refs/*.md` and `article-medium.md`. Cannot be done during a run that is itself
 rewriting those files.
@@ -368,8 +367,8 @@ something they launch ("launching them IS the approval"). Renaming it to
 `execute-phase-agent` declares "not for you" about a command they type. Not a blocker —
 typing `execute-phase-agent` by hand is simply running the unattended variant
 deliberately, which stays legitimate — but the rename carries a `CLAUDE.md` update with
-it. Otherwise a line survives naming a command that no longer exists, which is the exact
-defect `RETIRED_NAMES` in `install.sh` exists to catch.
+it. Otherwise a line survives naming a command that no longer exists — a stale flat
+copy under `~/.claude/commands/` answering for a command the plugin has renamed.
 
 **G · Recovery.** From any chat: locate the interrupted workflow (A), ask which one if
 several, attach or create its workspace (C), then analyse and repair —
