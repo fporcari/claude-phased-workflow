@@ -62,7 +62,7 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 
 Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
 
-Then run ONE `phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays.
+Then run ONE `wf:phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays.
 
 ## Step 5: The verdict is yours
 

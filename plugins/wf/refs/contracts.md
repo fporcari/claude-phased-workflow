@@ -65,7 +65,7 @@ login per session usually suffices — the cookie persists across iterations.
 **The mockup is the visual contract** of a `ui`-tagged phase: approved at the
 phase's gate, saved as `mockups/phase-N.html` in the plan directory, committed
 with the phase. The browser pass screenshots the real page next to it, and a
-fresh-context judge (the `ui-judge` agent) compares the two — because the
+fresh-context judge (the `wf:ui-judge` agent) compares the two — because the
 author of a UI is the worst judge of its own fidelity. What the judge flags as
 a human call lands in `> Review:`; what remains for human eyes (taste beyond
 the mockup) stays on the `Verify:` list.

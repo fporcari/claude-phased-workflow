@@ -36,8 +36,10 @@ what the issue says — you find it yourself with Grep, Read, `git log`,
 `gh issue view`. Asking the user something the filesystem could answer spends their
 attention on your legwork.
 
-From ~3 areas to survey, dispatch one read-only Explore subagent per area instead of
-searching serially, and reason over what they return.
+From ~3 areas to survey, dispatch one read-only Explore subagent per area — **at most
+4 at a time** — instead of searching serially. Each returns the concrete paths it
+verified and, one line each, the premises it could NOT verify: those are the ones the
+report below flags as unverifiable, instead of asking the user for them.
 
 Report the ground in a few lines, with concrete paths, so a wrong premise gets
 corrected before it costs a whole branch of questions.

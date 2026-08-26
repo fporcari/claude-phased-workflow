@@ -2752,6 +2752,48 @@ assert "S49: the guard fails when foreman.md loses the apply road" \
   '[ -n "$(s49_guard "$S49_MUT" "$SKILLS_DIR" "$RUNNER_SRC")" ]'
 rm -rf "$S49_MUT"
 
+echo "== S50: every cited agent name carries the plugin: namespace =="
+# S26's rule, one surface over: an agent spawned by NAME resolves the same way a
+# slash command does. A bare `phase-verifier` is not an error the session
+# reports — it either finds an un-namespaced copy under ~/.claude/agents/ (which
+# install.sh exists to supersede, and which shadowed a stale verifier for real)
+# or nothing, and the skill then falls through to its declared general-purpose
+# fallback, losing the shipped prompt in silence. Both outcomes look like a
+# working spawn in the log. The names come from what the plugin actually ships,
+# never a retyped list; only BACKTICKED citations count — `the report-judge
+# gate` names a mechanism, `\`wf:report-judge\`` names an id.
+S50_AGENTS="$TESTDIR/../../plugins/wf/agents"
+s50_guard() {  # $1 = agents dir, $2 = skills dir, $3 = refs dir; one line per gap
+  for S50_A in "$1"/*.md; do
+    [ -f "$S50_A" ] || continue
+    S50_N=$(basename "$S50_A" .md)
+    grep -rn -- "\`$S50_N\`" "$2" "$3" 2>/dev/null \
+      | while IFS= read -r S50_HIT; do
+          case "$S50_HIT" in
+            *"\`wf:$S50_N\`"*) ;;
+            *) echo "${S50_HIT%%:*}: cites \`$S50_N\` un-namespaced — needs \`wf:$S50_N\`" ;;
+          esac
+        done
+  done
+}
+S50_OUT="$(s50_guard "$S50_AGENTS" "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S50_OUT" ] || echo "  offending: $S50_OUT"
+assert "S50: every backticked agent citation is namespaced" '[ -z "$S50_OUT" ]'
+assert "S50: the guard actually saw the shipped agents" \
+  '[ "$(ls "$S50_AGENTS"/*.md 2>/dev/null | wc -l | tr -d " ")" -ge 3 ]'
+assert "S50: the guard actually saw the spawn sites" \
+  '[ -n "$(grep -rl -- "\`wf:phase-verifier\`" "$SKILLS_DIR" 2>/dev/null)" ]'
+# Mutation: the same guard on a copy where one spawn site drops its namespace.
+S50_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S50_MUT/"
+sed -i.bak 's/`wf:phase-verifier`/`phase-verifier`/' \
+  "$S50_MUT/execute-phase-agent/SKILL.md" && rm -f "$S50_MUT/execute-phase-agent/SKILL.md.bak"
+grep -q -- '`phase-verifier`' "$S50_MUT/execute-phase-agent/SKILL.md" \
+  || echo "  S50 mutation did not apply — the spawn-site shape changed"
+assert "S50: the guard fails when a spawn site loses its namespace" \
+  '[ -n "$(s50_guard "$S50_AGENTS" "$S50_MUT" "$S24_REFS")" ]'
+rm -rf "$S50_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

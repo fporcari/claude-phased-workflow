@@ -404,7 +404,8 @@ reason (itself already a question, about the work) — carry the
 short form only: never a page, never the question.
 
 **The report-judge gate.** Before a closing report is shown, it passes the
-`report-judge` agent (Agent tool) — a comprehension probe, not a critique.
+`wf:report-judge` agent (Agent tool — namespaced, like every agent this
+plugin ships) — a comprehension probe, not a critique.
 Fresh context by design: the agent gets the draft (for a report page, its
 collapsed layer only — what is visible with every expansion closed) and a
 one-line brief of what the workflow was about, not the code and not the

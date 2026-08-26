@@ -5,7 +5,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
 
 # Repair Phase — unattended
 
-Base skill: repair-phase. Read `${CLAUDE_PLUGIN_ROOT}/skills/repair-phase/SKILL.md` and follow it — locating the failure, diagnosing from scratch, the fix-and-converge budget, the unconditional `phase-verifier` pass and the outcome formats all live there. This file carries only what changes when nobody is in the room.
+Base skill: repair-phase. Read `${CLAUDE_PLUGIN_ROOT}/skills/repair-phase/SKILL.md` and follow it — locating the failure, diagnosing from scratch, the fix-and-converge budget, the unconditional `wf:phase-verifier` pass and the outcome formats all live there. This file carries only what changes when nobody is in the room.
 
 **Launched by `/run-workflow`** (at most once per phase), or `claude -p '/wf:repair-phase-agent'`.
 

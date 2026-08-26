@@ -36,7 +36,8 @@ is the only moment the whole programme sits in one context, and a macro
 reduced to a one-line bullet is how a future consumer's requirements die
 (issue #15). So every macro — not only the first — gets a **mini-scope**, at
 `/scope-workflow`'s bar but produced here, automated: ground facts come from
-the codebase (one read-only Explore subagent per area from ~3 up — a fact is
+the codebase (one read-only Explore subagent per area from ~3 up, at most 4 at a
+time, each returning the paths it verified and the premises it could not — a fact is
 looked up, never asked), and the decisions that belong to the user are
 batched into ONE AskUserQuestion round — never one interview per macro. The
 format, one block per macro:
@@ -67,7 +68,9 @@ perfect, and stranded at the wrong border.
 **The coherence judge.** Before the split is presented, ONE fresh-context
 subagent (Agent tool; read-only; fallback: a general-purpose subagent told
 to stay read-only) gets the mini-scopes ALONE — not the conversation — and
-checks:
+returns one `ITINERARY: <macro N -> macro N+1> — <the gap>` per broken seam,
+one `CONTRACT: <edge> — <what is lost>` per broken edge, or exactly
+`COHERENT`. It checks:
 
 1. **The itinerary first**: the `Ends at:` of every macro ≡ the
    `Starts from:` of the next. A gap here blocks the presentation — it is

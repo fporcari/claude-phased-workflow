@@ -90,10 +90,17 @@ echo "$SKILL — model: $MODEL, effort: $EFFORT, at: $PLAN_ROOT"
 echo "========================================="
 # pipefail, NOT ${PIPESTATUS[0]}: this script is also run under zsh.
 set -o pipefail
+# Runaway net, as on the launcher's phase sessions: a read-only review that
+# loops costs the same as one that writes. No /goal guard here on purpose --
+# this agent's deliverable is a report on stdout, not a plan state, so there is
+# no on-disk exit condition for an evaluator to re-check.
+AGENT_BUDGET_ARGS=()
+[ -z "$RUN_WORKFLOW_NO_BUDGET" ] && AGENT_BUDGET_ARGS=(--max-budget-usd 100)
 claude -p "/$PLUGIN_NAME:$SKILL" \
   --model "$MODEL" \
   --effort "$EFFORT" \
-  --permission-mode auto 2>&1 | tee "$PLAN_DIR/log/$SKILL.txt"
+  --permission-mode auto \
+  "${AGENT_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/$SKILL.txt"
 AGENT_EXIT=$?
 set +o pipefail
 exit "$AGENT_EXIT"

@@ -79,7 +79,10 @@ agents with two different blindfolds:
    (`Details:`, `Done:`, `Decisions:`) and ONE pre-existing test file as a
    style example (pick it at `BASE`: `git show "$BASE:<path>"` — never a file
    a phase touched), and told to read nothing else: not the diffs, not the
-   `Files:`, not the code the phases wrote. Blindness is the point — a test
+   `Files:`, not the code the phases wrote — and to close its return with
+   `READ: <every path it opened>`, so the blindness is audited here instead of
+   merely instructed: a path outside the phase texts and the one style example
+   invalidates the tests it authored, which are then discarded, not filed. Blindness is the point — a test
    written from the code ratifies the code's own deviations; written from
    the plan, it embodies the promise. It authors `tests/phase-N/` for every
    phase, at the two precisions of `contracts.md` → *Contract tests*:

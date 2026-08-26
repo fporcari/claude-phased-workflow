@@ -213,10 +213,15 @@ fi
 # Grounded in Anthropic's model-specific prompting guidance: a headless
 # session's output is a log nobody reads live, so narration between tool
 # calls is pure token spend; the per-model line damps each model's known
-# drift (opus: scope creep, over-verification, eager subagents; sonnet:
-# inventing what the spec left open; fable: re-deriving settled decisions).
-STEER_COMMON='You run unattended: nobody reads your output live, it is stored as a log. Default to silence between tool calls -- one short line only when you find something load-bearing, change direction, or hit a blocker. Close with the required status line plus at most three sentences; never restate the plan or the phase text. Write minimal code: no accessor methods for attributes the language already exposes, no wrappers that only delegate, and comments only where the code cannot say it -- match the comment density of the surrounding files.'
-STEER_OPUS='Deliver exactly the phase scope -- no extra features, refactors, or abstractions beyond what the phase asks. Do not verify beyond the Done criteria: one pass, no extra review rounds. Work directly; delegate to a subagent only for genuinely wide, independent exploration.'
+# drift (opus: scope creep, over-verification; sonnet: inventing what the
+# spec left open; fable: re-deriving settled decisions). Two clauses are
+# deliberately NOT here: the comment-density measure and the subagent-delegation
+# rule. `--append-system-prompt` appends to the claude_code preset rather than
+# replacing it, and that preset already carries both on every `claude -p` --
+# repeating them stacks a constraint on the model's native behaviour, which is
+# the documented recipe for over-verification.
+STEER_COMMON='You run unattended: nobody reads your output live, it is stored as a log. Default to silence between tool calls -- one short line only when you find something load-bearing, change direction, or hit a blocker. Close with the required status line plus at most three sentences; never restate the plan or the phase text. Write minimal code: no accessor methods for attributes the language already exposes, no wrappers that only delegate, and comments only where the code cannot say it.'
+STEER_OPUS='Deliver exactly the phase scope -- no extra features, refactors, or abstractions beyond what the phase asks. Do not verify beyond the Done criteria: one pass, no extra review rounds.'
 STEER_SONNET='Execute the Details literally and completely. Make minor calls (naming, formatting) yourself and note them; if the phase leaves a real design decision unspecified, do not invent one -- close the phase [!] with an Issue note naming the gap.'
 STEER_FABLE='When you have enough information to act, act -- do not re-derive decisions the plan already settled or survey alternatives you will not pursue. Base every progress or completion claim on a tool result from this session.'
 
