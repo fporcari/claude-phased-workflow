@@ -143,7 +143,18 @@ recovery possible at all: without it the pid is resolved to whatever session
 holds it NOW, which is either nothing or a stranger, and the old event is
 refused for ever. Never a bare `--drain` to recover an orphan — that one takes
 the whole queue, live owners' requests included, and those belong to chats
-that are still going to ask for them. Each request carries a `kind`:
+that are still going to ask for them.
+
+**An event with no `owner_session`** was queued before the identity was a pair
+(the queue outlives an upgrade). Run neither command above on it — the check
+takes three arguments and the third does not exist. Fall back to the pid
+alone: `live` when `inbox.owner_target(<owner>, "<repo root>")` answers at
+all, recovery with `--drain --pid <owner>` and no `--session`. Say the limit
+out loud when it matters: on a legacy event a recycled pid is indistinguishable
+from the chat that pressed, so `live` there means *some* chat holds that pid on
+this repository, not that it is the one waiting for the answer.
+
+Each request carries a `kind`:
 
 - `run-workflow` → invoke `/wf:run-workflow`; that skill owns the pre-flight,
   the Monitor, the push policy and the foreman relay, and none of it can be

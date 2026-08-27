@@ -80,7 +80,7 @@ class Fake:
 be('s-old')
 granted = Fake().owner({'pid': PID})
 assert 'error' not in granted, granted
-assert server.Handler.owner_session == 's-old', server.Handler.owner_session
+assert server.Handler.owner_identity == (PID, 's-old'), server.Handler.owner_identity
 
 answer = Fake().launch({'road': 'unattended'})
 assert answer.get('queued') is True, answer
@@ -127,7 +127,21 @@ assert 'owner' not in orphaned, \
     f'a press was attributed to an owner that no longer exists: {orphaned}'
 print('test_recycled_pid: a press with the owner gone is unowned ok')
 
-server.Handler.owner_pid = server.Handler.owner_session = None
+# --- a legacy event, queued before the identity was a pair -------------------
+# The queue outlives an upgrade. Such an event carries `owner` and nothing
+# else: it is served on the pid alone, which is all it ever promised — the
+# skill says that limit out loud rather than running a pair check that would
+# die on the missing field.
+
+outbox.truncate(repo)
+outbox.append(repo, 'foreman', text='queued before the upgrade', owner=PID)
+be('s-new')
+legacy = cli('--pid', str(PID))
+assert [e['text'] for e in legacy['served']] == ['queued before the upgrade'], legacy
+assert legacy['remaining'] == [], legacy
+print('test_recycled_pid: a legacy pid-only event is still served ok')
+
+server.Handler.owner_identity = None
 outbox.truncate(repo)
 shutil.rmtree(tmp, ignore_errors=True)
 print('test_recycled_pid ok')

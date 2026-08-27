@@ -77,13 +77,13 @@ inbox.SESSIONS.mkdir()
 
 found = server.probe(str(repo), owner=4242)
 assert found and found['owner_updated'] is True, found
-assert server.Handler.owner_pid == 4242, \
-    f'the reuse did not re-point the owner: {server.Handler.owner_pid}'
+assert server.Handler.owner_identity == (4242, 's-4242'), \
+    f'the reuse did not re-point the owner: {server.Handler.owner_identity}'
 print('test_registry_probe: the reusing chat becomes the owner ok')
 
 found = server.probe(str(repo), owner=9999)
 assert found and found['owner_updated'] is False, found
-assert server.Handler.owner_pid == 4242, \
+assert server.Handler.owner_identity == (4242, 's-4242'), \
     'a pid with no live session record replaced the owner'
 print('test_registry_probe: a dead pid is refused and the owner stands ok')
 

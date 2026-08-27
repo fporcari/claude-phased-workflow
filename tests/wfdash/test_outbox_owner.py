@@ -2,7 +2,7 @@
 """Queued events carry their owner, and a drain can take only its own.
 
 The defect this pins: the re-own of a reused server (6.28.0) reached
-`Handler.owner_pid` and nothing else — the queue stayed one file per
+`Handler.owner_identity` and nothing else — the queue stayed one file per
 repository with anonymous events, so ANY chat running `--drain` consumed a
 request pressed for another chat's context. Now the server stamps each event
 with the owner of the moment (the LAST chat that opened or reused the
@@ -84,7 +84,7 @@ class Fake:
 
 # A pid with no validated session id is not an owner: a stamp carrying the pid
 # alone is exactly the one a recycled pid would satisfy.
-server.Handler.owner_pid, server.Handler.owner_session = 4242, None
+server.Handler.owner_identity = None
 try:
     answer = Fake(repo).launch({'road': 'unattended'})
     assert answer.get('queued') is True, answer
@@ -92,7 +92,7 @@ try:
     assert queued and 'owner' not in queued[0], \
         f'a half identity was stamped as an owner: {queued}'
 finally:
-    server.Handler.owner_pid = server.Handler.owner_session = None
+    server.Handler.owner_identity = None
 print('test_outbox_owner: a pid with no session id owns nothing ok')
 
 outbox.truncate(repo)

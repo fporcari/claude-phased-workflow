@@ -163,13 +163,15 @@ def spend_one_shot(k):
 
 class Handler(http.server.BaseHTTPRequestHandler):
     board = None
-    # The chat that ran `/wf:dashboard`. None when the server was started by
-    # hand, which is the same state as an owner that has since died. The two
-    # are set together and never apart: a pid whose session could not be
-    # identified is NOT an owner, because a stamp carrying the pid alone is
-    # one a recycled pid would satisfy.
-    owner_pid = None
-    owner_session = None
+    # The chat that ran `/wf:dashboard`, as ONE immutable `(pid, session id)`
+    # — None when the server was started by hand, which is the same state as
+    # an owner that has since died. One attribute, not two: this server is
+    # threaded, so a re-own landing between two stores would be read as a
+    # mixed pair (one chat's pid, another's session), which is an identity
+    # that never existed. A reader copies it into a local once and works from
+    # that. A pid whose session could not be identified is not an owner at
+    # all: a stamp carrying the pid alone is one a recycled pid satisfies.
+    owner_identity = None
     # Generated per process. Every request must carry it back — the browser in
     # the cookie, any other caller in the header. Since the registry writes it
     # to disk (0600), the token keeps out other USERS and the blind local
@@ -338,13 +340,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         event UNOWNED — any chat may then serve it, which is where an
         ownerless press belonged before owners existed.
         """
-        if not (Handler.owner_pid and Handler.owner_session):
+        identity = Handler.owner_identity          # read ONCE, then work local
+        if not identity:
             return {}
-        live = inbox.owner_target(Handler.owner_pid, self.board.repo) or {}
-        if live.get('session_id') != Handler.owner_session:
+        pid, session = identity
+        live = inbox.owner_target(pid, self.board.repo) or {}
+        if live.get('session_id') != session:
             return {}
-        return {'owner': Handler.owner_pid,
-                'owner_session': Handler.owner_session}
+        return {'owner': pid, 'owner_session': session}
 
     def owner(self, body):
         """Re-point the owner at the chat that reused this server.
@@ -367,7 +370,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return {'error': f'pid {pid} resolves to a record with no session '
                              f'id — it cannot be told from a later chat '
                              f'inheriting the pid'}
-        Handler.owner_pid, Handler.owner_session = pid, target['session_id']
+        Handler.owner_identity = (pid, target['session_id'])
         return {'owner': target}
 
     def titles(self):
@@ -379,7 +382,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Who the first command can go to: the owner, and the list behind it."""
         titles = self.titles()
         return {'repo': self.board.repo,
-                'owner': inbox.owner_target(self.owner_pid, self.board.repo, titles),
+                'owner': inbox.owner_target((Handler.owner_identity or (None,))[0],
+                                            self.board.repo, titles),
                 'sessions': inbox.repo_sessions(self.board.repo, titles)}
 
     def mirror(self):
@@ -663,7 +667,7 @@ def main():
     if args.owner:
         first = inbox.owner_target(args.owner, Handler.board.repo) or {}
         if first.get('session_id'):
-            Handler.owner_pid, Handler.owner_session = args.owner, first['session_id']
+            Handler.owner_identity = (args.owner, first['session_id'])
         else:
             owner_note = (f'NOTE: -O {args.owner} is not a live session on this '
                           f'repository — the page has no owner to send to.')

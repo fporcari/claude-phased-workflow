@@ -48,7 +48,7 @@ class Fake:
 
     def __init__(self, repo_root):
         self.board = type('B', (), {'repo': str(repo_root)})()
-        self.owner_pid = None
+        self.owner_identity = None
 
 
 # --- N presses released together: one accepted -----------------------------

@@ -116,7 +116,7 @@ class Fake:
 
     def __init__(self, root):
         self.board = type('B', (), {'repo': str(root)})()
-        self.owner_pid = None
+        self.owner_identity = None
 
 
 fake = Fake(repo)

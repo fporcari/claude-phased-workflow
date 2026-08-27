@@ -65,7 +65,7 @@ class Fake:
 
     def __init__(self, repo):
         self.board = type('B', (), {'repo': repo})()
-        self.owner_pid = None
+        self.owner_identity = None
 
 
 def queued(repo):

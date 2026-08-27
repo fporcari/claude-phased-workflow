@@ -134,7 +134,7 @@ print('test_perimeter: the new-workflow command is one line ok')
 
 def wire(name, scope):
     h = server.Handler.__new__(server.Handler)
-    h.owner_pid = None
+    h.owner_identity = None
     h.board = type('B', (), {'repo': '/nowhere'})()
     queued = []
     original = server.outbox.append
