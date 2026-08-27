@@ -126,8 +126,11 @@ must exist AND its cwd must be this repository):
 `python3 -c 'import os,sys;sys.path.insert(0,os.environ["CLAUDE_PLUGIN_ROOT"]+"/scripts/wfdash");import inbox;print("live" if inbox.owner_target(int(sys.argv[1]),sys.argv[2]) else "orphan")' <owner pid> "<repo root>"`.
 
 `live` → leave it queued and name the chat it belongs to. `orphan` → its chat
-is gone and nobody else will ever serve it: drain it with a bare `--drain` and
-serve it here, saying so. Each request carries a `kind`:
+is gone and nobody else will ever serve it: take it with
+`--drain --pid <the orphan's pid>` and serve it here, saying so. Never a bare
+`--drain` to recover an orphan — that one takes the whole queue, live owners'
+requests included, and those belong to chats that are still going to ask for
+them. Each request carries a `kind`:
 
 - `run-workflow` → invoke `/wf:run-workflow`; that skill owns the pre-flight,
   the Monitor, the push policy and the foreman relay, and none of it can be

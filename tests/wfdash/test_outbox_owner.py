@@ -18,8 +18,11 @@ Five things are asserted:
   - a bare `drain()` then takes the leftover, emptying the queue;
   - `Handler.launch` stamps the queued run-workflow with the current owner;
   - the CLI's filtered drain answers with BOTH halves — `served` and
-    `remaining` — so the chat can name what it left without a second read of
-    a queue that may have moved in between.
+    `remaining` — partitioned inside the drain's own lock, so the chat can
+    name what it left without a second read of a queue that moved in between;
+  - recovering an orphan takes ONLY the orphan's share: `--drain --pid` on
+    the dead owner leaves a third owner's request queued, where a bare drain
+    would have swallowed it.
 
 Bare asserts, no framework: exit 0 clean, raises on the first failure.
 """
@@ -90,12 +93,36 @@ outbox.truncate(repo)
 outbox.append(repo, 'foreman', text='mine', owner=111)
 outbox.append(repo, 'foreman', text='theirs', owner=222)
 cli = pathlib.Path(__file__).resolve().parents[2] / 'plugins' / 'wf' / 'scripts' / 'wfdash' / 'outbox.py'
-out = json.loads(subprocess.run(
-    [sys.executable, str(cli), '-C', str(repo), '--drain', '--pid', '111'],
-    capture_output=True, text=True, check=True).stdout)
+
+
+def cli_drain(pid):
+    return json.loads(subprocess.run(
+        [sys.executable, str(cli), '-C', str(repo), '--drain', '--pid', str(pid)],
+        capture_output=True, text=True, check=True).stdout)
+
+
+out = cli_drain(111)
 assert [e['text'] for e in out['served']] == ['mine'], out
 assert [e['text'] for e in out['remaining']] == ['theirs'], out
 print('test_outbox_owner: the CLI answers with served and remaining ok')
+
+# `remaining` is this drain's own partition, not a second reading: an event
+# appended after the drain returns belongs to the queue, never to the answer
+# already given.
+outbox.append(repo, 'foreman', text='after-the-drain', owner=222)
+assert [e['text'] for e in out['remaining']] == ['theirs'], \
+    'the answer changed after it was given'
+
+# --- an orphan is recovered without swallowing a live owner's request --------
+
+outbox.truncate(repo)
+outbox.append(repo, 'foreman', text='dead-owner', owner=222)
+outbox.append(repo, 'foreman', text='live-owner', owner=333)
+recovered = cli_drain(222)
+assert [e['text'] for e in recovered['served']] == ['dead-owner'], recovered
+assert [e['text'] for e in outbox.read(repo)] == ['live-owner'], \
+    "recovering the orphan took a live owner's request"
+print('test_outbox_owner: an orphan is recovered without touching a live owner ok')
 
 outbox.truncate(repo)
 shutil.rmtree(tmp, ignore_errors=True)

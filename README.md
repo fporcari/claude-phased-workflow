@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.28.2** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.28.3** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -348,6 +348,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.28.3 | the queue's two review findings closed — an orphaned request is recovered by its own pid instead of by a drain that swallows live owners' work, and `served`/`remaining` are partitioned inside one lock rather than by a second read |
 | 6.28.2 | three review findings closed — every control file of a run is named from one repo-keyed prefix, so two checkouts sharing a slug stop consuming each other's signals; the filtered drain reports what it left behind, and an orphan owner is judged by the session record, not by `ps` |
 | 6.28.1 | four follow-up findings closed — the close's field gate sees the autonomous template's `Pattern reference:`, the shell creates the transport 0700, the plan commit is searched on HEAD, and a queued request carries the owner that pressed it |
 | 6.28.0 | five review findings closed — the close really diffs the contract fields against the plan commit (`--contract-block`), a plan with contract tests refuses light phases outright (env override), a reused dashboard belongs to the chat that reused it, the transport under `/tmp` is per-user, and the perimeter says exactly what it keeps out |

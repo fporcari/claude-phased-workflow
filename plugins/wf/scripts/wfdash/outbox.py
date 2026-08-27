@@ -160,7 +160,12 @@ def read(repo):
 
 
 def drain(repo, pid=None):
-    """The pending requests, and the queue emptied — as one step.
+    """The pending requests this drain takes, and the queue emptied of them."""
+    return drain_split(repo, pid)['served']
+
+
+def drain_split(repo, pid=None):
+    """Both halves of one drain: `served` and `remaining`, from ONE lock.
 
     The queue is renamed aside and read UNDER the lock, and what this drain
     does not take is written back to a fresh queue before the lock is
@@ -175,6 +180,11 @@ def drain(repo, pid=None):
     known, or by hand). Another chat's events are written back — whether that
     chat still lives is a judgment for the caller, not this transport, and a
     bare drain still takes everything.
+
+    `remaining` is what THIS drain left behind, not a later reading of the
+    queue: a drain followed by its own `read()` takes two locks, and anything
+    appended between them lands in the second answer as though the drain had
+    declined it. One lock, one partition, and the two halves cannot disagree.
     """
     f = path(repo)
     aside = f.with_name(f'{f.name}.draining-{os.getpid()}-{next(_SERIAL)}')
@@ -182,7 +192,7 @@ def drain(repo, pid=None):
         try:
             os.rename(f, aside)
         except OSError:
-            return []
+            return {'served': [], 'remaining': []}
         events = _entries(aside)
         kept = ([] if pid is None else
                 [e for e in events if e.get('owner') not in (None, pid)])
@@ -190,7 +200,7 @@ def drain(repo, pid=None):
             _append_line(f, e)
     with contextlib.suppress(OSError):
         os.remove(aside)
-    return [e for e in events if e not in kept]
+    return {'served': [e for e in events if e not in kept], 'remaining': kept}
 
 
 def truncate(repo):
@@ -212,11 +222,10 @@ def main():
     args = ap.parse_args()
     if args.drain and args.pid:
         # A filtered drain answers with BOTH halves: what it served, and what
-        # it left for another owner. Telling the chat to name the leftovers
-        # while handing it only the served ones would need a second read, and
-        # a queue read separately is a queue that moved in between.
-        served = drain(args.cwd, pid=args.pid)
-        out = {'served': served, 'remaining': read(args.cwd)}
+        # it left for another owner — partitioned inside the drain's own lock,
+        # never by a second read, which would answer about a queue that moved
+        # in between.
+        out = drain_split(args.cwd, pid=args.pid)
     else:
         out = drain(args.cwd) if args.drain else read(args.cwd)
     print(json.dumps(out, ensure_ascii=False, indent=2))
