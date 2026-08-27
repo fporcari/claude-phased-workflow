@@ -42,13 +42,10 @@ root = tmp / 'repo'
 outbox.truncate(root)
 
 
-class Fake:
-    launch = server.Handler.launch
-    owner_stamp = server.Handler.owner_stamp
+class Fake(server.Handler):
 
     def __init__(self, repo_root):
         self.board = type('B', (), {'repo': str(repo_root)})()
-        self.owner_identity = None
 
 
 # --- N presses released together: one accepted -----------------------------

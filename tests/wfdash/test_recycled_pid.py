@@ -11,6 +11,10 @@ handler — the pieces were each asserted apart, and the hole was between them.
                              pid is identical
   s-new asks whether the leftover's owner is alive → `orphan`, because the
                              session ids differ, not the pids
+  the page asks who owns it → nobody: `/api/sessions` and the stamp answer
+                             from ONE resolution, so the page cannot say a
+                             request is queued for a chat the stamp treats as
+                             a stranger
   s-new recovers it explicitly (`--session s-old`) → served exactly once
 
 The last step is the one that made `--session` necessary: with the pid alone,
@@ -61,12 +65,8 @@ def cli(*args):
     return json.loads(out.stdout)
 
 
-class Fake:
-    """The handler's own methods, with the one attribute they read."""
-
-    launch = server.Handler.launch
-    owner = server.Handler.owner
-    owner_stamp = server.Handler.owner_stamp
+class Fake(server.Handler):
+    """The real handler, minus its socket — the fixture supplies the board."""
 
     def __init__(self):
         self.board = type('B', (), {'repo': str(repo)})()
@@ -106,6 +106,19 @@ assert live.get('session_id') == 's-new', live
 assert live.get('session_id') != leftover['owner_session'], \
     'the pid resolves to a live session — only the session ids tell them apart'
 print('test_recycled_pid: comparing the pair reports orphan, not live ok')
+
+# --- and the PAGE says the same thing ----------------------------------------
+# The divergence this pins, reproduced: `/api/sessions` took the pid out of
+# the identity and resolved it, so it named s-new the owner and the page
+# offered to queue for it, while `owner_stamp` — comparing the session too —
+# had already ruled s-new a stranger and left the press unowned.
+
+fake = Fake()
+fake.board.agents = lambda *a, **k: []
+assert fake.sessions()['owner'] is None, \
+    'the page names an owner the stamp refuses to stamp'
+assert fake.owner_stamp() == {}, fake.owner_stamp()
+print('test_recycled_pid: the page and the stamp answer from one resolution ok')
 
 # --- the explicit recovery is the only road in -------------------------------
 

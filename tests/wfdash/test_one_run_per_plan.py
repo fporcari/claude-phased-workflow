@@ -46,15 +46,11 @@ A plan with one eligible phase.
 tmp = pathlib.Path(tempfile.mkdtemp(prefix='wfdash-onerun-'))
 
 
-class Fake:
+class Fake(server.Handler):
     """The handler's launch method, with the one attribute it reads."""
-
-    launch = server.Handler.launch
-    owner_stamp = server.Handler.owner_stamp
 
     def __init__(self, repo_root):
         self.board = type('B', (), {'repo': str(repo_root)})()
-        self.owner_identity = None
 
 
 root = tmp / 'toy'

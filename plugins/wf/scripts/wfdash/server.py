@@ -340,14 +340,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
         event UNOWNED — any chat may then serve it, which is where an
         ownerless press belonged before owners existed.
         """
-        identity = Handler.owner_identity          # read ONCE, then work local
+        target = self.live_owner()
+        if target is None:
+            return {}
+        return {'owner': target['pid'], 'owner_session': target['session_id']}
+
+    def live_owner(self, titles=None):
+        """The owner, resolved — or None when the chat behind it is gone.
+
+        The ONE answer to "who owns this dashboard", so the page and the
+        stamp can never disagree: they did, and the divergence was visible —
+        the page said a request was queued for a chat the stamp had already
+        judged a stranger. A pid resolves to whoever holds it NOW, and the
+        system recycles pids, so the resolved record counts as the owner only
+        when its session id is the one that was validated. Identity read
+        ONCE: this server is threaded, and a re-own mid-read would answer
+        about two chats at once.
+        """
+        identity = Handler.owner_identity
         if not identity:
-            return {}
+            return None
         pid, session = identity
-        live = inbox.owner_target(pid, self.board.repo) or {}
-        if live.get('session_id') != session:
-            return {}
-        return {'owner': pid, 'owner_session': session}
+        target = inbox.owner_target(pid, self.board.repo, titles)
+        if not target or target.get('session_id') != session:
+            return None
+        return target
 
     def owner(self, body):
         """Re-point the owner at the chat that reused this server.
@@ -382,8 +399,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Who the first command can go to: the owner, and the list behind it."""
         titles = self.titles()
         return {'repo': self.board.repo,
-                'owner': inbox.owner_target((Handler.owner_identity or (None,))[0],
-                                            self.board.repo, titles),
+                'owner': self.live_owner(titles),
                 'sessions': inbox.repo_sessions(self.board.repo, titles)}
 
     def mirror(self):

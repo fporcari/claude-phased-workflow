@@ -73,13 +73,10 @@ print('test_outbox_owner: the bare drain takes the leftover ok')
 # --- an incomplete identity stamps nothing ------------------------------------
 
 
-class Fake:
-    launch = server.Handler.launch
+class Fake(server.Handler):
 
     def __init__(self, repo_root):
         self.board = type('B', (), {'repo': str(repo_root)})()
-
-    owner_stamp = server.Handler.owner_stamp
 
 
 # A pid with no validated session id is not an owner: a stamp carrying the pid

@@ -110,13 +110,10 @@ repo = tmp / 'stale'
 outbox.truncate(repo)
 
 
-class Fake:
-    launch = server.Handler.launch
-    owner_stamp = server.Handler.owner_stamp
+class Fake(server.Handler):
 
     def __init__(self, root):
         self.board = type('B', (), {'repo': str(root)})()
-        self.owner_identity = None
 
 
 fake = Fake(repo)

@@ -30,15 +30,12 @@ import server  # noqa: E402
 tmp = pathlib.Path(tempfile.mkdtemp(prefix='wfdash-launch-'))
 
 
-class Fake:
-    """The handler's launch method, with the one attribute it reads."""
-
-    launch = server.Handler.launch
-    owner_stamp = server.Handler.owner_stamp
+class Fake(server.Handler):
+    """The real handler, minus its socket: subclassed rather than
+    cherry-picked, so a method growing a helper cannot break the fixture."""
 
     def __init__(self, repo_root):
         self.board = type('B', (), {'repo': str(repo_root)})()
-        self.owner_identity = None
 
 
 def with_plan(name, body):

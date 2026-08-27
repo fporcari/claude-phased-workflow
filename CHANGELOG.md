@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.28.7 — 2026-08-28
+
+The page and the stamp answer from one resolution. `owner_stamp` compared the whole validated identity, but `/api/sessions` took only the pid out of it and resolved that: with a pid recycled by another chat on the same repository, the page named the NEW chat the dashboard's owner and offered to queue for it, while the stamp had already ruled it a stranger and was leaving the press unowned — reproduced as `sessions()['owner']` naming `s-new` against `owner_stamp() == {}`. One `live_owner()` now: it reads the identity once, resolves the pid, and returns the target only when the session id is the one that was validated; both callers go through it, so the page cannot promise what the queue will not record. The wfdash fixtures stop cherry-picking handler methods and subclass the handler itself — three releases running, a method growing a helper broke six of them at once.
+
 ## 6.28.6 — 2026-08-28
 
 The owner is one value, and the queue's pre-upgrade events have a road of their own. `(pid, session id)` lived in two class attributes, and this server is threaded: a re-own landing between the two stores would be read as a mixed pair — one chat's pid with another's session, an identity that never existed — and `owner_stamp` re-read the attributes four times per press. One immutable `owner_identity` tuple now, copied into a local once by every reader. And the skill's leftover check assumed every event carries `owner_session`: on an event queued before 6.28.4 the prescribed command has no third argument to pass and dies with `IndexError` in the model's hands. The clause is written down — no `owner_session` means the old pid-only check and a recovery with `--pid` alone — together with the limit it carries: on a legacy event a recycled pid cannot be told from the chat that pressed, so `live` there means some chat holds that pid on this repository, not that it is the one waiting.
