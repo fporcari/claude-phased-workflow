@@ -43,6 +43,17 @@ message they were drawn in cannot compete with that.
 - **The launch command appears once, under the strip, as text**: `/wf:execute-phase`.
   It takes no argument — the phase comes from the plan and the chat titles itself.
 
+## The dashboard, where it exists
+
+- **Optional surface, never a step.** `/wf:dashboard` is a place to watch the work,
+  not a way to carry it: no skill waits on it, and every command behaves the same
+  with no server running. Same rule as the `visualize` board above.
+- **The fallback is declared, never silent.** No dashboard — no server, no python3,
+  no browser — means the report exactly as it is today, plus one line saying it was
+  not opened.
+- **It proposes, the chat acts.** Its buttons queue a request; a run still goes
+  through `/wf:run-workflow` and a message to the foreman through `foreman.md`.
+
 ## Why nothing is clickable
 
 `sendPrompt` is a widget's only channel and it writes into the chat you are in, so

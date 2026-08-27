@@ -537,6 +537,22 @@ assert "S18: the guard fails when the awk anchor is stripped" \
   '! python3 "$STATE_GUARD" "$S18_MUT/runner.sh" >/dev/null 2>&1'
 rm -rf "$S18_MUT"
 
+# The same rule over the python readers: the plan format has ONE reader,
+# next-phase.py, so a phase-state class or a **Phase pattern anywhere else is a
+# second implementation. The dashboard's core.py carried exactly that.
+PLUGIN_SRC="$TESTDIR/../../plugins/wf/scripts"
+GUARD_OUT="$(python3 "$STATE_GUARD" "$PLUGIN_SRC/next-phase.py" "$PLUGIN_SRC/wfdash"/*.py)"
+[ -z "$GUARD_OUT" ] || echo "  offending: $GUARD_OUT"
+assert "S18: no python plan reader duplicates the phase format" '[ -z "$GUARD_OUT" ]'
+# Mutation: give a second module the marker regex back — the guard must go red.
+S18_MUT="$(mktemp -d)"
+cp "$PLUGIN_SRC/wfdash/core.py" "$S18_MUT/core.py"
+printf "%s\n" "PHASE_RE = re.compile(r'^- \\[([ x!~>])\\] \\*\\*Phase (\\d+)\\*\\*:')" \
+  >> "$S18_MUT/core.py"
+assert "S18: the guard fails when a second reader takes the plan format back" \
+  '! python3 "$STATE_GUARD" "$S18_MUT/core.py" >/dev/null 2>&1'
+rm -rf "$S18_MUT"
+
 echo "== S19: next-phase.py --validate gates the launcher before any session =="
 # The validator shares the selector's own regexes, so a plan it rejects is one
 # the loop could not drive correctly. The launcher runs it once before the loop
@@ -2793,6 +2809,52 @@ grep -q -- '`phase-verifier`' "$S50_MUT/execute-phase-agent/SKILL.md" \
 assert "S50: the guard fails when a spawn site loses its namespace" \
   '[ -n "$(s50_guard "$S50_AGENTS" "$S50_MUT" "$S24_REFS")" ]'
 rm -rf "$S50_MUT"
+
+echo "== S51: the wfdash tests run in the harness, and the surface stays optional =="
+# The dashboard's own tests are bare-assert python scripts; they live in
+# tests/wfdash/ and until now nothing ran them. Wired in here they execute
+# under both bash and zsh with everything else, and CI needs no new step.
+# They are cwd-independent (each resolves the plugin through __file__), so the
+# scenario does not setup/cd like the launcher ones.
+S51_TESTS="$TESTDIR/../wfdash"
+S51_N=0
+for S51_T in "$S51_TESTS"/test_*.py; do
+  [ -f "$S51_T" ] || continue
+  S51_N=$((S51_N+1))
+  assert "S51: $(basename "$S51_T" .py)" 'python3 "$S51_T" >/dev/null 2>&1'
+done
+assert "S51: the scenario actually saw the wfdash tests" '[ "$S51_N" -ge 12 ]'
+# Static half, S21 idiom: the surface cannot become mandatory. The guard lives
+# in check_optional_surface.py so the mutations below re-run the REAL check.
+OPT_GUARD="$TESTDIR/check_optional_surface.py"
+OPT_OUT="$(python3 "$OPT_GUARD" "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$OPT_OUT" ] || echo "  offending: $OPT_OUT"
+assert "S51: every dashboard mention states or cites its fallback, and none is a step" \
+  '[ -z "$OPT_OUT" ]'
+assert "S51: the guard actually saw the dashboard mentions" \
+  '[ -n "$(grep -l "The dashboard, where it exists" "$S24_REFS"/*.md 2>/dev/null)" ]'
+# Mutation 1: the fallback clause deleted from the section that owns it.
+S51_MUT="$(mktemp -d)"
+cp -R "$S24_REFS"/. "$S51_MUT/"
+python3 - "$S51_MUT/board.md" <<'S51PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+i = s.index('- **The fallback is declared, never silent.**')
+j = s.index('- **It proposes, the chat acts.**')
+open(p, 'w').write(s[:i] + s[j:])
+S51PY
+assert "S51: the guard fails when the fallback clause is deleted" \
+  '! python3 "$OPT_GUARD" "$S51_MUT" >/dev/null 2>&1'
+rm -rf "$S51_MUT"
+# Mutation 2: a skill that turns the surface into a step.
+S51_MUT2="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S51_MUT2/"
+printf '\nOpen the dashboard, then continue with the next phase.\n' \
+  >> "$S51_MUT2/resume-workflow/SKILL.md"
+assert "S51: the guard fails when a skill makes the dashboard a step" \
+  '! python3 "$OPT_GUARD" "$S51_MUT2" >/dev/null 2>&1'
+rm -rf "$S51_MUT2"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

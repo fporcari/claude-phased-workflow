@@ -29,6 +29,13 @@ Output: a "phases:" table plus one final "recommendation:" line:
 "validate: N error(s), M warning(s)". Exit 0 when clean or warnings only,
 1 on validation errors, 2 when the plan is unreadable or unresolvable.
 
+--json emits the whole selection as one object instead of the table: the
+phases with their markers, notes, Run: and Verify: steps, "next", "blocked_by",
+the "recommendation" verb, the meta headers and the plan path. It is what a
+machine consumer reads, so the plan format keeps a single reader. A plan path
+of "-" reads the plan from stdin, for a plan held in a branch rather than on
+disk.
+
 --plans lists every workflow plan reachable from this repo — the current
 root's, every linked worktree's, and every wf/* branch with no worktree
 (read without checkout) — one pipe-separated line per plan:
@@ -37,6 +44,7 @@ root's, every linked worktree's, and every wf/* branch with no worktree
 """
 
 import argparse
+import json
 import pathlib
 import re
 import subprocess
@@ -47,6 +55,23 @@ PHASE_RE = re.compile(r'^- \[([ x!~>])\] \*\*Phase (\d+)\*\*:\s*(.*)$')
 TAG_RE = re.compile(r'`(vast)`')
 EXEC_RE = re.compile(r'In execution since\s+(\S+)')
 WIP_COMMIT_RE = re.compile(r'commit:\s*([0-9a-f]{7,40})\b')
+RUN_RE = re.compile(r'^\s*[-*]?\s*Run:\s*(.+)$', re.I)
+# `- Verify:` is the step the plan AUTHORED; `> Verify:` is the one execution
+# recorded — the latter is a note like any other.
+VERIFY_RE = re.compile(r'^\s{2,}[-*]\s*Verify:\s*(.*)$', re.I)
+META_RE = re.compile(r'^\s*[-*]?\s*(Mode|Parent|Branch):\s*(.+)$', re.I)
+# Any other field of a phase — it ends the field before it, nothing more.
+FIELD_RE = re.compile(r'^\s*[-*>]')
+# The quality check leaves one line per run under its own heading, and the last
+# governs. The heading is what bounds it: the same words inside a phase note are
+# a phase talking about the check, not the check having run.
+QUALITY_HEAD_RE = re.compile(r'^##\s+Quality check\s*$', re.I)
+QUALITY_RE = re.compile(r'^\s*>\s*Quality check:\s*(.+)$')
+# Known limitation: NOTE_RE cannot distinguish a new note field from a
+# wrapped continuation line of a previous note that happens to begin
+# "Capitalised:" — such a line draws the unknown-field warning. Accepted by
+# design: it is a warning, and a warning never blocks.
+NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):\s*(.*)$')
 
 
 class Phase:
@@ -59,6 +84,9 @@ class Phase:
         self.wip = False
         self.wip_commit = None
         self.testing = False
+        self.run = None
+        self.notes = []
+        self.verify = []
 
     @property
     def age_hours(self):
@@ -73,23 +101,73 @@ class Phase:
 
 
 def parse_lines(lines):
-    phases = []
-    for line in lines:
-        m = PHASE_RE.match(line.rstrip())
+    """The phases of a plan and its header fields, from its text.
+
+    A field wrapped over several lines is joined: the plans wrap at 80
+    columns, and half a sentence is not a check anybody can run.
+    """
+    phases, meta = [], {}
+    current = None
+    pending = None                      # the field an indented line continues
+    quality = False                     # inside the `## Quality check` section
+    for raw in lines:
+        line = raw.rstrip()
+        if not line.strip():
+            pending = None
+            continue
+        if line.startswith('## '):
+            current, pending = None, None
+            quality = bool(QUALITY_HEAD_RE.match(line))
+            continue
+        if quality:
+            m = QUALITY_RE.match(line)
+            if m:
+                meta['quality_check'] = m.group(1).strip()
+            continue
+        m = PHASE_RE.match(line)
         if m:
             phases.append(Phase(*m.groups()))
-        elif phases and line.lstrip().startswith('>'):
+            current, pending = phases[-1], None
+            continue
+        m = META_RE.match(line)
+        if m and current is None:
+            meta[m.group(1).lower()] = m.group(2).strip()
+            continue
+        if current is None:
+            continue
+        if line.lstrip().startswith('>'):
             m = EXEC_RE.search(line)
             if m:
-                phases[-1].since = m.group(1)
+                current.since = m.group(1)
             if 'WIP:' in line:
-                phases[-1].wip = True
+                current.wip = True
                 cm = WIP_COMMIT_RE.search(line)
                 if cm:
-                    phases[-1].wip_commit = cm.group(1)
+                    current.wip_commit = cm.group(1)
             if 'Testing:' in line:
-                phases[-1].testing = True
-    return phases
+                current.testing = True
+            m = NOTE_RE.match(line)
+            pending = ({'kind': m.group(1).strip(), 'text': m.group(2)}
+                       if m else None)
+            if pending:
+                current.notes.append(pending)
+            continue
+        m = RUN_RE.match(line)
+        if m:
+            current.run = m.group(1).strip()
+            pending = None
+            continue
+        m = VERIFY_RE.match(line)
+        if m:
+            pending = {'text': m.group(1)}
+            current.verify.append(pending)
+            continue
+        if FIELD_RE.match(line):
+            pending = None
+            continue
+        if pending is not None and line.startswith('    '):
+            pending['text'] = f"{pending['text']} {line.strip()}"
+    return phases, meta
 
 
 def parse(path):
@@ -178,7 +256,7 @@ def list_plans():
     checkouts = worktree_map()
     for branch, path in checkouts.items():
         for plan in sorted(pathlib.Path(path).glob('.phased/active/*/plan.md')):
-            rows.append((str(plan), branch, path, parse(plan)))
+            rows.append((str(plan), branch, path, parse(plan)[0]))
     for line in _git(['for-each-ref', '--format=%(refname:short)',
                       'refs/heads/wf/'], cwd=root).splitlines():
         if line in checkouts:
@@ -191,7 +269,7 @@ def list_plans():
             text = _git(['show', f'{line}:{name}'], cwd=root)
             if text:
                 rows.append((f'{line}:{name}', line, None,
-                             parse_lines(text.splitlines())))
+                             parse_lines(text.splitlines())[0]))
     return rows
 
 
@@ -253,10 +331,38 @@ def recommend(phases):
     return 'blocked: pending phases exist but none is eligible'
 
 
+# --- the machine payload (--json) -------------------------------------------
+# The whole selection as one object, so the plan format has a single reader:
+# the dashboard consumes this instead of parsing plan.md a second time.
+
+
+def payload(path, phases, meta):
+    out = []
+    for i, p in enumerate(phases):
+        out.append({
+            'n': p.number, 'status': p.status, 'title': p.title,
+            'tags': p.tags, 'run': p.run, 'notes': p.notes,
+            'verify': p.verify, 'since': p.since, 'wip': p.wip,
+            'wip_commit': p.wip_commit, 'testing': p.testing,
+            'blocked_by': blockers(phases, i),
+        })
+    nxt = next((p['n'] for p in out
+                if p['status'] == ' ' and not p['blocked_by']), None)
+    # What holds the plan up when nothing is eligible — the first phase not in
+    # a runnable state. The recommendation says WHICH of the outcomes it is.
+    blocker = None
+    if nxt is None:
+        blocker = next((p['n'] for p in out if p['status'] in '!~>'), None)
+    return {
+        'path': str(path), 'phases': out, 'next': nxt, 'blocked_by': blocker,
+        'recommendation': recommend(phases), 'meta': meta,
+    }
+
+
 # --- plan validation (--validate) -------------------------------------------
-# The validator shares PHASE_RE / TAG_RE / parse() with the selector on
-# purpose: a validator that disagreed with the selector about what a phase is
-# would be worse than none. Two severities: errors block the run (exit 1),
+# The validator shares PHASE_RE / TAG_RE / NOTE_RE / parse() with the selector
+# on purpose: a validator that disagreed with the selector about what a phase
+# is would be worse than none. Two severities: errors block the run (exit 1),
 # warnings never do (exit 0). Anything with a plausible false positive is a
 # warning by construction — rejecting a legitimate plan is worse than the
 # silent defaults the gate replaces.
@@ -270,11 +376,6 @@ KNOWN_NOTE_FIELDS = (
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')
 CONFIG_HEADING = 'Suggested execution config'
-# Known limitation: NOTE_RE cannot distinguish a new note field from a
-# wrapped continuation line of a previous note that happens to begin
-# "Capitalised:" — such a line draws the unknown-field warning. Accepted by
-# design: it is a warning, and a warning never blocks.
-NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):')
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
@@ -494,6 +595,9 @@ def main():
                     help='list every plan reachable from this repo (current '
                          'root, linked worktrees, wf/* branches read without '
                          'checkout), one pipe-separated line per plan')
+    ap.add_argument('--json', action='store_true', dest='as_json',
+                    help='emit the whole selection as one JSON object '
+                         '(plan path "-" reads the plan from stdin)')
     ap.add_argument('--validate', action='store_true',
                     help='validate the plan structure and exit '
                          '(0 clean/warnings, 1 errors, 2 unreadable)')
@@ -502,6 +606,10 @@ def main():
         print_plans()
         return 0
     path = args.plan
+    if args.as_json and path == '-':
+        phases, meta = parse_lines(sys.stdin.read().splitlines())
+        json.dump(payload('-', phases, meta), sys.stdout)
+        return 0
     if path is None:
         path, err = resolve_plan_path()
         if err:
@@ -513,7 +621,7 @@ def main():
     if args.validate:
         try:
             text = pathlib.Path(path).read_text(encoding='utf-8')
-            phases = parse(path)
+            phases, _ = parse(path)
         except OSError as e:
             print(f'error: cannot read {path}: {e}')
             return 2
@@ -526,10 +634,13 @@ def main():
         print(f'validate: {n_err} error(s), {n_warn} warning(s)')
         return 1 if n_err else 0
     try:
-        phases = parse(path)
+        phases, meta = parse(path)
     except OSError as e:
         print(f'error: cannot read {path}: {e}')
         return 1
+    if args.as_json:
+        json.dump(payload(path, phases, meta), sys.stdout)
+        return 0
     if not phases:
         print(f'error: no phases found in {path}')
         return 1

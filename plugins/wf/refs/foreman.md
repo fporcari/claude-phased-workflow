@@ -111,6 +111,10 @@ one line which branch is alive in this installation — desktop tools, CLI
 `SendMessage`, or neither — so a dead channel reads as declared degradation,
 never as a silent skip discovered later.
 
+A third branch reaches this channel from outside a chat: the dashboard's
+queued request (`board.md` → *The dashboard, where it exists*), which the
+attached chat drains and delivers here — the page never writes a session.
+
 **Sending to the foreman** (children, at phase end and on plan changes):
 read `foreman.json`, `list_sessions`, exact title match → `send_message` to
 that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
