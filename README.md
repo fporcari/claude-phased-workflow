@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.25.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.26.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -348,6 +348,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.26.0 | the eighteen findings the wfdash graft left open are closed — two dashboards stop evicting each other, the request queue survives two processes, the plan format goes back to one reader, and the README's own claims gain a guard that fails on a stale one |
 | 6.25.0 | the wfdash dashboard ships as an alternative surface — a read-only local view of the plan that PROPOSES, never acts, with the textual report still the default and a guard holding it optional |
 | 6.24.0 | every prompt the plugin builds for a subagent cites it by its namespaced name, so a bare name can no longer resolve to a stale flat install or to the general-purpose fallback in silence; the `Panel` review option's fan-out is fixed by construction, and the remaining waves declare their caps and return formats |
 | 6.23.0 | the plan-defect consult gains `apply`: when the claim carries its edit as before→after, the inspector applies it under the launcher's hold, re-runs the `Done:`, and a green resumes the run — no repair session, no dead run |
