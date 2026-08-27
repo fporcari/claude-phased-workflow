@@ -50,6 +50,7 @@ class Probe(server.Handler):
         self.cookie_port = port
         self.path = path if one_shot is None else f'{path}?k={one_shot}'
         self.codes = []
+        self.body = []
         self.headers = {}
         if cookie is not None:
             self.headers['Cookie'] = f'{server.cookie_name(port)}={cookie}'
@@ -65,9 +66,11 @@ class Probe(server.Handler):
 
     @property
     def wfile(self):
+        body = self.body
+
         class _W:
-            def write(self, *_a):
-                pass
+            def write(self, chunk):
+                body.append(chunk)
         return _W()
 
 
@@ -99,5 +102,31 @@ replay.do_GET()
 assert 403 in replay.codes, \
     'the one-shot authenticated twice — it must be invalidated on the exchange'
 print('test_perimeter_closed: the one-shot is single-use ok')
+
+# --- the refusal a PERSON reads ---------------------------------------------
+# Copying the URL out of the pane into another browser lands here: the `?k=`
+# was spent by the pane's first load and the cookie that replaced it lives in
+# that browser alone. Reported as a bare `{"error": "not authenticated"}` it
+# reads as a broken dashboard; the page path answers in prose with the way
+# back in, and names neither the repository nor the port — an unauthenticated
+# answer must not say what this server watches.
+
+page = Probe(path='/')
+page.do_GET()
+text = b''.join(page.body).decode()
+assert 403 in page.codes, page.codes
+assert 'already been used' in text, text[:200]
+assert '/wf:dashboard' in text and '--probe' in text, \
+    'the refusal does not say how to get back in'
+assert str(page.cookie_port) not in text, \
+    'the unauthenticated refusal names the port it listens on'
+assert '&lt;repo&gt;' in text, \
+    'the refusal spells out a repository instead of leaving a placeholder'
+
+api = Probe(path='/api/state')
+api.do_GET()
+assert 'not authenticated' in b''.join(api.body).decode(), \
+    'an API path stopped answering JSON — its callers are machines'
+print('test_perimeter_closed: the page refusal is readable, the API stays JSON ok')
 
 print('test_perimeter_closed ok')

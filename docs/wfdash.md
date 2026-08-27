@@ -44,6 +44,10 @@ wfdash on http://127.0.0.1:8787/?k=<one-shot>  repo: /path/to/repo
 Read the port from that line — it is not known in advance. The `?k=` is spent on
 the first request and exchanged for an `HttpOnly` cookie, so it authenticates
 exactly one navigation; from the second load on the address bar carries no key.
+One load, and one BROWSER: the cookie belongs to the window that spent the key,
+so copying the URL out of the preview pane into Safari or Chrome arrives with no
+credential at all — the server answers that in prose, with the way back in, and
+`server.py --probe` mints the fresh link that opens it there.
 A server reused from an earlier `/wf:dashboard` is no exception: its original
 one-shot is long spent, so `server.py --probe` mints a fresh one and prints the
 same line — the skill reuses the server and still opens a new pane. The probe

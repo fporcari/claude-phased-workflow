@@ -115,6 +115,27 @@ LOCAL_HOSTS = {'127.0.0.1', 'localhost', '::1'}
 
 HERE = pathlib.Path(__file__).parent
 
+# What a browser gets when it asks for the page without the credential. Names
+# no repository and no port: it is served to anyone who can reach the port,
+# and an unauthenticated answer must not say what this server watches.
+LOCKED_PAGE = """<!doctype html><meta charset="utf-8">
+<title>wfdash — this link is already used</title>
+<style>body{font:15px/1.6 -apple-system,Segoe UI,sans-serif;max-width:34rem;
+margin:12vh auto;padding:0 1.4rem;color:#201d19;background:#faf8f4}
+code{background:#efeae0;padding:.15em .4em;border-radius:4px;font-size:.92em}
+h1{font-size:1.15rem}p{margin:.9em 0}
+@media(prefers-color-scheme:dark){body{color:#eae5dc;background:#191713}
+code{background:#2a2620}}</style>
+<h1>This link has already been used.</h1>
+<p>The key in a dashboard URL authenticates <strong>one</strong> load. It was
+spent by the window that opened first, which now holds the session cookie —
+and a cookie belongs to one browser, so pasting the URL elsewhere arrives
+without it.</p>
+<p>To open the dashboard here, ask the chat for a fresh link — run
+<code>/wf:dashboard</code> again, or mint one directly:</p>
+<p><code>python3 .../scripts/wfdash/server.py --probe -C &lt;repo&gt;</code></p>
+<p>The server is still running; nothing was lost.</p>"""
+
 
 def cookie_name(port):
     """One jar per port: the browser keys cookies by host, not by port."""
@@ -200,6 +221,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if spend_one_shot(q.get('k', [''])[0]):
             self.grant = self.token
         elif not self.authenticated():
+            # A person reaches this by copying the URL out of the pane into
+            # another browser: the `?k=` was spent on the pane's own first
+            # load, and the cookie that replaced it lives in that browser
+            # alone. A bare JSON error tells them nothing, so the PAGE path
+            # answers in prose with the way back in. The API paths keep the
+            # JSON: their callers are machines.
+            if u.path in ('/', '/index.html'):
+                return self._send(LOCKED_PAGE, 'text/html; charset=utf-8', 403)
             return self._json({'error': 'not authenticated'}, 403)
         try:
             if u.path in ('/', '/index.html'):
@@ -289,8 +318,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """The owner each queued event carries, so a drain can take only what
         belongs to its chat (`outbox.py --drain --pid`). Stamped at append
         time: the owner is the LAST chat that opened or reused the dashboard,
-        which is the one the page's user is talking to."""
-        return {'owner': Handler.owner_pid} if Handler.owner_pid else {}
+        which is the one the page's user is talking to.
+
+        The pid AND the session id behind it: pids are recycled, and a new
+        chat inheriting a dead one's pid on the same repository would pass a
+        pid-only check — cwd cannot tell the two apart.
+        """
+        if not Handler.owner_pid:
+            return {}
+        target = inbox.owner_target(Handler.owner_pid, self.board.repo) or {}
+        stamp = {'owner': Handler.owner_pid}
+        if target.get('session_id'):
+            stamp['owner_session'] = target['session_id']
+        return stamp
 
     def owner(self, body):
         """Re-point the owner at the chat that reused this server.

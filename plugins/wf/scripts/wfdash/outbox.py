@@ -34,6 +34,8 @@ import pathlib
 import threading
 import time
 
+import inbox
+
 # The uid suffix mirrors run-workflow.sh's `phased-workflow-$(id -u)`: the
 # two computations must name the same directory, in both languages.
 TMP = (pathlib.Path(os.environ.get('TMPDIR') or '/tmp')
@@ -159,12 +161,32 @@ def read(repo):
         return _entries(f)
 
 
-def drain(repo, pid=None):
+def drain(repo, pid=None, session=None):
     """The pending requests this drain takes, and the queue emptied of them."""
-    return drain_split(repo, pid)['served']
+    return drain_split(repo, pid, session)['served']
 
 
-def drain_split(repo, pid=None):
+def _is_mine(event, pid, session):
+    """Whether this drain may take one event.
+
+    A pid alone does not identify a chat: the system recycles pids, and a new
+    Claude session on the same repository would pass the owner check the dead
+    one's request was stamped with — cwd cannot tell the two apart. So an
+    event stamped with a session id is served only to a caller carrying THAT
+    session id. A caller that cannot name its own session (no record: a test,
+    a hand-run drain) keeps the old pid-only guarantee rather than being
+    stranded — identify yourself and the pair is enforced.
+    """
+    owner = event.get('owner')
+    if owner is None:
+        return True
+    if owner != pid:
+        return False
+    stamped = event.get('owner_session')
+    return not (stamped and session and stamped != session)
+
+
+def drain_split(repo, pid=None, session=None):
     """Both halves of one drain: `served` and `remaining`, from ONE lock.
 
     The queue is renamed aside and read UNDER the lock, and what this drain
@@ -176,10 +198,11 @@ def drain_split(repo, pid=None):
     the press outright.
 
     With `pid`, the drain takes only what belongs to this chat: the events
-    stamped `owner == pid` and the unstamped ones (queued before any owner was
-    known, or by hand). Another chat's events are written back — whether that
-    chat still lives is a judgment for the caller, not this transport, and a
-    bare drain still takes everything.
+    this chat owns (`_is_mine` — the pid, and the session id where the event
+    carries one) and the unstamped ones (queued before any owner was known, or
+    by hand). Another chat's events are written back — whether that chat still
+    lives is a judgment for the caller, not this transport, and a bare drain
+    still takes everything.
 
     `remaining` is what THIS drain left behind, not a later reading of the
     queue: a drain followed by its own `read()` takes two locks, and anything
@@ -195,7 +218,7 @@ def drain_split(repo, pid=None):
             return {'served': [], 'remaining': []}
         events = _entries(aside)
         kept = ([] if pid is None else
-                [e for e in events if e.get('owner') not in (None, pid)])
+                [e for e in events if not _is_mine(e, pid, session)])
         for e in kept:
             _append_line(f, e)
     with contextlib.suppress(OSError):
@@ -217,15 +240,19 @@ def main():
     ap.add_argument('--drain', action='store_true', help='empty the queue after reading it')
     ap.add_argument('--pid', type=int, default=None,
                     help='with --drain: take only the events owned by this '
-                         'chat (owner == pid) or owned by nobody; another '
-                         "chat's events stay queued")
+                         'chat (its pid AND its session id) or owned by '
+                         "nobody; another chat's events stay queued")
     args = ap.parse_args()
     if args.drain and args.pid:
         # A filtered drain answers with BOTH halves: what it served, and what
         # it left for another owner — partitioned inside the drain's own lock,
         # never by a second read, which would answer about a queue that moved
         # in between.
-        out = drain_split(args.cwd, pid=args.pid)
+        # The session id behind the pid, from the ONE owner check the server
+        # uses: a recycled pid must not inherit the dead chat's requests.
+        target = inbox.owner_target(args.pid, args.cwd) or {}
+        out = drain_split(args.cwd, pid=args.pid,
+                          session=target.get('session_id'))
     else:
         out = drain(args.cwd) if args.drain else read(args.cwd)
     print(json.dumps(out, ensure_ascii=False, indent=2))

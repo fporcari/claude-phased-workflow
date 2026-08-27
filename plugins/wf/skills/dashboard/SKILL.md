@@ -95,6 +95,13 @@ it. Pane unavailable → `open "<that URL>"` on darwin, `xdg-open` elsewhere, an
 say which one was used. From the second load on the address bar carries no
 `k=`: the cookie has replaced it.
 
+**The link authenticates ONE load, in ONE browser.** The `?k=` is spent by the
+window that opens first and the cookie that replaces it belongs to that
+browser, so the same URL pasted into another one arrives with no credential —
+the server answers a page saying exactly that. Tell the user when it matters
+(they asked for it in their own browser, not the pane), and mint a second link
+with the `--probe` of Step 2 rather than starting a second server.
+
 ## Step 4: Report
 
 One message, three facts: the port, the repository, and how to stop it

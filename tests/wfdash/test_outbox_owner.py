@@ -11,7 +11,7 @@ unowned events, which predate any owner or were queued by hand. Another
 chat's events are written back; whether that chat still lives is the
 caller's judgment, and a bare drain still takes everything.
 
-Five things are asserted:
+Seven things are asserted:
 
   - `drain(pid=N)` returns N's events and the unowned ones, in order;
   - another owner's event survives the filtered drain, still readable;
@@ -22,7 +22,12 @@ Five things are asserted:
     name what it left without a second read of a queue that moved in between;
   - recovering an orphan takes ONLY the orphan's share: `--drain --pid` on
     the dead owner leaves a third owner's request queued, where a bare drain
-    would have swallowed it.
+    would have swallowed it;
+  - a RECYCLED pid inherits nothing: an event stamped with a session id is
+    served only to a caller carrying that same session id — cwd cannot tell
+    a new chat from the dead one whose pid it got;
+  - a caller that cannot name its own session keeps the old pid-only
+    guarantee rather than being stranded.
 
 Bare asserts, no framework: exit 0 clean, raises on the first failure.
 """
@@ -123,6 +128,29 @@ assert [e['text'] for e in recovered['served']] == ['dead-owner'], recovered
 assert [e['text'] for e in outbox.read(repo)] == ['live-owner'], \
     "recovering the orphan took a live owner's request"
 print('test_outbox_owner: an orphan is recovered without touching a live owner ok')
+
+# --- a recycled pid inherits nothing -----------------------------------------
+
+outbox.truncate(repo)
+outbox.append(repo, 'foreman', text='the dead chat\'s', owner=555,
+              owner_session='s-old')
+# Same pid, different session: the chat that got the pid back is not the chat
+# that pressed the button.
+assert outbox.drain(repo, pid=555, session='s-new') == [], \
+    'a recycled pid inherited the dead chat\'s request'
+assert [e['text'] for e in outbox.read(repo)] == ["the dead chat's"], \
+    'the refused event was not written back'
+mine = outbox.drain(repo, pid=555, session='s-old')
+assert [e['text'] for e in mine] == ["the dead chat's"], mine
+print('test_outbox_owner: a recycled pid inherits nothing ok')
+
+# A caller with no session of its own keeps the pid-only guarantee: refusing
+# everything would strand the queue of a hand-run drain.
+outbox.truncate(repo)
+outbox.append(repo, 'foreman', text='stamped', owner=555, owner_session='s-old')
+assert [e['text'] for e in outbox.drain(repo, pid=555)] == ['stamped'], \
+    'a caller that cannot name its session was stranded'
+print('test_outbox_owner: an unidentified caller keeps the pid-only rule ok')
 
 outbox.truncate(repo)
 shutil.rmtree(tmp, ignore_errors=True)
