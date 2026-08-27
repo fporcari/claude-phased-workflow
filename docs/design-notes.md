@@ -185,6 +185,54 @@ compound.
 - **Old `MEMORY.md` plans?** `/import-workflow` maps them onto the new layout,
   preserving states and notes, reporting gaps instead of filling them.
 
+## A test on the consumer proves nothing about the producer
+
+A contract test asserted that the page READS `.tags`. It passed. No tag was
+ever visible, because the rows the grid is built from come from a second
+projection that names its fields one by one and did not name `tags` — the
+renderer was handed `undefined` on every row.
+
+The defect survived a full autonomous run, an Extended whole-diff review and
+the run's own coherence review, and was caught only by a browser pass. All
+three read the code; none of them could see that a value stops travelling
+somewhere between the payload that carries it and the projection that renders
+it.
+
+So: on any field that crosses a layer, assert the ROAD — producer, every
+projection in between, consumer — not the endpoint. A test that names one end
+is a test that goes green while the feature is invisible. The same shape recurs
+wherever a payload is re-projected for a view, which in this codebase is
+`roadmap._phases` and anything downstream of it.
+
+## Light mode and contract tests do not mix
+
+The launcher runs a `low`-effort phase in LIGHT mode: a slim `/goal` contract
+WITHOUT the execute-phase-agent skill. The effort level is chosen for the work
+("this one is mechanical"), and it silently also decides which DOCTRINE the
+phase receives. Nothing couples the two.
+
+On a plan carrying contract tests that coupling bites hard, because light mode
+withholds exactly the rules such a plan depends on: that the contract is
+read-only, and that a test which cannot pass as written is a plan-defect claim
+to be raised rather than a local fix. The measured correlation from the
+wfdash-open-findings run is exact — the three light-mode phases all edited
+their own contract test inside the plan directory (24, 13 and 59 diff lines,
+one of them deleting three `wf:contract:` lines that constrained a later
+phase); the two full-mode phases did not touch it at all.
+
+A plan that ships contract tests therefore has no `low` phases. The saving that
+tempts you there is the ritual light mode strips, and the ritual is the part
+that protects the contract.
+
+## The suite is not parallel-safe
+
+`tests/orchestration/run_tests.sh` cannot be run concurrently with itself. Two
+overlapping bash runs produced four phantom failures; each run alone is green
+under both shells. The scenarios share fixture paths and the `${TMPDIR}` files
+the launcher uses, so a second run walks through the first one's state. If CI
+is ever split for speed, split it by scenario into separate checkouts, never by
+running the same script twice at once.
+
 ## Known patterns
 
 Plan-and-Execute (LangChain/LlamaIndex) · Checkpoint & Resume (CI/CD) ·

@@ -21,7 +21,10 @@ One file per repository, appended by the server and drained by the chat:
 """
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
+import itertools
 import json
 import os
 import pathlib
@@ -29,7 +32,36 @@ import threading
 import time
 
 TMP = pathlib.Path(os.environ.get('TMPDIR') or '/tmp') / 'phased-workflow'
-_LOCK = threading.Lock()
+# The aside file a drain renames onto must be unique per drain, not per process:
+# two threads sharing a pid would rename onto the same name and one would lose
+# its batch.
+_SERIAL = itertools.count()
+_locks = {}
+_locks_guard = threading.Lock()
+
+
+def _thread_lock(f):
+    with _locks_guard:
+        return _locks.setdefault(str(f), threading.RLock())
+
+
+@contextlib.contextmanager
+def _locked(f, exclusive):
+    """The queue held against both threads and other processes.
+
+    The `flock` is taken on a `.lock` sidecar, never on the queue itself: the
+    drain renames the queue aside, which would orphan the descriptor the next
+    writer is waiting on.
+    """
+    f.parent.mkdir(parents=True, exist_ok=True)
+    with _thread_lock(f):
+        fd = os.open(f.with_name(f.name + '.lock'), os.O_CREAT | os.O_RDWR, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
 
 
 def path(repo):
@@ -42,17 +74,15 @@ def append(repo, kind, **fields):
     """Queue one request and return it, exactly as it was written."""
     event = dict(fields, kind=kind, at=time.time())
     f = path(repo)
-    with _LOCK:
-        f.parent.mkdir(parents=True, exist_ok=True)
+    with _locked(f, exclusive=True):
         with open(f, 'a', encoding='utf-8') as fh:
             fh.write(json.dumps(event, ensure_ascii=False) + '\n')
     return event
 
 
-def read(repo):
-    """The pending requests, oldest first. A line that is not JSON is skipped."""
+def _entries(f):
     try:
-        raw = path(repo).read_text(encoding='utf-8', errors='replace')
+        raw = f.read_text(encoding='utf-8', errors='replace')
     except OSError:
         return []
     out = []
@@ -64,13 +94,50 @@ def read(repo):
     return out
 
 
+def read(repo):
+    """The pending requests, oldest first. A line that is not JSON is skipped.
+
+    Under the SHARED lock: a torn line is skipped rather than raised, so an
+    unlocked read drops a request instead of reporting it, and the launch
+    guard reads this.
+    """
+    f = path(repo)
+    try:
+        with _locked(f, exclusive=False):
+            return _entries(f)
+    except OSError:
+        # A queue that cannot even be locked reads as empty, the way an absent
+        # one always did: taking the lock must not turn a degradation into a
+        # 500 on the page.
+        return _entries(f)
+
+
+def drain(repo):
+    """The pending requests, and the queue emptied — as one step.
+
+    The queue is renamed aside under the lock and read after it is released, so
+    a press landing mid-drain appends to a fresh file and survives. Reading and
+    then removing would destroy it.
+    """
+    f = path(repo)
+    aside = f.with_name(f'{f.name}.draining-{os.getpid()}-{next(_SERIAL)}')
+    with _locked(f, exclusive=True):
+        try:
+            os.rename(f, aside)
+        except OSError:
+            return []
+    events = _entries(aside)
+    with contextlib.suppress(OSError):
+        os.remove(aside)
+    return events
+
+
 def truncate(repo):
     """Drop what was served. A queue nobody drained is not a queue."""
-    with _LOCK:
-        try:
-            os.remove(path(repo))
-        except OSError:
-            pass
+    f = path(repo)
+    with _locked(f, exclusive=True):
+        with contextlib.suppress(OSError):
+            os.remove(f)
 
 
 def main():
@@ -78,9 +145,7 @@ def main():
     ap.add_argument('-C', '--cwd', default=os.getcwd(), help='the repo whose queue to read')
     ap.add_argument('--drain', action='store_true', help='empty the queue after reading it')
     args = ap.parse_args()
-    events = read(args.cwd)
-    if args.drain:
-        truncate(args.cwd)
+    events = drain(args.cwd) if args.drain else read(args.cwd)
     print(json.dumps(events, ensure_ascii=False, indent=2))
 
 

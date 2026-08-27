@@ -75,8 +75,9 @@ NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):\s*(.*)$')
 
 
 class Phase:
-    def __init__(self, status, number, rest):
+    def __init__(self, status, number, rest, line=0):
         self.status = status
+        self.line = line
         self.number = int(number)
         self.tags = TAG_RE.findall(rest)
         self.title = TAG_RE.sub('', rest).strip()
@@ -105,12 +106,20 @@ def parse_lines(lines):
 
     A field wrapped over several lines is joined: the plans wrap at 80
     columns, and half a sentence is not a check anybody can run.
+
+    Third return value: the block boundaries, as `(line number, ends the
+    header)` pairs — a phase marker or a `## ` heading, plus an end-of-text
+    sentinel. `payload` turns them into each phase's line span, so the
+    dashboard cuts a block out of plan.md by number instead of re-deriving
+    the format.
     """
     phases, meta = [], {}
+    bounds = []
     current = None
     pending = None                      # the field an indented line continues
     quality = False                     # inside the `## Quality check` section
-    for raw in lines:
+    n = 0
+    for n, raw in enumerate(lines, 1):
         line = raw.rstrip()
         if not line.strip():
             pending = None
@@ -118,6 +127,7 @@ def parse_lines(lines):
         if line.startswith('## '):
             current, pending = None, None
             quality = bool(QUALITY_HEAD_RE.match(line))
+            bounds.append((n, line.startswith('## Work Plan')))
             continue
         if quality:
             m = QUALITY_RE.match(line)
@@ -126,8 +136,9 @@ def parse_lines(lines):
             continue
         m = PHASE_RE.match(line)
         if m:
-            phases.append(Phase(*m.groups()))
+            phases.append(Phase(*m.groups(), line=n))
             current, pending = phases[-1], None
+            bounds.append((n, True))
             continue
         m = META_RE.match(line)
         if m and current is None:
@@ -167,7 +178,8 @@ def parse_lines(lines):
             continue
         if pending is not None and line.startswith('    '):
             pending['text'] = f"{pending['text']} {line.strip()}"
-    return phases, meta
+    bounds.append((n + 1, True))
+    return phases, meta, bounds
 
 
 def parse(path):
@@ -336,15 +348,17 @@ def recommend(phases):
 # the dashboard consumes this instead of parsing plan.md a second time.
 
 
-def payload(path, phases, meta):
+def payload(path, phases, meta, bounds):
     out = []
     for i, p in enumerate(phases):
+        end = next((b for b, _ in bounds if b > p.line), p.line + 1)
         out.append({
             'n': p.number, 'status': p.status, 'title': p.title,
             'tags': p.tags, 'run': p.run, 'notes': p.notes,
             'verify': p.verify, 'since': p.since, 'wip': p.wip,
             'wip_commit': p.wip_commit, 'testing': p.testing,
             'blocked_by': blockers(phases, i),
+            'span': [p.line, end - 1],
         })
     nxt = next((p['n'] for p in out
                 if p['status'] == ' ' and not p['blocked_by']), None)
@@ -353,9 +367,11 @@ def payload(path, phases, meta):
     blocker = None
     if nxt is None:
         blocker = next((p['n'] for p in out if p['status'] in '!~>'), None)
+    head_end = next((b for b, ends in bounds if ends), 1)
     return {
         'path': str(path), 'phases': out, 'next': nxt, 'blocked_by': blocker,
         'recommendation': recommend(phases), 'meta': meta,
+        'header_span': [1, head_end - 1],
     }
 
 
@@ -607,8 +623,8 @@ def main():
         return 0
     path = args.plan
     if args.as_json and path == '-':
-        phases, meta = parse_lines(sys.stdin.read().splitlines())
-        json.dump(payload('-', phases, meta), sys.stdout)
+        phases, meta, bounds = parse_lines(sys.stdin.read().splitlines())
+        json.dump(payload('-', phases, meta, bounds), sys.stdout)
         return 0
     if path is None:
         path, err = resolve_plan_path()
@@ -621,7 +637,7 @@ def main():
     if args.validate:
         try:
             text = pathlib.Path(path).read_text(encoding='utf-8')
-            phases, _ = parse(path)
+            phases, _, _ = parse(path)
         except OSError as e:
             print(f'error: cannot read {path}: {e}')
             return 2
@@ -634,12 +650,12 @@ def main():
         print(f'validate: {n_err} error(s), {n_warn} warning(s)')
         return 1 if n_err else 0
     try:
-        phases, meta = parse(path)
+        phases, meta, bounds = parse(path)
     except OSError as e:
         print(f'error: cannot read {path}: {e}')
         return 1
     if args.as_json:
-        json.dump(payload(path, phases, meta), sys.stdout)
+        json.dump(payload(path, phases, meta, bounds), sys.stdout)
         return 0
     if not phases:
         print(f'error: no phases found in {path}')

@@ -8,9 +8,9 @@ Five things are asserted:
 
   - the unattended road queues one `/wf:run-workflow` request naming the
     plan's own next phase, and reports what it queued;
-  - a second press queues a second request rather than refusing: there is no
-    child to collide with any more, and the chat that drains the queue is the
-    one place that knows whether a run is already going;
+  - a second press is refused while the first is still pending: two orders to
+    run unattended on one working tree is the invariant the deleted pidfile
+    guard protected, and the queue is where it lives now;
   - the phase road queues NOTHING and hands back the command to copy — the
     supervision chat is not where a phase runs;
   - a plan with nothing eligible refuses before either road is chosen;
@@ -59,10 +59,10 @@ assert queued[0]['kind'] == 'run-workflow', queued[0]
 assert queued[0]['command'] == '/wf:run-workflow', queued[0]
 assert queued[0]['slug'] == 'open', queued[0]
 
-# A second press is a second request: nothing is spawned here, so there is no
-# child to guard against — the chat serving the queue owns that decision.
-open_plan.launch({'road': 'unattended'})
-assert len(outbox.read(open_plan.board.repo)) == 2, outbox.read(open_plan.board.repo)
+# A second press is refused while the first is still pending.
+second = open_plan.launch({'road': 'unattended'})
+assert 'error' in second, second
+assert len(outbox.read(open_plan.board.repo)) == 1, outbox.read(open_plan.board.repo)
 
 # --- the phase road delivers nothing -------------------------------------
 outbox.truncate(open_plan.board.repo)

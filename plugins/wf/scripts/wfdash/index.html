@@ -483,14 +483,12 @@ let macroPlanView='roadmap';           // inside it: roadmap | plan
 // The chats whose subagents are shown. Closed is the default: a chat with a
 // dozen of them buried its own line, and the count on the caret says what is
 // behind it.
-// The credential is the HttpOnly cookie the server set when this page was
-// first opened with its one-shot in the URL. The browser attaches it to every
-// same-origin request on its own, so this page never holds the token: it used
-// to sit in a <meta> tag, which is exactly how any local process lifted it.
-function wHeaders(){
-  return {'Content-Type':'application/json'};
-}
-
+// No credential is written here on purpose. The server sets an HttpOnly
+// session cookie on the one navigation that spends the URL key, and the browser
+// attaches it to every same-origin request by itself — so the page holds no
+// token to be read out of it. It used to sit in a <meta> tag, which is exactly
+// how any local process lifted it with one unauthenticated GET. Do not put it
+// back in the markup or in a fetch header.
 let openChats=new Set();
 // Which tree nodes are open. Filled on the first state: root and the
 // running macro-phase open, the rest closed.
@@ -629,8 +627,7 @@ function head(){
   }
   if(p&&macros&&macros.length)
     bits.push(`phases <b>${p.done}/${p.total}</b>`);
-  if(p)bits.push(p.next!=null?`next <b>${p.next}</b>`:
-    (p.blocked_by!=null?`stuck on <b>${p.blocked_by}</b>`:'all closed'));
+  if(p)bits.push(recoLine(p));
   document.getElementById('hfasi').innerHTML=bits.join(' · ');
   // The lifecycle of the workflow: four stages, each lit by the artifact that
   // proves it, in the order they happen. Nothing here is a forecast — a stage
@@ -688,6 +685,24 @@ function cells(o){
       (o.ratio/S.plan.median_ratio).toFixed(1)+'x':'—'}</td>
     <td class="n">${o.usd?o.usd.toFixed(2):'—'}</td>`;
 }
+// The five outcomes next-phase.py reports. The header used to build a two-way
+// sentence out of blocked_by alone, so four of them never reached a person.
+function recoLine(p){
+  const r=p.recommendation||'';
+  if(r.startsWith('next: '))return `next <b>${p.next}</b>`;
+  if(r.startsWith('resume-candidate: '))
+    return `resume <b>${esc(r.slice(18).split(' ')[0])}</b>`;
+  if(r.startsWith('attention: '))return `attention <b>${esc(r.slice(11))}</b>`;
+  if(r.startsWith('blocked: '))return `<span title="${esc(r.slice(9))}">stuck on ${
+    p.blocked_by!=null?`<b>${p.blocked_by}</b>`:'the plan'}</span>`;
+  if(r==='done')return 'all closed';
+  return r?esc(r):'no recommendation';
+}
+// A phase's tags ride in their own payload field since the single reader took
+// over the parsing; describe() renders them backticked, so the page does too.
+function tagChips(f){
+  return (f.tags||[]).map(t=>`<span class="chip">\`${esc(t)}\`</span>`).join('');
+}
 function phaseRow(f,slug){
   // Figures exist only for the active plan: a chat carries its plan's slug
   // in its title, and another plan's chats stay unattributed.
@@ -698,7 +713,7 @@ function phaseRow(f,slug){
       f.mine?'':'off'}"
       data-n="${f.n}" data-slug="${esc(slug||'')}">
     <td class="tw"></td><td class="mk ${f.cls||''}">${f.icon||''}</td>
-    <td class="ttl">${f.n} · ${esc(f.title)}${
+    <td class="ttl">${f.n} · ${esc(f.title)}${tagChips(f)}${
       f.warn?' <span class="warnflag" title="errori API">⚠</span>':''}</td>
     ${cells({status:f.status,ratio:g.out?g.read/g.out:0,usd:g.usd,
              chats:g.chats,turns:g.turns,out:g.out,run:f.run,
@@ -936,7 +951,7 @@ function viewMacro(){
     `$${g.usd.toFixed(2)}`].join(' · '));
   const rows=n.phases.map(f=>`<div class="mrow" data-mp="${f.n}">
       <span class="mk ${f.cls||''}">${f.icon||''}</span>
-      <span class="t">${f.n} · ${esc(f.title)}</span>
+      <span class="t">${f.n} · ${esc(f.title)}${tagChips(f)}</span>
       <span class="w">${esc(f.run||'')}</span></div>`).join('')||
     '<p class="empty">no plan for this macro-phase yet — nothing to show</p>';
   const where=n.slug?`<p class="note">plan <code>${esc(n.slug)}</code>${
@@ -1068,7 +1083,7 @@ async function launchPhase(road){
   launching=road;launchMsg='';launchCls='';launchCmd='';render();
   let j;
   try{j=await(await fetch('/api/launch',{method:'POST',
-    headers:wHeaders(),
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify({road:road})})).json();}
   catch(e){j={error:'the server did not answer'};}
   launching='';
@@ -1266,7 +1281,7 @@ async function sendForeman(){
   sending=true;sendMsg='queueing…';sendCls='';render();
   let j;
   try{j=await(await fetch('/api/foreman',{method:'POST',
-    headers:wHeaders(),
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text:text})})).json();}
   catch(e){j={error:'the server did not answer'};}
   sending=false;
@@ -1289,7 +1304,7 @@ async function sendNewFlow(){
   const body={name:nf.name,scope:nf.scope};
   let j;
   try{j=await(await fetch('/api/newflow',{method:'POST',
-    headers:wHeaders(),
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)})).json();}
   catch(e){j={error:'the server did not answer'};}
   nf.sending=false;

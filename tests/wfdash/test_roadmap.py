@@ -161,8 +161,8 @@ def main():
         repo = build(tmp)
 
         # -- the icons, from marker plus notes -----------------------------
-        _, phases, _ = core.parse_plan(repo / '.phased' / 'active' /
-                                       'macro2-something' / 'plan.md')
+        phases = core.selection(path=repo / '.phased' / 'active' /
+                                'macro2-something' / 'plan.md')['phases']
         icons = {p['n']: roadmap.phase_icon(p) for p in phases}
         assert icons[1]['icon'] == '✓' and icons[1]['cls'] == 'x', icons[1]
         assert icons[2]['icon'] == '✓!', icons[2]      # closed, carries a Review
@@ -193,7 +193,8 @@ def main():
 
         plans = []
         for entry in core.all_plan_dirs(repo):
-            _, ph, _ = core.parse_plan(pathlib.Path(entry['dir']) / 'plan.md')
+            ph = core.selection(
+                path=pathlib.Path(entry['dir']) / 'plan.md')['phases']
             plans.append(dict(entry, phases=ph))
         tree = roadmap.build_tree(rm, plans, 'macro2-something')
         assert tree['roadmap'] is True

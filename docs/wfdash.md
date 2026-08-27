@@ -33,7 +33,7 @@ python3 plugins/wf/scripts/wfdash/server.py -C <repo> [-O <chat pid>] [-P <port>
 |---|---|
 | `-C` | the repository to watch (default: cwd) |
 | `-O` | pid of the chat that opened the dashboard — the queue is drained there, and the *New workflow* dialog names it |
-| `-P` | bind exactly this port; without it, the first free port from 8787 up, which is what lets several repositories be watched at once |
+| `-P` | bind exactly this port, for a caller that must predict the address; without it, the first free port from 8787 up, which is what lets several repositories be watched at once |
 
 The first line printed is the whole address, one-shot key included:
 
@@ -106,7 +106,7 @@ command, which is queued nowhere and comes back as text.
 | *Ask for an unattended run* | `run-workflow` | `/wf:run-workflow` — it owns the pre-flight, the monitor, the push policy and the foreman relay |
 | *Command for phase N* | nothing at all — the command comes back as text | `/wf:execute-phase`, copied into a chat of its own: a phase never runs in the chat that supervises it |
 | *queue*, in the *Foreman* pane | `foreman` | `refs/foreman.md`, the plugin's only channel to the supervision chat |
-| *create workflow* | `write-workflow` | `/wf:write-workflow`, run by the chat that drains the queue |
+| *Create*, in the *Phase* pane with no plan | `write-workflow` | `/wf:write-workflow`, run by the chat that drains the queue |
 
 Neither launch proposal carries a phase number: the phase is whatever the plan
 declares next.

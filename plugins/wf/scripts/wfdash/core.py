@@ -31,12 +31,12 @@ where it stopped — because the dashboard polls and the files reach a few MB.
 
 import datetime
 import glob
+import importlib.util
 import json
 import os
 import pathlib
 import re
 import subprocess
-import sys
 import threading
 import time
 
@@ -397,49 +397,50 @@ def read_todos(session_id):
 # --- the plan -----------------------------------------------------------------
 
 NEXT_PHASE = pathlib.Path(__file__).resolve().parent.parent / 'next-phase.py'
-READER_TIMEOUT = 15
 FIELD_MAX = 300
+_READER = None
+
+
+def _reader():
+    """`next-phase.py`, loaded once and kept: the hyphen in the filename
+    stops `import`, not `spec_from_file_location`."""
+    global _READER
+    if _READER is None:
+        spec = importlib.util.spec_from_file_location('wf_next_phase',
+                                                      NEXT_PHASE)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _READER = mod
+    return _READER
 
 
 def selection(path=None, text=None):
-    """The plan, read by its single reader: `next-phase.py --json`.
+    """The plan, read by its single reader: `next-phase.py`, in process.
 
     The plan format is that script's contract — markers, notes, `Run:`,
     `Verify:`, the header fields and which phase comes next. A second
     implementation here is what this replaces: it was a frozen copy of a
     shipped regex, and it disagreed with the original about the outcomes.
-    A plan held in a branch rather than on disk goes in through stdin.
+    A plan held in a branch rather than on disk comes in as text.
+
+    Any failure degrades to `None`: every caller answers "no plan" to it,
+    and a plan that cannot be read must not turn a page into a 500.
     """
-    arg = '-' if text is not None else str(path)
     try:
-        out = subprocess.run([sys.executable, str(NEXT_PHASE), '--json', arg],
-                             capture_output=True, text=True, input=text,
-                             timeout=READER_TIMEOUT)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if out.returncode != 0:
-        return None
-    try:
-        sel = json.loads(out.stdout)
-    except ValueError:
+        reader = _reader()
+        if text is not None:
+            parsed = reader.parse_lines(text.splitlines())
+            arg = '-'
+        else:
+            parsed = reader.parse(path)
+            arg = str(path)
+        sel = reader.payload(arg, *parsed)
+    except Exception:
         return None
     for ph in sel['phases']:
         for field in ph['notes'] + ph['verify']:
             field['text'] = _short(field['text'], FIELD_MAX)
     return sel
-
-
-def parse_plan(path):
-    """One plan.md on disk: the file, its phases and its header fields."""
-    plan = pathlib.Path(path)
-    sel = selection(path=plan)
-    return plan, sel['phases'] if sel else [], sel['meta'] if sel else {}
-
-
-def parse_plan_text(text):
-    """The phases of a plan held in a branch, from its text."""
-    sel = selection(text=text)
-    return (sel['phases'], sel['meta']) if sel else ([], {})
 
 
 def plan_shape(path, slug, directory, sel, foreman_dir=None):
@@ -461,6 +462,16 @@ def plan_shape(path, slug, directory, sel, foreman_dir=None):
         'quality': meta.get('quality_check'),
         'foreman': read_foreman(foreman_dir) if foreman_dir else None,
     }
+
+
+def active_slug(repo):
+    """The active plan's slug, named by its directory — no parse.
+
+    `read_plan` answers the same question by reading the whole plan; a caller
+    that only needs the name should not pay for that.
+    """
+    found = sorted(pathlib.Path(repo).glob('.phased/active/*/plan.md'))
+    return found[0].parent.name if found else None
 
 
 def read_plan(repo):
@@ -879,7 +890,8 @@ class Board:
             if plan and entry['slug'] == plan['slug']:
                 plans.append(dict(entry, phases=plan['phases']))
                 continue
-            _, phases, _ = parse_plan(pathlib.Path(entry['dir']) / 'plan.md')
+            sel = selection(path=pathlib.Path(entry['dir']) / 'plan.md')
+            phases = sel['phases'] if sel else []
             for ph in phases:
                 ph.update(roadmap.phase_icon(ph))
             plans.append(dict(entry, phases=phases))
@@ -898,7 +910,8 @@ class Board:
             text = git(self.repo, 'show', f"{entry['branch']}:{entry['path']}")
             if not text:
                 continue
-            phases, _ = parse_plan_text(text)
+            sel = selection(text=text)
+            phases = sel['phases'] if sel else []
             for ph in phases:
                 ph.update(roadmap.phase_icon(ph))
             self.branch_plans[entry['slug']] = dict(entry, phases=phases)

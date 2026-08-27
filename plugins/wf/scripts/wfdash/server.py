@@ -20,7 +20,6 @@ a `<meta>` tag: one blind request from any local process lifted it.
 Endpoints:
   GET /                      the page
   GET /api/state             plan, agents, alerts, totals
-  GET /api/agent?id=<id>     the turn-by-turn series of an agent
   GET /api/log?phase=<N>     the tail of a phase log
   GET /api/mirror            the foreman's state and the exchange with it
   GET /api/sessions          the chat that opened this dashboard, and the
@@ -57,9 +56,9 @@ import http.server
 import json
 import os
 import pathlib
-import re
 import secrets
 import threading
+import time
 import urllib.parse
 
 import core
@@ -72,9 +71,9 @@ MAX_BODY = 64 * 1024
 # nowhere else.
 WRITE_PATHS = ('/api/foreman', '/api/newflow', '/api/launch')
 DEFAULT_PORT = 8787
-# A phase's own block in plan.md runs from its marker line to the next one.
-PHASE_LINE = re.compile(r'^- \[.\] \*\*Phase (\d+)\*\*')
-BLOCK_END = re.compile(r'^(- \[.\] \*\*Phase |## )')
+# How long a queued run request keeps refusing the next press. Past it the
+# request is presumed abandoned rather than pending.
+RUN_REQUEST_TTL = 30 * 60
 PORT_SPAN = 20
 # The write token: generated per process and required on every request. The
 # browser carries it in the cookie, the page's own fetches included; the header
@@ -83,7 +82,10 @@ PORT_SPAN = 20
 # returns to index.html.
 TOKEN_SLOT = '__WFDASH_TOKEN__'
 TOKEN_HEADER = 'X-Wfdash-Token'
-COOKIE_NAME = 'wfdash_session'
+# The retired bare name, kept so the tests can assert it never returns: a
+# browser keys cookies by host, so two dashboards on 127.0.0.1 sharing one
+# name evict each other's session.
+RETIRED_COOKIE_NAME = 'wfdash_session'
 # The one-shots minted for a URL, spent on their first exchange.
 ONE_SHOTS = set()
 ONE_SHOTS_LOCK = threading.Lock()
@@ -92,6 +94,11 @@ ONE_SHOTS_LOCK = threading.Lock()
 LOCAL_HOSTS = {'127.0.0.1', 'localhost', '::1'}
 
 HERE = pathlib.Path(__file__).parent
+
+
+def cookie_name(port):
+    """One jar per port: the browser keys cookies by host, not by port."""
+    return f'wfdash_{port}_session'
 
 
 def new_one_shot():
@@ -126,6 +133,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # Set on the request that spends a one-shot: the response then hands the
     # cookie over, and the address bar is clean from the next load on.
     grant = None
+    # The port this server bound, set in main() once serve() has chosen it.
+    cookie_port = None
     protocol_version = 'HTTP/1.1'
 
     def log_message(self, fmt, *args):        # one line per request is noise
@@ -139,8 +148,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'no-store')
         if self.grant:
-            self.send_header('Set-Cookie', f'{COOKIE_NAME}={self.grant}; '
-                                           'HttpOnly; SameSite=Strict; Path=/')
+            self.send_header('Set-Cookie', f'{cookie_name(self.cookie_port)}='
+                                           f'{self.grant}; HttpOnly; SameSite=Strict; Path=/')
+            self.grant = None
         self.end_headers()
         self.wfile.write(body)
 
@@ -151,11 +161,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Every request, reads included. Header or cookie — one token behind both."""
         if not self.token:
             return False
-        if self.headers.get(TOKEN_HEADER) == self.token:
+        # `compare_digest` refuses a non-ASCII str and http.server decodes
+        # headers as latin-1, so one byte >= 0x80 would raise here instead of
+        # answering 403 — and on GET this runs outside the handler's try.
+        header = self.headers.get(TOKEN_HEADER)
+        if header and header.isascii() and secrets.compare_digest(header, self.token):
             return True
         jar = http.cookies.SimpleCookie(self.headers.get('Cookie') or '')
-        morsel = jar.get(COOKIE_NAME)
-        return morsel is not None and morsel.value == self.token
+        morsel = jar.get(cookie_name(self.cookie_port))
+        return (morsel is not None and morsel.value.isascii()
+                and secrets.compare_digest(morsel.value, self.token))
 
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
@@ -170,8 +185,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(page, 'text/html; charset=utf-8')
             if u.path == '/api/state':
                 return self._json(self.board.state())
-            if u.path == '/api/agent':
-                return self._json(self.agent(q.get('id', [''])[0]))
             if u.path == '/api/log':
                 return self._json(self.log(q))
             if u.path == '/api/mirror':
@@ -297,6 +310,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # to be copied into a chat of its own.
             return {'road': 'chat', 'phase': plan['next'],
                     'command': '/wf:execute-phase'}
+        # Only a FRESH request refuses the next one. A queue nobody drained —
+        # the chat was closed, or never asked — would otherwise leave the button
+        # dead for good, with no way back from the page. Serving a stale one
+        # twice is harmless: the draining skill collapses same-kind requests
+        # into one intent.
+        fresh = time.time() - RUN_REQUEST_TTL
+        if any(e.get('kind') == 'run-workflow' and e.get('at', 0) > fresh
+               for e in outbox.read(self.board.repo)):
+            return {'error': 'an unattended run is already queued — '
+                             'the chat that drains the queue serves it'}
         event = outbox.append(self.board.repo, 'run-workflow',
                               command='/wf:run-workflow', phase=plan['next'],
                               slug=plan['slug'])
@@ -326,8 +349,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         written with what was built, and a re-rendering is the one thing that
         cannot serve that.
         """
-        plan = core.read_plan(self.board.repo)
-        slug = q.get('slug', [''])[0] or (plan or {}).get('slug')
+        # The slug alone is wanted here, so the active plan is named by its
+        # directory rather than parsed: the ONE parse this endpoint needs is
+        # the one below, over the very text it slices.
+        slug = q.get('slug', [''])[0] or core.active_slug(self.board.repo)
         if not slug:
             return {'error': 'no plan'}
         text = self.plan_source(slug)
@@ -337,25 +362,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             n = int(q.get('phase', ['0'])[0])
         except ValueError:
             return {'error': 'phase is not a number'}
+        sel = core.selection(text=text)
+        if sel is None:
+            return {'error': f'no plan for {slug}'}
         lines = text.splitlines()
-        if not n:
-            head = []
-            for line in lines:
-                if line.startswith('## Work Plan') or PHASE_LINE.match(line):
-                    break
-                head.append(line)
-            return {'slug': slug, 'phase': 0, 'lines': head}
-        start = None
-        for i, line in enumerate(lines):
-            m = PHASE_LINE.match(line)
-            if m and m.group(1) == str(n):
-                start = i
-                break
-        if start is None:
+        span = (sel['header_span'] if not n else
+                next((ph['span'] for ph in sel['phases'] if ph['n'] == n),
+                     None))
+        if span is None:
             return {'slug': slug, 'phase': n, 'lines': [], 'missing': True}
-        end = next((j for j in range(start + 1, len(lines))
-                    if BLOCK_END.match(lines[j])), len(lines))
-        return {'slug': slug, 'phase': n, 'lines': lines[start:end]}
+        return {'slug': slug, 'phase': n,
+                'lines': lines[span[0] - 1:span[1]]}
 
     def roadmap(self, q):
         """`.phased/roadmap.md`, whole or by macro-phase section.
@@ -381,18 +398,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if lines[j].startswith('## ')), len(lines))
         return {'macro': want, 'lines': lines[start:end]}
 
-    def agent(self, ident):
-        if not ident:
-            return {'error': 'missing id'}
-        for path, scan in self.board.scans.items():
-            stem = pathlib.Path(path).stem.replace('agent-', '')
-            if stem.startswith(ident):
-                return {'id': ident, 'path': path, 'turns': scan.turns,
-                        'series': scan.series,
-                        'first_prompt': scan.first_prompt,
-                        'produced': scan.last_text}
-        return {'error': f'no agent for {ident}'}
-
     def log(self, q):
         plan = core.read_plan(self.board.repo)
         if plan is None:
@@ -414,9 +419,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 def serve(port, scan):
     """The listening server. `scan` walks up from `port` to the first free one.
 
-    An explicit `-P` never scans: `.claude/launch.json` declares the port it
-    will open the pane on, so a server that quietly moved would leave that
-    pane pointing at nothing. Without `-P` the port is ours to choose, and
+    An explicit `-P` never scans: it is how a caller that must predict the
+    address gets one, and a server that quietly moved would hand it a port
+    nobody is listening on. Without `-P` the port is ours to choose, and
     walking up is what lets several instances coexist.
     """
     last = port + PORT_SPAN if scan else port
@@ -442,6 +447,7 @@ def main():
     Handler.owner_pid = args.owner
     Handler.token = secrets.token_urlsafe(24)
     srv = serve(args.port or DEFAULT_PORT, args.port is None)
+    Handler.cookie_port = srv.server_address[1]
     print(f'wfdash on http://127.0.0.1:{srv.server_address[1]}/?k={new_one_shot()}'
           f'  repo: {Handler.board.repo}', flush=True)
     srv.serve_forever()

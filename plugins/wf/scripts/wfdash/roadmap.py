@@ -134,6 +134,7 @@ def _phases(plan, active_slug):
         # The notes travel for another plan's phases too: they are what one
         # reads when coming back to review closed work.
         out.append({'n': ph['n'], 'status': ph['status'], 'title': ph['title'],
+                    'tags': ph.get('tags') or [],
                     'run': ph['run'], 'mine': mine, 'notes': ph.get('notes') or [],
                     'icon': ph.get('icon'), 'cls': ph.get('cls'),
                     'warn': ph.get('warn', False)})

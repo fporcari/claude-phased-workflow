@@ -259,7 +259,7 @@ fix, not a rewrite — the token must not travel in an unauthenticated page.
 
 **B1b — BLOCKER. No GET has a perimeter.** `do_GET` (`server.py:260-290`) checks
 neither token nor Origin, and the read endpoints carry the whole picture:
-`/api/state`, `/api/agent`, `/api/log`, `/api/mirror`, `/api/sessions`,
+`/api/state`, `/api/log`, `/api/mirror`, `/api/sessions`,
 `/api/plantext`, `/api/roadmap`. Measured on the running server: all answer `200`
 to an unauthenticated request (§9). So any local process reads every transcript
 aggregate, every cost, the plan's own text, the live session list and the exchange
@@ -510,7 +510,7 @@ answers. Two of them turned out to be merits rather than defects:
 |---|---|
 | The HTTP surface in full: bind, how the write token is generated and scoped, whether **reads** require it, any `Origin`/`Host` check, the routing table, `launch_unattended`'s body, `newflow`, the foreman deliver path, `titles()`, `owner_pid` | `plugins/wf/scripts/wfdash/server.py` |
 | Whether `esc()` escapes quotes, and whether **every** render site uses it — the B1/D3 audit | `plugins/wf/scripts/wfdash/index.html` |
-| `parse_plan` / `parse_plan_text` regexes (does the plan parser agree with `next-phase.py:46` `PHASE_RE`?), `all_plan_dirs`, `branch_plan_dirs`, `lifecycle`, the price table, `Board.tree`, `group_chats`, `alerts` | `plugins/wf/scripts/wfdash/core.py` |
+| `selection` regexes (does the plan parser agree with `next-phase.py:46` `PHASE_RE`?), `all_plan_dirs`, `branch_plan_dirs`, `lifecycle`, the price table, `Board.tree`, `group_chats`, `alerts` | `plugins/wf/scripts/wfdash/core.py` |
 | `checks_path`, `check_id`, `read_checks` — and whether the slug is sanitised before becoming a path component (a slug with `../` would escape `ROOT`) | `plugins/wf/scripts/wfdash/checks.py` |
 | `allowed-tools`, `disable-model-invocation`, whether it names `~/.claude/` (E1), its doc-mass | `plugins/wf/skills/dashboard/SKILL.md` |
 | How a user turn is injected into another session — the mechanism behind `inbox.deliver_first(repo, pid, sess, text, titles)` (`codice.patch:654`) | `plugins/wf/scripts/wfdash/inbox.py` (name inferred from the call) |

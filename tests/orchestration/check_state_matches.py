@@ -15,6 +15,9 @@ reader, ``next-phase.py``, so a phase-state character class or a
 ``**Phase`` marker pattern anywhere else is a second implementation —
 which is what the dashboard's ``core.py`` carried, byte-for-byte
 identical to the original and disagreeing with it about the outcomes.
+The ESCAPED forms count too — a regex-source ``\\*\\*Phase`` or
+``\\[.\\]`` marker is the same second reader written for `re`, and
+missing them is how ``server.py``'s own plan slicer sat unseen.
 
 Used by S18 both as the check and, re-run on a mutated copy, as the
 proof that the check fails on the defect it describes.
@@ -29,7 +32,7 @@ import sys
 HELPER = re.compile(r'^(phase_re|phase_count|phase_any|phase_lines)\(\)')
 STATE = re.compile(r'\\\[\[?[ x!~>]')   # a literal \[ opening a state match
 ANCHOR = re.compile(r'\\\*\\\*Phase')
-PY_STATE = re.compile(r'\[ ?x!~>\]|\*\*Phase ')
+PY_STATE = re.compile(r'\[ ?x!~>\]|\*\*Phase |\\\*\\\*Phase|\\\[.\\\]')
 PY_SINGLE_SOURCE = 'next-phase.py'
 
 

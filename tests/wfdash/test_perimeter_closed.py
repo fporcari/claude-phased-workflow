@@ -45,13 +45,14 @@ assert server.TOKEN_SLOT not in PAGE, \
 class Probe(server.Handler):
     """The perimeter without a socket: only the credential check is under test."""
 
-    def __init__(self, cookie=None, one_shot=None, path='/api/state'):
+    def __init__(self, cookie=None, one_shot=None, path='/api/state', port=8789):
         self.token = 'the-real-token'
+        self.cookie_port = port
         self.path = path if one_shot is None else f'{path}?k={one_shot}'
         self.codes = []
         self.headers = {}
         if cookie is not None:
-            self.headers['Cookie'] = f'wfdash_session={cookie}'
+            self.headers['Cookie'] = f'{server.cookie_name(port)}={cookie}'
 
     def send_response(self, code, *a):
         self.codes.append(code)

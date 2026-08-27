@@ -302,7 +302,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**337 assertions over 50 scenarios** (S1–S51, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The scenario-by-scenario catalog is in [docs/design-notes.md](docs/design-notes.md); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**327 assertions over 50 scenarios** (S1–S51, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The scenario-by-scenario catalog is in [docs/design-notes.md](docs/design-notes.md); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -349,6 +349,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 | Version | In one line |
 |---|---|
 | 6.25.0 | the wfdash dashboard ships as an alternative surface — a read-only local view of the plan that PROPOSES, never acts, with the textual report still the default and a guard holding it optional |
+| 6.24.0 | every prompt the plugin builds for a subagent cites it by its namespaced name, so a bare name can no longer resolve to a stale flat install or to the general-purpose fallback in silence; the `Panel` review option's fan-out is fixed by construction, and the remaining waves declare their caps and return formats |
 | 6.23.0 | the plan-defect consult gains `apply`: when the claim carries its edit as before→after, the inspector applies it under the launcher's hold, re-runs the `Done:`, and a green resumes the run — no repair session, no dead run |
 | 6.22.0 | the run stops cleanly on request: a `<slug>-stop-request` file checked between sessions ("finish the phase in flight, then stop") and `RUN_WORKFLOW_MAX_PHASES=N` as an upfront bound, both ending as `run-end stopped-by-request` |
 | 6.21.0 | a negative assertion in a plan-time contract test is swept against every other phase's `Decisions:`/`Done:` at authoring, and the run inspector re-reads pending contract tests when a phase closes on a bent decision |

@@ -552,6 +552,15 @@ printf "%s\n" "PHASE_RE = re.compile(r'^- \\[([ x!~>])\\] \\*\\*Phase (\\d+)\\*\
 assert "S18: the guard fails when a second reader takes the plan format back" \
   '! python3 "$STATE_GUARD" "$S18_MUT/core.py" >/dev/null 2>&1'
 rm -rf "$S18_MUT"
+# Mutation: give server.py back the slicer it carried — an ESCAPED marker
+# regex, the shape the guard used to miss and the reason it was widened.
+S18_MUT="$(mktemp -d)"
+cp "$PLUGIN_SRC/wfdash/server.py" "$S18_MUT/server.py"
+printf "%s\n" "PHASE_LINE = re.compile(r'^- \\[.\\] \\*\\*Phase (\\d+)\\*\\*')" \
+  >> "$S18_MUT/server.py"
+assert "S18: the guard fails when the escaped marker regex comes back" \
+  '! python3 "$STATE_GUARD" "$S18_MUT/server.py" >/dev/null 2>&1'
+rm -rf "$S18_MUT"
 
 echo "== S19: next-phase.py --validate gates the launcher before any session =="
 # The validator shares the selector's own regexes, so a plan it rejects is one
@@ -2368,6 +2377,27 @@ assert "S42: CHANGELOG opens with the shipped version" \
 # plugin entry) — it sat at 6.12.0 for four releases while plugin.json moved.
 assert "S42: marketplace.json carries the shipped version everywhere" \
   '[ "$(grep -c "\"version\": \"$S42_V\"" "$TESTDIR/../../.claude-plugin/marketplace.json")" = "$(grep -c "\"version\":" "$TESTDIR/../../.claude-plugin/marketplace.json")" ]'
+# Two more README claims nothing watched: the changelog table is a WINDOW on
+# CHANGELOG.md and had lost 6.24.0 inside the range it covers, and the
+# "N assertions over M scenarios" line is a claim about this very file that was
+# measured once and left to rot — a stale copy of it cost the wfdash graft
+# eight defects, its plan trusting the README over run_tests.sh.
+S42_OUT="$(python3 "$TESTDIR/check_readme_continuity.py" "$TESTDIR/../..")"
+[ -z "$S42_OUT" ] || echo "  offending: $S42_OUT"
+assert "S42: the README's changelog table and suite numbers hold" '[ -z "$S42_OUT" ]'
+# Mutations, on a copy carrying only what the guard reads.
+S42_MUT="$(mktemp -d)"; mkdir -p "$S42_MUT/tests/orchestration"
+cp "$TESTDIR/../../CHANGELOG.md" "$S42_MUT/"
+cp "$TESTDIR/run_tests.sh" "$S42_MUT/tests/orchestration/"
+S42_GAP=$(grep -o '^| [0-9][0-9.]* |' "$TESTDIR/../../README.md" | sed -n 2p | tr -d '| ')
+grep -v "^| $S42_GAP |" "$TESTDIR/../../README.md" > "$S42_MUT/README.md"
+assert "S42: the guard fails when the changelog table skips a version" \
+  '[ -n "$(python3 "$TESTDIR/check_readme_continuity.py" "$S42_MUT")" ]'
+sed 's/\*\*[0-9]* assertions over/**999 assertions over/' \
+  "$TESTDIR/../../README.md" > "$S42_MUT/README.md"
+assert "S42: the guard fails when the README's assertion count drifts" \
+  '[ -n "$(python3 "$TESTDIR/check_readme_continuity.py" "$S42_MUT")" ]'
+rm -rf "$S42_MUT"
 
 echo "== S41: the doctrine mass is measured, and growth pays its budget =="
 # check_doc_mass.py: a skill's closure (SKILL.md + every ref it cites) is the
