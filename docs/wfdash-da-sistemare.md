@@ -1,5 +1,10 @@
 # wfdash — what the graft left open
 
+> **Historical document — every finding below is CLOSED.** They were fixed by
+> the workflow that followed (`aca8680`, released as 6.26.0). This file stays
+> as the record of what the 6.25.0 graft left open and why, not as a work
+> list: nothing here is pending.
+
 Input for the next workflow. The graft (`6.25.0`, branch `wf/wfdash-optional-surface`)
 closed the perimeter and took the server's authority away; these are the findings it
 did NOT fix, collected here because they were recorded in `.phased/`, which the

@@ -509,9 +509,18 @@ def finished_plan(repo):
         if sel:
             return plan_shape(path, entry['slug'], entry['dir'], sel,
                               entry['dir'])
-    for entry in branch_plan_dirs(repo):
-        if entry['state'] != 'done':
-            continue
+    # The LAST finalized, on branches too: candidates are ordered by the date
+    # of the commit that last touched each plan on its own branch — taking the
+    # first branch the listing happens to name returns whichever slug sorts
+    # first, not the workflow that finished most recently.
+
+    def finalized_at(entry):
+        ts = git(repo, 'log', '-1', '--format=%ct',
+                 entry['branch'], '--', entry['path']).strip()
+        return int(ts) if ts.isdigit() else 0
+
+    on_branch = [e for e in branch_plan_dirs(repo) if e['state'] == 'done']
+    for entry in sorted(on_branch, key=finalized_at, reverse=True):
         text = git(repo, 'show', f"{entry['branch']}:{entry['path']}")
         if not text:
             continue

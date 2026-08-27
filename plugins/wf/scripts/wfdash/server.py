@@ -31,6 +31,17 @@ Endpoints:
   POST /api/newflow          queue the command that creates a workflow
   POST /api/launch           queue an unattended run, or hand back the phase
                              command as text
+  POST /api/oneshot          a fresh one-shot, minted for whoever already
+                             holds the token — how a reused server lets a
+                             second navigation in
+
+The server also writes ONE file outside the repository: a registry entry
+beside the queue (`<key>-server.json`, 0600 in the 0700 transport dir) naming
+its port, pid and token. It is what `--probe` reads, so `/wf:dashboard` can
+find a live server and reuse it — the old discovery curled `/api/state` bare,
+which authenticated reads had been answering 403 since they exist, so it
+recognised nothing and every open started a twin. The token on disk is as
+secret as the queue beside it: both are owner-only files on this host.
 
 The three POSTs write nothing but the queue `outbox.py` owns, outside every
 working tree, and each answers with what it queued so the page can say what
@@ -51,6 +62,8 @@ the phase is the plan's own next one, and the foreman is the title
 """
 
 import argparse
+import atexit
+import contextlib
 import http.cookies
 import http.server
 import json
@@ -60,6 +73,7 @@ import secrets
 import threading
 import time
 import urllib.parse
+import urllib.request
 
 import core
 import inbox
@@ -69,7 +83,7 @@ import roadmap
 MAX_BODY = 64 * 1024
 # The endpoints that write. One line per endpoint: a new one is added here and
 # nowhere else.
-WRITE_PATHS = ('/api/foreman', '/api/newflow', '/api/launch')
+WRITE_PATHS = ('/api/foreman', '/api/newflow', '/api/launch', '/api/oneshot')
 DEFAULT_PORT = 8787
 # How long a queued run request keeps refusing the next press. Past it the
 # request is presumed abandoned rather than pending.
@@ -229,6 +243,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._json(self.newflow(body))
             if u.path == '/api/launch':
                 return self._json(self.launch(body))
+            if u.path == '/api/oneshot':
+                # Minting takes the token, like every write: this is how the
+                # skill reopens the page of a server it found in the registry,
+                # whose original one-shot was spent on the first load.
+                return self._json({'k': new_one_shot()})
             return self._json({'error': 'unknown endpoint'}, 404)
         except BrokenPipeError:
             pass
@@ -314,15 +333,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # the chat was closed, or never asked — would otherwise leave the button
         # dead for good, with no way back from the page. Serving a stale one
         # twice is harmless: the draining skill collapses same-kind requests
-        # into one intent.
-        fresh = time.time() - RUN_REQUEST_TTL
-        if any(e.get('kind') == 'run-workflow' and e.get('at', 0) > fresh
-               for e in outbox.read(self.board.repo)):
+        # into one intent. Check and append are ONE locked step: two concurrent
+        # presses must not both find the queue empty.
+        event = outbox.append_if_absent(self.board.repo, 'run-workflow',
+                                        time.time() - RUN_REQUEST_TTL,
+                                        command='/wf:run-workflow',
+                                        phase=plan['next'], slug=plan['slug'])
+        if event is None:
             return {'error': 'an unattended run is already queued — '
                              'the chat that drains the queue serves it'}
-        event = outbox.append(self.board.repo, 'run-workflow',
-                              command='/wf:run-workflow', phase=plan['next'],
-                              slug=plan['slug'])
         return {'queued': True, 'road': 'unattended', 'phase': plan['next'],
                 'request': event}
 
@@ -416,6 +435,70 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 'lines': [ln.rstrip('\n') for ln in lines[-tail:]]}
 
 
+def registry_path(repo):
+    return outbox.TMP / f'{outbox.key(repo)}-server.json'
+
+
+def write_registry(repo, port, token):
+    """The entry `--probe` reads: port, pid and token of the live server.
+
+    0600 in the 0700 transport directory — the token on disk is exactly as
+    secret as the queue beside it, and both are owner-only on this host.
+    Removed at exit, but only best-effort: a kill leaves it behind, and the
+    probe treats an entry whose server does not answer as stale.
+    """
+    f = registry_path(repo)
+    outbox.private_dir(f.parent)
+    fd = os.open(f, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+        json.dump({'port': port, 'pid': os.getpid(), 'repo': repo,
+                   'token': token, 'at': time.time()}, fh)
+    atexit.register(drop_registry, repo, os.getpid())
+
+
+def drop_registry(repo, pid):
+    """Remove our own entry and nobody else's: a replacement server may
+    already have overwritten the file."""
+    f = registry_path(repo)
+    with contextlib.suppress(OSError, ValueError, KeyError):
+        if json.loads(f.read_text())['pid'] == pid:
+            os.remove(f)
+
+
+def probe(repo):
+    """The live server on this repository, and a fresh one-shot for its page.
+
+    The registry only NAMES the candidate; the answer that counts comes from
+    the server itself, over the authenticated endpoints. An entry whose server
+    does not answer for this repository is stale and removed — a kill leaves
+    one behind, and self-healing here is what keeps the registry from needing
+    a cleanup of its own.
+    """
+    f = registry_path(repo)
+    try:
+        info = json.loads(f.read_text())
+    except (OSError, ValueError):
+        return None
+    root = os.path.abspath(os.path.expanduser(repo))
+    base = f"http://127.0.0.1:{info.get('port')}"
+    headers = {TOKEN_HEADER: str(info.get('token', ''))}
+    try:
+        req = urllib.request.Request(f'{base}/api/state', headers=headers)
+        with urllib.request.urlopen(req, timeout=2) as ans:
+            state = json.load(ans)
+        if os.path.realpath(state.get('repo', '')) != os.path.realpath(root):
+            raise ValueError('another repository answered')
+        req = urllib.request.Request(f'{base}/api/oneshot', headers=headers,
+                                     data=b'{}', method='POST')
+        with urllib.request.urlopen(req, timeout=2) as ans:
+            k = json.load(ans)['k']
+    except (OSError, ValueError, KeyError):
+        with contextlib.suppress(OSError):
+            os.remove(f)
+        return None
+    return {'port': info['port'], 'pid': info.get('pid'), 'repo': root, 'k': k}
+
+
 def serve(port, scan):
     """The listening server. `scan` walks up from `port` to the first free one.
 
@@ -442,12 +525,25 @@ def main():
     ap.add_argument('-P', '--port', type=int, default=None,
                     help=f'bind exactly this port; default: the first free one '
                          f'from {DEFAULT_PORT} up')
+    ap.add_argument('--probe', action='store_true',
+                    help='report the live server on this repository with a '
+                         'fresh one-shot URL, and start nothing; exit 1 when '
+                         'there is none')
     args = ap.parse_args()
+    if args.probe:
+        found = probe(args.cwd)
+        if found is None:
+            print(f'no wfdash on {args.cwd}', flush=True)
+            raise SystemExit(1)
+        print(f"wfdash on http://127.0.0.1:{found['port']}/?k={found['k']}"
+              f"  repo: {found['repo']}  reused, pid {found['pid']}", flush=True)
+        return
     Handler.board = core.Board(args.cwd)
     Handler.owner_pid = args.owner
     Handler.token = secrets.token_urlsafe(24)
     srv = serve(args.port or DEFAULT_PORT, args.port is None)
     Handler.cookie_port = srv.server_address[1]
+    write_registry(Handler.board.repo, Handler.cookie_port, Handler.token)
     print(f'wfdash on http://127.0.0.1:{srv.server_address[1]}/?k={new_one_shot()}'
           f'  repo: {Handler.board.repo}', flush=True)
     srv.serve_forever()

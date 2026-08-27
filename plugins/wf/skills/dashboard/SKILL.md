@@ -1,7 +1,7 @@
 ---
 description: Open the dashboard of this repository's phased workflows — the plan as a tree, the agents that ran each phase, what they are doing right now and what it cost. Use when the user asks to see, open or watch the dashboard, or wants the plan on screen instead of in chat.
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(python3:*), Bash(lsof:*), Bash(curl:*), Bash(grep:*), Bash(kill:*), Bash(open:*), Bash(ps:*), Bash(sort:*), Bash(tr:*), Read, mcp__Claude_Browser__preview_start, mcp__Claude_Browser__navigate
+allowed-tools: Bash(git:*), Bash(python3:*), Bash(kill:*), Bash(open:*), Bash(ps:*), Bash(tr:*), Read, mcp__Claude_Browser__preview_start, mcp__Claude_Browser__navigate
 ---
 
 # Dashboard
@@ -38,21 +38,23 @@ open on that account.
 A second server on the same repository is a second page saying the same thing,
 so look first:
 
-Every listening port is asked which repository it watches — `/api/state`
-carries the answer, so nothing is guessed from the port number:
+A live server leaves a registry entry beside its queue (an owner-only file
+under `${TMPDIR:-/tmp}/phased-workflow/`), and `--probe` reads it, confirms
+over the authenticated endpoints that the server still answers for THIS
+repository, and mints a fresh one-shot — every read requires the token, so
+asking the ports blind cannot recognise anything:
 
 ```bash
-for p in $(lsof -nP -iTCP@127.0.0.1 -sTCP:LISTEN -Fn | grep -o '[0-9]*$' | sort -u); do
-  curl -s --max-time 2 "http://127.0.0.1:$p/api/state" \
-    | python3 -c "import json,sys;print('$p ->', json.load(sys.stdin)['repo'])" 2>/dev/null
-done; true
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/server.py" --probe -C "<repo root>"
 ```
 
-A port answering with this repository's root is a dashboard on it: reuse it —
-the LOWEST such port when there are several — skip to Step 3, and say it was
-already running.
+A `wfdash on http://…?k=…` line is a dashboard already on this repository:
+reuse it — take the whole URL from that line exactly as in Step 3, skip the
+start, and say it was already running (the line carries the pid to stop it).
+`no wfdash on …` means a stale or absent entry — the probe removes a stale one
+itself, so just start a server.
 
-Otherwise start one. No `-P`: the server takes the first free port from 8787
+To start one: no `-P` — the server takes the first free port from 8787
 up, which is what lets several repositories be watched at once.
 
 `-O` tells the server which chat opened it — **this one**. On a repository with
@@ -75,8 +77,8 @@ stands and stop.
 
 The one-shot is spent on the first request and exchanged for an `HttpOnly`
 cookie, so it authenticates exactly one navigation. A server reused from
-Step 2 has none left to give: its page is already open in the browser that
-holds the cookie, and a second pane on it is refused.
+Step 2 is no exception: the probe's line carries a freshly minted one-shot,
+so its URL opens one new pane the same way.
 
 ## Step 3: Open the page
 
