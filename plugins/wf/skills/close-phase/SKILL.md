@@ -7,8 +7,7 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage
 
 Turn finished work into a closed phase: naming review, Done gate, `[x]`
 record, ONE phase commit, foreman notification. **The happy path only** — a
-phase that fails closes `[!]` where it failed, inside the executing skill;
-this skill never writes `[!]` or `[~]`.
+failing phase closes `[!]` where it failed, inside the executing skill; this one never writes `[!]` or `[~]`.
 
 Three ways in, one mechanic:
 
@@ -28,9 +27,8 @@ plus the contract layer this close verifies. Foreman message formats:
 
 ## Step 1: Identify the phase
 
-Invoked from the executing conversation, the phase is the one just
-executed — no lookup needed, and the caller's outcome material (touched
-files, `> Review:`/`> Verify:` notes) travels with the invocation.
+Invoked from the executing conversation, the phase is the one just executed —
+no lookup needed; the caller's outcome material (touched files, `> Review:`/`> Verify:` notes) travels with the invocation.
 
 Invoked standalone, resolve the plan first
 (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from outside
@@ -41,8 +39,7 @@ phase to close is the `[>]` one; none → nothing to close, say so and stop.
 work, so the work must speak: read the phase's `> WIP:` note, diff from its
 `commit:` (`git diff <commit>..HEAD`), and check what exists against the
 phase's `Done:`. No note, no `partial` commit, or a diff that does not reach
-`Done:` → a resume-or-reset case (`refs/phase-execution.md` → *Resuming a
-`[>]` phase*), not a close: say so and stop, or `[x]` forges its guarantee.
+`Done:` → a resume-or-reset case (`refs/phase-execution.md` → *Resuming a `[>]` phase*), not a close: say so and stop, or `[x]` forges its guarantee.
 
 ## Step 2: The Done gate
 
@@ -66,13 +63,16 @@ paragraph: `Done:`, authored `Verify:`, `Pattern:`, `Files:`, `Decisions:`
 are never the child's to edit) — markers and `>` notes move legitimately,
 so diff the extraction, not the file:
 ```bash
-PC=$(git log -1 --format=%H --all --grep "^wf: plan for <slug>$")
+PC=$(git log -1 --format=%H --grep "^wf: plan for <slug>$")
 diff <(git show "$PC:.phased/active/<slug>/plan.md" | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --contract-block <N> -) <(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --contract-block <N> ".phased/active/<slug>/plan.md")
 ```
 
 A diff with no covering foreman decision in `notes.md` under `## Phase N`
 blocks the close like a diverged contract test: restore the fields from the
-plan commit, or take the foreman's recorded wording.
+plan commit, or take the foreman's recorded wording. An empty `PC` blocks it
+too, and `PC` searches HEAD's own history, never `--all`: the plan commit is
+by construction an ancestor of the branch the phase ran on, and `--all` can
+answer with a reused slug's commit from another branch.
 
 **Two ways a criterion goes unmet, and only one of them is a refusal.**
 Something the phase built is red — a failing test, a lint error — and the

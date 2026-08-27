@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.28.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.28.1** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -302,7 +302,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**346 assertions over 52 scenarios** (S1–S53, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**352 assertions over 53 scenarios** (S1–S54, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -348,6 +348,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.28.1 | four follow-up findings closed — the close's field gate sees the autonomous template's `Pattern reference:`, the shell creates the transport 0700, the plan commit is searched on HEAD, and a queued request carries the owner that pressed it |
 | 6.28.0 | five review findings closed — the close really diffs the contract fields against the plan commit (`--contract-block`), a plan with contract tests refuses light phases outright (env override), a reused dashboard belongs to the chat that reused it, the transport under `/tmp` is per-user, and the perimeter says exactly what it keeps out |
 | 6.27.0 | the eleven queued field lessons are consumed — contract tests are linted at authoring and a child can no longer rewrite one undetected, a plan carrying them has no light phases, the autonomous template passes the launcher's own gate, and a foreman decision lives on disk before it is sent |
 | 6.26.1 | the five findings the dashboard's own review left open are closed — two dashboards find each other again through an authenticated registry probe, the one-run-per-plan guard survives two simultaneous presses, the queue is owner-only, and the closing header names the plan that really finished last |

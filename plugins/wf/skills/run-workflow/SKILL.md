@@ -49,7 +49,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 After confirmation, launch the run in the **background** and watch it while it runs — the run stays attached to this session. Tee the launcher's output to a log **outside the repo** (`<slug>` = the active plan's directory name under `.phased/active/`); a file inside `.phased/` would dirty the tree at the next phase's start and land in that phase's commit, which is exactly why the launcher itself writes no file:
 
 ```bash
-mkdir -p "${TMPDIR:-/tmp}/phased-workflow-$(id -u)"
+install -d -m 700 "${TMPDIR:-/tmp}/phased-workflow-$(id -u)"
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh" 2>&1 \
   | tee "${TMPDIR:-/tmp}/phased-workflow-$(id -u)/<slug>-run.log"
 ```

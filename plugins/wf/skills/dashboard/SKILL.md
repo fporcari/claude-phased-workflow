@@ -110,11 +110,16 @@ The page queues; this chat carries out. Read the queue whenever the user says
 they pressed something, and at the end of any turn spent on this workflow:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/outbox.py" -C "<repo root>" --drain
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/outbox.py" -C "<repo root>" --drain \
+  --pid "$(ps -o ppid= -p $$ | tr -d ' ')"
 ```
 
-`--drain` empties it, so read once and act on everything it returned. Each
-request carries a `kind`:
+`--drain --pid` empties this chat's share of it — the events stamped with
+this chat as owner, plus any with no owner — so read once and act on
+everything it returned. An event left queued names another owner: say whose
+it is and leave it, unless that pid is no longer a live session on this
+repository (`/api/sessions`, or `ps -p <pid>`) — an orphan is drained with a
+bare `--drain` and served here, saying so. Each request carries a `kind`:
 
 - `run-workflow` → invoke `/wf:run-workflow`; that skill owns the pre-flight,
   the Monitor, the push policy and the foreman relay, and none of it can be

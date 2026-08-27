@@ -61,6 +61,7 @@ print('test_no_authority: the socket writers are gone, the readers stay ok')
 
 class Fake:
     launch = server.Handler.launch
+    owner_stamp = server.Handler.owner_stamp
 
     def __init__(self, repo):
         self.board = type('B', (), {'repo': repo})()

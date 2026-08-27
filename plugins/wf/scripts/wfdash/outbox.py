@@ -159,12 +159,18 @@ def read(repo):
         return _entries(f)
 
 
-def drain(repo):
+def drain(repo, pid=None):
     """The pending requests, and the queue emptied — as one step.
 
     The queue is renamed aside under the lock and read after it is released, so
     a press landing mid-drain appends to a fresh file and survives. Reading and
     then removing would destroy it.
+
+    With `pid`, the drain takes only what belongs to this chat: the events
+    stamped `owner == pid` and the unstamped ones (queued before any owner was
+    known, or by hand). Another chat's events are written back — whether that
+    chat still lives is a judgment for the caller, not this transport, and a
+    bare drain still takes everything.
     """
     f = path(repo)
     aside = f.with_name(f'{f.name}.draining-{os.getpid()}-{next(_SERIAL)}')
@@ -173,10 +179,14 @@ def drain(repo):
             os.rename(f, aside)
         except OSError:
             return []
-    events = _entries(aside)
+        events = _entries(aside)
+        kept = ([] if pid is None else
+                [e for e in events if e.get('owner') not in (None, pid)])
+        for e in kept:
+            _append_line(f, e)
     with contextlib.suppress(OSError):
         os.remove(aside)
-    return events
+    return [e for e in events if e not in kept]
 
 
 def truncate(repo):
@@ -191,8 +201,12 @@ def main():
     ap = argparse.ArgumentParser(description='The dashboard requests waiting for this chat.')
     ap.add_argument('-C', '--cwd', default=os.getcwd(), help='the repo whose queue to read')
     ap.add_argument('--drain', action='store_true', help='empty the queue after reading it')
+    ap.add_argument('--pid', type=int, default=None,
+                    help='with --drain: take only the events owned by this '
+                         'chat (owner == pid) or owned by nobody; another '
+                         "chat's events stay queued")
     args = ap.parse_args()
-    events = drain(args.cwd) if args.drain else read(args.cwd)
+    events = drain(args.cwd, pid=args.pid) if args.drain else read(args.cwd)
     print(json.dumps(events, ensure_ascii=False, indent=2))
 
 

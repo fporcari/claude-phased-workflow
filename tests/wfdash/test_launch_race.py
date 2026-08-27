@@ -44,6 +44,7 @@ outbox.truncate(root)
 
 class Fake:
     launch = server.Handler.launch
+    owner_stamp = server.Handler.owner_stamp
 
     def __init__(self, repo_root):
         self.board = type('B', (), {'repo': str(repo_root)})()

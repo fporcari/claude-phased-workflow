@@ -282,8 +282,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if 'error' in target:
             return target
         event = outbox.append(self.board.repo, 'foreman', text=text,
-                              target=target['title'])
+                              target=target['title'], **self.owner_stamp())
         return {'queued': True, 'target': target['title'], 'request': event}
+
+    def owner_stamp(self):
+        """The owner each queued event carries, so a drain can take only what
+        belongs to its chat (`outbox.py --drain --pid`). Stamped at append
+        time: the owner is the LAST chat that opened or reused the dashboard,
+        which is the one the page's user is talking to."""
+        return {'owner': Handler.owner_pid} if Handler.owner_pid else {}
 
     def owner(self, body):
         """Re-point the owner at the chat that reused this server.
@@ -337,7 +344,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if any('\n' in v or '\r' in v for v in (name, scope)):
             return {'error': 'the name and the scope are single lines'}
         text = f'/wf:write-workflow {name}' + (f' — {scope}' if scope else '')
-        event = outbox.append(self.board.repo, 'write-workflow', command=text)
+        event = outbox.append(self.board.repo, 'write-workflow', command=text,
+                              **self.owner_stamp())
         return {'queued': True, 'command': text, 'request': event}
 
     def launch(self, body, plan=None):
@@ -368,7 +376,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         event = outbox.append_if_absent(self.board.repo, 'run-workflow',
                                         time.time() - RUN_REQUEST_TTL,
                                         command='/wf:run-workflow',
-                                        phase=plan['next'], slug=plan['slug'])
+                                        phase=plan['next'], slug=plan['slug'],
+                                        **self.owner_stamp())
         if event is None:
             return {'error': 'an unattended run is already queued — '
                              'the chat that drains the queue serves it'}

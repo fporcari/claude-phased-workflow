@@ -382,8 +382,12 @@ def payload(path, phases, meta, bounds):
 # deleted a contract field is caught even though markers and `>` notes — the
 # lines a phase legitimately writes — moved around it.
 
+# `Pattern reference:` is the autonomous template's spelling of `Pattern:`
+# (refs/write-workflow-autonomous.md vs write-workflow's own template): both
+# name the same foreman-owned field, so both are extracted — unifying the
+# templates would orphan the plans already in the field.
 CONTRACT_FIELD_RE = re.compile(
-    r'^\s*[-*]\s*(Done|Verify|Pattern|Files|Decisions):', re.I)
+    r'^\s*[-*]\s*(Done|Verify|Pattern(?: reference)?|Files|Decisions):', re.I)
 
 
 def contract_block(lines, phases, bounds, n):

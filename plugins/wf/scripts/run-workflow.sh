@@ -514,7 +514,10 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       ANSWER_FILE="$CONSULT_DIR/$CONSULT_SLUG-foreman-answer"
       APPLY_OUTCOME_FILE="$CONSULT_DIR/$CONSULT_SLUG-apply-outcome"
       CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"
-      mkdir -p "$CONSULT_DIR"
+      # install -d -m, not mkdir -p: the transport must be 0700 whatever the
+      # umask, and install also tightens a lax directory an older run left.
+      # Owner-only on the DIRECTORY is what protects the files inside it.
+      install -d -m 700 "$CONSULT_DIR"
       # Stale answers/outcomes from an earlier consult are not answers. The
       # outcome file is cleaned HERE, before the EVENT announces the consult:
       # cleaning it inside the apply branch would race a fast applier that

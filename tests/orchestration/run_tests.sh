@@ -2768,6 +2768,11 @@ assert "S49: the applied phase carries the Applied note and the run completed" \
   'grep -q "> Applied:" .phased/active/toy/plan.md && grep -q "^EVENT: run-end ok 2/2$" out.log'
 assert "S49: the applied phase still emits phase-done" 'grep -q "^EVENT: phase-done 1 1/2$" out.log'
 assert "S49: the outcome file was consumed" '[ ! -f "$S49_OUTF" ]'
+# The launcher itself created (or tightened) the transport dir on the consult
+# path: owner-only whatever the umask — the directory is what protects the
+# answer and outcome files inside it.
+assert "S49: the launcher leaves the transport directory 0700" \
+  '[ "$(python3 -c "import os,stat,sys;print(oct(stat.S_IMODE(os.stat(sys.argv[1]).st_mode)))" "$(dirname "$S49_ANS")")" = "0o700" ]'
 # (b) apply → red: the applier stood down, the repair judges the claim
 setup S49b; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
@@ -2968,6 +2973,15 @@ assert "S52: the rendered template reaches the validator as a two-phase plan" \
 assert "S52: a plan written to the template passes the gate" '[ "$S52_RC" = 0 ]'
 assert "S52: and passes it with zero errors, not on warnings alone" \
   'printf "%s" "$S52_OUT" | grep -q "validate: 0 error"'
+# The close's contract-field extraction must see the template's own spelling:
+# the autonomous template writes `Pattern reference:` where the interactive one
+# writes `Pattern:`, and an extractor matching only the short form silently
+# dropped the field from the very plans the launcher runs (reproduced).
+S52_CB="$(python3 "$S52_NP" --contract-block 1 "$S52_TMP/plan.md")"
+assert "S52: --contract-block sees the template's 'Pattern reference:' field" \
+  'printf "%s" "$S52_CB" | grep -q "Pattern reference:"'
+assert "S52: and the other contract fields of the rendered template" \
+  'printf "%s" "$S52_CB" | grep -q "Done:" && printf "%s" "$S52_CB" | grep -q "Files:"'
 rm -rf "$S52_TMP"
 # Mutation: the parenthetical back in the Phase cell — the exact drift.
 S52_MUT="$(mktemp -d)"; mkdir -p "$S52_MUT/refs"; cp "$S24_REFS"/*.md "$S52_MUT/refs/"
@@ -3056,6 +3070,39 @@ sed '/carries contract tests/d' "$RUNNER_SRC" > "$S53_MUT/run-workflow.sh"
 assert "S53: the guard fails when the launcher drops the warning" \
   '[ -n "$(s53_guard "$S24_REFS" "$S53_MUT/run-workflow.sh")" ]'
 rm -rf "$S53_MUT"
+
+echo "== S54: every shell creation of the transport is owner-only =="
+# outbox.py creates the transport 0700 and heals it on every append, but the
+# SHELL side reaches it first on a run with no dashboard: the launcher's
+# consult path and the skill's tee snippet. `mkdir -p` under umask 022 leaves
+# 0755 — `install -d -m 700` sets the mode whatever the umask and tightens a
+# lax directory an older release left. S49 asserts the live mode; this guard
+# pins the idiom so a refactor cannot quietly reintroduce mkdir.
+s54_guard() {  # $1 = launcher source, $2 = run-workflow SKILL.md
+  grep -q 'install -d -m 700 "\$CONSULT_DIR"' "$1" 2>/dev/null \
+    || echo "$1: the consult path no longer creates the transport 0700"
+  grep -q 'install -d -m 700' "$2" 2>/dev/null \
+    || echo "$2: the tee snippet no longer creates the transport 0700"
+  if grep -q 'mkdir -p .*phased-workflow' "$1" "$2" 2>/dev/null; then
+    echo "the transport is created with mkdir -p again (umask decides the mode)"
+  fi
+}
+S54_SKILL="$SKILLS_DIR/run-workflow/SKILL.md"
+S54_OUT="$(s54_guard "$RUNNER_SRC" "$S54_SKILL")"
+[ -z "$S54_OUT" ] || echo "  offending: $S54_OUT"
+assert "S54: launcher and skill create the transport with install -d -m 700" \
+  '[ -z "$S54_OUT" ]'
+# Mutation: the launcher goes back to mkdir -p.
+S54_MUT="$(mktemp -d)"
+sed 's|install -d -m 700 "\$CONSULT_DIR"|mkdir -p "$CONSULT_DIR"|' "$RUNNER_SRC" \
+  > "$S54_MUT/run-workflow.sh"
+assert "S54: the guard fails when the launcher reverts to mkdir -p" \
+  '[ -n "$(s54_guard "$S54_MUT/run-workflow.sh" "$S54_SKILL")" ]'
+# Mutation: the skill snippet goes back to mkdir -p.
+sed 's|install -d -m 700|mkdir -p|' "$S54_SKILL" > "$S54_MUT/SKILL.md"
+assert "S54: the guard fails when the skill snippet reverts to mkdir -p" \
+  '[ -n "$(s54_guard "$RUNNER_SRC" "$S54_MUT/SKILL.md")" ]'
+rm -rf "$S54_MUT"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then
