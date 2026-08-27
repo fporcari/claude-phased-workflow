@@ -401,7 +401,7 @@ presentation — are hypertext where the session can render a file to the
 user: a **report page**, the verdict on top, one line per finding, each
 finding a closed `<details>` expansion opening on its detail drawn from the
 plan artifacts. The page is written outside the repo
-(`${TMPDIR:-/tmp}/phased-workflow-$(id -u)/<slug>-report.html` — a file in the tree
+(`<transport>-report.html`, the prefix `next-phase.py --transport` names — a file in the tree
 would dirty it) and handed over with `SendUserFile` and `display: render`,
 which is load-bearing: left to choose, the client attaches a page outside
 the project folder as a download card, which is what the field run got.

@@ -121,11 +121,23 @@ PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
 mkdir -p "$PLAN_DIR/log"
 
+# The out-of-tree prefix every control file of THIS plan is named from —
+# uid segment for a shared host, repo key so two checkouts carrying the same
+# slug (a root and the worktree this launcher itself creates for it) never
+# consume each other's signals. next-phase.py owns the computation; the
+# fallback keeps a helper-less launcher running, at the old ambiguity.
+TRANSPORT=""
+[ -f "$NEXT_PHASE_PY" ] && TRANSPORT=$(python3 "$NEXT_PHASE_PY" --transport "$PLAN" 2>/dev/null)
+if [ -z "$TRANSPORT" ]; then
+  TRANSPORT="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/$(basename "$PLAN_DIR")"
+  echo "NOTE: next-phase.py could not name the transport — falling back to the slug alone ($TRANSPORT-*)."
+fi
+
 # Graceful stop channel: "finish the phase in flight, then stop". The request
 # rides a file OUTSIDE the repo (same transport as the consult answer — nothing
 # dirties the tree), checked between sessions, consumed on read. A stale
 # request from an earlier run is not a request: remove it at start, declared.
-STOP_REQUEST="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/$(basename "$PLAN_DIR")-stop-request"
+STOP_REQUEST="$TRANSPORT-stop-request"
 if [ -f "$STOP_REQUEST" ]; then
   rm -f "$STOP_REQUEST"
   echo "NOTE: stale stop request from an earlier run removed ($STOP_REQUEST)."
@@ -509,10 +521,9 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     # tree; no answer within the window defaults to the repair — today's path,
     # and the empirically better armchair-free verdict.
     if first_bang_block | grep -qi 'plan-defect claim'; then
-      CONSULT_SLUG=$(basename "$PLAN_DIR")
-      CONSULT_DIR="${TMPDIR:-/tmp}/phased-workflow-$(id -u)"
-      ANSWER_FILE="$CONSULT_DIR/$CONSULT_SLUG-foreman-answer"
-      APPLY_OUTCOME_FILE="$CONSULT_DIR/$CONSULT_SLUG-apply-outcome"
+      CONSULT_DIR=$(dirname "$TRANSPORT")
+      ANSWER_FILE="$TRANSPORT-foreman-answer"
+      APPLY_OUTCOME_FILE="$TRANSPORT-apply-outcome"
       CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"
       # install -d -m, not mkdir -p: the transport must be 0700 whatever the
       # umask, and install also tightens a lax directory an older run left.

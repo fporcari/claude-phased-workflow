@@ -114,12 +114,20 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/outbox.py" -C "<repo root>" --drai
   --pid "$(ps -o ppid= -p $$ | tr -d ' ')"
 ```
 
-`--drain --pid` empties this chat's share of it — the events stamped with
-this chat as owner, plus any with no owner — so read once and act on
-everything it returned. An event left queued names another owner: say whose
-it is and leave it, unless that pid is no longer a live session on this
-repository (`/api/sessions`, or `ps -p <pid>`) — an orphan is drained with a
-bare `--drain` and served here, saying so. Each request carries a `kind`:
+`--drain --pid` empties this chat's share of it and answers with both halves:
+`served` — the events stamped with this chat as owner, plus any with no owner,
+which are this turn's work — and `remaining`, what it left for another owner,
+read under the same lock so the two cannot disagree. Act on `served`; for each
+`remaining` event, say whose it is, and check whether that owner is still a
+live session on THIS repository — the session record, not `ps`, which only
+proves some process holds the pid. Ask the server's own owner check rather
+than writing a second copy of it (`inbox.owner_target`: the session record
+must exist AND its cwd must be this repository):
+`python3 -c 'import os,sys;sys.path.insert(0,os.environ["CLAUDE_PLUGIN_ROOT"]+"/scripts/wfdash");import inbox;print("live" if inbox.owner_target(int(sys.argv[1]),sys.argv[2]) else "orphan")' <owner pid> "<repo root>"`.
+
+`live` → leave it queued and name the chat it belongs to. `orphan` → its chat
+is gone and nobody else will ever serve it: drain it with a bare `--drain` and
+serve it here, saying so. Each request carries a `kind`:
 
 - `run-workflow` → invoke `/wf:run-workflow`; that skill owns the pre-flight,
   the Monitor, the push policy and the foreman relay, and none of it can be

@@ -36,6 +36,13 @@ machine consumer reads, so the plan format keeps a single reader. A plan path
 of "-" reads the plan from stdin, for a plan held in a branch rather than on
 disk.
 
+--transport prints the out-of-tree prefix every control file of ONE plan is
+named from: `${TMPDIR:-/tmp}/phased-workflow-<uid>/<slug>-<repo key>`. The repo
+key is what keeps two checkouts sharing a slug — a root and the worktree the
+launcher itself creates for it — from consuming each other's stop request,
+consult answer and apply outcome. Nothing is created: the caller owns the
+directory (`install -d -m 700`).
+
 --plans lists every workflow plan reachable from this repo — the current
 root's, every linked worktree's, and every wf/* branch with no worktree
 (read without checkout) — one pipe-separated line per plan:
@@ -44,7 +51,9 @@ root's, every linked worktree's, and every wf/* branch with no worktree
 """
 
 import argparse
+import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -228,6 +237,28 @@ def resolve_plan_path():
         return None, (f'several active plans under {active} ({names}); '
                       'exactly one is expected')
     return str(found[0]), None
+
+
+def transport_prefix(plan_path):
+    """The prefix every out-of-tree control file of this plan is named from.
+
+    `<TMPDIR|/tmp>/phased-workflow-<uid>/<slug>-<repo key>` — the uid segment
+    makes the directory multi-user (a fixed 0700 `/tmp/phased-workflow` locks
+    out every other user of a shared host), the repo key makes the FILES
+    unambiguous: the stop request, the consult answer, the apply outcome and
+    the run log were named from the slug alone, so two checkouts carrying the
+    same plan — a root and the worktree the launcher creates for it — read and
+    consumed each other's signals. The directory computation is mirrored in
+    wfdash/outbox.py; the S55 guard holds the two together.
+    """
+    plan = pathlib.Path(os.path.realpath(plan_path))
+    slug = plan.parent.name
+    # <root>/.phased/active/<slug>/plan.md — the root is what identifies the
+    # checkout, so a worktree and its parent never collide.
+    root = str(plan.parent.parent.parent.parent)
+    key = hashlib.sha1(root.encode()).hexdigest()[:12]
+    tmp = pathlib.Path(os.environ.get('TMPDIR') or '/tmp')
+    return str(tmp / f'phased-workflow-{os.getuid()}' / f'{slug}-{key}')
 
 
 # --- plan location (--plans) ------------------------------------------------
@@ -664,6 +695,9 @@ def main():
     ap.add_argument('--validate', action='store_true',
                     help='validate the plan structure and exit '
                          '(0 clean/warnings, 1 errors, 2 unreadable)')
+    ap.add_argument('--transport', action='store_true',
+                    help='print the out-of-tree prefix this plan\'s control '
+                         'files are named from, and exit')
     ap.add_argument('--contract-block', type=int, metavar='N', default=None,
                     help='print phase N\'s contract-field lines (Done:, '
                          'authored Verify:, Pattern:, Files:, Decisions:) '
@@ -707,6 +741,9 @@ def main():
             return 2 if args.validate else 1
     if args.resolve:
         print(path)
+        return 0
+    if args.transport:
+        print(transport_prefix(path))
         return 0
     if args.validate:
         try:

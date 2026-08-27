@@ -162,9 +162,13 @@ def read(repo):
 def drain(repo, pid=None):
     """The pending requests, and the queue emptied — as one step.
 
-    The queue is renamed aside under the lock and read after it is released, so
-    a press landing mid-drain appends to a fresh file and survives. Reading and
-    then removing would destroy it.
+    The queue is renamed aside and read UNDER the lock, and what this drain
+    does not take is written back to a fresh queue before the lock is
+    released: a press landing mid-drain appends to that fresh file and
+    survives, while another chat's events cannot be lost between the read and
+    the write-back. (Reading outside the lock was safe only while a drain took
+    everything.) Reading and then removing, the pair this replaced, destroyed
+    the press outright.
 
     With `pid`, the drain takes only what belongs to this chat: the events
     stamped `owner == pid` and the unstamped ones (queued before any owner was
@@ -206,8 +210,16 @@ def main():
                          'chat (owner == pid) or owned by nobody; another '
                          "chat's events stay queued")
     args = ap.parse_args()
-    events = drain(args.cwd, pid=args.pid) if args.drain else read(args.cwd)
-    print(json.dumps(events, ensure_ascii=False, indent=2))
+    if args.drain and args.pid:
+        # A filtered drain answers with BOTH halves: what it served, and what
+        # it left for another owner. Telling the chat to name the leftovers
+        # while handing it only the served ones would need a second read, and
+        # a queue read separately is a queue that moved in between.
+        served = drain(args.cwd, pid=args.pid)
+        out = {'served': served, 'remaining': read(args.cwd)}
+    else:
+        out = drain(args.cwd) if args.drain else read(args.cwd)
+    print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':

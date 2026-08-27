@@ -11,17 +11,22 @@ unowned events, which predate any owner or were queued by hand. Another
 chat's events are written back; whether that chat still lives is the
 caller's judgment, and a bare drain still takes everything.
 
-Four things are asserted:
+Five things are asserted:
 
   - `drain(pid=N)` returns N's events and the unowned ones, in order;
   - another owner's event survives the filtered drain, still readable;
   - a bare `drain()` then takes the leftover, emptying the queue;
-  - `Handler.launch` stamps the queued run-workflow with the current owner.
+  - `Handler.launch` stamps the queued run-workflow with the current owner;
+  - the CLI's filtered drain answers with BOTH halves — `served` and
+    `remaining` — so the chat can name what it left without a second read of
+    a queue that may have moved in between.
 
 Bare asserts, no framework: exit 0 clean, raises on the first failure.
 """
+import json
 import pathlib
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -77,6 +82,20 @@ try:
 finally:
     server.Handler.owner_pid = None
 print('test_outbox_owner: launch stamps the owner of the moment ok')
+
+outbox.truncate(repo)
+
+# --- the CLI reports both halves ---------------------------------------------
+
+outbox.append(repo, 'foreman', text='mine', owner=111)
+outbox.append(repo, 'foreman', text='theirs', owner=222)
+cli = pathlib.Path(__file__).resolve().parents[2] / 'plugins' / 'wf' / 'scripts' / 'wfdash' / 'outbox.py'
+out = json.loads(subprocess.run(
+    [sys.executable, str(cli), '-C', str(repo), '--drain', '--pid', '111'],
+    capture_output=True, text=True, check=True).stdout)
+assert [e['text'] for e in out['served']] == ['mine'], out
+assert [e['text'] for e in out['remaining']] == ['theirs'], out
+print('test_outbox_owner: the CLI answers with served and remaining ok')
 
 outbox.truncate(repo)
 shutil.rmtree(tmp, ignore_errors=True)

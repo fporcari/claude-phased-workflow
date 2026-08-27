@@ -59,6 +59,7 @@
 # in 5.0.0; the number stays vacant.
 TESTDIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER_SRC="$TESTDIR/../../plugins/wf/scripts/run-workflow.sh"
+NEXT_PHASE_SRC="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 OT="$WORK"
@@ -143,6 +144,11 @@ setup() {
   # for a reason no message named.
   git config user.email wf-tests@harness.local
   git config user.name "wf test harness"
+  # This sandbox's own control-file prefix: the launcher names stop request,
+  # consult answer and apply outcome from it, and it carries the repo key, so
+  # two scenarios (or two real checkouts) sharing the slug `toy` cannot
+  # consume each other's signals.
+  WF_T="$(python3 "$NEXT_PHASE_SRC" --transport "$DIR/.phased/active/toy/plan.md")"
 }
 
 finish_setup() {
@@ -2481,7 +2487,6 @@ echo "== S43: plan-defect claim — the foreman consult gate before repair =="
 # answer → timeout falls through to the repair (today's path — both field
 # claims were wrong and the repair found the better design). An ordinary [!]
 # never touches the gate.
-S43_ANS="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-foreman-answer"
 # (a) timeout → repair proceeds
 setup S43a; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
@@ -2494,21 +2499,21 @@ assert "S43: the run completed after the timed-out consult" '[ "$(grep -c "^- \[
 setup S43b; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
-rm -f "$S43_ANS"
-( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo stop > "$S43_ANS"; break; }; sleep 0.2; done ) &
+rm -f "$WF_T-foreman-answer"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo stop > "$WF_T-foreman-answer"; break; }; sleep 0.2; done ) &
 S43_W=$!
 RUN_WORKFLOW_CONSULT_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
 wait "$S43_W" 2>/dev/null
 assert "S43: the foreman's stop is honoured" 'grep -q "Foreman answered: stop" out.log'
 assert "S43: no repair launched on a foreman stop" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "S43: the phase stays [!] for the foreman" 'grep -q "^- \[!\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
-assert "S43: the answer file was consumed" '[ ! -f "$S43_ANS" ]'
+assert "S43: the answer file was consumed" '[ ! -f "$WF_T-foreman-answer" ]'
 # (c) foreman answers repair → fresh-eyes session runs, no timeout wait
 setup S43c; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
-rm -f "$S43_ANS"
-( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo repair > "$S43_ANS"; break; }; sleep 0.2; done ) &
+rm -f "$WF_T-foreman-answer"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo repair > "$WF_T-foreman-answer"; break; }; sleep 0.2; done ) &
 S43_W=$!
 RUN_WORKFLOW_CONSULT_TIMEOUT=30 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
 wait "$S43_W" 2>/dev/null
@@ -2617,9 +2622,9 @@ echo "== S46: a killed unattended run names itself at resume =="
 # resume-workflow checks that same path, names the mid-flight death, and
 # offers the reset + relaunch as one option.
 s46_guard() {  # $1 = skills dir; one line per gap
-  grep -q 'phased-workflow-$(id -u)/<slug>-run\.log' "$1/run-workflow/SKILL.md" 2>/dev/null \
+  grep -q -- '-run\.log' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the log left the shared path"
-  grep -q 'phased-workflow-$(id -u)/<slug>-run\.log' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+  grep -q -- '-run\.log' "$1/resume-workflow/SKILL.md" 2>/dev/null \
     || echo "resume-workflow: no longer checks the run log path"
   grep -q 'unattended run was in flight' "$1/resume-workflow/SKILL.md" 2>/dev/null \
     || echo "resume-workflow: the mid-flight death is not named"
@@ -2633,7 +2638,7 @@ assert "S46: the run log is checked, the death named, the relaunch offered" '[ -
 # Mutation: resume-workflow losing the run-log check must bite.
 S46_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S46_MUT/"
-sed -i.bak 's|phased-workflow-$(id -u)/<slug>-run\.log|gone|g' "$S46_MUT/resume-workflow/SKILL.md" \
+sed -i.bak 's|-run\.log|-gone|g' "$S46_MUT/resume-workflow/SKILL.md" \
   && rm -f "$S46_MUT/resume-workflow/SKILL.md.bak"
 assert "S46: the guard fails when resume-workflow stops checking the log" \
   '[ -n "$(s46_guard "$S46_MUT")" ]'
@@ -2673,22 +2678,21 @@ echo "== S48: graceful stop — finish the phase in flight, then stop =="
 # closing EVENT, racing the next launch. The launcher now checks a stop-request
 # file between sessions (same transport as the consult answer) and honours
 # RUN_WORKFLOW_MAX_PHASES=N as an upfront bound.
-S48_STOP="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-stop-request"
 # (a) request armed mid-run (by the first phase's own session here) → the
 # launched phase completes, the next never starts, the file is consumed
 setup S48a; fixture2
-rm -f "$S48_STOP"
-printf '%s\n' "python3 \"\$OPS\" complete; echo stop > '$S48_STOP'; exit 0" 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+rm -f "$WF_T-stop-request"
+printf '%s\n' "python3 \"\$OPS\" complete; echo stop > '$WF_T-stop-request'; exit 0" 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "S48: the stop request is honoured between sessions" 'grep -q "Stop requested" out.log'
 assert "S48: the phase in flight completed, the next never launched" \
   '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 1 ] && [ "$(grep -c -- "-p /goal" .claude/invocations.log)" = 1 ]'
 assert "S48: run-end says stopped-by-request 1/2" 'grep -q "^EVENT: run-end stopped-by-request 1/2$" out.log'
-assert "S48: the stop request was consumed" '[ ! -f "$S48_STOP" ]'
+assert "S48: the stop request was consumed" '[ ! -f "$WF_T-stop-request" ]'
 # (b) a stale request from an earlier run is removed at start, declared, and
 # does not stop the fresh run
 setup S48b; fixture2
-echo stop > "$S48_STOP"
+echo stop > "$WF_T-stop-request"
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "S48: a stale request is removed at start, declared" 'grep -q "stale stop request" out.log'
@@ -2720,7 +2724,7 @@ assert "S48: a non-numeric budget is ignored, declared" \
 s48_guard() {  # $1 = skills dir, $2 = launcher; one line per gap
   grep -q 'stop-request' "$2" 2>/dev/null || echo "launcher: the stop-request channel is gone"
   grep -q 'RUN_WORKFLOW_MAX_PHASES' "$2" 2>/dev/null || echo "launcher: the phase budget is gone"
-  grep -q 'phased-workflow-$(id -u)/<slug>-stop-request' "$1/run-workflow/SKILL.md" 2>/dev/null \
+  grep -q -- '-stop-request' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the stop channel is undocumented"
   grep -q 'RUN_WORKFLOW_MAX_PHASES' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the phase budget is undocumented"
@@ -2731,7 +2735,7 @@ assert "S48: stop channel and phase budget shipped and documented" '[ -z "$S48_O
 # Mutation: the skill losing the stop channel must bite.
 S48_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S48_MUT/"
-sed -i.bak 's|phased-workflow-$(id -u)/<slug>-stop-request|gone|g' "$S48_MUT/run-workflow/SKILL.md" \
+sed -i.bak 's|-stop-request|-gone|g' "$S48_MUT/run-workflow/SKILL.md" \
   && rm -f "$S48_MUT/run-workflow/SKILL.md.bak"
 assert "S48: the guard fails when the skill loses the stop channel" \
   '[ -n "$(s48_guard "$S48_MUT" "$RUNNER_SRC")" ]'
@@ -2744,18 +2748,16 @@ echo "== S49: plan-defect apply — the foreman's edit lands without a repair ==
 # applies the edit, re-runs the Done and reports; green → the phase is
 # already [x] on disk and the run continues, anything else → the repair
 # judges the claim as usual.
-S49_ANS="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-foreman-answer"
-S49_OUTF="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-apply-outcome"
 # (a) apply → green: no repair, the run continues to completion
 setup S49a; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
-rm -f "$S49_ANS" "$S49_OUTF"
+rm -f "$WF_T-foreman-answer" "$WF_T-apply-outcome"
 ( for _ in $(seq 1 150); do
     if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
-      echo apply > "$S49_ANS"
+      echo apply > "$WF_T-foreman-answer"
       MEM=.phased/active/toy/plan.md python3 "$OPS" apply_ok
-      echo green > "$S49_OUTF"
+      echo green > "$WF_T-apply-outcome"
       break
     fi; sleep 0.2; done ) &
 S49_W=$!
@@ -2767,21 +2769,21 @@ assert "S49: green lands the phase without a repair" \
 assert "S49: the applied phase carries the Applied note and the run completed" \
   'grep -q "> Applied:" .phased/active/toy/plan.md && grep -q "^EVENT: run-end ok 2/2$" out.log'
 assert "S49: the applied phase still emits phase-done" 'grep -q "^EVENT: phase-done 1 1/2$" out.log'
-assert "S49: the outcome file was consumed" '[ ! -f "$S49_OUTF" ]'
+assert "S49: the outcome file was consumed" '[ ! -f "$WF_T-apply-outcome" ]'
 # The launcher itself created (or tightened) the transport dir on the consult
 # path: owner-only whatever the umask — the directory is what protects the
 # answer and outcome files inside it.
 assert "S49: the launcher leaves the transport directory 0700" \
-  '[ "$(python3 -c "import os,stat,sys;print(oct(stat.S_IMODE(os.stat(sys.argv[1]).st_mode)))" "$(dirname "$S49_ANS")")" = "0o700" ]'
+  '[ "$(python3 -c "import os,stat,sys;print(oct(stat.S_IMODE(os.stat(sys.argv[1]).st_mode)))" "$(dirname "$WF_T-foreman-answer")")" = "0o700" ]'
 # (b) apply → red: the applier stood down, the repair judges the claim
 setup S49b; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
-rm -f "$S49_ANS" "$S49_OUTF"
+rm -f "$WF_T-foreman-answer" "$WF_T-apply-outcome"
 ( for _ in $(seq 1 150); do
     if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
-      echo apply > "$S49_ANS"
-      echo red > "$S49_OUTF"
+      echo apply > "$WF_T-foreman-answer"
+      echo red > "$WF_T-apply-outcome"
       break
     fi; sleep 0.2; done ) &
 S49_W=$!
@@ -2794,10 +2796,10 @@ assert "S49: the run completed after the red apply" '[ "$(grep -c "^- \[x\]" .ph
 setup S49c; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
-rm -f "$S49_ANS" "$S49_OUTF"
+rm -f "$WF_T-foreman-answer" "$WF_T-apply-outcome"
 ( for _ in $(seq 1 150); do
     if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
-      echo apply > "$S49_ANS"
+      echo apply > "$WF_T-foreman-answer"
       break
     fi; sleep 0.2; done ) &
 S49_W=$!
@@ -2809,11 +2811,11 @@ assert "S49: the apply window is declared when it closes empty" \
 setup S49d; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
-rm -f "$S49_ANS" "$S49_OUTF"
+rm -f "$WF_T-foreman-answer" "$WF_T-apply-outcome"
 ( for _ in $(seq 1 150); do
     if grep -q "phase-needs-foreman" out.log 2>/dev/null; then
-      echo apply > "$S49_ANS"
-      echo green > "$S49_OUTF"
+      echo apply > "$WF_T-foreman-answer"
+      echo green > "$WF_T-apply-outcome"
       break
     fi; sleep 0.2; done ) &
 S49_W=$!
@@ -3103,6 +3105,43 @@ sed 's|install -d -m 700|mkdir -p|' "$S54_SKILL" > "$S54_MUT/SKILL.md"
 assert "S54: the guard fails when the skill snippet reverts to mkdir -p" \
   '[ -n "$(s54_guard "$RUNNER_SRC" "$S54_MUT/SKILL.md")" ]'
 rm -rf "$S54_MUT"
+
+echo "== S55: two checkouts sharing a slug do not share control files =="
+# The stop request, the consult answer, the apply outcome and the run log were
+# named from the slug alone under one uid directory, so two checkouts carrying
+# the same plan — a root and the worktree the launcher itself creates for it,
+# or simply two clones — read and CONSUMED each other's signals. Reproduced by
+# running two suites at once: S49 went red on both. The prefix now carries a
+# repo key, computed once in next-phase.py and used by the launcher and the
+# skills alike.
+S55_A="$(mktemp -d)/a"; S55_B="$(mktemp -d)/b"
+mkdir -p "$S55_A/.phased/active/toy" "$S55_B/.phased/active/toy"
+S55_PA="$(python3 "$NEXT_PHASE_SRC" --transport "$S55_A/.phased/active/toy/plan.md")"
+S55_PB="$(python3 "$NEXT_PHASE_SRC" --transport "$S55_B/.phased/active/toy/plan.md")"
+assert "S55: the same slug in two checkouts yields two prefixes" \
+  '[ "$S55_PA" != "$S55_PB" ]'
+assert "S55: both prefixes keep the slug readable" \
+  'case "$S55_PA" in */toy-*) true;; *) false;; esac'
+assert "S55: both live in the same per-uid transport directory" \
+  '[ "$(dirname "$S55_PA")" = "$(dirname "$S55_PB")" ]'
+# The same plan asked twice answers the same: the prefix is a function of the
+# checkout, not of the moment — a launcher and a skill must agree on it.
+assert "S55: the prefix is stable across calls" \
+  '[ "$(python3 "$NEXT_PHASE_SRC" --transport "$S55_A/.phased/active/toy/plan.md")" = "$S55_PA" ]'
+# And the two languages name ONE directory: next-phase.py (the launcher and the
+# skills) and wfdash/outbox.py (the dashboard queue) both compute it.
+S55_OUTBOX_DIR="$(python3 -c 'import sys;sys.path.insert(0,sys.argv[1]);import outbox;print(outbox.TMP)' \
+  "$TESTDIR/../../plugins/wf/scripts/wfdash")"
+assert "S55: next-phase.py and outbox.py name the same transport directory" \
+  '[ "$(dirname "$S55_PA")" = "$S55_OUTBOX_DIR" ]'
+# The launcher speaks the same prefix, not a private copy of the computation.
+assert "S55: the launcher asks next-phase.py for the prefix" \
+  'grep -q -- "--transport" "$RUNNER_SRC"'
+assert "S55: and names its control files from it" \
+  'grep -q "STOP_REQUEST=\"\$TRANSPORT-stop-request\"" "$RUNNER_SRC" &&
+   grep -q "ANSWER_FILE=\"\$TRANSPORT-foreman-answer\"" "$RUNNER_SRC" &&
+   grep -q "APPLY_OUTCOME_FILE=\"\$TRANSPORT-apply-outcome\"" "$RUNNER_SRC"'
+rm -rf "$S55_A" "$S55_B"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then
