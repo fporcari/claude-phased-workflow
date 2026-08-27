@@ -10,16 +10,20 @@ confirms over the AUTHENTICATED endpoints that the server still answers for
 this repository, and mints a fresh one-shot so the reused page can actually
 be opened.
 
-Five things are asserted, against a real socket:
+Seven things are asserted, against a real socket:
 
   - `probe` finds the live server and returns port and a spendable one-shot;
   - the registry file is 0600;
+  - `probe(owner=pid)` re-points the server's owner at the reusing chat when
+    the pid resolves to a live session on this repository;
+  - a pid that resolves to nothing is refused and the owner stands;
   - a repository with no entry probes as None;
   - a stale entry — the server is gone — probes as None AND is removed;
   - `drop_registry` removes only its own pid's entry.
 
 Bare asserts, no framework: exit 0 clean, raises on the first failure.
 """
+import json
 import os
 import pathlib
 import secrets
@@ -31,6 +35,7 @@ import threading
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]
                        / 'plugins' / 'wf' / 'scripts' / 'wfdash'))
 import core     # noqa: E402
+import inbox    # noqa: E402
 import outbox   # noqa: E402
 import server   # noqa: E402
 
@@ -62,6 +67,25 @@ reg = server.registry_path(str(repo))
 assert stat.S_IMODE(os.stat(reg).st_mode) == 0o600, \
     f'the registry carries the token and is {oct(stat.S_IMODE(os.stat(reg).st_mode))}'
 print('test_registry_probe: the registry file is 0600 ok')
+
+# --- the reusing chat becomes the owner --------------------------------------
+
+inbox.SESSIONS = tmp / 'sessions'
+inbox.SESSIONS.mkdir()
+(inbox.SESSIONS / '4242.json').write_text(json.dumps(
+    {'cwd': str(repo), 'sessionId': 's-4242'}))
+
+found = server.probe(str(repo), owner=4242)
+assert found and found['owner_updated'] is True, found
+assert server.Handler.owner_pid == 4242, \
+    f'the reuse did not re-point the owner: {server.Handler.owner_pid}'
+print('test_registry_probe: the reusing chat becomes the owner ok')
+
+found = server.probe(str(repo), owner=9999)
+assert found and found['owner_updated'] is False, found
+assert server.Handler.owner_pid == 4242, \
+    'a pid with no live session record replaced the owner'
+print('test_registry_probe: a dead pid is refused and the owner stands ok')
 
 # --- no entry, no server ----------------------------------------------------
 

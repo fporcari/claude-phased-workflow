@@ -29,6 +29,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]
 import outbox  # noqa: E402
 
 os.umask(0o022)
+
+# The default transport is namespaced by uid BEFORE the override below: a
+# fixed `/tmp/phased-workflow` means the first user to create the 0700
+# directory on a shared host locks every other user out. The suffix must
+# match run-workflow.sh's `phased-workflow-$(id -u)` — same directory, both
+# languages.
+assert outbox.TMP.name == f'phased-workflow-{os.getuid()}', \
+    f'the transport is not namespaced by uid: {outbox.TMP.name}'
+print('test_queue_private: the transport directory is namespaced by uid ok')
+
 tmp = pathlib.Path(tempfile.mkdtemp(prefix='wfdash-private-'))
 outbox.TMP = tmp / 'phased-workflow'
 repo = tmp / 'repo'

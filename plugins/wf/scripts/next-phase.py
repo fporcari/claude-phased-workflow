@@ -375,6 +375,49 @@ def payload(path, phases, meta, bounds):
     }
 
 
+# --- the contract fields of one phase (--contract-block) --------------------
+# The fields the foreman owns (refs/foreman.md → the mirror paragraph): Done:,
+# authored Verify:, Pattern:, Files:, Decisions:. The close diffs this
+# extraction at the plan commit against HEAD, so a child that rewrote or
+# deleted a contract field is caught even though markers and `>` notes — the
+# lines a phase legitimately writes — moved around it.
+
+CONTRACT_FIELD_RE = re.compile(
+    r'^\s*[-*]\s*(Done|Verify|Pattern|Files|Decisions):', re.I)
+
+
+def contract_block(lines, phases, bounds, n):
+    """The contract-field lines of phase `n`, verbatim, or None without it.
+
+    Continuation lines (deeper-indented, no field/note prefix of their own)
+    travel with their field; `>` notes and the marker line are the child's to
+    add to, so they are not part of the extraction.
+    """
+    p = next((p for p in phases if p.number == n), None)
+    if p is None:
+        return None
+    end = next((b for b, _ in bounds if b > p.line), p.line + 1)
+    out, taking = [], False
+    for raw in lines[p.line:end - 1]:
+        line = raw.rstrip()
+        if not line.strip():
+            taking = False
+            continue
+        if line.lstrip().startswith('>'):
+            taking = False
+            continue
+        if CONTRACT_FIELD_RE.match(line):
+            taking = True
+            out.append(line)
+            continue
+        if FIELD_RE.match(line):
+            taking = False
+            continue
+        if taking and line.startswith('    '):
+            out.append(line)
+    return out
+
+
 # --- plan validation (--validate) -------------------------------------------
 # The validator shares PHASE_RE / TAG_RE / NOTE_RE / parse() with the selector
 # on purpose: a validator that disagreed with the selector about what a phase
@@ -617,6 +660,11 @@ def main():
     ap.add_argument('--validate', action='store_true',
                     help='validate the plan structure and exit '
                          '(0 clean/warnings, 1 errors, 2 unreadable)')
+    ap.add_argument('--contract-block', type=int, metavar='N', default=None,
+                    help='print phase N\'s contract-field lines (Done:, '
+                         'authored Verify:, Pattern:, Files:, Decisions:) '
+                         'verbatim, for the close to diff against the plan '
+                         'commit (plan path "-" reads from stdin)')
     args = ap.parse_args()
     if args.plans:
         print_plans()
@@ -625,6 +673,28 @@ def main():
     if args.as_json and path == '-':
         phases, meta, bounds = parse_lines(sys.stdin.read().splitlines())
         json.dump(payload('-', phases, meta, bounds), sys.stdout)
+        return 0
+    if args.contract_block is not None:
+        if path == '-':
+            lines = sys.stdin.read().splitlines()
+        else:
+            if path is None:
+                path, err = resolve_plan_path()
+                if err:
+                    print(f'error: {err}')
+                    return 1
+            try:
+                lines = pathlib.Path(path).read_text(encoding='utf-8').splitlines()
+            except OSError as e:
+                print(f'error: cannot read {path}: {e}')
+                return 1
+        phases, _, bounds = parse_lines(lines)
+        block = contract_block(lines, phases, bounds, args.contract_block)
+        if block is None:
+            print(f'error: no phase {args.contract_block} in {path}')
+            return 1
+        for line in block:
+            print(line)
         return 0
     if path is None:
         path, err = resolve_plan_path()

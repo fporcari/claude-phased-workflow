@@ -125,7 +125,7 @@ mkdir -p "$PLAN_DIR/log"
 # rides a file OUTSIDE the repo (same transport as the consult answer — nothing
 # dirties the tree), checked between sessions, consumed on read. A stale
 # request from an earlier run is not a request: remove it at start, declared.
-STOP_REQUEST="${TMPDIR:-/tmp}/phased-workflow/$(basename "$PLAN_DIR")-stop-request"
+STOP_REQUEST="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/$(basename "$PLAN_DIR")-stop-request"
 if [ -f "$STOP_REQUEST" ]; then
   rm -f "$STOP_REQUEST"
   echo "NOTE: stale stop request from an earlier run removed ($STOP_REQUEST)."
@@ -510,7 +510,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     # and the empirically better armchair-free verdict.
     if first_bang_block | grep -qi 'plan-defect claim'; then
       CONSULT_SLUG=$(basename "$PLAN_DIR")
-      CONSULT_DIR="${TMPDIR:-/tmp}/phased-workflow"
+      CONSULT_DIR="${TMPDIR:-/tmp}/phased-workflow-$(id -u)"
       ANSWER_FILE="$CONSULT_DIR/$CONSULT_SLUG-foreman-answer"
       APPLY_OUTCOME_FILE="$CONSULT_DIR/$CONSULT_SLUG-apply-outcome"
       CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"

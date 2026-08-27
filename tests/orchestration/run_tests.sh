@@ -2071,6 +2071,8 @@ s35_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$1/write-workflow/SKILL.md: planning no longer offers contract tests"
   grep -q 'tests/phase-N' "$1/close-phase/SKILL.md" 2>/dev/null \
     || echo "$1/close-phase/SKILL.md: the close no longer checks test integrity"
+  grep -q -- '--contract-block' "$1/close-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/close-phase/SKILL.md: the close no longer diffs the contract fields against the plan commit"
   grep -q 'cannot pass as written closes the phase' "$1/execute-phase-agent/SKILL.md" 2>/dev/null \
     || echo "$1/execute-phase-agent/SKILL.md: an unattended phase may edit a contract test into passing"
   return 0
@@ -2106,6 +2108,42 @@ sed -i.bak 's|tests/phase-N|the phase tests|g' "$S35_MUT/close-phase/SKILL.md" \
 assert "S35: the guard fails when the close stops checking integrity" \
   '[ -n "$(s35_guard "$S35_MUT" "$S24_REFS")" ]'
 rm -rf "$S35_MUT"
+# The close stops diffing the contract FIELDS against the plan commit.
+S35_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S35_MUT/"
+sed -i.bak 's|--contract-block|--phase-notes|g' "$S35_MUT/close-phase/SKILL.md" \
+  && rm -f "$S35_MUT/close-phase/SKILL.md.bak"
+assert "S35: the guard fails when the close stops diffing the contract fields" \
+  '[ -n "$(s35_guard "$S35_MUT" "$S24_REFS")" ]'
+rm -rf "$S35_MUT"
+# And the extraction the close relies on is real: --contract-block returns the
+# five foreman-owned fields, continuations attached, and neither `>` notes nor
+# the other fields — so a deleted Done: shows up as a diff, not as silence.
+S35_NP="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
+S35_TMP="$(mktemp -d)"
+cat > "$S35_TMP/plan.md" <<'S35PLAN'
+## Work Plan
+
+- [>] **Phase 1**: toy
+  - Details: prose the child may rewrite
+  - Done: tests green
+    on the touched files
+  - Verify: run the narrow test
+  - Files: a.py
+  > Done: recorded by the child
+S35PLAN
+S35_CB="$(python3 "$S35_NP" --contract-block 1 "$S35_TMP/plan.md")"
+assert "S35: --contract-block carries the fields and their continuations" \
+  'printf "%s" "$S35_CB" | grep -q "Done: tests green" &&
+   printf "%s" "$S35_CB" | grep -q "on the touched files" &&
+   printf "%s" "$S35_CB" | grep -q "Verify: run the narrow test"'
+assert "S35: --contract-block excludes notes and non-contract fields" \
+  '! printf "%s" "$S35_CB" | grep -q "recorded by the child" &&
+   ! printf "%s" "$S35_CB" | grep -q "Details:"'
+sed -i.bak '/Done: tests green/,+1d' "$S35_TMP/plan.md" && rm -f "$S35_TMP/plan.md.bak"
+assert "S35: a deleted Done: changes the extraction" \
+  '[ "$(python3 "$S35_NP" --contract-block 1 "$S35_TMP/plan.md")" != "$S35_CB" ]'
+rm -rf "$S35_TMP"
 # The gate loses the compatibility line.
 S35_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S35_MUT/"
@@ -2443,7 +2481,7 @@ echo "== S43: plan-defect claim — the foreman consult gate before repair =="
 # answer → timeout falls through to the repair (today's path — both field
 # claims were wrong and the repair found the better design). An ordinary [!]
 # never touches the gate.
-S43_ANS="${TMPDIR:-/tmp}/phased-workflow/toy-foreman-answer"
+S43_ANS="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-foreman-answer"
 # (a) timeout → repair proceeds
 setup S43a; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
@@ -2579,9 +2617,9 @@ echo "== S46: a killed unattended run names itself at resume =="
 # resume-workflow checks that same path, names the mid-flight death, and
 # offers the reset + relaunch as one option.
 s46_guard() {  # $1 = skills dir; one line per gap
-  grep -q 'phased-workflow/<slug>-run\.log' "$1/run-workflow/SKILL.md" 2>/dev/null \
+  grep -q 'phased-workflow-$(id -u)/<slug>-run\.log' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the log left the shared path"
-  grep -q 'phased-workflow/<slug>-run\.log' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+  grep -q 'phased-workflow-$(id -u)/<slug>-run\.log' "$1/resume-workflow/SKILL.md" 2>/dev/null \
     || echo "resume-workflow: no longer checks the run log path"
   grep -q 'unattended run was in flight' "$1/resume-workflow/SKILL.md" 2>/dev/null \
     || echo "resume-workflow: the mid-flight death is not named"
@@ -2595,7 +2633,7 @@ assert "S46: the run log is checked, the death named, the relaunch offered" '[ -
 # Mutation: resume-workflow losing the run-log check must bite.
 S46_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S46_MUT/"
-sed -i.bak 's|phased-workflow/<slug>-run\.log|gone|g' "$S46_MUT/resume-workflow/SKILL.md" \
+sed -i.bak 's|phased-workflow-$(id -u)/<slug>-run\.log|gone|g' "$S46_MUT/resume-workflow/SKILL.md" \
   && rm -f "$S46_MUT/resume-workflow/SKILL.md.bak"
 assert "S46: the guard fails when resume-workflow stops checking the log" \
   '[ -n "$(s46_guard "$S46_MUT")" ]'
@@ -2635,7 +2673,7 @@ echo "== S48: graceful stop — finish the phase in flight, then stop =="
 # closing EVENT, racing the next launch. The launcher now checks a stop-request
 # file between sessions (same transport as the consult answer) and honours
 # RUN_WORKFLOW_MAX_PHASES=N as an upfront bound.
-S48_STOP="${TMPDIR:-/tmp}/phased-workflow/toy-stop-request"
+S48_STOP="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-stop-request"
 # (a) request armed mid-run (by the first phase's own session here) → the
 # launched phase completes, the next never starts, the file is consumed
 setup S48a; fixture2
@@ -2682,7 +2720,7 @@ assert "S48: a non-numeric budget is ignored, declared" \
 s48_guard() {  # $1 = skills dir, $2 = launcher; one line per gap
   grep -q 'stop-request' "$2" 2>/dev/null || echo "launcher: the stop-request channel is gone"
   grep -q 'RUN_WORKFLOW_MAX_PHASES' "$2" 2>/dev/null || echo "launcher: the phase budget is gone"
-  grep -q 'phased-workflow/<slug>-stop-request' "$1/run-workflow/SKILL.md" 2>/dev/null \
+  grep -q 'phased-workflow-$(id -u)/<slug>-stop-request' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the stop channel is undocumented"
   grep -q 'RUN_WORKFLOW_MAX_PHASES' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the phase budget is undocumented"
@@ -2693,7 +2731,7 @@ assert "S48: stop channel and phase budget shipped and documented" '[ -z "$S48_O
 # Mutation: the skill losing the stop channel must bite.
 S48_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S48_MUT/"
-sed -i.bak 's|phased-workflow/<slug>-stop-request|gone|g' "$S48_MUT/run-workflow/SKILL.md" \
+sed -i.bak 's|phased-workflow-$(id -u)/<slug>-stop-request|gone|g' "$S48_MUT/run-workflow/SKILL.md" \
   && rm -f "$S48_MUT/run-workflow/SKILL.md.bak"
 assert "S48: the guard fails when the skill loses the stop channel" \
   '[ -n "$(s48_guard "$S48_MUT" "$RUNNER_SRC")" ]'
@@ -2706,8 +2744,8 @@ echo "== S49: plan-defect apply — the foreman's edit lands without a repair ==
 # applies the edit, re-runs the Done and reports; green → the phase is
 # already [x] on disk and the run continues, anything else → the repair
 # judges the claim as usual.
-S49_ANS="${TMPDIR:-/tmp}/phased-workflow/toy-foreman-answer"
-S49_OUTF="${TMPDIR:-/tmp}/phased-workflow/toy-apply-outcome"
+S49_ANS="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-foreman-answer"
+S49_OUTF="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/toy-apply-outcome"
 # (a) apply → green: no repair, the run continues to completion
 setup S49a; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
@@ -2941,22 +2979,38 @@ assert "S52: the scenario fails when the template's Phase cell carries a parenth
   '! python3 "$S52_NP" --validate "$S52_MUT/plan.md" >/dev/null 2>&1'
 rm -rf "$S52_MUT"
 
-echo "== S53: a plan with contract tests is warned about its light phases =="
+echo "== S53: a plan with contract tests refuses its light phases =="
 # The effort level is chosen for the WORK ("mechanical -> low"), and it also
 # silently decides which DOCTRINE the phase receives: Effort=low runs in light
 # mode, without the read-only contract rule or the plan-defect claim road. The
 # wfdash-open-findings run measured it — all three light phases edited their own
 # contract test, one deleting `wf:contract:` lines that bound a later phase; the
-# two full-mode phases did not touch it. The launcher now says so before the
-# first session, and the autonomous planning ref forbids the combination.
+# two full-mode phases did not touch it. A warning inside a run already
+# launched protects nothing, so the pre-flight refuses the combination before
+# the first session; RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 is the explicit,
+# deterministic override, and the autonomous planning ref forbids the
+# combination at authoring time.
 
-# (a) tests/ present and a low phase in the table → the NOTE names it
+# (a) tests/ present and a low phase in the table → refused, no session spent
 setup S53a; fixture3
 mkdir -p .phased/active/toy/tests/phase-1
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "S53a: the launcher warns that a contract-test plan carries a light phase" \
+assert "S53a: the launcher refuses a contract-test plan carrying a light phase" \
   'grep -q "carries contract tests and runs Phase 1 at Effort=low" out.log'
+assert "S53a: the refusal names the override" \
+  'grep -q "RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1" out.log'
+assert "S53a: NO claude session was launched" '[ ! -s .claude/invocations.log ]'
+
+# (a2) same plan, override set → the run proceeds, with the note
+setup S53a2; fixture3
+mkdir -p .phased/active/toy/tests/phase-1
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+export RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1; run; unset RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS
+assert "S53a2: the override runs anyway and says so" \
+  'grep -q "runs it anyway" out.log'
+assert "S53a2: sessions were launched under the override" '[ -s .claude/invocations.log ]'
 
 # (b) same plan, no tests/ directory → no warning (the run is ordinary)
 setup S53b; fixture3

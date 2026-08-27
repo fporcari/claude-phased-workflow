@@ -62,8 +62,14 @@ every read needs the token too.
 - writes additionally check `Origin` against the local hosts, and cap the body
 - no token in the page: there is no `<meta>` slot to read it out of
 
-Another process on the machine cannot read the state and cannot write, even
-knowing the port.
+The threat model, stated exactly: the barrier keeps out other MACHINES
+(loopback bind), other UNIX USERS (the token, and the 0600/0700 transport
+files that carry it — registry included), and the browser's other pages
+(cookie + Origin). It does NOT keep out another process of the SAME user:
+that process can read the registry — and could always read the session
+transcripts — so same-user isolation was never on offer. What the token
+actually closes is the blind local probe: a process that has not gone to the
+owner-only files cannot read the state or write, even knowing the port.
 
 ## Reading the page
 

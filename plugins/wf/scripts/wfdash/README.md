@@ -152,7 +152,7 @@ this process mints — reads included, so the page is the only client. It starts
 nothing and writes into no session: the launch button and the foreman box queue
 a request that the chat watching the repository serves, so the authority over
 the work stays with the skills that own it. The only write is that queue,
-under `${TMPDIR:-/tmp}/phased-workflow/` — never the working tree, and
+under `${TMPDIR:-/tmp}/phased-workflow-<uid>/` — never the working tree, and
 nothing durable under `~/.claude/`.
 
 ## Incremental reading

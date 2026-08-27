@@ -10,9 +10,12 @@ REQUEST, and the chat that opened the dashboard serves it with its full
 context.
 
 The request rides a JSONL file outside every working tree, under
-`${TMPDIR:-/tmp}/phased-workflow/` — the same transport `run-workflow.sh`
-already uses for its stop request and its consult answer, chosen there for the
-same reason: nothing the dashboard does may dirty the tree it watches.
+`${TMPDIR:-/tmp}/phased-workflow-<uid>/` — the same transport
+`run-workflow.sh` already uses for its stop request and its consult answer,
+chosen there for the same reason: nothing the dashboard does may dirty the
+tree it watches. The uid suffix is what makes the `/tmp` fallback multi-user:
+without it, the first user to create the 0700 directory on a shared host
+locks every other user out of the transport.
 
 One file per repository, appended by the server and drained by the chat:
 
@@ -31,7 +34,10 @@ import pathlib
 import threading
 import time
 
-TMP = pathlib.Path(os.environ.get('TMPDIR') or '/tmp') / 'phased-workflow'
+# The uid suffix mirrors run-workflow.sh's `phased-workflow-$(id -u)`: the
+# two computations must name the same directory, in both languages.
+TMP = (pathlib.Path(os.environ.get('TMPDIR') or '/tmp')
+       / f'phased-workflow-{os.getuid()}')
 # The aside file a drain renames onto must be unique per drain, not per process:
 # two threads sharing a pid would rename onto the same name and one would lose
 # its batch.

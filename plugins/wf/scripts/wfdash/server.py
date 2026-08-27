@@ -34,6 +34,9 @@ Endpoints:
   POST /api/oneshot          a fresh one-shot, minted for whoever already
                              holds the token — how a reused server lets a
                              second navigation in
+  POST /api/owner            re-point the owner at the chat that reused this
+                             server, so "comes back to this chat" stays true
+                             for the chat the person is actually talking to
 
 The server also writes ONE file outside the repository: a registry entry
 beside the queue (`<key>-server.json`, 0600 in the 0700 transport dir) naming
@@ -58,7 +61,9 @@ chat of its own.
 
 Neither road takes a recipient, a phase number or a command from the request:
 the phase is the plan's own next one, and the foreman is the title
-`foreman.json` names, resolved here.
+`foreman.json` names, resolved here. The one pid a request may carry is
+`/api/owner`'s, and it is never trusted as an address: it must resolve to a
+live session record whose cwd is this repository, the same check `-O` gets.
 """
 
 import argparse
@@ -83,7 +88,8 @@ import roadmap
 MAX_BODY = 64 * 1024
 # The endpoints that write. One line per endpoint: a new one is added here and
 # nowhere else.
-WRITE_PATHS = ('/api/foreman', '/api/newflow', '/api/launch', '/api/oneshot')
+WRITE_PATHS = ('/api/foreman', '/api/newflow', '/api/launch', '/api/oneshot',
+               '/api/owner')
 DEFAULT_PORT = 8787
 # How long a queued run request keeps refusing the next press. Past it the
 # request is presumed abandoned rather than pending.
@@ -140,9 +146,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # hand, which is the same state as an owner that has since died.
     owner_pid = None
     # Generated per process. Every request must carry it back — the browser in
-    # the cookie, any other caller in the header. This is what keeps other
-    # PROCESSES on this machine out, which the Origin header cannot do: a
-    # header is absent or forged at the caller's choice.
+    # the cookie, any other caller in the header. Since the registry writes it
+    # to disk (0600), the token keeps out other USERS and the blind local
+    # probe — not another process of the same user, which can read the
+    # registry as it could always read the transcripts. The Origin header
+    # cannot do even that much: it is absent or forged at the caller's choice.
     token = None
     # Set on the request that spends a one-shot: the response then hands the
     # cookie over, and the address bar is clean from the next load on.
@@ -248,6 +256,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 # skill reopens the page of a server it found in the registry,
                 # whose original one-shot was spent on the first load.
                 return self._json({'k': new_one_shot()})
+            if u.path == '/api/owner':
+                return self._json(self.owner(body))
             return self._json({'error': 'unknown endpoint'}, 404)
         except BrokenPipeError:
             pass
@@ -274,6 +284,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         event = outbox.append(self.board.repo, 'foreman', text=text,
                               target=target['title'])
         return {'queued': True, 'target': target['title'], 'request': event}
+
+    def owner(self, body):
+        """Re-point the owner at the chat that reused this server.
+
+        The server outlives chats, so the `-O` of the first open goes stale
+        the moment a second chat runs `/wf:dashboard` and reuses the process:
+        the skill promises the page's commands come back to the chat the
+        person is talking to, and that is the LAST opener, not the first. The
+        pid is never taken on faith — it must resolve to a live session
+        record whose cwd is this repository, exactly the check `-O` gets at
+        every read — so a stranger's pid cannot become the recipient.
+        """
+        pid = body.get('pid')
+        if not isinstance(pid, int) or pid <= 0:
+            return {'error': 'pid must be a positive integer'}
+        target = inbox.owner_target(pid, self.board.repo, self.titles())
+        if target is None:
+            return {'error': f'pid {pid} is not a live session on this repository'}
+        Handler.owner_pid = pid
+        return {'owner': target}
 
     def titles(self):
         """The title each chat gave itself, for the sessions the page lists."""
@@ -465,7 +495,7 @@ def drop_registry(repo, pid):
             os.remove(f)
 
 
-def probe(repo):
+def probe(repo, owner=None):
     """The live server on this repository, and a fresh one-shot for its page.
 
     The registry only NAMES the candidate; the answer that counts comes from
@@ -473,6 +503,12 @@ def probe(repo):
     does not answer for this repository is stale and removed — a kill leaves
     one behind, and self-healing here is what keeps the registry from needing
     a cleanup of its own.
+
+    `owner` is the pid of the chat doing the reuse: it is handed to
+    `/api/owner` so the page's commands come back to the chat the person is
+    talking to NOW, not to the one that started the process. Best-effort — a
+    refusal (the pid does not resolve to a live session on this repo) does
+    not spoil the reuse, and the result says which owner held.
     """
     f = registry_path(repo)
     try:
@@ -496,7 +532,17 @@ def probe(repo):
         with contextlib.suppress(OSError):
             os.remove(f)
         return None
-    return {'port': info['port'], 'pid': info.get('pid'), 'repo': root, 'k': k}
+    owner_updated = False
+    if owner:
+        with contextlib.suppress(OSError, ValueError):
+            req = urllib.request.Request(
+                f'{base}/api/owner', headers=dict(headers, **{
+                    'Content-Type': 'application/json'}),
+                data=json.dumps({'pid': owner}).encode(), method='POST')
+            with urllib.request.urlopen(req, timeout=2) as ans:
+                owner_updated = 'owner' in json.load(ans)
+    return {'port': info['port'], 'pid': info.get('pid'), 'repo': root, 'k': k,
+            'owner_updated': owner_updated}
 
 
 def serve(port, scan):
@@ -531,12 +577,15 @@ def main():
                          'there is none')
     args = ap.parse_args()
     if args.probe:
-        found = probe(args.cwd)
+        found = probe(args.cwd, owner=args.owner)
         if found is None:
             print(f'no wfdash on {args.cwd}', flush=True)
             raise SystemExit(1)
+        owner_note = (' owner: this chat' if found['owner_updated'] else
+                      (' owner: unchanged' if args.owner else ''))
         print(f"wfdash on http://127.0.0.1:{found['port']}/?k={found['k']}"
-              f"  repo: {found['repo']}  reused, pid {found['pid']}", flush=True)
+              f"  repo: {found['repo']}  reused, pid {found['pid']}{owner_note}",
+              flush=True)
         return
     Handler.board = core.Board(args.cwd)
     Handler.owner_pid = args.owner

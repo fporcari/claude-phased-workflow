@@ -76,7 +76,7 @@ instead of scattering checks the user cannot yet perform.
 
 **The QA pass is delivered as a QA page** where the session can render a file
 to the user (SendUserFile on the desktop): a manual test plan written outside
-the repo (`${TMPDIR:-/tmp}/phased-workflow/<slug>-qa.html` — a file in the
+the repo (`${TMPDIR:-/tmp}/phased-workflow-$(id -u)/<slug>-qa.html` — a file in the
 tree would dirty it), one checkbox per check, grouped by phase, each item
 naming the action to exercise and the result the user should see — the
 reporting register (`refs/foreman.md`) applies. A deferred step whose phase has since landed is

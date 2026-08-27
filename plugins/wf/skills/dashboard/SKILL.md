@@ -39,14 +39,21 @@ A second server on the same repository is a second page saying the same thing,
 so look first:
 
 A live server leaves a registry entry beside its queue (an owner-only file
-under `${TMPDIR:-/tmp}/phased-workflow/`), and `--probe` reads it, confirms
+under `${TMPDIR:-/tmp}/phased-workflow-$(id -u)/`), and `--probe` reads it, confirms
 over the authenticated endpoints that the server still answers for THIS
 repository, and mints a fresh one-shot — every read requires the token, so
 asking the ports blind cannot recognise anything:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/server.py" --probe -C "<repo root>"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/server.py" --probe -C "<repo root>" \
+  -O "$(ps -o ppid= -p $$ | tr -d ' ')"
 ```
+
+`-O` on the probe re-points the server's owner at THIS chat — the server
+outlives chats, and the page's commands must come back to the chat the user
+is talking to now, not to the one that first started the process. The pid is
+verified against a live session record on this repository before it is
+accepted; the probe line says `owner: this chat` when it held.
 
 A `wfdash on http://…?k=…` line is a dashboard already on this repository:
 reuse it — take the whole URL from that line exactly as in Step 3, skip the

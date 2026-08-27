@@ -13,23 +13,18 @@ this skill never writes `[!]` or `[~]`.
 Three ways in, one mechanic:
 
 - **From `/execute-phase`** — its closing step is this skill.
-- **Model-invoked** — the conversation's phase work is done and verified;
-  closing is not a question, so nothing asks permission to *start* (the
-  naming review carries its own question, and the commit is the phase
-  commit the flow already owes).
+- **Model-invoked** — the phase work is done and verified; closing is not
+  a question, so nothing asks permission to *start*.
 - **Manual** — `/close-phase` on a `[>]` phase whose work a dead session
-  finished but never closed; before this skill, the only honest move was
-  resetting completed work to `[ ]`.
+  finished but never closed.
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and
 `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start — core conventions
-plus the contract layer this close verifies (Done gate, contract-test
-integrity, markers). The foreman message formats live in `refs/foreman.md` →
-*Sending to the foreman*; read that section at the notify step.
+plus the contract layer this close verifies. Foreman message formats:
+`refs/foreman.md` → *Sending to the foreman*, read at the notify step.
 **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
-(outcome format, the phase commit, the foreman message) and
-`${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` (the naming review) — cited,
-never restated.
+(outcome format, phase commit, foreman message) and
+`${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` — cited, never restated.
 
 ## Step 1: Identify the phase
 
@@ -38,56 +33,62 @@ executed — no lookup needed, and the caller's outcome material (touched
 files, `> Review:`/`> Verify:` notes) travels with the invocation.
 
 Invoked standalone, resolve the plan first
-(`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from
-outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan
-location*). The phase to close is the `[>]` one; none → nothing to close,
-say so and stop.
+(`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from outside
+the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*). The
+phase to close is the `[>]` one; none → nothing to close, say so and stop.
 
 **A standalone close gates on evidence.** This session did not write the
 work, so the work must speak: read the phase's `> WIP:` note, diff from its
 `commit:` (`git diff <commit>..HEAD`), and check what exists against the
-phase's `Done:`. No note, no `partial` commit, or a diff that does not
-reach `Done:` → this is a resume-or-reset case
-(`refs/phase-execution.md` → *Resuming a `[>]` phase*), not a close —
-say so and stop. Closing unverified work would forge the one guarantee
-`[x]` gives the plan's next reader.
+phase's `Done:`. No note, no `partial` commit, or a diff that does not reach
+`Done:` → a resume-or-reset case (`refs/phase-execution.md` → *Resuming a
+`[>]` phase*), not a close: say so and stop, or `[x]` forges its guarantee.
 
 ## Step 2: The Done gate
 
 Re-check the phase's `Done:` literally, criterion by criterion — run the
 named tests, the named lint, verify the named output. An unmet criterion
-blocks the close: report it and stop, leaving the phase `[>]`. In the
-`/execute-phase` flow this re-runs checks that just passed — cheap, and it
-is what makes `[x]` a contract instead of a claim.
+blocks the close: report it and stop, leaving the phase `[>]`. Re-running
+checks that just passed is cheap, and makes `[x]` a contract, not a claim.
 
 **Contract tests gate the close too.** Where the plan carries
-`tests/phase-N/` for this phase (`contracts.md` → *Contract tests*), check the
-in-tree copies against the plan copies AND the plan copies against the plan
-commit (`git diff` over `tests/phase-N/` empty — a phase that edits both
-copies makes them agree): executable tests byte-identical, skeletons with
-their names and every `wf:contract:` line surviving verbatim and no red body
-left. A divergence not covered by a foreman decision in
-`notes.md` under `## Phase N` blocks the close exactly like a red
-criterion — the contract was edited by the wrong writer, and closing over
-it would launder the edit into `[x]`.
+`tests/phase-N/` for this phase (`contracts.md` → *Contract tests*), check
+the in-tree copies against the plan copies AND the plan copies against the
+plan commit (`git diff` over `tests/phase-N/` empty — editing both copies
+makes them agree): executable tests byte-identical, skeleton names and every
+`wf:contract:` line surviving verbatim, no red body left. A divergence with
+no covering foreman decision in `notes.md` under `## Phase N` blocks the
+close like a red criterion: the wrong writer edited the contract, and
+closing would launder the edit into `[x]`.
+
+**The contract FIELDS gate it the same way** (`refs/foreman.md` → the mirror
+paragraph: `Done:`, authored `Verify:`, `Pattern:`, `Files:`, `Decisions:`
+are never the child's to edit) — markers and `>` notes move legitimately,
+so diff the extraction, not the file:
+```bash
+PC=$(git log -1 --format=%H --all --grep "^wf: plan for <slug>$")
+diff <(git show "$PC:.phased/active/<slug>/plan.md" | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --contract-block <N> -) <(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --contract-block <N> ".phased/active/<slug>/plan.md")
+```
+
+A diff with no covering foreman decision in `notes.md` under `## Phase N`
+blocks the close like a diverged contract test: restore the fields from the
+plan commit, or take the foreman's recorded wording.
 
 **Two ways a criterion goes unmet, and only one of them is a refusal.**
 Something the phase built is red — a failing test, a lint error — and the
-close stops, full stop: that is repair territory, never absorbed here. But a
-criterion covering work the phase never got to, with everything it *did*
-build green, is the **closed short** case (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
-→ *When the phase outgrows its chat*): say which criteria are unreached,
+close stops, full stop: that is repair territory, never absorbed here. A
+criterion covering work the phase never got to, with what exists green, is
+the **closed short** case (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` →
+*When the phase outgrows its chat*): say which criteria are unreached,
 propose the `Done:` narrowed to the sub-result that exists, and close on the
-user's ok — the message is the `closed short` one, and the closing line names
-`/resume-workflow` in the foreman chat, which writes the phase for the
-remainder.
+user's ok — the `closed short` message, whose closing line names
+`/resume-workflow` in the foreman chat.
 
 ## Step 3: Naming review
 
 Run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` scoped to this phase's
-touched files. The fast path is one keypress: accept all → markers
-stripped, nothing else changes. Renames re-run the narrow signal per the
-ref before anything commits.
+touched files. Fast path, one keypress: accept all → markers stripped.
+Renames re-run the narrow signal per the ref before anything commits.
 
 ## Step 4: Record, commit, notify
 
@@ -100,17 +101,16 @@ phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,
 `> Files:` (ALL touched files), the `> Review:`/`> Verify:` notes handed
 over by the caller; ONE commit `wf(phase N): <title>` carrying code,
 naming-review edits and plan update together; then the foreman message,
-best-effort. A choice the review made worth remembering (a rename and why)
-goes to `notes.md` under the phase's `## Phase N` heading before the
-commit.
+best-effort. A rename worth remembering goes to `notes.md` under
+`## Phase N` before the commit.
 
 ```bash
 osascript -e 'display notification "Phase N closed: <title>" with title "Claude — <repo>/<branch>" sound name "Glass"'
 ```
 
-Close with the next step, always: the next phase with its `Run:` hint
-quoted, or `/quality-check` (then `/finalize-workflow`) when this was the last. The user must never
-need to know the flow by heart to keep moving.
+Close with the next step, always: the next phase with its `Run:` hint quoted,
+or `/quality-check` (then `/finalize-workflow`) when this was the last — the
+user must never need to know the flow by heart to keep moving.
 
 ## Rules
 

@@ -105,8 +105,9 @@ def owner_target(pid, repo, titles=None):
     """The chat that started this server, re-read at write time.
 
     `/wf:dashboard` declares it on the command line — the session that ran the
-    skill — so the recipient of the first command is not named by the page and
-    not guessed by the server: it is the chat the person is already talking to.
+    skill — and re-declares it through `/api/owner` when a later chat reuses
+    the server, so the recipient of the first command is not named by the page
+    and not guessed: it is the chat the person is talking to NOW.
 
     Nothing about it is cached. The server outlives chats, and a pid the system
     has recycled would otherwise receive a stranger's command, so the record is
