@@ -180,6 +180,20 @@ else
   echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
 fi
 
+# A plan carrying contract tests cannot afford a light phase. Effort=low runs
+# the phase under the slim /goal contract, which ships neither the read-only
+# contract rule nor the plan-defect claim road, and the field run measured the
+# consequence: all three light phases edited their own contract test, the two
+# full-mode ones did not touch it. Warn, naming them — the run proceeds, the
+# choice is the plan author's.
+if [ -d "$PLAN_DIR/tests" ]; then
+  LOW_PHASES=$(grep -Ei "^\|[[:space:]]*Phase [0-9]+[[:space:]]*\|[[:space:]]*low[[:space:]]*\|" "$PLAN" \
+    | sed -E 's/^\|[[:space:]]*(Phase [0-9]+).*/\1/' | tr '\n' ' ')
+  if [ -n "$LOW_PHASES" ]; then
+    echo "NOTE: this plan carries contract tests and runs ${LOW_PHASES}at Effort=low — light mode ships no contract doctrine, so those phases may edit the contract instead of raising a plan-defect claim."
+  fi
+fi
+
 # /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
 # goal loop — an independent evaluator (small fast model) re-checks the exit
 # condition after every turn, so a session cannot declare itself done before

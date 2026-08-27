@@ -54,7 +54,7 @@ Extract from the conversation: objective, phases, files per phase, pattern refer
 
 **Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase — **at most 4 at a time**, in waves — instead of searching serially. Each returns at most 2 candidates as `<path>:<symbol> — <why it is the closest example>`, or exactly `NO CANDIDATE`. A phase coming back `NO CANDIDATE` gets `new-pattern`; it never gets a guess.
 
-**Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
+**Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. Two shapes are named because both cost a gate correction in the field: when two phases read and write the same table's UI surface, settle the row-set boundary between them explicitly — who lists what, who excludes whose rows — rather than settling each phase's surface in isolation; and on a `ui` phase, record layout composition (which surface carries which zone) as mockup-negotiable intent, not as a fixed Decision — the mockup loop is what exists to settle it, and freezing it before any visual makes the user's own gate judgment a plan contradiction. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
 **Contract tests.** One more option, asked with the Decisions batch: author
 the tests of EVERY phase now, while the whole design sits in one context —
@@ -69,7 +69,11 @@ rule, the integrity check at close — lives once in `contracts.md` → *Contrac
 tests*; writing them inside `.phased/` keeps this skill's own first rule
 intact. Authoring them is plan-time work: derive each phase's tests from its
 `Details:` and `Done:`, in the repo's own test style, and present them with
-the plan.
+the plan. Then RUN the repo's own linter over what you authored, before the
+plan commit: a `Done:` demanding a clean lint on the copied test and a
+contract copy that must stay byte-identical are the same requirement, and a
+test that fails the lint forces every phase carrying it to break one of the
+two.
 
 **The consumer question.** When `.phased/roadmap.md` has unstarted
 macro-phases — or the discussion names later work that will consume this

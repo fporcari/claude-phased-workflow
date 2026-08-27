@@ -188,10 +188,13 @@ The rules, in both execution modes:
   its timeout — and in no case by the child editing the contract.
 - **The close verifies the copy.** `/close-phase`'s Done gate (and the
   phase-verifier, where it runs) checks the in-tree copy against the plan
-  copy: executable tests byte-identical; skeletons with their test names and
-  every `wf:contract:` line surviving verbatim and no red body left. Any
-  divergence must be covered by a foreman decision recorded in `notes.md`
-  under the phase's `## Phase N` — a silent one blocks the close.
+  copy AND the plan copy against the plan commit (`git diff <plan-commit>
+  HEAD -- <plan dir>/tests/phase-N/` empty): a child that edits BOTH copies
+  makes them agree, so byte-identity alone cannot see it rewriting its own
+  contract. Executable tests byte-identical; skeletons with their test names
+  and every `wf:contract:` line surviving verbatim and no red body left. Any divergence must be covered by a foreman decision
+  recorded in `notes.md` under the phase's `## Phase N` — a silent one
+  blocks the close.
 
 A plan without the option keeps today's behaviour: tests are written by each
 phase, and the cross-phase direction is prose

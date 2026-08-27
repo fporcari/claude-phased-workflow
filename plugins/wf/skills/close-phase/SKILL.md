@@ -62,9 +62,11 @@ is what makes `[x]` a contract instead of a claim.
 
 **Contract tests gate the close too.** Where the plan carries
 `tests/phase-N/` for this phase (`contracts.md` → *Contract tests*), check the
-in-tree copies against the plan copies: executable tests byte-identical,
-skeletons with their names and every `wf:contract:` line surviving verbatim
-and no red body left. A divergence not covered by a foreman decision in
+in-tree copies against the plan copies AND the plan copies against the plan
+commit (`git diff` over `tests/phase-N/` empty — a phase that edits both
+copies makes them agree): executable tests byte-identical, skeletons with
+their names and every `wf:contract:` line surviving verbatim and no red body
+left. A divergence not covered by a foreman decision in
 `notes.md` under `## Phase N` blocks the close exactly like a red
 criterion — the contract was edited by the wrong writer, and closing over
 it would launder the edit into `[x]`.

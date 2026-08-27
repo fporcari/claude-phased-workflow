@@ -54,7 +54,7 @@ Every question here exists to fill a field of the plan. Know which one before yo
 | Field | What the question settles |
 |---|---|
 | `Mode:` | interactive or autonomous — **ask this first** |
-| `Decisions:` | naming, signatures, library, API shape, trade-offs |
+| `Decisions:` | naming, signatures, library, API shape, trade-offs, and validation: what the new surface must REFUSE, and at which layer |
 | `Pattern:` | which existing example each non-trivial phase copy-adapts |
 | `Files:` | the surface each phase touches, or its discovery rule |
 | `Done:` | what "finished" means, re-runnably |
@@ -72,6 +72,11 @@ order is free.
 
 A decision belongs to the user when either answer leads to materially different work.
 Everything else is yours — make it, say you made it, move on.
+
+Phrase a mode or tier question at the **deployment** level first — *who ever sees both?*
+— before choosing between UI treatments for the other tier: those treatments only exist
+in the mixed case, and asking them first fixes a premise the deployment answer may
+remove entirely.
 
 **Done when** you can name the first question and say which later ones its answer
 would change.

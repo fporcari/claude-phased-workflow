@@ -34,7 +34,10 @@ paragraph above forbids, reached from the other side. A child that believes
 the foreman is dead is usually a child that looked on the wrong channel
 (*Sending to the foreman*, below): check that before concluding anything.
 What a phase chat may always do is edit the plan for its OWN phase, which
-mid-phase it is the only writer of.
+mid-phase it is the only writer of — never its contract fields, though
+(`Done:`, authored `Verify:`, `Pattern:`, `Files:`, `Decisions:`): additions
+ride `>` lines, a contract edit needs a foreman reply, and the close diffs
+the phase block against the plan commit to catch a silent loss.
 
 **The foreman's identity lives in a file, and its address is its TITLE.**
 A session cannot read its own id, but every *other* session sees both title
@@ -206,8 +209,14 @@ only channel that never failed):
 2. **Reply**: `clarify: <decision, one line>`. When the decision changes the
    plan, the reply also carries the exact plan edit, as before-text →
    after-text pairs — never a literal patch: the child's plan holds a `[>]`
-   marker the foreman never saw. The foreman does NOT touch the plan: one
-   writer per working tree, and mid-phase that writer is the child.
+   marker the foreman never saw. That full text, plan edits included,
+   belongs on disk at road 1 and the reply may just point at it: delivery is
+   never assumed — the channel has been seen accepting a message and taking
+   minutes to arrive — so a child re-reads `notes.md` before waiting on it,
+   and a plan change sent mid-phase closes with **confirm receipt before
+   acting**, so a late batch cannot execute a superseded instruction. The
+   foreman does NOT touch the plan: one writer per working tree, and
+   mid-phase that writer is the child.
 3. **The child applies on acceptance**: it shows the human the decision and,
    accepted, applies the foreman's edit verbatim — the hands, not the
    author — committing `.phased/` alone as `wf: clarify phase N — <one
@@ -389,14 +398,17 @@ below. A wall of clear sentences is still a wall.
 **Delivery depends on the channel.** The closing reports —
 `/run-workflow`'s run-end summary, `/quality-check`'s findings
 presentation — are hypertext where the session can render a file to the
-user (SendUserFile on the desktop): a **report page**, the verdict on top,
-one line per finding, each finding a closed `<details>` expansion opening
-on its detail drawn from the plan artifacts. The page is written outside
-the repo (`${TMPDIR:-/tmp}/phased-workflow/<slug>-report.html` — a file in
-the tree would dirty it), and the verdict line is repeated in chat beside
-it. The reader pulls detail at their own pace; no detail question is
-asked. The cap survives inside the expansions: each one answers a precise
-question of the decision-maker — never the phase chronicle. Without a way
+user: a **report page**, the verdict on top, one line per finding, each
+finding a closed `<details>` expansion opening on its detail drawn from the
+plan artifacts. The page is written outside the repo
+(`${TMPDIR:-/tmp}/phased-workflow/<slug>-report.html` — a file in the tree
+would dirty it) and handed over with `SendUserFile` and `display: render`,
+which is load-bearing: left to choose, the client attaches a page outside
+the project folder as a download card, which is what the field run got.
+The verdict line is repeated in chat beside it;
+the reader pulls detail at their own pace, and no detail question is asked.
+The cap survives inside the expansions: each one answers a precise question
+of the decision-maker — never the phase chronicle. Without a way
 to render the page (CLI, headless), degrade declared: the short form in
 chat, then exactly ONE question governs detail — a dedicated one (*Expand
 all / Let me pick / That's enough*) when the report ends the exchange,

@@ -1782,6 +1782,8 @@ s32_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = an agents dir; prints 
     || echo "$S32_C: the register lost the one-way-surfaces delivery rule"
   grep -q 'report page' "$S32_C" 2>/dev/null \
     || echo "$S32_C: the register lost the report page (hypertext delivery)"
+  grep -q 'display: render' "$S32_C" 2>/dev/null \
+    || echo "$S32_C: the page delivery no longer asks for the render explicitly"
   grep -q 'report-judge' "$S32_C" 2>/dev/null \
     || echo "$S32_C: the register lost the report-judge gate"
   S32_A="$3/report-judge.md"
@@ -1835,6 +1837,14 @@ rm -rf "$S32_MUT"
 S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"; cp "$S24_REFS"/*.md "$S32_MUT/refs/"
 sed '/report page/d' "$S24_REFS/foreman.md" > "$S32_MUT/refs/foreman.md"
 assert "S32: the guard fails when foreman.md loses the report page" \
+  '[ -n "$(s32_guard "$SKILLS_DIR" "$S32_MUT/refs" "$S32_AGENTS")" ]'
+rm -rf "$S32_MUT"
+# The page lives outside the project folder, where a client left to choose
+# attaches it as a download card — the field defect this clause answers.
+S32_MUT="$(mktemp -d)"; mkdir -p "$S32_MUT/refs"; cp "$S24_REFS"/*.md "$S32_MUT/refs/"
+sed 's/`display: render`/the client default/' "$S24_REFS/foreman.md" \
+  > "$S32_MUT/refs/foreman.md"
+assert "S32: the guard fails when the page delivery drops the explicit render" \
   '[ -n "$(s32_guard "$SKILLS_DIR" "$S32_MUT/refs" "$S32_AGENTS")" ]'
 rm -rf "$S32_MUT"
 # A skill restates the shape rule — the copy defect single-source exists for.
@@ -2885,6 +2895,113 @@ printf '\nOpen the dashboard, then continue with the next phase.\n' \
 assert "S51: the guard fails when a skill makes the dashboard a step" \
   '! python3 "$OPT_GUARD" "$S51_MUT2" >/dev/null 2>&1'
 rm -rf "$S51_MUT2"
+
+echo "== S52: the addendum's own plan template passes the launcher's pre-flight =="
+# The template in refs/write-workflow-autonomous.md shows the execution config
+# table; --validate matches ^Phase \d+$ on the Phase cell. The two were changed
+# independently and drifted: the template's final row read
+# "| Phase N+1 (review) |", so a plan written exactly to the template was
+# rejected by the gate /run-workflow runs before spending a session. This
+# renders the template applying ONLY the substitutions an author must make
+# anyway — the N+1 placeholder becomes a real number, the "..." cells real
+# values, the "[... more phases ...]" marker goes — so a structural defect in
+# the template survives them and lands on the validator.
+S52_NP="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
+s52_render() {  # $1 = refs dir, $2 = plan file to write
+  python3 - "$1/write-workflow-autonomous.md" "$2" <<'S52PY'
+import sys
+src, out = sys.argv[1], sys.argv[2]
+text = open(src).read()
+block = text[text.index('## Plan format'):].split('```')[1]
+plan = '\n'.join(ln for ln in block.splitlines()
+                 if '[... more phases ...]' not in ln)
+plan = plan.replace('N+1', '2')
+plan = plan.replace('| Phase 1 | ... | ... |', '| Phase 1 | medium | opus |')
+open(out, 'w').write(plan + '\n')
+S52PY
+}
+S52_TMP="$(mktemp -d)"
+s52_render "$S24_REFS" "$S52_TMP/plan.md"
+S52_OUT="$(python3 "$S52_NP" --validate "$S52_TMP/plan.md" 2>&1)"
+S52_RC=$?
+[ "$S52_RC" = 0 ] || echo "  offending: $S52_OUT"
+assert "S52: the rendered template reaches the validator as a two-phase plan" \
+  '[ "$(grep -c "^- \[ \] \*\*Phase" "$S52_TMP/plan.md")" = 2 ]'
+assert "S52: a plan written to the template passes the gate" '[ "$S52_RC" = 0 ]'
+assert "S52: and passes it with zero errors, not on warnings alone" \
+  'printf "%s" "$S52_OUT" | grep -q "validate: 0 error"'
+rm -rf "$S52_TMP"
+# Mutation: the parenthetical back in the Phase cell — the exact drift.
+S52_MUT="$(mktemp -d)"; mkdir -p "$S52_MUT/refs"; cp "$S24_REFS"/*.md "$S52_MUT/refs/"
+sed -i.bak 's/| Phase N+1 | xhigh | opus |/| Phase N+1 (review) | xhigh | opus |/' \
+  "$S52_MUT/refs/write-workflow-autonomous.md" \
+  && rm -f "$S52_MUT/refs/write-workflow-autonomous.md.bak"
+s52_render "$S52_MUT/refs" "$S52_MUT/plan.md"
+assert "S52: the scenario fails when the template's Phase cell carries a parenthetical" \
+  '! python3 "$S52_NP" --validate "$S52_MUT/plan.md" >/dev/null 2>&1'
+rm -rf "$S52_MUT"
+
+echo "== S53: a plan with contract tests is warned about its light phases =="
+# The effort level is chosen for the WORK ("mechanical -> low"), and it also
+# silently decides which DOCTRINE the phase receives: Effort=low runs in light
+# mode, without the read-only contract rule or the plan-defect claim road. The
+# wfdash-open-findings run measured it — all three light phases edited their own
+# contract test, one deleting `wf:contract:` lines that bound a later phase; the
+# two full-mode phases did not touch it. The launcher now says so before the
+# first session, and the autonomous planning ref forbids the combination.
+
+# (a) tests/ present and a low phase in the table → the NOTE names it
+setup S53a; fixture3
+mkdir -p .phased/active/toy/tests/phase-1
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S53a: the launcher warns that a contract-test plan carries a light phase" \
+  'grep -q "carries contract tests and runs Phase 1 at Effort=low" out.log'
+
+# (b) same plan, no tests/ directory → no warning (the run is ordinary)
+setup S53b; fixture3
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S53b: no contract tests, no warning" '! grep -q "carries contract tests" out.log'
+
+# (c) contract tests but every phase above low → no warning
+setup S53c; fixture3
+mkdir -p .phased/active/toy/tests/phase-1
+sed -i.bak 's/| Phase 1 | low | sonnet |/| Phase 1 | medium | opus |/' .phased/active/toy/plan.md \
+  && rm -f .phased/active/toy/plan.md.bak
+printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup; run
+assert "S53c: contract tests with no light phase raise nothing" \
+  '! grep -q "carries contract tests" out.log'
+
+# Static half: the doctrine that owns the rule, and the launcher that speaks it.
+s53_guard() {  # $1 = refs dir, $2 = launcher source; one line per gap
+  grep -q 'Never `low` on a phase that carries contract tests' \
+    "$1/write-workflow-autonomous.md" 2>/dev/null \
+    || echo "write-workflow-autonomous: the never-low-with-contract-tests rule is gone"
+  grep -q 'carries contract tests' "$2" 2>/dev/null \
+    || echo "run-workflow.sh: the pre-flight no longer warns about light phases"
+  grep -q 'PLAN_DIR/tests' "$2" 2>/dev/null \
+    || echo "run-workflow.sh: the warning no longer looks for the plan's tests/"
+}
+S53_OUT="$(s53_guard "$S24_REFS" "$RUNNER_SRC")"
+[ -z "$S53_OUT" ] || echo "  offending: $S53_OUT"
+assert "S53: the rule is owned by the planning ref and spoken by the launcher" \
+  '[ -z "$S53_OUT" ]'
+# Mutation: the planning ref loses the rule.
+S53_MUT="$(mktemp -d)"; mkdir -p "$S53_MUT/refs"; cp "$S24_REFS"/*.md "$S53_MUT/refs/"
+sed -i.bak 's/Never `low` on a phase that carries contract tests/Prefer low everywhere/' \
+  "$S53_MUT/refs/write-workflow-autonomous.md" \
+  && rm -f "$S53_MUT/refs/write-workflow-autonomous.md.bak"
+assert "S53: the guard fails when the planning ref drops the rule" \
+  '[ -n "$(s53_guard "$S53_MUT/refs" "$RUNNER_SRC")" ]'
+rm -rf "$S53_MUT"
+# Mutation: the launcher loses the warning.
+S53_MUT="$(mktemp -d)"
+sed '/carries contract tests/d' "$RUNNER_SRC" > "$S53_MUT/run-workflow.sh"
+assert "S53: the guard fails when the launcher drops the warning" \
+  '[ -n "$(s53_guard "$S24_REFS" "$S53_MUT/run-workflow.sh")" ]'
+rm -rf "$S53_MUT"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then
