@@ -242,6 +242,12 @@ def main():
                     help='with --drain: take only the events owned by this '
                          'chat (its pid AND its session id) or owned by '
                          "nobody; another chat's events stay queued")
+    ap.add_argument('--session', default=None, metavar='ID',
+                    help='with --drain --pid: take the events stamped with '
+                         'THIS session id instead of the one the pid resolves '
+                         'to now — how an orphan is recovered after its pid '
+                         'was recycled (both values are printed in the '
+                         "previous drain's `remaining`)")
     args = ap.parse_args()
     if args.drain and args.pid:
         # A filtered drain answers with BOTH halves: what it served, and what
@@ -250,9 +256,13 @@ def main():
         # in between.
         # The session id behind the pid, from the ONE owner check the server
         # uses: a recycled pid must not inherit the dead chat's requests.
-        target = inbox.owner_target(args.pid, args.cwd) or {}
-        out = drain_split(args.cwd, pid=args.pid,
-                          session=target.get('session_id'))
+        # `--session` overrides that resolution, and is the ONLY way to
+        # recover an orphan whose pid a living chat now holds: resolution
+        # would answer with the living session and rightly refuse the dead
+        # one's event, leaving it queued for ever.
+        session = args.session or (inbox.owner_target(args.pid, args.cwd)
+                                   or {}).get('session_id')
+        out = drain_split(args.cwd, pid=args.pid, session=session)
     else:
         out = drain(args.cwd) if args.drain else read(args.cwd)
     print(json.dumps(out, ensure_ascii=False, indent=2))

@@ -164,8 +164,12 @@ def spend_one_shot(k):
 class Handler(http.server.BaseHTTPRequestHandler):
     board = None
     # The chat that ran `/wf:dashboard`. None when the server was started by
-    # hand, which is the same state as an owner that has since died.
+    # hand, which is the same state as an owner that has since died. The two
+    # are set together and never apart: a pid whose session could not be
+    # identified is NOT an owner, because a stamp carrying the pid alone is
+    # one a recycled pid would satisfy.
     owner_pid = None
+    owner_session = None
     # Generated per process. Every request must carry it back — the browser in
     # the cookie, any other caller in the header. Since the registry writes it
     # to disk (0600), the token keeps out other USERS and the blind local
@@ -322,15 +326,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         The pid AND the session id behind it: pids are recycled, and a new
         chat inheriting a dead one's pid on the same repository would pass a
-        pid-only check — cwd cannot tell the two apart.
+        pid-only check — cwd cannot tell the two apart. The identity comes
+        from where it was VALIDATED (`-O`, `/api/owner`), never re-derived
+        here: a record unreadable at press time would otherwise silently
+        downgrade the stamp to the pid alone, which is the very check being
+        strengthened.
+
+        What a re-read still decides is whether to stamp at all. The owner
+        chat may have died since; a press made now must not be attributed to
+        it, so an identity that no longer matches a live record leaves the
+        event UNOWNED — any chat may then serve it, which is where an
+        ownerless press belonged before owners existed.
         """
-        if not Handler.owner_pid:
+        if not (Handler.owner_pid and Handler.owner_session):
             return {}
-        target = inbox.owner_target(Handler.owner_pid, self.board.repo) or {}
-        stamp = {'owner': Handler.owner_pid}
-        if target.get('session_id'):
-            stamp['owner_session'] = target['session_id']
-        return stamp
+        live = inbox.owner_target(Handler.owner_pid, self.board.repo) or {}
+        if live.get('session_id') != Handler.owner_session:
+            return {}
+        return {'owner': Handler.owner_pid,
+                'owner_session': Handler.owner_session}
 
     def owner(self, body):
         """Re-point the owner at the chat that reused this server.
@@ -349,7 +363,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         target = inbox.owner_target(pid, self.board.repo, self.titles())
         if target is None:
             return {'error': f'pid {pid} is not a live session on this repository'}
-        Handler.owner_pid = pid
+        if not target.get('session_id'):
+            return {'error': f'pid {pid} resolves to a record with no session '
+                             f'id — it cannot be told from a later chat '
+                             f'inheriting the pid'}
+        Handler.owner_pid, Handler.owner_session = pid, target['session_id']
         return {'owner': target}
 
     def titles(self):
@@ -637,13 +655,25 @@ def main():
               flush=True)
         return
     Handler.board = core.Board(args.cwd)
-    Handler.owner_pid = args.owner
     Handler.token = secrets.token_urlsafe(24)
+    # `-O` is validated exactly like `/api/owner`: an owner is a pid AND the
+    # session id behind it, or it is not an owner. The note goes AFTER the URL
+    # line — the skill reads the first line as the address.
+    owner_note = ''
+    if args.owner:
+        first = inbox.owner_target(args.owner, Handler.board.repo) or {}
+        if first.get('session_id'):
+            Handler.owner_pid, Handler.owner_session = args.owner, first['session_id']
+        else:
+            owner_note = (f'NOTE: -O {args.owner} is not a live session on this '
+                          f'repository — the page has no owner to send to.')
     srv = serve(args.port or DEFAULT_PORT, args.port is None)
     Handler.cookie_port = srv.server_address[1]
     write_registry(Handler.board.repo, Handler.cookie_port, Handler.token)
     print(f'wfdash on http://127.0.0.1:{srv.server_address[1]}/?k={new_one_shot()}'
           f'  repo: {Handler.board.repo}', flush=True)
+    if owner_note:
+        print(owner_note, flush=True)
     srv.serve_forever()
 
 

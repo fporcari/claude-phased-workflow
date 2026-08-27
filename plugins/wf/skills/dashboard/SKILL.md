@@ -125,19 +125,25 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/outbox.py" -C "<repo root>" --drai
 `served` — the events stamped with this chat as owner, plus any with no owner,
 which are this turn's work — and `remaining`, what it left for another owner,
 read under the same lock so the two cannot disagree. Act on `served`; for each
-`remaining` event, say whose it is, and check whether that owner is still a
-live session on THIS repository — the session record, not `ps`, which only
-proves some process holds the pid. Ask the server's own owner check rather
-than writing a second copy of it (`inbox.owner_target`: the session record
-must exist AND its cwd must be this repository):
-`python3 -c 'import os,sys;sys.path.insert(0,os.environ["CLAUDE_PLUGIN_ROOT"]+"/scripts/wfdash");import inbox;print("live" if inbox.owner_target(int(sys.argv[1]),sys.argv[2]) else "orphan")' <owner pid> "<repo root>"`.
+`remaining` event, say whose it is, and check whether the chat that queued it
+is still alive. An event names its owner as a PAIR — `owner` (pid) and
+`owner_session` — and the check must compare both: a pid the system recycled
+resolves to a live session that is not the one that pressed the button, so
+matching the pid alone would report a dead owner as live and leave its request
+queued for ever. Ask the server's own owner check rather than writing a second
+copy of it (`inbox.owner_target`: the record must exist AND its cwd must be
+this repository), then compare the session ids:
+`python3 -c 'import os,sys;sys.path.insert(0,os.environ["CLAUDE_PLUGIN_ROOT"]+"/scripts/wfdash");import inbox;t=inbox.owner_target(int(sys.argv[1]),sys.argv[2]) or {};print("live" if t.get("session_id")==sys.argv[3] else "orphan")' <owner> "<repo root>" <owner_session>`.
 
 `live` → leave it queued and name the chat it belongs to. `orphan` → its chat
 is gone and nobody else will ever serve it: take it with
-`--drain --pid <the orphan's pid>` and serve it here, saying so. Never a bare
-`--drain` to recover an orphan — that one takes the whole queue, live owners'
-requests included, and those belong to chats that are still going to ask for
-them. Each request carries a `kind`:
+`--drain --pid <owner> --session <owner_session>`, both values read off the
+event itself, and serve it here saying so. `--session` is what makes the
+recovery possible at all: without it the pid is resolved to whatever session
+holds it NOW, which is either nothing or a stranger, and the old event is
+refused for ever. Never a bare `--drain` to recover an orphan — that one takes
+the whole queue, live owners' requests included, and those belong to chats
+that are still going to ask for them. Each request carries a `kind`:
 
 - `run-workflow` → invoke `/wf:run-workflow`; that skill owns the pre-flight,
   the Monitor, the push policy and the foreman relay, and none of it can be

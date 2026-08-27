@@ -16,7 +16,9 @@ Seven things are asserted:
   - `drain(pid=N)` returns N's events and the unowned ones, in order;
   - another owner's event survives the filtered drain, still readable;
   - a bare `drain()` then takes the leftover, emptying the queue;
-  - `Handler.launch` stamps the queued run-workflow with the current owner;
+  - `Handler.launch` refuses to stamp a HALF identity: a pid whose session
+    was never validated owns nothing (the whole stamping story, with real
+    session records, is `test_recycled_pid.py`);
   - the CLI's filtered drain answers with BOTH halves — `served` and
     `remaining` — partitioned inside the drain's own lock, so the chat can
     name what it left without a second read of a queue that moved in between;
@@ -68,7 +70,7 @@ assert [e['text'] for e in rest] == ['theirs'], rest
 assert outbox.read(repo) == [], 'the bare drain did not empty the queue'
 print('test_outbox_owner: the bare drain takes the leftover ok')
 
-# --- launch stamps the owner of the moment -----------------------------------
+# --- an incomplete identity stamps nothing ------------------------------------
 
 
 class Fake:
@@ -80,16 +82,18 @@ class Fake:
     owner_stamp = server.Handler.owner_stamp
 
 
-server.Handler.owner_pid = 4242
+# A pid with no validated session id is not an owner: a stamp carrying the pid
+# alone is exactly the one a recycled pid would satisfy.
+server.Handler.owner_pid, server.Handler.owner_session = 4242, None
 try:
     answer = Fake(repo).launch({'road': 'unattended'})
     assert answer.get('queued') is True, answer
     queued = outbox.read(repo)
-    assert queued and queued[0].get('owner') == 4242, \
-        f'the queued run does not carry its owner: {queued}'
+    assert queued and 'owner' not in queued[0], \
+        f'a half identity was stamped as an owner: {queued}'
 finally:
-    server.Handler.owner_pid = None
-print('test_outbox_owner: launch stamps the owner of the moment ok')
+    server.Handler.owner_pid = server.Handler.owner_session = None
+print('test_outbox_owner: a pid with no session id owns nothing ok')
 
 outbox.truncate(repo)
 
