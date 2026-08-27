@@ -67,25 +67,31 @@ code changing. Every new changelog entry is judged against this list.
    too, not only the autonomous one. This is what confines the plugin to
    macOS/Linux (and WSL).
 
-10. **Session transcript JSONL** — `scripts/wfdash/core.py` walks the session
+10. **`SendUserFile`'s `display` parameter** — the closing reports are handed
+    over with `display: render` (`refs/foreman.md` → *The reporting register*).
+    The page lives outside the project folder by design, and a client left to
+    choose attaches such a file as a download card instead of rendering it — the
+    field defect the explicit parameter answers. A rename or a semantics change
+    silently costs every closing report its hypertext form.
+11. **Session transcript JSONL** — `scripts/wfdash/core.py` walks the session
     transcripts incrementally by byte offset, reading turns, models, output
     tokens, cache reads, thinking and tool calls out of their JSONL records. A
     schema or path change breaks the dashboard's cost and activity reading (the
     dashboard only — no skill depends on it).
-11. **`claude agents --json`** — the live session list, read by
+12. **`claude agents --json`** — the live session list, read by
     `scripts/wfdash/core.py` through `subprocess.run` and cached 3 s. A renamed
     subcommand or a changed shape leaves the dashboard with no active agents.
-12. **`~/.claude/tasks/<sessionId>/N.json`** — the agents' own todo lists, shown
+13. **`~/.claude/tasks/<sessionId>/N.json`** — the agents' own todo lists, shown
     by the dashboard as an explicit estimate. Undocumented by definition; a
     change degrades that one panel.
-13. **`~/.claude/sessions/<pid>.json`** — its `cwd` and `sessionId`, read by
+14. **`~/.claude/sessions/<pid>.json`** — its `cwd` and `sessionId`, read by
     `scripts/wfdash/inbox.py` to recognise the chat that opened the dashboard
     and the live sessions on this repository. Read-only since the dashboard
     stopped writing turns itself, so the `peerToken` and the unix socket beside
     them are no longer touched; a change leaves the page unable to name the chat
     that will drain the queue.
 
-Surfaces 10–13 belong to the dashboard, which is an OPTIONAL surface: a break in
+Surfaces 11–14 belong to the dashboard, which is an OPTIONAL surface: a break in
 any of them costs the page, never a workflow — `refs/board.md` → *The dashboard,
 where it exists*.
 

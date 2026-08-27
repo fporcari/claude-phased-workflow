@@ -184,13 +184,21 @@ fi
 # the phase under the slim /goal contract, which ships neither the read-only
 # contract rule nor the plan-defect claim road, and the field run measured the
 # consequence: all three light phases edited their own contract test, the two
-# full-mode ones did not touch it. Warn, naming them — the run proceeds, the
-# choice is the plan author's.
+# full-mode ones did not touch it. So the pre-flight REFUSES the combination:
+# a warning inside a run already launched protects nothing. The override is an
+# env flag, not prose — RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 runs anyway, with
+# the note, and owning the consequence is the caller's.
 if [ -d "$PLAN_DIR/tests" ]; then
   LOW_PHASES=$(grep -Ei "^\|[[:space:]]*Phase [0-9]+[[:space:]]*\|[[:space:]]*low[[:space:]]*\|" "$PLAN" \
     | sed -E 's/^\|[[:space:]]*(Phase [0-9]+).*/\1/' | tr '\n' ' ')
   if [ -n "$LOW_PHASES" ]; then
-    echo "NOTE: this plan carries contract tests and runs ${LOW_PHASES}at Effort=low — light mode ships no contract doctrine, so those phases may edit the contract instead of raising a plan-defect claim."
+    if [ "${RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS:-}" = "1" ]; then
+      echo "NOTE: this plan carries contract tests and runs ${LOW_PHASES}at Effort=low — light mode ships no contract doctrine; RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 runs it anyway."
+    else
+      echo "This plan carries contract tests and runs ${LOW_PHASES}at Effort=low — light mode ships no contract doctrine, so those phases would edit the contract instead of raising a plan-defect claim."
+      echo "Raise those phases above low in the plan's config table, or relaunch with RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 to run anyway."
+      exit 1
+    fi
   fi
 fi
 

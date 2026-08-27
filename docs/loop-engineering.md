@@ -183,7 +183,8 @@ mediocrity.
 Five test tiers cover the chain (2026-07):
 
 1. **Deterministic orchestration tests** (`tests/orchestration/run_tests.sh`),
-   **171 assertions over 27 scenarios**, in three kinds. *Mock-driven* (a mock
+   in three kinds — the count is in `README.md`, where a guard holds it to what
+   the runner contains. *Mock-driven* (a mock
    `claude` binary drives the run-workflow script, a shipped file since
    4.0.0): /goal call shape, model/effort/cap selection (fable cap doubled,
    `xhigh` → 250), repair success resuming the loop, repair failure stopping

@@ -44,8 +44,13 @@ wfdash on http://127.0.0.1:8787/?k=<one-shot>  repo: /path/to/repo
 Read the port from that line — it is not known in advance. The `?k=` is spent on
 the first request and exchanged for an `HttpOnly` cookie, so it authenticates
 exactly one navigation; from the second load on the address bar carries no key.
-A server reused from an earlier `/wf:dashboard` has no one-shot left to hand
-out, and a second pane on it is refused: the page already open holds the cookie.
+A server reused from an earlier `/wf:dashboard` is no exception: its original
+one-shot is long spent, so `server.py --probe` mints a fresh one and prints the
+same line — the skill reuses the server and still opens a new pane. The probe
+finds it through an owner-only registry entry beside the queue, confirms over
+the authenticated endpoints that it still answers for THIS repository, and
+removes a stale entry itself. Asking the ports blind cannot work any more:
+every read needs the token too.
 
 ![The page as it opens](img/wfdash-opening.png)
 

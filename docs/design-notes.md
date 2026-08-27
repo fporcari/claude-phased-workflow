@@ -241,38 +241,30 @@ management (short focused sessions) · Worktree isolation. The point of this
 plugin is making explicit and user-controllable what agent products do
 internally and opaquely.
 
-## The test suite, scenario by scenario
+## The test suite, and how to add to it
 
-**198 assertions over 31 scenarios** — S1 through S32, S16 retired with the KB
-mirror. S1–S13 run the shipped `/run-workflow` script against a mock `claude`
-binary: `/goal` call shape, model/effort/cap selection, repair succeeding and
-resuming the loop, repair failing and stopping it, the idempotent repair
-marker, relaunch on a `[!]` without that marker, attribution Case A (a
-reopened phase drops the done-count without tripping the progress guard) and
-Case B (`[~]` stops the run), fable→opus fallback on a session crash, the
-no-progress guard, the inert `## Roadmap`, and the pre-2.1.139 prompt
-fallback. S19: `next-phase.py --validate` gates the launcher, and warnings are
-printed, not discarded. S20: every silent fallback announces itself with a
-`NOTE:`. S17 and S22 build real git repos (import classification;
-the `--plans` location service). S18 is a hybrid: prose bullets in `## Notes`
-stay inert, and every phase-state match is single-source.
+The count lives in `README.md`, where `check_readme_continuity.py` holds it to
+what `run_tests.sh` actually contains. This file carried a hand-written
+scenario-by-scenario catalog for a while and it rotted twenty scenarios behind
+the suite — which is most of why that guard exists. The per-scenario detail is
+now the comment block above each `echo "== SN: ..."` in
+`tests/orchestration/run_tests.sh`: what the scenario is for, and which field
+failure it came from. It sits on the code it describes, so it cannot drift.
 
-Prose invariants, each proven by mutation: S21 (plugin paths, never
-`~/.claude`), S23 (`-agent` skills are thin variants citing their base), S24
-(the automation fork is real), S25 (the `EVENT` contract, emitted exactly
-once on every exit path), S26 (every sub-session prompt namespaced), S27 (the
-`Done:`/`Verify:` contract single-source in `common.md`), S28 (per-model
-steering reaches every sub-session), S29 (the resume path leaves
-machine-readable evidence), S30 (the foreman protocol single-source and
-cited), S31 (cross-phase awareness ships, and the reporting register is
-single-source), S32 (the closing report's shape, the report page, the
-report-judge comprehension probe and the single detail question —
-single-source and cited, the agent shipped).
+Three kinds, and the difference matters when adding one:
 
-Static checks on what the repo ships: S14 (no frozen copy of a shipped
-contract; the light contract carries its per-phase-commit clause), S15 (every
-skill inside its own `allowed-tools`, prose included), S18's static half, S21,
-S23.
+- **Launcher-driven** — the shipped `run-workflow.sh` against a mock `claude`
+  binary: call shape, model/effort/cap selection, repair resuming or stopping
+  the loop, attribution of a red baseline, the no-progress guard. They build
+  real git repos and run the real script, and they catch what reading cannot.
+- **Prose invariants, proven by mutation** — a doctrine clause is grepped where
+  it must live, then the SAME guard is re-run on a copy with the clause broken,
+  which must fail. A guard nobody proved can pass vacuously; every mutation
+  directory starts from the full pristine refs set for that reason.
+- **Static checks on what ships** — allowlists, home paths, phase-state
+  single-sourcing, doc mass, README continuity, the optional-surface rule. Each
+  is its own file under `tests/orchestration/`, so the scenario re-runs the REAL
+  check on a mutated copy instead of a reimplementation of it.
 
 ## Internal mirror (Softwell)
 
