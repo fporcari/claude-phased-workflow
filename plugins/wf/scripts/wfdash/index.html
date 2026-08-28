@@ -663,6 +663,12 @@ function stageOf(n){
 }
 
 function nodeKey(n){return n.slug?('s:'+n.slug):('m:'+n.n);}
+// A finalized workflow the roadmap does not declare: its macro-phase is gone,
+// so the row belongs to no plan anybody is working. That is the archive, and
+// it goes behind the Done tab. A macro-phase of the CURRENT roadmap stays in
+// the plan when it closes — the sequence of the closed ones is the roadmap.
+function archived(n){return n.kind==='plan'&&n.state==='done';}
+function archivedNodes(){return ((S.tree&&S.tree.nodes)||[]).filter(archived);}
 function nodeFigures(n){
   // A macro-phase row carries the sum of its attributed phases. No
   // No cost bar: the median comparison is per phase, not per plan.
@@ -732,11 +738,11 @@ function grid(){
     el.innerHTML='<tr><td colspan="11" class="empty">no plan in .phased/active/'
       +' — the Phase tab carries the button that creates one</td></tr>';return;}
   initOpen();
-  const rows=[];
-  if(!tree.roadmap){
+  const rows=[], arch=(level==='done');
+  if(!arch&&!tree.roadmap){
     (tree.phases||[]).forEach(f=>rows.push(phaseRow(f,S.plan&&S.plan.slug)));
   }else{
-    tree.nodes.forEach(n=>{
+    tree.nodes.filter(n=>archived(n)===arch).forEach(n=>{
       const on=openNodes.has(nodeKey(n));
       const lab=(n.n!=null?`M${n.n} · `:'')+n.title;
       rows.push(`<tr class="lv1 ${n.state==='done'?'dim ':''}${
@@ -768,7 +774,11 @@ function nav(){
   const nAct=S.totals.active, nOff=S.groups.off_plan.length;
   const nErr=S.alerts.filter(a=>a.level==='error').length, nAl=S.alerts.length;
   // Above the grid: what does not belong to any phase.
+  // Done appears only when there is an archive to open: a tab that is always
+  // empty on a repo with one workflow is a promise the page cannot keep.
+  const nArch=archivedNodes().length;
   const tops=[['plan','Plan',''],
+    ...(nArch?[['done','Done',`<span class="badge">${nArch}</span>`]]:[]),
     ['off','Off plan',nOff?`<span class="badge">${nOff}</span>`:'']];
   document.getElementById('topnav').innerHTML=tops.map(([id,lab,b])=>
     `<button data-t="${id}" aria-selected="${level===id}">${lab}${b}</button>`).join('');
@@ -1430,6 +1440,9 @@ function refocus(k){
 function render(){
   if(!S)return;
   const keep=focused();
+  // The last archived workflow can leave under an open Done tab — finalize
+  // moving a directory, a branch going away. Fall back before drawing it.
+  if(level==='done'&&!archivedNodes().length)level='plan';
   head();grid();nav();
   const off=(level==='off');
   document.querySelector('.gridwrap').hidden=off;
