@@ -85,9 +85,14 @@ each cost. Clicking a row opens it in the *Phase* pane.
 
 ![The plan as a tree, macro by macro](img/wfdash-tree-macro.png)
 
-**Above the grid**: *Plan* and *Off plan*. Off plan collects the sessions that
-worked in this repository outside any phase — searchable, and filterable by
-date.
+**Above the grid**: *Plan*, *Done* and *Off plan*. Off plan collects the
+sessions that worked in this repository outside any phase — searchable, and
+filterable by date. Done holds the finalized workflows the current roadmap does
+not declare: a macro-phase whose parent roadmap is gone belongs to no plan
+anybody is working, so it leaves the list instead of drowning it. The
+macro-phases the current roadmap *does* declare stay in *Plan* when they close
+— that sequence is the roadmap. The tab appears only when there is an archive
+to open.
 
 ![Off plan](img/wfdash-off-plan.png)
 
