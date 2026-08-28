@@ -558,6 +558,32 @@ def all_plan_dirs(repo):
     return out
 
 
+def text_stamps(repo):
+    """When each plan text last changed, so the page can drop a cached copy.
+
+    The page reads a plan's own words once per phase and keeps them: re-reading
+    the file on every poll would fight the reader, and the file changes rarely.
+    Rarely is not never — a plan rewritten under an open pane left the pane
+    showing words that were no longer on disk. These mtimes travel with the
+    tick, and a copy cut from a different one is re-read.
+
+    Only what a mtime can answer for: a plan read out of a `wf/` branch is not
+    named here, git having no rewrite for it.
+    """
+    plans = {}
+    for entry in all_plan_dirs(repo):
+        try:
+            plans[entry['slug']] = (pathlib.Path(entry['dir'])
+                                    / 'plan.md').stat().st_mtime
+        except OSError:
+            pass
+    try:
+        road = (pathlib.Path(repo) / '.phased' / 'roadmap.md').stat().st_mtime
+    except OSError:
+        road = None
+    return {'plans': plans, 'roadmap': road}
+
+
 GIT_TIMEOUT = 15
 BRANCH_PLAN_RE = re.compile(r'^\.phased/(done|active)/([^/]+)/plan\.md$')
 
@@ -876,6 +902,7 @@ class Board:
                 'finished': finished,
                 'chats': chats, 'groups': group_chats(chats),
                 'alerts': alerts, 'totals': totals,
+                'stamps': text_stamps(self.repo),
                 'tree': self.tree(plan, flat)}
 
     def tree(self, plan, agents):

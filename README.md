@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.28.7** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.28.8** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -348,6 +348,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.28.8 | the plan pane re-reads a plan.md that changed under it — the tick carries each plan text's mtime, so a rewritten plan no longer stays on screen until the page is reloaded |
 | 6.28.7 | the dashboard page and the queue stamp answer from one owner resolution, so a recycled pid can no longer be shown as the owner of a request the stamp leaves unowned |
 | 6.28.6 | the owner is one immutable `(pid, session id)` value rather than two attributes a threaded server can interleave, and the queue's pre-upgrade events get the pid-only road spelled out instead of a check that dies on a missing field |
 | 6.28.5 | the owner identity is kept whole where it is validated and never re-derived into a pid-only stamp, the leftover check compares session ids, and an orphan whose pid was recycled is recoverable by naming its session |

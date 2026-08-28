@@ -475,9 +475,16 @@ let mirror=null, draft='', sending=false, sendMsg='', sendCls='', talkLen=-1, ta
 let nf={name:'',scope:'',owner:null,msg:'',cls:'',sending:false};
 // The launch. Nothing here holds a run: the server proposes, the chat runs.
 let launching='', launchMsg='', launchCls='', launchCmd='';
-// The plan's own words, keyed `<slug>:<phase>`. Fetched once per key: the file
-// changes rarely and re-reading it on every poll would fight the reader.
-let planText={}, planView='planned';   // planned | executed | raw
+// The plan's own words, keyed `<slug>:<phase>` — `r:<macro>` for a roadmap
+// section. Fetched once per key: the file changes rarely and re-reading it on
+// every poll would fight the reader. `planStamp` says which mtime each copy
+// was cut from, so the rare rewrite is not shown as the current text for as
+// long as the page stays open: the tick carries the mtimes, and a copy whose
+// own no longer matches is re-read. The stale copy stays on screen until the
+// new one lands — a blink back to `loading…` on every save is worse than a
+// text one poll behind.
+let planText={}, planStamp={}, planLoading=new Set();
+let planView='planned';                // planned | executed | raw
 let macroSub='ov';                     // the macro-phase pane: ov | plan
 let macroPlanView='roadmap';           // inside it: roadmap | plan
 // The chats whose subagents are shown. Closed is the default: a chat with a
@@ -1198,25 +1205,38 @@ function planBlock(slug,n){
       `<p class="empty">nothing under ${planView} for phase ${n}</p>`}</div>`;
 }
 
-async function loadRoadmap(macro){
-  const key='r:'+macro;
-  if(planText[key]!==undefined)return;
-  planText[key]=null;
+// The mtime a cached text must still match. Null for one the tick does not
+// name — a plan read out of a `wf/` branch — which is a stable answer, so such
+// a key is fetched once and kept.
+function textStamp(key){
+  const st=(S&&S.stamps)||{};
+  if(key.startsWith('r:'))return st.roadmap??null;
+  const slug=key.slice(0,key.lastIndexOf(':'));
+  return (st.plans&&st.plans[slug])??null;
+}
+
+async function loadText(key,url){
+  if(planLoading.has(key))return;           // in flight: one fetch per key
+  // Read before the fetch: a file rewritten while it is in flight leaves the
+  // copy marked with the older mtime, which is one re-read too many. Marking
+  // it with the newer one would keep the words that were replaced.
+  const stamp=textStamp(key);
+  if(planText[key]!==undefined&&planStamp[key]===stamp)return;
+  planLoading.add(key);
   let j;
-  try{j=await(await fetch('/api/roadmap?macro='+macro)).json();}
+  try{j=await(await fetch(url)).json();}
   catch(e){j={error:'the server did not answer'};}
-  planText[key]=j;render();
+  planLoading.delete(key);
+  planText[key]=j;planStamp[key]=stamp;render();
+}
+
+async function loadRoadmap(macro){
+  return loadText('r:'+macro,'/api/roadmap?macro='+encodeURIComponent(macro));
 }
 
 async function loadPlanText(slug,n){
-  const key=`${slug}:${n}`;
-  if(planText[key]!==undefined)return;
-  planText[key]=null;                       // in flight: one fetch per key
-  let j;
-  try{j=await(await fetch(`/api/plantext?slug=${encodeURIComponent(slug||'')
-    }&phase=${n}`)).json();}
-  catch(e){j={error:'the server did not answer'};}
-  planText[key]=j;render();
+  return loadText(`${slug}:${n}`,`/api/plantext?slug=${
+    encodeURIComponent(slug||'')}&phase=${n}`);
 }
 
 async function loadLog(n){

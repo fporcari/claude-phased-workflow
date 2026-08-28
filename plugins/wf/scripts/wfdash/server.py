@@ -19,7 +19,8 @@ a `<meta>` tag: one blind request from any local process lifted it.
 
 Endpoints:
   GET /                      the page
-  GET /api/state             plan, agents, alerts, totals
+  GET /api/state             plan, agents, alerts, totals, and the mtime of
+                             every plan text, so a cached one is re-read
   GET /api/log?phase=<N>     the tail of a phase log
   GET /api/mirror            the foreman's state and the exchange with it
   GET /api/sessions          the chat that opened this dashboard, and the

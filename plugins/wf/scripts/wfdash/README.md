@@ -161,6 +161,13 @@ Transcripts are append-only and reach a few MB. `Scan.update()` reads only the
 bytes added since the last call and keeps its state between requests, so
 polling every 5 seconds costs the tail of the file, not the file.
 
+Plan texts go the other way: `/api/plantext` and `/api/roadmap` are read once
+per phase and kept, because those files change rarely and re-reading them on
+every poll would fight whoever is reading the pane. The tick carries the mtime
+of each of them (`stamps` in `/api/state`) and the page re-reads the one whose
+own has moved — so a plan rewritten under an open pane is shown, without the
+pane blinking five times a minute.
+
 ## Tests
 
 ```bash
