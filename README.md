@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.30.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.30.1** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -356,6 +356,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.30.1 | the channel question is put after the mode answer and never beside it — on `autonomous` it is not asked at all, `relayed` being the only value |
 | 6.30.0 | the plan says where its decisions travel: `Channel: in-chat` runs an attended workflow in one conversation — no foreman, no messages, no receipts — while `relayed` keeps the chat-per-phase protocol; phases are sized on decision boundaries and a fat one is committed in planned `Batches:` — the answer to #22 |
 | 6.29.0 | a *Done* tab on the dashboard: the finalized workflows of past roadmaps leave the plan list, while the macro-phases the current roadmap declares stay in it when they close |
 | 6.28.8 | the plan pane re-reads a plan.md that changed under it — the tick carries each plan text's mtime, so a rewritten plan no longer stays on screen until the page is reloaded |

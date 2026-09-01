@@ -55,7 +55,7 @@ The answer routes the rest of this skill:
 - **Autonomous** → read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
 - **Interactive** → continue with this file's format; the plan carries `Mode: interactive`.
 
-**Then the channel** — a different question, never read off the first: `Mode:`
+**Then the channel** — a second question, put only once the first is answered and never in the same `AskUserQuestion`, since the mode answer decides whether it is asked at all: `Mode:`
 says how the work runs, `Channel:` where its decisions travel (`contracts.md` →
 *The channel*). Every new plan writes the field.
 
