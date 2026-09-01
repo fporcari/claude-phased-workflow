@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.29.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.30.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -164,6 +164,14 @@ Either way you stay in one chat: the foreman never speaks to you directly. And b
 
 The ambiguity does not have to be recognized to be routed. A phase chat that keeps failing against the same obstacle — or finds itself debating with you about *why* something does not work — is showing the symptom of an ambiguity nobody has named: after the second attempt it stops and sends the foreman its suspected presupposition instead of burning your time on diagnosis. The answer lands the phase on known ground — a defect goes to `/repair-phase`, a wrong plan follows the rejection road. And every misunderstanding that reached the foreman leaves a trace beyond this workflow: the foreman appends what failed, why, and a proposed skill patch to `~/.phased/wf-lessons.md` — a ledger a human reviews in the plugin's own repository; nothing patches itself.
 
+## The channel
+
+Everything above — foreman, `clarify?`, receipts — is a **channel, not a control**: it exists because when nobody sits at the gate, disk and messages are the only way a decision can travel. With the same person at every gate it removes nobody from the loop and adds a hop in the middle of one that was already closed. One measured 10-phase attended run paid exactly that: 11 chats, ~35 messages, ~25 apparatus commits against 10 phase commits, nine clarify rounds — almost all of them repairing a plan written before the code was read ([#22](https://github.com/fporcari/claude-phased-workflow/issues/22)).
+
+So the plan says where its decisions travel. **`Channel: in-chat`** — one conversation plans and executes, phase after phase, every gate here: no `foreman.json`, no message, and `refs/foreman.md` is never loaded. **`Channel: relayed`** — the protocol above, unchanged, for work picked up across chats or times, or several workflows at once. `Mode:` keeps meaning how the work runs; a plan carrying no `Channel:` behaves exactly as before; `Mode: autonomous` with `in-chat` fails validation, since an unattended run has no gate for a decision to reach.
+
+What stays on every channel is what paid at every size: the tracked plan, a re-runnable `Done:`, one phase commit per phase, `notes.md` as the record every gate reads. Phases are sized on **decision boundaries**, not file counts — one per point where a result changes what comes next — and a phase too large to read as one diff is committed in planned `> Batches:` and still closes once.
+
 ## The plan's markers
 
 | Marker | Meaning |
@@ -185,7 +193,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
     plan.md                     # the work plan
     notes.md                    # per-phase rationale + run inspection notes
     verify.md                   # the bill: human checks deferred to the end
-    foreman.json                # which chat commands this workflow
+    foreman.json                # which chat commands this workflow — Channel: relayed only
     mockups/phase-N.html        # ui phases — the approved visual contract
     log/phase-N.txt             # transcript of each autonomous sub-session
   done/<slug>/                  # archived by /finalize-workflow
@@ -289,7 +297,7 @@ First use:
 claude
 # discuss the work, then:
 > /write-workflow      # it asks: interactive or autonomous?
-# interactive: a new chat per phase        autonomous: one command
+# interactive: here, or a chat per phase   autonomous: one command
 > /execute-phase                           > /run-workflow
 # when every phase is done:
 > /quality-check
@@ -302,7 +310,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**359 assertions over 54 scenarios** (S1–S55, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**417 assertions over 59 scenarios** (S1–S60, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -320,7 +328,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | turn the discussion into a plan on a branch | `/write-workflow` | it asks: interactive or autonomous? |
 | bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
 | start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
-| do the next phase, one phase per chat | `/execute-phase` | interactive |
+| do the next phase | `/execute-phase` | interactive — in this conversation on `Channel: in-chat`, one chat per phase on `relayed` |
 | close a phase whose work is finished | `/close-phase` | interactive — usually called for you |
 | run the whole plan unattended | `/run-workflow` | autonomous |
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
@@ -328,7 +336,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | chase a defect without burning the phase chat | `/repair-phase` in a new chat | the phase chat stands down, the repair hands back |
 | hand a long phase to a fresh chat | say *"pass the baton"* | it commits, writes down the why, and stops |
 | close a phase on what it reached | `/close-phase` | when the rest deserves a phase of its own |
-| ask where the work stands | `/resume-workflow` | the foreman chat — never the one running a phase |
+| ask where the work stands | `/resume-workflow` | the foreman chat on `relayed` — never the one running a phase; the conversation itself on `in-chat` |
 | check the job: QA page, whole-diff review, the stamp | `/quality-check` | when every phase is `[x]` |
 | close the job: lessons, archive, one commit | `/finalize-workflow` | when the quality check is stamped |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
@@ -336,7 +344,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 
 **Plan markers** — `[ ]` to do · `[>]` in progress, or done and waiting for your checks (`> Testing:`) · `[x]` done and verified · `[!]` something is demonstrably broken: failed, or under repair · `[~]` blocked on a red baseline nobody owns.
 
-**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
+**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands (`relayed` only) · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
 
 **Who says "done"** — interactive: you do, phase by phase, and nothing closes or is reported before you have. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
 
@@ -348,6 +356,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.30.0 | the plan says where its decisions travel: `Channel: in-chat` runs an attended workflow in one conversation — no foreman, no messages, no receipts — while `relayed` keeps the chat-per-phase protocol; phases are sized on decision boundaries and a fat one is committed in planned `Batches:` — the answer to #22 |
 | 6.29.0 | a *Done* tab on the dashboard: the finalized workflows of past roadmaps leave the plan list, while the macro-phases the current roadmap declares stay in it when they close |
 | 6.28.8 | the plan pane re-reads a plan.md that changed under it — the tick carries each plan text's mtime, so a rewritten plan no longer stays on screen until the page is reloaded |
 | 6.28.7 | the dashboard page and the queue stamp answer from one owner resolution, so a recycled pid can no longer be shown as the owner of a request the stamp leaves unowned |

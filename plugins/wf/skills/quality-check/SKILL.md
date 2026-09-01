@@ -50,7 +50,7 @@ git add -A && git commit -q -m "wf: method naming review"
 
 ## Step 4: Review the scope
 
-No staging heuristics and no guessing: the workflow is exactly `git log --oneline "$BASE"..HEAD`, one commit per phase plus the plan commit. Show it, with `git diff --stat "$BASE"..HEAD`.
+No staging heuristics and no guessing: the workflow is exactly `git log --oneline "$BASE"..HEAD` — the plan commit plus, per phase, one phase commit and any `partial` commits that preceded it (`refs/common.md`). Group the log by the `wf(phase N):` prefix each line already carries and show one line per phase, naming its partials where it has them; then `git diff --stat "$BASE"..HEAD`. A phase with no partials reads exactly as it always did.
 
 The tree must be clean. If `git status --short` shows anything, a phase closed without committing or someone edited by hand — report it and ask whether it belongs to the workflow before going on; do not sweep it in silently.
 

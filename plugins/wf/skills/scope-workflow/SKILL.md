@@ -44,6 +44,12 @@ report below flags as unverifiable, instead of asking the user for them.
 Report the ground in a few lines, with concrete paths, so a wrong premise gets
 corrected before it costs a whole branch of questions.
 
+Four classes of premise are worth checking by name, because each is what came back
+as a full clarify round in the field: a **literal** asserted unique and never grepped
+for duplicates; a **behaviour** transcribed from a design doc the code contradicts; a
+**remedy** — a flag, an env var, a CLI option — never checked against the tool's real
+interface; and **arithmetic**, counts and totals stated without being computed.
+
 **Done when** every factual premise behind the coming questions is either verified in
 the codebase or flagged as unverifiable.
 
@@ -54,6 +60,7 @@ Every question here exists to fill a field of the plan. Know which one before yo
 | Field | What the question settles |
 |---|---|
 | `Mode:` | interactive or autonomous — **ask this first** |
+| `Channel:` | in-chat or relayed — asked right after the mode, on interactive plans only; the question and its derivation rule are `/write-workflow`'s *Step 2*, not restated here |
 | `Decisions:` | naming, signatures, library, API shape, trade-offs, and validation: what the new surface must REFUSE, and at which layer |
 | `Pattern:` | which existing example each non-trivial phase copy-adapts |
 | `Files:` | the surface each phase touches, or its discovery rule |
@@ -64,7 +71,10 @@ close where a human can look at something, autonomous ones close on one concern 
 re-runnable `Done:`. The same work splits into different phases under the two. Derive
 a recommendation from the work itself — *"I'll know it when I see it"* (UI, visual,
 declarative) → interactive; measurable (refactor, migration, well-specified startup) →
-autonomous — and put it as the recommended answer.
+autonomous — and put it as the recommended answer. The channel follows it:
+`relayed` by construction on autonomous, asked on interactive — the same person at
+every gate → `in-chat`, a chat boundary between a decision and the phase needing
+it → `relayed`.
 
 Order the rest by **what they unlock**: a decision that changes the shape of the ones
 below it comes first. Decisions that cannot affect each other are siblings, and their
@@ -109,6 +119,7 @@ confirm the shared understanding**:
 
 ```
 Mode: <interactive|autonomous> — <reason, half a line>
+Channel: <in-chat|relayed> — <reason, half a line; relayed always on autonomous>
 
 Settled:
 - <decision> → <choice> (<reason>)                   [Decisions:]

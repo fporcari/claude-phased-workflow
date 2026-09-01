@@ -31,7 +31,7 @@ Resolve the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" 
 - **Neither** → nothing to repair here: say so and stop.
 - It already has `> Repair attempted:` → say "Repair already attempted for Phase N — the next look is yours" and stop. Never loop repairs.
 
-**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`foreman.md` → *The foreman*). **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
+**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_session_title` on `session_id: "self"`. **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
 
 **Then write the marker and commit it**, on the phase:
 
@@ -50,7 +50,7 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 ## Step 3: Diagnose from scratch
 
 1. Re-read the phase objective, `Details:`, `Done:` and its `Pattern:` example.
-2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified — in the first field run both such claims dissolved under fresh eyes (the contract was implementable in-dialect both times). Your first job is trying to satisfy the contract AS WRITTEN; the contract stays read-only either way (`refs/contracts.md` → *Contract tests*). Only a claim that survives your own attempt ends the repair `[!]` with `> Repair attempted: plan-defect confirmed — <what you tried, why the contract truly cannot hold>` — the foreman fixes plan and tests from there, never you.
+2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified — in the first field run both such claims dissolved under fresh eyes (the contract was implementable in-dialect both times). Your first job is trying to satisfy the contract AS WRITTEN; the contract stays read-only either way (`refs/contracts.md` → *Contract tests*). Only a claim that survives your own attempt ends the repair `[!]` with `> Repair attempted: plan-defect confirmed — <what you tried, why the contract truly cannot hold>` — the plan and its tests are fixed from there by whoever owns the plan, never by you: the confirmed defect travels as an outcome, per `refs/phase-execution.md` → *Routing a decision*, so it reaches the foreman on the relayed road and the user at this repair's gate on `Channel: in-chat`.
 3. Reproduce the failure and confirm the recorded error signature still holds.
 4. **Establish whose failure it is.** The failed phase committed its own work as `wf(phase N): FAILED — <title>`, so its boundaries are exact: `git show --stat HEAD` is everything it changed, and `HEAD^` is the tree before it started. Re-run the green signal at `HEAD^` — a failure that reproduces there is **not this phase's**. Don't patch it here: keep the phase `[!]` with a `> Repair attempted:` note naming the real culprit, so the human fixes the right thing.
 
@@ -71,9 +71,9 @@ Show what it turned out to be, what changed, and which signal is green that was 
 On your ok, record the outcome for the way in:
 
 - **Came in `[!]`** → the phase closes: `[x]` + `> Repaired:`, as below.
-- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this chat sends the outcome to the phase chat (`wf:<slug>:phase-N` in `list_sessions` — `foreman.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. It does not touch anything else: the phase is not finished, and finishing it is that chat's job.
+- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this chat sends the outcome to the phase chat (`wf:<slug>:phase-N` in `list_sessions` — `foreman.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. That hand-back is this repair chat addressing the chat that owns the phase, not the workflow's relay, so it stands on both roads: on `Channel: relayed` the addressee is the phase chat, and on `Channel: in-chat` it is the conversation that holds the workflow, where the phase gate has been waiting — no foreman in between either way. The repair itself stays a chat of its own on both roads: fresh eyes are the point of it. It does not touch anything else: the phase is not finished, and finishing it is that chat's job.
 
-**One chat is one attempt.** If the repair eats this whole context without a green signal, the problem is not a bug: leave `[!]` + `> Repair attempted:`, send the foreman the `blocked` line (`foreman.md` → *The foreman*), and say plainly that this belongs in a re-planning conversation, not in another repair.
+**One chat is one attempt.** If the repair eats this whole context without a green signal, the problem is not a bug: leave `[!]` + `> Repair attempted:` — the record, owed on both roads — and report `blocked` per `refs/phase-execution.md` → *Routing a decision*: the line to the foreman (`foreman.md` → *The foreman*) on the relayed road and on a legacy plan, said to the user at this gate on `Channel: in-chat`, with no message sent. Either way, say plainly that this belongs in a re-planning conversation, not in another repair, and let that re-planning take the road the same table gives it.
 
 ## The outcome formats
 

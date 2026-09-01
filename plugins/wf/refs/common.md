@@ -58,7 +58,7 @@ git repository root:
     plan.md               # the work plan
     notes.md              # free-form annotations + per-phase rationale
                           #   (## Phase N headings — see refs/foreman.md)
-    foreman.json          # which chat commands this workflow (refs/foreman.md)
+    foreman.json          # which chat commands it — Channel: relayed only (refs/foreman.md)
     verify.md             # human checks a phase deferred to a wider context
                           #   (see refs/contracts.md)
     mockups/phase-N.html  # ui-tagged phases — the approved visual contract
@@ -113,10 +113,13 @@ identifiable without heuristics.
   already on (its own rules decide); either way `Parent:` in the plan records
   where the work goes back to.
 - The plan is committed first, as `wf: plan for <slug>`.
-- Each completed phase is ONE commit, `wf(phase N): <title>`, including the
-  plan's own status update. A phase closing `[!]` commits too, as
-  `wf(phase N): FAILED — <title>`: repair needs to see the failing code, and
-  it needs to start from a clean tree.
+- Each completed phase produces exactly ONE **phase commit**,
+  `wf(phase N): <title>`, including the plan's own status update. Any number
+  of `wf(phase N): partial — <sub-result>` commits may precede it — a
+  checkpoint or a planned batch (`refs/phase-execution.md`) — and none of them
+  closes anything: the phase commit is the one that carries `[x]`. A phase
+  closing `[!]` commits too, as `wf(phase N): FAILED — <title>`: repair needs
+  to see the failing code, and it needs to start from a clean tree.
 
 **The base of the workflow is the commit that added the plan**, not the
 branch point:
@@ -193,8 +196,8 @@ edit and its commit.
 `phase N closed short` is the same family: a phase that outgrew its chat
 (`refs/phase-execution.md` → *When the phase outgrows its chat*) closes on
 the sub-result it reached, and the remainder needs a phase the child does not
-write — sizing is the foreman's job, and a phase that overran is evidence
-about the sizing.
+write — sizing belongs to the plan's author, not to the phase running, and a
+phase that overran is evidence about the sizing.
 
 **The foreman is told, in one line** — `phase N closed, result rejected`,
 above. It is the one report that is not routine: the plan it authored is

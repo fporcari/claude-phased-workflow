@@ -233,6 +233,453 @@ the launcher uses, so a second run walks through the first one's state. If CI
 is ever split for speed, split it by scenario into separate checkouts, never by
 running the same script twice at once.
 
+## Phase sizing: decision boundaries, not file counts
+
+*Written 2026-09-01 as the design the change was edited against, and landed
+the same day in 6.30.0. It stands as the rationale; where it and the skills
+disagree, the skills are what ships, and the corrections recorded at the end
+are the places where that happened.*
+
+**Originating requirement: [issue #22](https://github.com/fporcari/claude-phased-workflow/issues/22)**,
+"Protocol overhead dominates on attended serial work". This section is the answer
+to it, and its numbers are the measurement this design is accountable to: one
+10-phase attended run costing 11
+chats, ~35 cross-session messages, ~25 apparatus commits against 10 phase
+commits, and 9 clarify rounds of 5 legs each. The count of phases was the
+symptom; the cause was planning before anyone had read the code, which produces
+phases built on hypotheses and then renegotiates them one at a time, on the most
+expensive channel available.
+
+**#22 is answered by 6.30.0, and what the release owes the field is one
+measurement**: an equivalent case, planned on `Channel: in-chat`, runs in a
+single chat with no foreman and no receipts and comes out as a handful of
+decisional phases without the nine clarify rounds. Prose is not the fix, the
+routing is — and the first attended run on the new channel is what confirms
+the routing did what this section says.
+
+### The definition
+
+> A phase is the largest coherent unit of work that can be executed, verified
+> and reviewed without an intermediate result forcing the rest to be re-planned.
+
+It carries two cut criteria that answer different questions, and keeping them
+apart is the whole point:
+
+- **re-planning** decides *how many* phases there are — one per decision
+  boundary;
+- **reviewability** decides *how big* one may get, at a fixed number of
+  decisions.
+
+### Reviewability cuts produce batches, not phases
+
+When only the second criterion pushes for a cut, the work stays **one phase**
+and splits internally into batches. The phase owns `Done:`, its
+state, its gate and `/close-phase`; a batch owns nothing but a commit. "Unit of
+review" therefore means *a commit that can be read on its own at the end of the
+phase* — not a review between batches, and not a pause.
+
+So both properties hold at once: phase count tracks decision boundaries, commit
+size keeps the diff readable, and nothing between batches costs a context
+reset, a gate or a re-plan.
+
+Why not simply call them phases: give a cut a state and a gate and it becomes
+exactly the boundary the post-mortem indicted — a context to rebuild and an
+invitation to a clarify round, bought for a reason (diff length) that has
+nothing to do with judgment.
+
+### Sizing against the executor
+
+Current models do their best work carrying one task from start to finish in a
+single context. Fine-grained phasing is what small models needed and what large
+ones pay for. 291 mechanically rewritten call sites are one phase, batched;
+three unknown root causes are three phases, because each finding re-plans the
+next.
+
+### Triage: three questions, three outputs
+
+Reconnaissance comes first, then the dimensions — and they do not weigh on the
+same thing:
+
+| dimension | determines |
+|---|---|
+| uncertainty — do we already know what to do? | phase count |
+| branching — can an intermediate result change the next step? | phase count |
+| verifiability — does a reliable check exist? | how much checking |
+| blast radius — is a mistake isolated and reversible? | how much checking |
+| attendance — is a human at the gate? | which channel |
+| parallelism — one workflow, or several at once? | which channel |
+
+Triage returns `(n phases, how much checking, which channel)`. The third output
+is the one #22 is about, and it is why "how much control" and "which apparatus"
+must not be read off the same axis: **foreman, messaging and receipts are a
+channel, not a control**. They exist because when nobody is at the gate, disk
+and messages are the only way a decision can travel. With a human at the gate
+the foreman removes nobody from the loop — it inserts a hop in the middle of one
+that was already closed, and every clarify pays its five legs to cross it.
+
+So dangerous-but-attended work gets heavy verification on a light apparatus, and
+a two-output triage would have got exactly that case wrong — routing "high blast
+radius" to the heavy preset and dragging the relay in with it. Sizing,
+control and channel are three independent choices; a single "small/medium/large"
+label collapses all three and then activates the wrong components.
+
+**Parallelism is a property of the surroundings, never of the workflow.** Phases
+stay ordered and serial: a `[ ]` phase is blocked while any preceding phase is
+not `[x]`, the launcher runs one session at a time, and nothing here changes
+that. The dimension earns its row only because *several distinct workflows or
+executors* — already supported today, each with its own plan and branch — cannot
+share an attended gate, which forces the relayed channel. It must never be read
+as a promise of parallel phases inside one plan; the launcher does not run them,
+and a plan that implied otherwise would be describing a machine that does not
+exist.
+
+### Three axes, one new header
+
+The three triage outputs stay three independent values — and only one of them
+needs a field. Three outputs do not license three headers:
+
+- **`n phases`** — a sizing outcome, and **already expressed by the plan's own
+  structure**: the phases are there, numbered and countable. A one-phase plan is
+  `n=1` and nothing more; "single-phase" is not a profile, not a channel, and
+  must never become an enum value that quietly also means "no foreman". A
+  one-phase plan can run unattended, and a fifteen-phase plan can run in one
+  attended chat.
+- **checking depth** — **already expressed** by `Done:`, `Verify:`, the presence
+  of authored contract tests and the verifier configuration. There is nothing
+  left for a header to say that those four do not already say more precisely. If
+  a concrete runtime consumer ever turns up needing a separate field for it,
+  that is a decision to take on the evidence, not in advance.
+- **channel** — the only one with no existing expression, because it is a
+  *routing* fact: where a decision travels. It gets the one new header.
+
+No preset shipped. An earlier draft named three — `solo`, `standard`,
+`supervised` — as planning-time shorthands expanded into the plan's structure
+and its `Channel:` value; what landed is the two questions themselves (`Mode:`,
+then `Channel:`, in `/write-workflow` → *Step 2*) and the sizing rule, because
+a label that expands into three independent choices is exactly the collapse
+the previous paragraph refuses. Dangerous-but-attended work (thick `Verify:`,
+authored contract tests, `Channel: in-chat`) stays expressible field by field,
+which is the property a preset would have had to preserve anyway.
+
+The plan gains exactly two fields:
+
+- **`Channel:`** — plan header, optional, `in-chat` or `relayed`.
+- **`Batches:`** — per phase, optional, the planned subdivision.
+
+Same `plan.md`, same states, same `/close-phase`. Not a second plugin and not a
+second plan format: a "lite" variant is a second surface to maintain, and two
+surfaces drift. It is also why the smallest preset stays inside the protocol
+rather than being #22's "no plugin at all" — that proposal drops the tracked
+plan with a re-runnable `Done:` and one commit per phase, which the same issue
+lists first among the things that paid *at every size*. The apparatus is what
+should switch off; the artifacts stay.
+
+The channel axis does NOT replace `Mode:`, though a first draft of this
+section said it would: the two fields answer different questions (`Mode:` how
+the work runs, `Channel:` where its decisions travel), and `Mode: interactive`
+means, and keeps meaning, a chat per phase with the relay between them. The
+resolution and its reasons are under *Compatibility plan* below.
+
+### Reconnaissance before interrogation
+
+`/scope-workflow` interrogates the user one question at a time before the plan
+exists, and a good share of the clarify rounds it generates are questions the
+code could have answered. The recon pass goes first: read, then ask only what is
+genuinely undetermined.
+
+What recon must actually check is not a matter of taste: #22's lessons ledger
+has eight entries with one shared root, and they fall into four classes, each of
+which came back as a full clarify round —
+
+- **literals** asserted as unique and never grepped for duplicates;
+- **behaviour** transcribed from a design doc that the code contradicts;
+- **remedies** (a flag, an env var, a CLI option) never checked against the
+  tool's real interface;
+- **arithmetic** — counts and totals stated without being computed.
+
+Any of the four is cheap to verify while reading and expensive to discover from
+a phase gate.
+
+### `Files:` and `Decisions:` stay in the plan, with an entry rule
+
+After recon the planner still writes the probable area and files, the evidence
+found, the known constraints and the decisions already settled.
+
+The entry rule binds **claims about existing code, and only those**: an assertion
+about what a file contains, what a call site looks like, how a tool behaves, how
+many of something there are, must cite the grep or the file behind it or not be
+written. It does not bind design intent. **Files that do not exist yet are
+plannable output** — a new service, a new module, a new test file are legitimate
+plan content, named in advance, and the rule that applies to them is the
+ordinary one: they are a proposal the phase realises, not a fact being asserted.
+Reading the rule as "only write filenames you have opened" would forbid planning
+anything new, which is not what the #22 defects were: every one of them was a
+false statement about code that already existed.
+
+The executor records the actual files and the decisions that emerged in
+`notes.md`. What produced vagueness was compiling those sections from memory,
+not their presence; moving them wholesale into the output would only make the
+autonomous prompt vague again. The gap between what the planner predicted and
+what `notes.md` records is diagnostic material on the planner.
+
+### `model:` / `effort:` as overrides — not in 6.30.0
+
+Proposed and deliberately left out of this release: the default would belong
+to the workflow, and a phase would override it only with the reason written
+next to it, so plans stop binding themselves to the current model roster. It is
+independent of the channel axis, it touches the launcher's `Run:` parsing, and
+nothing in #22 needed it — so it waits for evidence of its own. If it ever
+lands, *No execution config on interactive plans* above still holds: the
+override is the autonomous side's.
+
+### Batch commits against the one-phase-one-commit invariant
+
+The invariant is stated in `refs/common.md` → *Each completed phase is ONE
+commit, `wf(phase N): <title>`* and read by `close-phase`, `quality-check`,
+`finalize-workflow`, `resume-workflow`, `next-phase.py` and `run-workflow.sh`.
+Batches must not break it, and they do not have to: the mechanism already
+exists.
+
+`refs/phase-execution.md` → *WIP checkpoints* already defines a second commit
+form inside a phase — `wf(phase N): partial — <sub-result>` — created when a
+long phase outlives its chat. Every consumer downstream already tolerates it.
+Batches are that same commit form, **promoted from escape hatch to planned
+subdivision**: same prefix, same shape, decided at planning time instead of
+discovered when the context fills. Nothing new is invented, and the invariant
+holds as it always did, restated precisely:
+
+> A phase produces exactly one **phase commit** — the one that carries `[x]`,
+> the plan status update and the naming-review edits. Any number of `partial`
+> commits may precede it. `partial` commits are code checkpoints, never phase
+> closures.
+
+Effects on the four consumers that count:
+
+- **`/close-phase`** — unchanged in mechanics. Its `Done:` gate runs against the
+  phase, not the batch, and it still produces the single phase commit. What
+  changes is one existing rule that must be re-read rather than rewritten:
+  today a `[>]` phase with no `> WIP:` note *and* no `partial` commit "carries
+  no work" (`phase-execution.md`). Under planned batches a `partial` commit
+  becomes an expected intermediate state rather than evidence of an interrupted
+  chat, so the resume heuristic must distinguish *planned batch* from
+  *interrupted phase* — a plan-side batch list is what supplies that, and it is
+  the one contract addition batches actually require.
+- **`/quality-check`** — this is the real breakage. It states `git log --oneline
+  "$BASE"..HEAD` is "one commit per phase plus the plan commit", with no staging
+  heuristics by design. With batches the log is one commit per phase *plus its
+  partials*, so the pass must group by phase (the `wf(phase N):` prefix already
+  carries the key) instead of assuming one line per phase. The one-line-per-phase
+  presentation survives; the parsing behind it does not.
+- **`/finalize-workflow`** — unaffected by construction. It consolidates the
+  whole workflow into a single commit on the parent, so batch granularity never
+  leaves the throwaway workflow branch. Which is also the honest statement of
+  what batches buy: readability *during* review, nothing at all afterwards.
+- **`/resume-workflow`** — its oversized-phase heuristic flags a phase whose
+  commit spans more than ~10 files. That heuristic must move to the batch, or a
+  correctly batched fat phase reads as a sizing failure. This is the check that
+  keeps the batch mechanism honest, so it should get stricter, not be dropped:
+  an oversized *batch* is exactly the field signal named under *The risk being
+  accepted*.
+
+### Consumer inventory: what the in-chat channel actually touches
+
+The first draft of this section named `/scope-workflow`, `/write-workflow` and
+`contracts.md` as the edit surface. That was wrong, and wrong in the way the
+section itself warns against — written before the consumers were read. The
+relay channel is not confined to the writers; it is load-bearing in the readers
+and in two gates.
+
+The one finding that changes the design: **the foreman is not only a channel,
+it is an authority of record.** `close-phase` blocks a close when the diff has
+no covering foreman decision in `notes.md` under `## Phase N`; `contracts.md`
+makes authored checks foreman-owned, routes test edits through a `clarify?`
+whose reply carries the edit, and requires every divergence to be covered by a
+foreman decision; `common.md` assigns phase sizing to the foreman. Deleting the
+relay on the in-chat channel would leave those gates pointing at nobody.
+
+The resolution costs far less than rewriting them, and it is a co-location, not
+an identification. **On the in-chat channel the foreman's procedural role is
+co-located with the executor: there is no relay between conversations.**
+Decision authority stays with the user present at the gate, and `notes.md`
+remains the mandatory record of decisions. The human is not "the foreman" —
+the role is a position in the protocol, the user is the one who decides, and
+collapsing the two would smuggle the relay's authority onto a person who never
+agreed to hold it.
+
+Three statements follow, and they are the ones the implementation must not
+blur:
+
+- the **decision record is mandatory on both channels**;
+- the **message is mandatory only on the relayed channel**;
+- the absence of the message **neither removes nor weakens the contractual
+  gates** — a gate that asks for a covering decision keeps asking for it, and
+  gets it from `notes.md`.
+
+Two existing facts make this cheap: `phase-execution.md` already specifies *no
+`foreman.json`, no messaging tool, delivery refused → skip in silence*, so the
+messaging leg is degradable by design; and `foreman.json` is a pointer to a
+chat, which on the in-chat channel is simply the current one.
+
+The surface, grouped by what each consumer assumes:
+
+| consumer | what it assumes | what the channel axis changes |
+|---|---|---|
+| `refs/common.md` | `foreman.json` in the layout; sizing is the foreman's job; one commit per phase | who plays the role; batch wording |
+| `refs/contracts.md` | authored checks foreman-owned; `clarify?`; divergence needs a covering decision | the decision's author and channel, not its existence |
+| `refs/phase-execution.md` | notify step; WIP `partial` commits; closing short; rejected result | notify already degrades silently; batch wording |
+| `refs/foreman.md` (453 lines) | the relay itself | not loaded at all in-chat — the largest single context saving |
+| `refs/board.md` | `Mode: interactive` only | reads the channel axis instead |
+| `/execute-phase` | per-phase chat title; ambiguities and stop-loss routed up; seam question | routing target is this chat; the title stops being per-phase |
+| `/close-phase` | foreman notification, the covering-decision gate | the gate stays, its authority is local |
+| `/resume-workflow` | Step 1b take-command; `foreman.json`; oversized-by-commit | take-command is a no-op in-chat; oversized moves to the batch |
+| `/quality-check` | one commit per phase in `git log` | must group by phase prefix |
+| `/finalize-workflow` | consolidation to one commit | unaffected |
+| `/write-workflow`, `/scope-workflow` | `Mode:` fork, recon absent | triage, recon, the three axes |
+| the `-agent` skills and `/run-workflow` | the relayed channel by construction | unchanged — this is the channel they exist for |
+| `next-phase.py`, `run-workflow.sh` | parse `Mode:`; progress is "the plan gains exactly one `[x]`" | progress is phase-level, so batches leave it intact; the `Mode:` parse gains the axes |
+| `scripts/wfdash/*` | `foreman.json`, inbox/outbox | renders an in-chat workflow with no relay |
+| `tests/orchestration/` | prose invariants proven by mutation; launcher scenarios | every grepped clause moved here moves its guard with it |
+
+Two consequences worth stating before the implementation inventory:
+
+1. The edit is **wide and shallow on the readers, narrow and deep on two
+   gates**. The gates (`close-phase`'s covering decision, `contracts.md`'s
+   authored-check ownership) are where a mistake silently removes a control.
+2. `refs/foreman.md` staying loadable-but-unloaded is what converts the channel
+   axis into a real context saving. If the in-chat channel still had to ingest
+   it, the axis would buy tokens back only at the messaging layer, which is
+   not where the mass is.
+
+### Compatibility plan
+
+A protocol change has three kinds of consumer, and only the first is in this
+repo's control.
+
+**1. Plans already written.** An earlier draft of this section proposed mapping
+`Mode: interactive` onto the in-chat channel. That was wrong, and wrong in a way
+worth recording: **`Mode: interactive` is not the in-chat channel.** It means
+today, and keeps meaning, a chat per phase with the foreman relay between them.
+Mapping it silently would change the semantics of every workflow already
+running.
+
+The two fields are therefore orthogonal and stay so:
+
+- **`Mode:`** keeps its job — the execution mode, `interactive` or
+  `autonomous`. Nothing about its meaning changes.
+- **`Channel:`** is the new optional field and the only one that decides where
+  decisions travel: `in-chat` or `relayed`.
+- **New plans always write `Channel:`.**
+- **A plan with no `Channel:` keeps today's behaviour**, exactly, and is neither
+  rewritten nor reinterpreted. Absence is legacy, not a default to be inferred:
+  the legacy behaviour of each `Mode:` is what it already is, relay included.
+- **`Mode: autonomous` with `Channel: in-chat` is invalid** and fails
+  validation. There is no attended gate in an unattended run, so an in-chat
+  channel there would name a conversation nobody is in.
+
+Consequently a workflow in flight when the plugin updates continues under the
+semantics it was created with — not because a mapping reproduces it, but because
+nothing reads a field the plan does not carry. `/doctor` may report a plan as
+pre-upgrade; it never repairs one in place, and no plan file is ever rewritten
+by the upgrade.
+
+The additive-and-optional rule has a limit that matters more than it looks:
+**optional means "a known field that may be absent", never "any field is
+tolerated".** `next-phase.py` accepts the new fields by name and keeps rejecting
+everything else, so `Chanel: in-chat` fails validation instead of being ignored
+in silence. A typo in a routing field that decides where decisions travel is
+exactly the defect that must not pass.
+
+**2. The Claude Code harness.** Every surface this design leans on is already in
+`docs/claude-code-compat.md` and watched by `/check-claude-update`: headless
+plugin-skill invocation, CLI flags and model aliases, agent frontmatter, auto
+permission mode, the `SendMessage` floor for cross-session messaging. The
+channel axis *reduces* exposure rather than adding to it — an in-chat workflow
+needs no `SendMessage` at all, which makes the 2.1.224 floor conditional on the
+relayed channel instead of global. That floor's row in the compat table should
+say so once the change lands, and it is the only compat-table edit this design
+requires.
+
+**3. Anything outside this repository.** Out of scope here, and deliberately so:
+other repositories are adapted and verified in their own environment, after this
+contract is stable. What this design owes them is not an inventory but a
+guarantee narrow enough to be checked from the outside, without reading a single
+skill:
+
+- the plan gains **two optional fields and no others**: `Channel:` in the header
+  and `Batches:` per phase;
+- **`Mode:` keeps its current meaning** — `interactive` or `autonomous`, the
+  execution mode, relay included;
+- **a plan with no `Channel:` behaves exactly as it does today**, unrewritten and
+  uninterpreted;
+- `Mode: autonomous` with `Channel: in-chat` is **invalid** and fails validation;
+- an **unknown field still fails validation** — optional is by name, never by
+  tolerance;
+- the **phase commit keeps its shape**, `wf(phase N): <title>`;
+- `partial` commits, already legal, **may become more frequent**.
+
+Every one of the six is observable from a plan file and a `git log`, which is
+what makes the guarantee worth stating rather than merely intending.
+
+### What the implementation corrected in this section
+
+Written after the change landed, and kept because each item corrects something
+this section originally got wrong — the pattern being that a plausible reading of
+a file is not a reading of it, which is the very defect #22 measured.
+
+- **The covering-decision gate has three sites, not two.** `close-phase` gates
+  the close, `contracts.md` owns the rule, and `/doctor` re-checks the same
+  divergence at audit time — in the same words. A change that fixed the first two
+  would have left the third quietly relay-bound.
+- **`scope-workflow` already looked before it asked.** *Establish the ground*
+  exists and states that a fact is looked up, never asked. What was missing was
+  the checklist, not the ordering.
+- **The channel is a field of its own, and `Mode:` is not it.** `Mode:
+  interactive` means a chat per phase *with* the relay; mapping it onto the
+  in-chat channel would have changed the semantics of every running workflow.
+  Hence `Channel:`, optional, absent meaning legacy.
+- **A batch is not a checkpoint.** Both end in a `partial` commit, which made
+  "one mechanic, three triggers" look right; it is not. A checkpoint writes the
+  `> WIP:` note because something is stopping, a batch writes none because
+  nothing is — and a batch that wrote one would make a phase mid-work read as
+  abandoned.
+- **The doc-mass budget priced the change.** Three closures went over the
+  1500-line ceiling and were paid, never raised. Most of it came from
+  `close-phase` and `execute-phase` dropping their direct `refs/foreman.md`
+  citations once the routing fork lived in one place: −453 closure lines each,
+  which is the context saving this section predicted, arriving as a test failure
+  rather than as a claim.
+- **Three consumers needed nothing.** `run-workflow.sh` never parses `Mode:` and
+  its `--validate` gate already rejects the invalid pairing; `board.md` keys on
+  `Mode:`, which the channel does not change; `wfdash`'s `read_foreman` already
+  returns `None` when there is no `foreman.json`, which is exactly the in-chat
+  case.
+
+### What it changes for macro-phases
+
+*Macro-phases (rolling wave)* already carries the right criterion in its second
+clause — a phase whose shape depends on an earlier phase's outcome. Decision-
+boundary sizing is that same rule applied one level down, which makes the `~8–10
+phases` trigger the weaker half: with phases sized on decisions, counts fall and
+macro splitting should follow the outcome-dependency clause, not the count.
+
+### The risk being accepted
+
+This trades reviewability against context cost, and the batch mechanism is the
+whole mitigation. That is the part to watch in the field: batch commits arriving
+that cannot be read against the phase's `Done:` mean the cut criterion slipped
+and the phase was too big.
+
+The other direction has a cheaper instrument. #22 measured ~25 apparatus commits
+(clarify, notes, receipts) against 10 phase commits. That ratio is a **diagnostic
+signal, not a verdict**: it says *look at this run*, never *this run was wrong*.
+A genuinely exploratory workflow, or one whose phases legitimately renegotiated
+scope, can sit above 1:1 and be healthy; a run can also sit below it and be a
+disaster. What makes it worth keeping is that it is mechanical — visible in
+`git log` on the workflow branch — so it points attention without anyone having
+to trust an impression of slowness. Read it against the two causes it usually
+has (a channel nobody was consuming, or a plan written unseen) and confirm or
+discard by reading the apparatus commits themselves.
+
 ## Known patterns
 
 Plan-and-Execute (LangChain/LlamaIndex) · Checkpoint & Resume (CI/CD) ·

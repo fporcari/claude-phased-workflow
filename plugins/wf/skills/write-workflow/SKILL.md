@@ -11,7 +11,7 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
 2. **Do not implement.** The user runs `/execute-phase` afterwards.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md`, `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions, the contract layer planning authors, the take-command protocol. **The board** an interactive plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` only at Step 4, only after Step 2 settled `Channel: relayed` or a legacy plan — on `Channel: in-chat` nothing creates a relay, so it is never read — core conventions, the contract layer planning authors, the take-command protocol. **The board** an interactive plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
 
 ## Step 1: Where are we
 
@@ -27,6 +27,13 @@ git rev-parse --verify origin/develop >/dev/null 2>&1 && echo develop || echo ma
 
 The user's answer is the primary input. Read code only in service of the plan.
 
+**Then look, before deciding anything.** A plan on hypotheses buys its imprecision
+back one clarify round at a time, and four classes account for most: a literal
+asserted unique and never grepped for duplicates, a behaviour transcribed from a
+design doc the code contradicts, a remedy (flag, env var, CLI option) unchecked
+against the tool's real interface, arithmetic stated without being computed —
+cheap here, expensive at a phase gate, and what Step 2 sizes on.
+
 This same fork decides the branch in Step 4 — remember which side you are on.
 
 ## Step 2: The automation fork
@@ -41,18 +48,43 @@ Derive the recommendation from the work just discussed and state it in one line 
 Ask with `AskUserQuestion` (recommended option first, per `common.md`), two options:
 
 - **Autonomous** — `/run-workflow` runs the whole plan unattended, one self-correcting sub-session per phase.
-- **Interactive** — one chat per phase with `/execute-phase`, a human approval gate on each.
+- **Interactive** — `/execute-phase` with a human approval gate on each phase; the channel below decides whether that is one chat per phase or one conversation throughout.
 
 The answer routes the rest of this skill:
 
 - **Autonomous** → read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
 - **Interactive** → continue with this file's format; the plan carries `Mode: interactive`.
 
+**Then the channel** — a different question, never read off the first: `Mode:`
+says how the work runs, `Channel:` where its decisions travel (`contracts.md` →
+*The channel*). Every new plan writes the field.
+
+- `Mode: autonomous` → `Channel: relayed`, always: nobody is at a gate, so the
+  relay is the only route a decision has.
+- `Mode: interactive` → **ask**, one line, recommendation first. `in-chat` when
+  the same person sits at every gate: one conversation plans and executes in
+  sequence, and a hop between chats buys nothing where the loop is closed
+  already. `relayed` when different chats or times pick up the phases, or
+  several workflows run at once — anything putting a chat boundary between a
+  decision and the phase needing it. Phases stay ordered and serial either way.
+
 ## Step 3: Build the plan
 
 Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
-**Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase — **at most 4 at a time**, in waves — instead of searching serially. Each returns at most 2 candidates as `<path>:<symbol> — <why it is the closest example>`, or exactly `NO CANDIDATE`. A phase coming back `NO CANDIDATE` gets `new-pattern`; it never gets a guess.
+**Sizing: one phase per decision boundary.** A phase is the largest coherent unit
+executable, verifiable and reviewable without an intermediate result forcing the
+rest to be re-planned — the count is the number of points where a result changes
+what comes next, never the number of files. Mechanical work is one phase however
+wide; three unknown root causes are three phases. A coherent phase whose diff is
+too large to review as one unit stays ONE phase and gets `> Batches:`.
+
+**Write nothing about the code you have not seen.** `Files:`, `Pattern:` and any
+`Decisions:` line asserting how the code behaves rest on the Step 1 pass. Files
+that do not exist yet are ordinary plan output: a new module is intent the phase
+realises, not a claim about what is there.
+
+**Pattern references.** On `Channel: relayed` every `/execute-phase` runs in a fresh chat, so whatever isn't in the plan gets re-discovered there, phase after phase; on `Channel: in-chat` a compact costs the same. Either way the plan is the memory. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase — **at most 4 at a time**, in waves — instead of searching serially. Each returns at most 2 candidates as `<path>:<symbol> — <why it is the closest example>`, or exactly `NO CANDIDATE`. A phase coming back `NO CANDIDATE` gets `new-pattern`; it never gets a guess.
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. Two shapes are named because both cost a gate correction in the field: when two phases read and write the same table's UI surface, settle the row-set boundary between them explicitly — who lists what, who excludes whose rows — rather than settling each phase's surface in isolation; and on a `ui` phase, record layout composition (which surface carries which zone) as mockup-negotiable intent, not as a fixed Decision — the mockup loop is what exists to settle it, and freezing it before any visual makes the user's own gate judgment a plan contradiction. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
@@ -135,12 +167,13 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and — on `Channel: relayed` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it). On `Channel: in-chat` there is no relay to command: no `foreman.json`, no take-command commit, and the same conversation carries the work.
 
 ```
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: interactive
+Channel: <in-chat|relayed>
 Must not break: <one line per contract owned by later work — contracts.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
@@ -155,6 +188,7 @@ Must not break: <one line per contract owned by later work — contracts.md → 
   - Details: <what to do concretely>
 - [ ] **Phase 2**: table foo with its TH UI (model + webpage)  `ui`
   - Run: opus / low
+  > Batches: 1 model + relations | 2 TableHandler view | 3 form and its tests
   - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
   - Details: table + columns + relations, then TableHandler view + form.
   - Done: end-to-end test — create a row via the form, assert it persists and reloads in the grid
@@ -185,8 +219,7 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
-This chat is the foreman, now titled `wf:<slug>:foreman` — it is the address phase chats report to.
-To run it, launch /execute-phase in a new chat — this one stays the board.
+relayed → this chat is the foreman, now titled `wf:<slug>:foreman`, the address phase chats report to; launch /execute-phase in a new chat and this one stays the board. in-chat → no relay: /execute-phase runs here, phase after phase, every gate in this conversation.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 

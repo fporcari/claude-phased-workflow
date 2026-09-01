@@ -463,6 +463,44 @@ assert "classifier parses a pre-4.0 MEMORY.md" 'printf "%s" "$LEG_OUT" | grep -q
 assert "classifier reports the [x] that forces adoption" 'printf "%s" "$LEG_OUT" | grep -q "^  1 \[x\]"'
 assert "classifier still finds the next pending phase" 'printf "%s" "$LEG_OUT" | grep -q "recommendation: next: 2"'
 
+# -- three sources, three roads: the classifier reads Channel: where the source
+#    carries one, and a source without it stays legacy. Importing must not add
+#    the field to somebody else's plan, and the three cases must not collapse.
+s17_source() {  # $1..$n = header lines; prints the payload's channel, or LEGACY
+  S17_S="$OT/src-plan.md"
+  { echo "# Context: imported"; echo "Parent: develop"
+    for S17_H in "$@"; do echo "$S17_H"; done
+    echo ""; echo "## Work Plan"; echo "- [ ] **Phase 1**: one"; } > "$S17_S"
+  python3 "$NEXTPHASE" --json "$S17_S" 2>/dev/null \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["meta"].get("channel","LEGACY"))'
+}
+assert "S17: a source carrying Channel: in-chat is read as in-chat" \
+  '[ "$(s17_source "Mode: interactive" "Channel: in-chat")" = "in-chat" ]'
+assert "S17: a source carrying Channel: relayed is read as relayed" \
+  '[ "$(s17_source "Mode: interactive" "Channel: relayed")" = "relayed" ]'
+assert "S17: a legacy source stays legacy — no channel is invented for it" \
+  '[ "$(s17_source "Mode: interactive")" = "LEGACY" ]'
+# The three roads must have three different operational effects in the skill,
+# not three mentions: relayed and legacy take command, in-chat does not.
+S17_IMP="$SKILLS_DIR/import-workflow/SKILL.md"
+assert "S17: the relayed import takes command and opens a new chat" \
+  'grep -q "relayed road, and only there, write .foreman.json." "$S17_IMP" &&
+   grep -qE "relayed →.*new chat" "$S17_IMP"'
+assert "S17: the in-chat import takes no command and continues here" \
+  'grep -qE "No .foreman.json., no take-command" "$S17_IMP" &&
+   grep -qE "in-chat →.*/execute-phase here" "$S17_IMP"'
+assert "S17: a legacy source is routed with the relayed road, explicitly" \
+  'grep -q "legacy plan carrying no .Channel:., importing" "$S17_IMP"'
+assert "S17: the relay layer is not read on an in-chat import" \
+  'grep -q "on .Channel: in-chat. the import creates no relay and never reads it" "$S17_IMP"'
+# Mutation: the three roads collapse back into one.
+S17_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S17_MUT/"
+sed -i.bak 's/relayed road, and only there, write `foreman.json`/write `foreman.json`/' \
+  "$S17_MUT/import-workflow/SKILL.md" && rm -f "$S17_MUT/import-workflow/SKILL.md.bak"
+assert "S17: the guard fails when the import writes foreman.json on every road" \
+  '! grep -q "relayed road, and only there, write .foreman.json." "$S17_MUT/import-workflow/SKILL.md"'
+rm -rf "$S17_MUT"
+
 # -- the mid-run git sequence must not rewrite the commits that were already there
 setup S17
 for n in 1 2 3; do echo "pre$n" > "pre$n.txt"; git add "pre$n.txt"; git commit -qm "real commit $n"; done
@@ -665,6 +703,58 @@ EOF
 WARN_OUT="$(python3 "$NEXTPHASE" --validate "$WARN_PLAN" 2>&1)"; WARN_RC=$?
 assert "S19: an unknown note field warns but does not fail (exit 0)" '[ "$WARN_RC" = 0 ]'
 assert "S19: the warning names the unknown field" 'printf "%s" "$WARN_OUT" | grep -q "warning: unknown note field .> Foo:"'
+
+# Channel: the routing field. Legacy absence, both legal pairings, and every
+# rejection — an unknown value, the invalid autonomous+in-chat combination, and
+# the near-miss field name that would otherwise read as "no header" and route a
+# workflow to the legacy road in silence.
+s19_channel() {  # $@ = header lines after Parent:; prints validator output
+  S19_CP="$OT/chan-plan.md"
+  { echo "# Context: chan"; echo "Parent: main"
+    for S19_H in "$@"; do echo "$S19_H"; done
+    echo ""; echo "## Work Plan"
+    echo "- [ ] **Phase 1**: phase one"; echo "  - Done: check one"
+    case "$*" in
+      *autonomous*) echo ""; echo "## Suggested execution config"
+                    echo "| Phase | Effort | Model |"; echo "|---|---|---|"
+                    echo "| Phase 1 | low | opus |" ;;
+    esac
+  } > "$S19_CP"
+  python3 "$NEXTPHASE" --validate "$S19_CP" 2>&1
+}
+S19_O="$(s19_channel "Mode: interactive")"
+assert "S19: a legacy plan with no Channel: validates clean" \
+  '[ -z "$(printf "%s" "$S19_O" | grep "error:")" ]'
+S19_O="$(s19_channel "Mode: interactive" "Channel: in-chat")"
+assert "S19: interactive + in-chat validates clean" \
+  '[ -z "$(printf "%s" "$S19_O" | grep "error:")" ]'
+S19_O="$(s19_channel "Mode: interactive" "Channel: relayed")"
+assert "S19: interactive + relayed validates clean" \
+  '[ -z "$(printf "%s" "$S19_O" | grep "error:")" ]'
+S19_O="$(s19_channel "Mode: autonomous" "Channel: relayed")"
+assert "S19: autonomous + relayed validates clean" \
+  '[ -z "$(printf "%s" "$S19_O" | grep "error:")" ]'
+S19_O="$(s19_channel "Mode: autonomous" "Channel: in-chat")"
+assert "S19: autonomous + in-chat is rejected" \
+  'printf "%s" "$S19_O" | grep -q "error:.*autonomous with Channel: in-chat"'
+S19_O="$(s19_channel "Mode: interactive" "Chanel: in-chat")"
+assert "S19: a near-miss channel field name is rejected, not ignored" \
+  'printf "%s" "$S19_O" | grep -q "error:.*channel value under the name .Chanel."'
+S19_O="$(s19_channel "Mode: interactive" "Channel: inchat")"
+assert "S19: an unknown Channel: value is rejected" \
+  'printf "%s" "$S19_O" | grep -q "error:.*Channel: .inchat. is not one of"'
+S19_O="$(s19_channel "Mode: interactive" "Channel: in-chat")"
+assert "S19: and its summary line reports zero errors" \
+  'printf "%s" "$S19_O" | grep -q "^validate: 0 error(s)"'
+# The channel reaches consumers through the ONE reader, in the JSON payload.
+s19_channel "Mode: interactive" "Channel: in-chat" >/dev/null
+S19_META="$(python3 "$NEXTPHASE" --json "$OT/chan-plan.md" 2>/dev/null \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["meta"].get("channel",""))')"
+assert "S19: the payload carries the channel to every consumer" '[ "$S19_META" = "in-chat" ]'
+# A malformed Channel: line must not degrade to "no header" either.
+S19_O="$(s19_channel "Mode: interactive" "Channel: in-chat (fast)")"
+assert "S19: a malformed Channel: line is rejected" \
+  'printf "%s" "$S19_O" | grep -q "error: malformed Channel:"'
 
 # (e) a warnings-only plan still runs, and the launcher PRINTS the warnings —
 # the two-severity design is mute if warning lines are computed and discarded.
@@ -1482,9 +1572,15 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # chat running it becomes a foreman that also executes.
   grep -q 'executes; it does not supervise' "$S30_C" 2>/dev/null \
     || echo "$S30_C: nothing stops a phase chat from supervising"
+  # Channel-qualified since the phase-sizing change: the ban is the relayed
+  # road's, where two chats must not both command. A line that names the
+  # in-chat channel is describing the co-located road the design introduces,
+  # not breaking the relayed rule — and the fork's own file must say so.
+  grep -q 'is the relayed' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the no-supervision rule is not scoped to a road"
   for S30_F in "$1"/*/SKILL.md; do
-    if grep -qE 'resume-workflow[^|]*in this (chat|session)|run /wf:resume-workflow here' \
-        "$S30_F" 2>/dev/null; then
+    if grep -E 'resume-workflow[^|]*in this (chat|session)|run /wf:resume-workflow here' \
+        "$S30_F" 2>/dev/null | grep -qv 'in-chat'; then
       echo "$S30_F: recommends /resume-workflow in the current chat (a phase chat does not supervise)"
     fi
   done
@@ -1515,7 +1611,7 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     fi
   done
   for S30_F in "$1"/*/SKILL.md; do
-    if grep -qE 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null; then
+    if grep -E 'execute-phase[^|]*in this (chat|session)|in this (chat|session)[^|]*execute-phase' "$S30_F" 2>/dev/null | grep -qv 'in-chat'; then
       echo "$S30_F: recommends /execute-phase in the current chat (the foreman does not execute)"
     fi
   done
@@ -3142,6 +3238,489 @@ assert "S55: and names its control files from it" \
    grep -q "ANSWER_FILE=\"\$TRANSPORT-foreman-answer\"" "$RUNNER_SRC" &&
    grep -q "APPLY_OUTCOME_FILE=\"\$TRANSPORT-apply-outcome\"" "$RUNNER_SRC"'
 rm -rf "$S55_A" "$S55_B"
+
+echo "== S56: the covering decision is channel-independent =="
+# Deep point 1 of the phase-sizing change (issue #22). The close gates on a
+# covering decision recorded in notes.md; on the relayed channel that decision
+# arrives as a foreman message, so today the record and the message land in one
+# step. A channel that drops the message must not drop the gate with it — and
+# no existing guard would have noticed, because none asserts the gate holds
+# where there is no foreman. Two halves: contracts.md owns the rule in words,
+# and the gate's own lines must carry no channel condition.
+s56_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S56_C="$2/contracts.md"
+  grep -q 'record is mandatory on both channels' "$S56_C" 2>/dev/null \
+    || echo "$S56_C: the decision record is no longer mandatory on both channels"
+  grep -q 'message is mandatory only on' "$S56_C" 2>/dev/null \
+    || echo "$S56_C: the message is no longer scoped to the relayed channel"
+  grep -q 'No channel waives a contractual gate' "$S56_C" 2>/dev/null \
+    || echo "$S56_C: nothing states that a channel cannot waive a gate"
+  # The gate itself survives in every skill that runs it. It has three sites,
+  # not one: the close, and the audit that re-checks the same divergence.
+  [ "$(grep -c 'covering decision' "$1/close-phase/SKILL.md" 2>/dev/null)" -ge 2 ] \
+    || echo "$1/close-phase/SKILL.md: the covering-decision gate lost one of its two arms"
+  grep -q 'covering decision' "$1/doctor/SKILL.md" 2>/dev/null \
+    || echo "$1/doctor/SKILL.md: the audit no longer requires a covering decision"
+  grep -q 'covered by a decision' "$S56_C" 2>/dev/null \
+    || echo "$S56_C: the contract no longer requires a covering decision"
+  # And it is unconditional: a gate line that names a channel is a gate that
+  # one channel can skip. This is the mechanical half — deletion is caught
+  # above, weakening is caught here.
+  for S56_F in "$1/close-phase/SKILL.md" "$1/doctor/SKILL.md"; do
+    if grep 'covering decision' "$S56_F" 2>/dev/null \
+        | grep -qE 'relayed|foreman\.json|Channel:'; then
+      echo "$S56_F: the covering-decision gate is conditional on the channel"
+    fi
+  done
+  # The silent-skip clause is scoped to the MESSAGE, never to the record.
+  grep -q 'the record is written either way' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the silent notify skip is not scoped to the message"
+  # No routing instruction may name the relay without naming its road: an
+  # unqualified "goes to the foreman" is a relay the in-chat channel cannot
+  # escape, which is how the branch stays half-built while every test passes.
+  grep -q '^## Routing a decision' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the routing fork has no single source"
+  # Swept everywhere the fork has to hold, not only where it was first written.
+  # The two sections that OWN the fork are exempt — they are what the others
+  # cite — and nothing else may name the relay without naming its road.
+  for S56_ROUTE in "$1/execute-phase/SKILL.md" "$1/import-workflow/SKILL.md" \
+                   "$1/resume-workflow/SKILL.md" "$2/phase-execution.md" \
+                   "$2/contracts.md"; do
+    case "$S56_ROUTE" in
+      *execute-phase*|*import-workflow*|*resume-workflow*)
+        grep -q 'Routing a decision\|relayed road\|Channel: relayed' "$S56_ROUTE" 2>/dev/null \
+          || echo "$S56_ROUTE: names no road at all — the fork does not reach it" ;;
+    esac
+    while IFS= read -r S56_L; do
+      [ -n "$S56_L" ] || continue
+      echo "$S56_ROUTE: unconditional relay — \"$(echo "$S56_L" | cut -c1-60)…\""
+    done <<EOF
+$(awk '/^## /{sec=$0} sec !~ /Routing a decision|Notify the foreman/' "$S56_ROUTE" 2>/dev/null \
+  | grep -E 'clarify\?|to the foreman|the foreman chat is told|write .foreman\.json.|Read .*foreman\.json' \
+  | grep -vE 'in-chat|relayed|legacy|Routing a decision')
+EOF
+  done
+  # Nobody anywhere licenses a close without one.
+  for S56_F in "$1"/*/SKILL.md "$2"/*.md; do
+    if grep -qEi 'without a covering decision|covering decision is (only|not) (required|needed)|skip the covering decision' \
+        "$S56_F" 2>/dev/null; then
+      echo "$S56_F: licenses a close with no covering decision"
+    fi
+  done
+  return 0
+}
+S56_OUT="$(s56_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S56_OUT" ] || echo "  offending: $S56_OUT"
+assert "S56: the covering-decision gate holds on both channels" '[ -z "$S56_OUT" ]'
+# Mutation A — the gate is deleted from the skill that runs it.
+S56_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S56_MUT/"
+sed -i.bak '/covering decision/d' "$S56_MUT/close-phase/SKILL.md" \
+  && rm -f "$S56_MUT/close-phase/SKILL.md.bak"
+assert "S56: the guard fails when the close drops the covering-decision gate" \
+  '[ -n "$(s56_guard "$S56_MUT" "$S24_REFS")" ]'
+rm -rf "$S56_MUT"
+# Mutation B — the gate survives but only on the relayed channel: the exact
+# defect the message/record split invites.
+S56_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S56_MUT/"
+sed -i.bak 's/A diff with no covering decision/On Channel: relayed, a diff with no covering decision/' \
+  "$S56_MUT/close-phase/SKILL.md" && rm -f "$S56_MUT/close-phase/SKILL.md.bak"
+assert "S56: the guard fails when the gate becomes channel-conditional" \
+  '[ -n "$(s56_guard "$S56_MUT" "$S24_REFS")" ]'
+rm -rf "$S56_MUT"
+# Mutation C — a routing rule loses its channel qualifier: the half-built
+# in-chat branch, which every other test in the suite would pass.
+S56_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S56_MUT/"
+sed -i.bak 's/routed before the gate per \*Routing a decision\*/sent up as `clarify?` before the gate/' \
+  "$S56_MUT/execute-phase/SKILL.md" && rm -f "$S56_MUT/execute-phase/SKILL.md.bak"
+assert "S56: the guard fails when a routing rule keeps an unconditional relay" \
+  '[ -n "$(s56_guard "$S56_MUT" "$S24_REFS")" ]'
+rm -rf "$S56_MUT"
+# Mutation D — the audit stops asking for one, while the close still does:
+# the gate half nobody would notice missing.
+S56_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S56_MUT/"
+sed -i.bak 's/A divergence with no covering decision/A divergence/' \
+  "$S56_MUT/doctor/SKILL.md" && rm -f "$S56_MUT/doctor/SKILL.md.bak"
+assert "S56: the guard fails when the audit drops its arm of the gate" \
+  '[ -n "$(s56_guard "$S56_MUT" "$S24_REFS")" ]'
+rm -rf "$S56_MUT"
+# Mutation E — contracts.md stops owning the rule.
+S56_MUT="$(mktemp -d)"; mkdir -p "$S56_MUT/refs"; cp "$S24_REFS"/*.md "$S56_MUT/refs/"
+sed -i.bak '/record is mandatory on both channels/d' "$S56_MUT/refs/contracts.md" \
+  && rm -f "$S56_MUT/refs/contracts.md.bak"
+assert "S56: the guard fails when contracts.md stops owning the rule" \
+  '[ -n "$(s56_guard "$SKILLS_DIR" "$S56_MUT/refs")" ]'
+rm -rf "$S56_MUT"
+
+echo "== S57: authored-check ownership survives the channel =="
+# Deep point 2. Authored checks are owned by the plan's author and are never
+# the executing phase's to edit; the relayed channel expresses that ownership
+# as "foreman-owned". Read carelessly, "no foreman on the in-chat channel"
+# becomes "no owner", and a child editing its own contract test turns legal —
+# the defect S35 exists to prevent, arriving through a door S35 does not watch.
+s57_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S57_C="$2/contracts.md"
+  grep -q 'a position, not a chat' "$S57_C" 2>/dev/null \
+    || echo "$S57_C: authored-check ownership is still bound to a chat"
+  grep -q 'co-located with the executor' "$S57_C" 2>/dev/null \
+    || echo "$S57_C: the in-chat channel has no owner for the authored checks"
+  grep -q 'read-only for the child' "$S57_C" 2>/dev/null \
+    || echo "$S57_C: the contract lost the child's read-only rule"
+  # The read-only rule carries no channel qualifier: it holds on both.
+  if grep 'read-only for the child' "$S57_C" 2>/dev/null \
+      | grep -qE 'relayed|in-chat|Channel:'; then
+    echo "$S57_C: the child's read-only rule is conditional on the channel"
+  fi
+  # Nobody licenses the executing phase to edit its own contract.
+  for S57_F in "$1"/*/SKILL.md "$2"/*.md; do
+    if grep -qEi 'may edit its own contract|edit(s)? the contract itself|rewrite its own contract test' \
+        "$S57_F" 2>/dev/null; then
+      echo "$S57_F: licenses the executing phase to edit its own contract"
+    fi
+  done
+  return 0
+}
+S57_OUT="$(s57_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S57_OUT" ] || echo "  offending: $S57_OUT"
+assert "S57: authored-check ownership is a position, not a chat" '[ -z "$S57_OUT" ]'
+# Mutation A — the ownership clause leaves contracts.md.
+S57_MUT="$(mktemp -d)"; mkdir -p "$S57_MUT/refs"; cp "$S24_REFS"/*.md "$S57_MUT/refs/"
+sed -i.bak '/a position, not a chat/d' "$S57_MUT/refs/contracts.md" \
+  && rm -f "$S57_MUT/refs/contracts.md.bak"
+assert "S57: the guard fails when ownership goes back to being a chat" \
+  '[ -n "$(s57_guard "$SKILLS_DIR" "$S57_MUT/refs")" ]'
+rm -rf "$S57_MUT"
+# Mutation B — the in-chat channel is granted the exemption.
+S57_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S57_MUT/"
+printf '\nOn Channel: in-chat the phase may edit its own contract test.\n' \
+  >> "$S57_MUT/execute-phase/SKILL.md"
+assert "S57: the guard fails when in-chat licenses a self-edited contract" \
+  '[ -n "$(s57_guard "$S57_MUT" "$S24_REFS")" ]'
+rm -rf "$S57_MUT"
+
+echo "== S58: a planned batch is not an interrupted phase =="
+# Batches promote the existing `partial` commit from escape hatch to planned
+# subdivision, which makes an old rule ambiguous: "[>] with no WIP note and no
+# partial commit carries no evidence" read the other way round says a partial
+# commit means an interrupted session. On a batched phase it means work in
+# progress. The shared core must carry both readings explicitly, the invariant
+# must name the phase commit as the only closing one, and nothing may turn a
+# batch boundary into a gate.
+s58_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  grep -q 'planned batch is not an interrupted phase' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: nothing distinguishes a planned batch from an interrupted phase"
+  # Two mechanics, not one: the checkpoint writes the WIP note, the batch does
+  # not, and each lives under its own heading. A single merged section is how
+  # the distinction rots back into "three triggers, one mechanic".
+  grep -q '^## WIP checkpoints$' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: WIP checkpoints lost their own section"
+  grep -q '^## Planned batches$' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: planned batches have no section of their own"
+  grep -q 'A batch is not a checkpoint' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: a batch and a checkpoint are the same thing again"
+  grep -qE 'no .> WIP:. note and no handover' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: a batch still writes the interruption note"
+  # The canonical form, and the commit that names which batch it is — without
+  # them the plan's list and the log cannot be lined up.
+  grep -q '> Batches: 1 <label>' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: Batches: has no canonical form"
+  grep -q 'partial — batch M/K' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the batch commit does not name the batch"
+  grep -q '> Batches: 1 ' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: the plan template carries no Batches: example"
+  grep -q 'phase commit' "$2/common.md" 2>/dev/null \
+    || echo "$2/common.md: the commit invariant no longer names the phase commit"
+  grep -q 'partial' "$2/common.md" 2>/dev/null \
+    || echo "$2/common.md: the invariant does not admit the partial commits before it"
+  grep -q 'Batches:' "$2/contracts.md" 2>/dev/null \
+    || echo "$2/contracts.md: the contract layer does not define Batches:"
+  # A batch is a commit, never a gate: the whole point is that it costs no
+  # context reset and no approval.
+  for S58_F in "$1"/*/SKILL.md "$2"/*.md; do
+    if grep -qEi 'gate (at|on) (each|every) batch|batch gate|approval per batch' \
+        "$S58_F" 2>/dev/null; then
+      echo "$S58_F: turns a batch boundary into a gate"
+    fi
+  done
+  # The reader knows the field: an unknown note field is only a warning, so a
+  # Batches: note nobody declared would degrade in silence.
+  grep -q "'Batches'" "$TESTDIR/../../plugins/wf/scripts/next-phase.py" 2>/dev/null \
+    || echo "next-phase.py: Batches is not a known note field"
+  return 0
+}
+# The reader holds the canonical form to its shape: a canonical note is clean, a
+# prose list and a gap in the numbering both warn — the two ways the plan's list
+# stops lining up with the `batch M/K` commits.
+s58_plan() {  # $1 = the Batches body; prints validator output
+  S58_P="$OT/batch-plan.md"
+  { echo "# Context: b"; echo "Parent: main"; echo "Mode: interactive"
+    echo "Channel: in-chat"; echo ""; echo "## Work Plan"
+    echo "- [ ] **Phase 1**: phase one"; echo "  > Batches: $1"
+    echo "  - Done: check one"; } > "$S58_P"
+  python3 "$NEXTPHASE" --validate "$S58_P" 2>&1
+}
+assert "S58: a canonical Batches: note validates clean" \
+  '[ -z "$(s58_plan "1 model | 2 view | 3 tests" | grep -E "error:|warning:")" ]'
+assert "S58: a prose Batches: body warns" \
+  's58_plan "model, view, tests" | grep -q "warning: .> Batches:. body is not"'
+assert "S58: a gap in the batch numbering warns" \
+  's58_plan "1 model | 3 view" | grep -q "warning: .> Batches:. items must be numbered"'
+assert "S58: neither warning ever blocks a run" \
+  '[ -z "$(s58_plan "model, view" | grep "error:")" ]'
+S58_OUT="$(s58_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S58_OUT" ] || echo "  offending: $S58_OUT"
+assert "S58: planned batches and interrupted phases are told apart" '[ -z "$S58_OUT" ]'
+# Mutation A — the distinction leaves the shared core.
+S58_MUT="$(mktemp -d)"; mkdir -p "$S58_MUT/refs"; cp "$S24_REFS"/*.md "$S58_MUT/refs/"
+sed -i.bak '/planned batch is not an interrupted phase/d' "$S58_MUT/refs/phase-execution.md" \
+  && rm -f "$S58_MUT/refs/phase-execution.md.bak"
+assert "S58: the guard fails when the two readings collapse" \
+  '[ -n "$(s58_guard "$SKILLS_DIR" "$S58_MUT/refs")" ]'
+rm -rf "$S58_MUT"
+# Mutation B — the two sections merge back into one mechanic: the words
+# "Batches:" and "partial" all survive, only the distinction dies.
+S58_MUT="$(mktemp -d)"; mkdir -p "$S58_MUT/refs"; cp "$S24_REFS"/*.md "$S58_MUT/refs/"
+sed -i.bak 's/^## Planned batches$/### Planned batches (same mechanic)/' \
+  "$S58_MUT/refs/phase-execution.md" && rm -f "$S58_MUT/refs/phase-execution.md.bak"
+assert "S58: the guard fails when batches lose their own mechanic" \
+  '[ -n "$(s58_guard "$SKILLS_DIR" "$S58_MUT/refs")" ]'
+rm -rf "$S58_MUT"
+# Mutation C — a batch starts writing the interruption note, which is how the
+# next reader mistakes work in progress for an abandoned phase.
+S58_MUT="$(mktemp -d)"; mkdir -p "$S58_MUT/refs"; cp "$S24_REFS"/*.md "$S58_MUT/refs/"
+sed -i.bak 's/no `> WIP:` note and no handover/the `> WIP:` note as usual/' \
+  "$S58_MUT/refs/phase-execution.md" && rm -f "$S58_MUT/refs/phase-execution.md.bak"
+assert "S58: the guard fails when a batch writes the interruption note" \
+  '[ -n "$(s58_guard "$SKILLS_DIR" "$S58_MUT/refs")" ]'
+rm -rf "$S58_MUT"
+# Mutation D — the canonical form leaves, so plan list and log cannot line up.
+S58_MUT="$(mktemp -d)"; mkdir -p "$S58_MUT/refs"; cp "$S24_REFS"/*.md "$S58_MUT/refs/"
+sed -i.bak '/> Batches: 1 <label>/d' "$S58_MUT/refs/phase-execution.md" \
+  && rm -f "$S58_MUT/refs/phase-execution.md.bak"
+assert "S58: the guard fails when Batches: loses its canonical form" \
+  '[ -n "$(s58_guard "$SKILLS_DIR" "$S58_MUT/refs")" ]'
+rm -rf "$S58_MUT"
+# Mutation E — a batch grows a gate, which is the whole cost the design refuses.
+S58_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S58_MUT/"
+printf '\nPresent the work at a gate on each batch.\n' >> "$S58_MUT/execute-phase/SKILL.md"
+assert "S58: the guard fails when a batch boundary becomes a gate" \
+  '[ -n "$(s58_guard "$S58_MUT" "$S24_REFS")" ]'
+rm -rf "$S58_MUT"
+
+echo "== S59: reconnaissance precedes the questions =="
+# Nine clarify rounds on one run, and almost every one repaired a plan written
+# before the code was read (issue #22). Two skills ask the user things: the
+# scoping interrogation and the planning fork. Both must look first, and both
+# must name the four defect classes the field actually produced, so the pass is
+# a checklist rather than a good intention.
+s59_guard() {  # $1 = a skills dir; prints one line per violation
+  S59_SCOPE="$1/scope-workflow/SKILL.md"
+  S59_WRITE="$1/write-workflow/SKILL.md"
+  # Ordering: the ground is established before the decision tree is mapped.
+  S59_GROUND=$(grep -n '^## Step 2: Establish the ground' "$S59_SCOPE" 2>/dev/null | cut -d: -f1)
+  S59_TREE=$(grep -n '^## Step 3: Map the decision tree' "$S59_SCOPE" 2>/dev/null | cut -d: -f1)
+  if [ -z "$S59_GROUND" ] || [ -z "$S59_TREE" ] || [ "$S59_GROUND" -ge "$S59_TREE" ]; then
+    echo "$S59_SCOPE: the interrogation no longer follows the ground pass"
+  fi
+  grep -q 'looked up, never asked' "$S59_SCOPE" 2>/dev/null \
+    || echo "$S59_SCOPE: a fact may be asked instead of looked up"
+  # The four classes, in both skills that write or shape a plan.
+  for S59_F in "$S59_SCOPE" "$S59_WRITE"; do
+    for S59_K in literal behaviour remedy arithmetic; do
+      grep -qi "$S59_K" "$S59_F" 2>/dev/null \
+        || echo "$S59_F: the recon checklist lost the '$S59_K' class"
+    done
+  done
+  # Planning looks before it sizes.
+  grep -q 'look, before deciding anything' "$S59_WRITE" 2>/dev/null \
+    || echo "$S59_WRITE: the plan is built without a look at the code first"
+  grep -q 'you have not seen' "$S59_WRITE" 2>/dev/null \
+    || echo "$S59_WRITE: the evidence rule on Files:/Decisions: is gone"
+  # The brief hands over the channel with the mode, or /write-workflow re-asks
+  # what one question at a time should already have settled.
+  grep -q '^Channel: <in-chat|relayed>' "$S59_SCOPE" 2>/dev/null \
+    || echo "$S59_SCOPE: the scoping brief hands over no channel"
+  return 0
+}
+S59_OUT="$(s59_guard "$SKILLS_DIR")"
+[ -z "$S59_OUT" ] || echo "  offending: $S59_OUT"
+assert "S59: both asking skills look before they ask" '[ -z "$S59_OUT" ]'
+# Mutation A — the ground pass moves after the decision tree.
+S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
+python3 - "$S59_MUT/scope-workflow/SKILL.md" <<'PYEOF'
+import re, sys
+p = sys.argv[1]
+t = open(p).read()
+t = t.replace('## Step 2: Establish the ground', '## Step 4: Establish the ground')
+t = t.replace('## Step 3: Map the decision tree', '## Step 2: Map the decision tree')
+t = t.replace('## Step 4: Establish the ground', '## Step 3: Establish the ground')
+open(p, 'w').write(t)
+PYEOF
+assert "S59: the guard fails when the questions come before the ground" \
+  '[ -n "$(s59_guard "$S59_MUT")" ]'
+rm -rf "$S59_MUT"
+# Mutation B — the checklist loses a class, the cheapest way for it to rot.
+S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
+sed -i.bak 's/arithmetic/counting/g' "$S59_MUT/write-workflow/SKILL.md" \
+  && rm -f "$S59_MUT/write-workflow/SKILL.md.bak"
+assert "S59: the guard fails when the recon checklist loses a class" \
+  '[ -n "$(s59_guard "$S59_MUT")" ]'
+rm -rf "$S59_MUT"
+assert "S59: the scoping brief hands the channel over with the mode" \
+  'grep -q "^Channel: <in-chat|relayed>" "$SKILLS_DIR/scope-workflow/SKILL.md"'
+# Mutation C — the brief hands over the mode and no channel.
+S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
+sed -i.bak '/^Channel: <in-chat|relayed>/d' "$S59_MUT/scope-workflow/SKILL.md" \
+  && rm -f "$S59_MUT/scope-workflow/SKILL.md.bak"
+assert "S59: the guard fails when the brief hands over no channel" \
+  '[ -n "$(s59_guard "$S59_MUT")" ]'
+rm -rf "$S59_MUT"
+
+echo "== S60: every entrance forks, and the two roads do different things =="
+# A relay half-removed is worse than one left whole: the in-chat branch reads as
+# supported while every instruction still routes through a chat that does not
+# exist. Presence of the word "in-chat" proves nothing — this guard asks, per
+# entrance, that the relayed road keeps its effect AND the in-chat road states
+# the opposite effect. Six entrances, one per operational consequence.
+s60_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  S60_IMP="$1/import-workflow/SKILL.md"
+  S60_RES="$1/resume-workflow/SKILL.md"
+  S60_CORE="$2/phase-execution.md"
+  # (1) import + in-chat writes no foreman.json; relayed still does.
+  grep -qE 'No .foreman\.json., no take-command' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: an in-chat import still takes command"
+  grep -q 'relayed road, and only there, write `foreman.json`' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: the relayed import no longer writes foreman.json"
+  # (2) import + in-chat continues here; relayed still opens a new chat.
+  grep -q 'in-chat → no relay and no foreman' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: the in-chat close does not say where the work continues"
+  grep -qE 'in-chat →.*/execute-phase here' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: an in-chat import still sends the user to another chat"
+  grep -qE 'relayed →.*new chat' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: the relayed import lost its new-chat instruction"
+  # (3) resume names the channel, and does not always name a foreman.
+  grep -q 'One \*\*Channel\*\* line closes the point' "$S60_RES" 2>/dev/null \
+    || echo "$S60_RES: the report still always names a Foreman line"
+  grep -qE 'in-chat.*continues in this conversation|continues in this conversation' "$S60_RES" 2>/dev/null \
+    || echo "$S60_RES: an in-chat resume does not say the work continues here"
+  grep -q 'in this same conversation on `Channel: in-chat`' "$S60_RES" 2>/dev/null \
+    || echo "$S60_RES: the skill map still sends every phase to a new chat"
+  grep -q 'no relay to take command of' "$S60_RES" 2>/dev/null \
+    || echo "$S60_RES: an in-chat resume still runs the take-command protocol"
+  # (4) close-short reports on both roads, and re-plans on both.
+  grep -q 'Report that it closed short' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: closing short still reports only to the foreman"
+  grep -qE 'closed short.*`Channel: in-chat`|said at the gate on' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: the short close has no in-chat road"
+  grep -q 'sized with the user at this same gate' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: the remainder is still always the foreman's to size"
+  # (5) a rejected result routes by the table, not straight to the foreman.
+  grep -q 'the `result rejected` outcome and the' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: a rejected result still messages the foreman unconditionally"
+  # (6) the second failed repair goes out by road, not to the foreman by name.
+  grep -q 'goes out as `blocked`' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: a second failed repair still goes to the foreman by name"
+  grep -q 'to the user here on `Channel: in-chat`' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: blocked has no in-chat destination"
+  S60_REP="$1/repair-phase/SKILL.md"
+  S60_DOC="$1/doctor/SKILL.md"
+  S60_HLP="$1/help/SKILL.md"
+  # (7) a failed repair reports blocked by road, and its title needs no relay.
+  grep -q 'report `blocked` per' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: a failed repair still sends the foreman the blocked line unconditionally"
+  grep -q 'said to the user at this gate on `Channel: in-chat`' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: a failed in-chat repair has nobody to report to"
+  if grep 'Title this chat' "$S60_REP" 2>/dev/null | grep -q 'foreman\.md'; then
+    echo "$S60_REP: titling the repair chat still loads the relay layer"
+  fi
+  # (8) a confirmed plan-defect is fixed by the plan's owner, by road.
+  grep -q 'fixed from there by whoever owns the plan' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: a confirmed plan-defect is still always the foreman's to fix"
+  # The fresh-eyes hand-back is NOT the relay and must survive on both roads.
+  grep -q 'not the workflow.s relay' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: the hand-back to the phase chat lost its exemption"
+  # (9) doctor re-plans by road, and (10) names an owner, not a chat.
+  grep -q 'this same conversation on `Channel: in-chat`' "$S60_DOC" 2>/dev/null \
+    || echo "$S60_DOC: re-planning still always goes to the foreman chat"
+  grep -q 'a position, not a chat' "$S60_DOC" 2>/dev/null \
+    || echo "$S60_DOC: the decision on an edited contract is still a chat's, not a position's"
+  if grep -n 'Close with the next step' -A3 "$S60_DOC" 2>/dev/null \
+      | grep -q 'in the foreman chat for'; then
+    echo "$S60_DOC: the closing next step is still foreman-only"
+  fi
+  # (11) help teaches both roads for a rejected result, and (12) for resume.
+  grep -q 'on `in-chat` there is nobody to tell' "$S60_HLP" 2>/dev/null \
+    || echo "$S60_HLP: a rejected result is still always told to the foreman"
+  grep -q 'on `in-chat` the conversation that' "$S60_HLP" 2>/dev/null \
+    || echo "$S60_HLP: the resume route is still always a fresh chat"
+  # help teaches; an unqualified instruction there teaches the relayed road as
+  # if it were the only one. Three places say where resume runs — the
+  # introduction, the route list, the closing line — and each is checked on its
+  # own, because qualifying the middle one is exactly what happened first.
+  S60_HLP_INTRO="$(sed -n '1,20p' "$S60_HLP" 2>/dev/null)"
+  S60_HLP_CLOSE="$(grep -A4 'Close with one line' "$S60_HLP" 2>/dev/null)"
+  printf '%s' "$S60_HLP_INTRO" | grep -q 'in-chat' \
+    || echo "$S60_HLP: the introduction names one road only"
+  printf '%s' "$S60_HLP_CLOSE" | grep -q 'in-chat' \
+    || echo "$S60_HLP: the closing line names one road only"
+  # And no instruction anywhere sends the user to a chat without naming a road.
+  while IFS= read -r S60_L; do
+    [ -n "$S60_L" ] || continue
+    echo "$S60_HLP: unqualified fresh chat — \"$(echo "$S60_L" | cut -c1-52)…\""
+  done <<EOF
+$(grep -nE 'in a fresh chat|open a fresh chat|a fresh chat on `/|one fresh chat' "$S60_HLP" 2>/dev/null \
+  | grep -vE 'in-chat|relayed|legacy')
+EOF
+  grep -q 'a fresh chat per phase on `relayed`' "$S60_HLP" 2>/dev/null \
+    || echo "$S60_HLP: the interactive build is still one fresh chat per phase"
+  # The fork covers outcomes and re-plannings, not questions alone.
+  grep -q 'an \*\*outcome\*\*' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: the fork does not route outcomes"
+  grep -q 'a \*\*re-planning\*\*' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: the fork does not route re-plannings"
+  return 0
+}
+S60_OUT="$(s60_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S60_OUT" ] || echo "  offending: $S60_OUT"
+assert "S60: both roads are spelled out at every entrance" '[ -z "$S60_OUT" ]'
+# Six mutations, one per operational consequence — each leaves the vocabulary
+# in place and changes only what actually happens on one road.
+s60_mutate() {  # $1 = relative file, $2 = sed script; prints the guard's output
+  S60_M="$(mktemp -d)"; mkdir -p "$S60_M/refs"
+  cp -R "$SKILLS_DIR"/. "$S60_M/"; cp "$S24_REFS"/*.md "$S60_M/refs/"
+  sed -i.bak "$2" "$S60_M/$1" && rm -f "$S60_M/$1.bak"
+  s60_guard "$S60_M" "$S60_M/refs"
+  rm -rf "$S60_M"
+}
+assert "S60: fails when an in-chat import creates foreman.json" \
+  '[ -n "$(s60_mutate import-workflow/SKILL.md "s/No \`foreman.json\`, no take-command/A \`foreman.json\` all the same/")" ]'
+assert "S60: fails when an in-chat import prescribes a new chat" \
+  '[ -n "$(s60_mutate import-workflow/SKILL.md "s|in-chat → no relay and no foreman: to carry on, /execute-phase here|in-chat → to carry on, launch /execute-phase in a new chat|")" ]'
+assert "S60: fails when closing short always goes to the foreman" \
+  '[ -n "$(s60_mutate refs/phase-execution.md "s/Report that it closed short/Tell the foreman it closed short/")" ]'
+assert "S60: fails when a rejected result always sends the message" \
+  '[ -n "$(s60_mutate refs/phase-execution.md "s/the \`result rejected\` outcome and the/the foreman gets the \`result rejected\` line and the/")" ]'
+assert "S60: fails when a second failed repair always goes to the foreman" \
+  '[ -n "$(s60_mutate refs/phase-execution.md "s/goes out as \`blocked\`/goes to the foreman as \`blocked\`/")" ]'
+assert "S60: fails when an in-chat resume prescribes a new chat or a foreman" \
+  '[ -n "$(s60_mutate resume-workflow/SKILL.md "s/One \*\*Channel\*\* line closes the point/One **Foreman** line closes the point/")" ]'
+assert "S60: fails when an in-chat failed repair sends blocked to the foreman" \
+  '[ -n "$(s60_mutate repair-phase/SKILL.md "s/report \`blocked\` per/send the foreman the \`blocked\` line per/")" ]'
+assert "S60: fails when a confirmed plan-defect is always the foreman's to fix" \
+  '[ -n "$(s60_mutate repair-phase/SKILL.md "s/fixed from there by whoever owns the plan/fixed from there by the foreman/")" ]'
+assert "S60: fails when the repair title reloads the relay layer" \
+  '[ -n "$(s60_mutate repair-phase/SKILL.md "s|on \`session_id: \"self\"\`.|on \`session_id: \"self\"\` (\`foreman.md\` → *The foreman*).|")" ]'
+assert "S60: fails when doctor always re-plans in the foreman chat" \
+  '[ -n "$(s60_mutate doctor/SKILL.md "s/this same conversation on \`Channel: in-chat\`/the foreman chat in every case/")" ]'
+assert "S60: fails when doctor gives the decision to a chat, not a position" \
+  '[ -n "$(s60_mutate doctor/SKILL.md "s/a position, not a chat/the foreman.s alone/")" ]'
+assert "S60: fails when help teaches the foreman for every rejected result" \
+  '[ -n "$(s60_mutate help/SKILL.md "s/on \`in-chat\` there is nobody to tell/on \`in-chat\` tell the foreman chat too/")" ]'
+assert "S60: fails when help prescribes a fresh chat for every resume" \
+  '[ -n "$(s60_mutate help/SKILL.md "s/on \`in-chat\` the conversation that/in a fresh chat, whatever the channel, and the conversation that/")" ]'
+assert "S60: fails when help's introduction goes back to one road" \
+  '[ -n "$(s60_mutate help/SKILL.md "1,20s/on \`Channel: in-chat\`//")" ]'
+assert "S60: fails when help's closing line goes back to one road" \
+  '[ -n "$(s60_mutate help/SKILL.md "s|of an actual workflow, ./wf:resume-workflow. — a fresh chat on|of an actual workflow, open a fresh chat on \`/wf:resume-workflow\`. Not on|")" ]'
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

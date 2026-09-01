@@ -93,19 +93,50 @@ absent**: an autonomous project startup still wants human eyes on the result.
 **Authored checks are foreman-owned.** After the plan commit, the contract
 fields — `Done:`, the authored `Verify:` steps, the contract tests where the
 plan carries them — belong to the plan's author, never to the phase executing
-them. On a `ui` phase the authored `Verify:` list is written COMPLETE at
+them. Ownership is **a position, not a chat**:
+on `Channel: relayed` it sits in the foreman chat, on `Channel: in-chat` it is
+co-located with the executor and the authority is the user at the gate. No
+channel leaves the checks unowned or hands them to the phase running them. On a `ui` phase the authored `Verify:` list is written COMPLETE at
 planning time: the checks the human will run at that phase are pre-established
 in the plan, not improvised at the gate — the mockup loop refines the look,
 never the checklist. The executing chat may ADD surfaced steps — an addition
 strengthens the contract — but never drops or rewords an authored one on its
-own: a check that no longer fits is a plan ambiguity, routed through the
-foreman (`clarify?`), whose reply carries the edit. The sanctioned protocols
-that already reshape the contract — closed short, a rejected result — keep
-working as written: both report to the foreman by construction.
+own: a check that no longer fits is a plan ambiguity, routed per
+`refs/phase-execution.md` → *Routing a decision* — `clarify?` to the foreman on
+the relayed road, the user at the gate on `Channel: in-chat` — and the answer
+carries the edit. The sanctioned protocols that already reshape the contract —
+closed short, a rejected result — keep working as written: both report their
+outcome and re-plan by the rows of that same table, on either road.
 
 `verify.md` and `review.md` are siblings, not duplicates: `review.md` says
 *"here is what I noticed and will not decide for you"* — the user reads and
 judges; `verify.md` says *"here is what you must exercise"* — the user does.
+
+## The channel — where decisions travel
+
+`Channel:` is an optional plan header deciding one thing: the route a decision
+takes from the person who owns it to the phase that needs it. `relayed` — as a
+message between chats, through the foreman (`refs/foreman.md`). `in-chat` — no
+relay: the foreman's procedural role is co-located with the executor, and the
+authority is the user at the gate.
+
+Orthogonal to `Mode:`, which keeps meaning the execution mode. **A plan with no
+`Channel:` keeps today's behaviour**, unrewritten and uninterpreted:
+`Mode: interactive` still means a chat per phase with the relay between them.
+New plans always write the field. `Mode: autonomous` with `Channel: in-chat` is
+invalid — an unattended run has no attended gate for a decision to reach.
+
+**Record and message are two obligations, not one.** The relayed channel
+delivers them together, which is what makes them easy to confuse: the decision
+record is mandatory on both channels (`notes.md`, under `## Phase N`, is what
+every gate reads); the message is mandatory only on `Channel: relayed`, the one
+route that crosses a chat boundary. **No channel waives a contractual gate** — a
+gate asking for a covering decision keeps asking wherever it was taken.
+
+`Batches:` is the other new field: an optional per-phase note listing a planned
+subdivision, for a phase whose diff is too large to review as one unit — canonical
+form and mechanic in `refs/phase-execution.md` → *Planned batches*. It changes what
+the phase commits, never what it owes: one `Done:`, one gate, one close.
 
 ## The quality-check stamp
 
@@ -171,8 +202,10 @@ The rules, in both execution modes:
   copy — and a skeleton's body — is the phase's work; the contract is not.
 - **The contract is read-only for the child.** A test that cannot pass as
   written — a wrong premise, an assertion the design outgrew — is a plan
-  ambiguity, never a local fix: interactive phases route it as `clarify?`
-  (`refs/foreman.md` → *The foreman*), and the foreman's reply carries the exact test edit as
+  ambiguity, never a local fix: interactive phases route it per
+  `refs/phase-execution.md` → *Routing a decision*, and the answer — the
+  foreman's on the relayed road, the user's at the gate where there is none —
+  carries the exact test edit as
   before-text → after-text, applied verbatim by the child and committed as
   `wf: clarify phase N — <one line>`. Unattended phases have nobody to ask
   mid-phase: the phase closes `[!]` with `> Issue: plan-defect claim — <the
@@ -192,9 +225,9 @@ The rules, in both execution modes:
   HEAD -- <plan dir>/tests/phase-N/` empty): a child that edits BOTH copies
   makes them agree, so byte-identity alone cannot see it rewriting its own
   contract. Executable tests byte-identical; skeletons with their test names
-  and every `wf:contract:` line surviving verbatim and no red body left. Any divergence must be covered by a foreman decision
+  and every `wf:contract:` line surviving verbatim and no red body left. Any divergence must be covered by a decision
   recorded in `notes.md` under the phase's `## Phase N` — a silent one
-  blocks the close.
+  blocks the close, on either channel.
 
 A plan without the option keeps today's behaviour: tests are written by each
 phase, and the cross-phase direction is prose
@@ -240,8 +273,8 @@ the wrong side of the programme.
 - **Read at execution.** `/execute-phase`'s compatibility line and the
   shared core's plan-is-context skim treat these lines — and, where a
   roadmap exists, its remaining macro-phases — as premises of the same rank
-  as a pending phase's: a choice that breaks one goes up as `clarify?`
-  before any approval.
+  as a pending phase's: a choice that breaks one is routed per *Routing a
+  decision* before any approval.
 - **Checked at the close of the macro.** `/quality-check`'s roadmap
   check compares what was built against this field and the roadmap's
   remaining macro-phases, and reports every shape a later macro would have

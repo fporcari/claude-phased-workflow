@@ -19,10 +19,10 @@ Three ways in, one mechanic:
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and
 `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start — core conventions
-plus the contract layer this close verifies. Foreman message formats:
-`refs/foreman.md` → *Sending to the foreman*, read at the notify step.
+plus the contract layer this close verifies. The relay's message formats are
+reached at the notify step through the shared core, not read at start.
 **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
-(outcome format, phase commit, foreman message) and
+(outcome format, phase commit, notify) and
 `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` — cited, never restated.
 
 ## Step 1: Identify the phase
@@ -54,22 +54,23 @@ the in-tree copies against the plan copies AND the plan copies against the
 plan commit (`git diff` over `tests/phase-N/` empty — editing both copies
 makes them agree): executable tests byte-identical, skeleton names and every
 `wf:contract:` line surviving verbatim, no red body left. A divergence with
-no covering foreman decision in `notes.md` under `## Phase N` blocks the
+no covering decision in `notes.md` under `## Phase N` blocks the
 close like a red criterion: the wrong writer edited the contract, and
-closing would launder the edit into `[x]`.
+closing would launder the edit into `[x]`. The gate reads the record, never
+the route it arrived by (`contracts.md` → *The channel*).
 
-**The contract FIELDS gate it the same way** (`refs/foreman.md` → the mirror
-paragraph: `Done:`, authored `Verify:`, `Pattern:`, `Files:`, `Decisions:`
-are never the child's to edit) — markers and `>` notes move legitimately,
+**The contract FIELDS gate it the same way** (`contracts.md` → *Authored
+checks are foreman-owned*: `Done:`, authored `Verify:`, `Pattern:`, `Files:`,
+`Decisions:` are never the child's to edit) — markers and `>` notes move legitimately,
 so diff the extraction, not the file:
 ```bash
 PC=$(git log -1 --format=%H --grep "^wf: plan for <slug>$")
 diff <(git show "$PC:.phased/active/<slug>/plan.md" | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --contract-block <N> -) <(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --contract-block <N> ".phased/active/<slug>/plan.md")
 ```
 
-A diff with no covering foreman decision in `notes.md` under `## Phase N`
+A diff with no covering decision in `notes.md` under `## Phase N`
 blocks the close like a diverged contract test: restore the fields from the
-plan commit, or take the foreman's recorded wording. An empty `PC` blocks it
+plan commit, or take the recorded wording of the decision. An empty `PC` blocks it
 too, and `PC` searches HEAD's own history, never `--all`: the plan commit is
 by construction an ancestor of the branch the phase ran on, and `--all` can
 answer with a reused slug's commit from another branch.
@@ -81,8 +82,9 @@ criterion covering work the phase never got to, with what exists green, is
 the **closed short** case (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` →
 *When the phase outgrows its chat*): say which criteria are unreached,
 propose the `Done:` narrowed to the sub-result that exists, and close on the
-user's ok — the `closed short` message, whose closing line names
-`/resume-workflow` in the foreman chat.
+user's ok — the `closed short` outcome, whose closing line names
+`/resume-workflow` in the foreman chat on `Channel: relayed`, and the
+re-planning with the user at the gate where there is no relay.
 
 ## Step 3: Naming review
 
@@ -94,14 +96,14 @@ Renames re-run the narrow signal per the ref before anything commits.
 
 A phase held open for the human's checks carries a `> Testing:` note (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` → *Awaiting the human's checks*): drop it here — `[x]` and the note contradict each other, and the checks it was waiting for are recorded as `> Verify:` like every other.
 
-**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the foreman message is the `result rejected` one instead of the `done` one (`foreman.md` → *The foreman*), because what follows is a re-planning, not the next phase. The closing line says the same: the next step is `/resume-workflow`, **in the foreman chat** — never here (`foreman.md` → *The foreman*: a phase chat executes, it does not supervise).
+**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the outcome is the `result rejected` one instead of the `done` one (`refs/phase-execution.md` → *Rejected result*), because what follows is a re-planning, not the next phase. On `Channel: relayed` the closing line names `/resume-workflow` **in the foreman chat** — never here, since a phase chat executes and does not supervise. Where there is no relay the re-planning happens with the user at this gate.
 
 Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
 phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,
 `> Files:` (ALL touched files), the `> Review:`/`> Verify:` notes handed
-over by the caller; ONE commit `wf(phase N): <title>` carrying code,
-naming-review edits and plan update together; then the foreman message,
-best-effort. A rename worth remembering goes to `notes.md` under
+over by the caller; ONE phase commit `wf(phase N): <title>` carrying code,
+naming-review edits and plan update together, whatever `partial` commits
+preceded it; then, on `Channel: relayed`, the message, best-effort. A rename worth remembering goes to `notes.md` under
 `## Phase N` before the commit.
 
 ```bash
@@ -110,11 +112,15 @@ osascript -e 'display notification "Phase N closed: <title>" with title "Claude 
 
 Close with the next step, always: the next phase with its `Run:` hint quoted,
 or `/quality-check` (then `/finalize-workflow`) when this was the last — the
-user must never need to know the flow by heart to keep moving.
+user must never need to know the flow by heart to keep moving. On
+`Channel: relayed` the next phase is a new chat's `/execute-phase`; on
+`Channel: in-chat` it is `/execute-phase` again in this same conversation,
+which is where the gate already is.
 
 ## Rules
 
 - Happy path only: never write `[!]` or `[~]`, and never absorb a criterion that is *red* — a criterion merely **unreached**, with what exists green, is the closed-short case above, and it is closed by narrowing the `Done:` with the user, never by ignoring it
-- ONE commit — the phase commit; naming-review edits never get their own
+- ONE phase commit — naming-review edits never get their own; planned
+  `Batches:` land as `partial` commits before it, never as a second close
 - A standalone close without evidence of completed work is a refusal, not a favour
 - The naming-review sweep (grep for `wf:phase-` over the touched files, empty) runs before the commit, even on the accept-all path

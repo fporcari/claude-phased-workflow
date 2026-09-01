@@ -22,7 +22,7 @@ breaking change by definition.
 |---------|---------|------------------------|
 | 2.1.139 | `/goal` guard for phase sessions | `run-workflow.sh` runtime check, declared NOTE fallback |
 | 2.1.170 | `fable` model alias | `run-workflow.sh` (repair hardcodes it; phases may pin it) |
-| 2.1.224 | cross-session `SendMessage` in the CLI | `refs/foreman.md` → *Channel floors* (single source for messaging floors) |
+| 2.1.224 | cross-session `SendMessage` in the CLI | `refs/foreman.md` → *Channel floors* (single source for messaging floors) — conditional on `Channel: relayed`: an in-chat workflow sends nothing and needs no floor |
 
 ## Plugin surfaces
 
