@@ -548,7 +548,18 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
         if [ -f "$ANSWER_FILE" ]; then
           FOREMAN_ANSWER=$(head -1 "$ANSWER_FILE" | tr -d '[:space:]')
           rm -f "$ANSWER_FILE"
-          break
+          # The reply path spells the verdict `plan-defect: apply` and the file
+          # takes the bare verb — one answer, two spellings, and the field
+          # foreman wrote the first: read both. Anything else is reported and
+          # the hold goes on; before 6.31.1 it fell through as a "timeout".
+          FOREMAN_ANSWER=$(printf '%s' "$FOREMAN_ANSWER" | tr '[:upper:]' '[:lower:]' | sed 's/^plan-defect://')
+          case "$FOREMAN_ANSWER" in
+            stop|repair|apply) break ;;
+            *)
+              echo "Foreman answer not understood: '$FOREMAN_ANSWER' — expected repair|apply|stop; still holding."
+              FOREMAN_ANSWER=""
+              ;;
+          esac
         fi
         if [ -f "$STOP_REQUEST" ]; then
           FOREMAN_ANSWER="stop-request"

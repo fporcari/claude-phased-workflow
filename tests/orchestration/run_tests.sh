@@ -2649,6 +2649,32 @@ wait "$S43_W" 2>/dev/null
 assert "S43: a stop request during the hold ends the run" 'grep -q "Stop requested" out.log && grep -q "^EVENT: run-end stopped-by-request " out.log'
 assert "S43: no repair launched on a stop request" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "S43: the phase stays [!] and the stop file was consumed" 'grep -q "^- \[!\] \*\*Phase 1\*\*" .phased/active/toy/plan.md && [ ! -f "$WF_T-stop-request" ]'
+# (g) the reply line itself is an answer: the foreman writes `plan-defect: repair`
+# (the wording foreman.md gives the reply path) and the launcher reads the verb
+setup S43g; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$WF_T-foreman-answer"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo "plan-defect: repair" > "$WF_T-foreman-answer"; break; }; sleep 0.2; done ) &
+S43_W=$!
+run
+wait "$S43_W" 2>/dev/null
+assert "S43: the reply-path spelling is read as the verb" 'grep -q "Foreman answered: repair" out.log && ! grep -q "not understood" out.log'
+# (h) an answer the launcher does not understand is reported for what it is —
+# not a timeout — and the hold goes on until a real one arrives (6.31.1: the
+# field foreman's `plan-defect: apply` fell through as "No foreman answer
+# within 600s" and a fable repair was spent on a phase already being applied)
+setup S43h; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$WF_T-foreman-answer"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo maybe > "$WF_T-foreman-answer"; break; }; sleep 0.2; done
+  for _ in $(seq 1 150); do grep -q "not understood" out.log 2>/dev/null && [ ! -f "$WF_T-foreman-answer" ] && { echo repair > "$WF_T-foreman-answer"; break; }; sleep 0.2; done ) &
+S43_W=$!
+run
+wait "$S43_W" 2>/dev/null
+assert "S43: an unknown answer is reported by name, never as a timeout" 'grep -q "Foreman answer not understood: '"'"'maybe'"'"'" out.log && ! grep -q "No foreman answer within" out.log'
+assert "S43: the hold survives the unknown answer and honours the next one" 'grep -q "Foreman answered: repair" out.log && [ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 # Static half: the claim token is single-source in contracts.md and spoken by
 # every consumer — the launcher's gate grep, the child that writes it, the
 # repair that tests it, the foreman section that judges it.
@@ -2664,6 +2690,9 @@ s43_guard() {  # $1 = refs dir, $2 = skills dir, $3 = launcher; one line per gap
   grep -q 'holds until answered' "$1/foreman.md" 2>/dev/null || echo "foreman.md: the hold is not declared open-ended"
   grep -q 'holds until answered' "$2/run-workflow/SKILL.md" 2>/dev/null || echo "run-workflow: the hold is not declared open-ended"
   grep -q 'cost bound' "$2/repair-phase/SKILL.md" 2>/dev/null || echo "repair-phase: no cost bound on satisfying the contract"
+  # 6.31.1: both spellings of the answer are read, and an unknown one is named.
+  grep -q "sed 's/^plan-defect://'" "$3" 2>/dev/null || echo "launcher: the reply-path spelling of the answer is not read"
+  grep -q 'not understood' "$3" 2>/dev/null || echo "launcher: an unknown answer is not reported by name"
 }
 S43_OUT="$(s43_guard "$S24_REFS" "$SKILLS_DIR" "$RUNNER_SRC")"
 [ -z "$S43_OUT" ] || echo "  offending: $S43_OUT"
