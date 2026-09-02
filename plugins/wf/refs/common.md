@@ -92,10 +92,9 @@ the user means a different workflow, list every reachable plan instead:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --plans
 ```
 
-One pipe-separated line per plan: location (a filesystem path, or
-`branch:path` for a `wf/*` branch with no checkout), branch, checkout path
-(`-` when none), phase counts, state. Several plans → ask the user which one,
-never guess.
+One pipe-separated line per plan: location (a filesystem path, or `branch:path`
+for a `wf/*` branch with no checkout), branch, checkout path (`-` when none),
+phase counts, state. Several plans → ask the user which one, never guess.
 
 Once a plan outside the current root is chosen, anchor every command to ITS
 root: `git -C <plan root>` for every git invocation, and every path (the plan

@@ -131,12 +131,11 @@ tool list that does not mention it, and never by a channel that ran and
 returned no match — an empty `ListAgents` says nothing about a desktop
 session. A chat carrying both toolsets (Claude Code inside the desktop app)
 is neither world, and this is the whole reason the rule is written as an
-order. Field-tested
-on 2.1.226: a `claude -p` sub-session carries both tools but its
-`ListAgents` sees NO desktop sessions — CLI and desktop are separate worlds,
-so unattended children still end at the silent skip and the foreman
-messaging is desktop-chat-to-desktop-chat. One plain-text message,
-header line first:
+order. Field-tested on 2.1.226: a `claude -p` sub-session carries both tools
+but its `ListAgents` sees NO desktop sessions — CLI and desktop are separate
+worlds, so unattended children still end at the silent skip and the foreman
+messaging is desktop-chat-to-desktop-chat. One plain-text message, header
+line first:
 
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
@@ -148,7 +147,7 @@ header line first:
 [wf:<slug>] workflow finalized — <consolidation outcome, one line>.
 [wf:<slug>] stop-work? — <what looks wrong, one line; the run keeps burning until answered>.
 [wf:<slug>] clarify? phase N — <the plan ambiguity, one line; the phase waits until answered>.
-[wf:<slug>] plan-defect? phase N — <the child's claim, one line; repair proceeds on the gate's timeout unless answered>.
+[wf:<slug>] plan-defect? phase N — <the child's claim, one line; the run holds until answered>.
 ```
 
 The `<one line>` slots — the Issue, the blocked reason, the stop-work
@@ -250,27 +249,31 @@ best-effort, per *Skill lessons — the wf-lessons ledger* below.
 **Plan-defect claims.** An unattended phase that believes the PLAN is at
 fault — a contract test premise, a `Done:` built on a false assumption —
 closes `[!]` with `> Issue: plan-defect claim — …` (`refs/contracts.md` →
-*Contract tests*), and the launcher holds the repair while `/run-workflow`'s
-inspector relays the claim here as `plan-defect?`. The foreman neither takes
-the child's word nor judges alone — field datum from the first run: both
-claims were wrong, the foreman believed both, and the repair found the
-better design each time. It puts ONE AskUserQuestion to its user, claim and
-evidence attached: **Authorize repair** (recommended default — a fresh-eyes
-session *testing* implementability beats either armchair verdict), **Apply
-the declared edit** (offered ONLY when the claim carries its edit as
-before-text → after-text — the case where a repair session is spend
-disproportionate to a one-line fix; never the door to rewriting the
-contract), or **Stop the run** (when the claim matches an ambiguity the
-foreman knows it left in the plan). The reply travels on the message's own
-reply path — `plan-defect: repair`, `plan-defect: apply` or `plan-defect:
-stop` — and the inspector turns it into the answer
-file the launcher waits on. No reply → the gate's timeout proceeds to
-repair, as if nothing was asked. **On apply the hands are the inspector's**:
-the launcher keeps holding on a second file while the run's inspector —
-the one session attached to the workspace — applies exactly the declared
-edit to BOTH contract copies (the plan's `tests/phase-N/` and the in-tree
-copy, byte-identical), re-runs the phase's `Done:`, and reports the outcome
-in `<slug>-apply-outcome`: on green it has already flipped the phase `[x]`
+*Contract tests*), and the launcher HOLDS the repair — no deadline unless
+`RUN_WORKFLOW_CONSULT_TIMEOUT` is set — while `/run-workflow`'s inspector
+relays the claim here as `plan-defect?`. The foreman takes neither the
+child's word nor a repair's green for it — field count: two claims wrong,
+one right, the right one "dissolved" by a repair bending the code to the
+test. While the launcher holds, the foreman CHECKS the claim against the
+code it names, then puts ONE AskUserQuestion to its user, claim, evidence
+and its own verdict attached: **Apply the declared edit** (only when the
+claim carries its edit as before-text → after-text; recommended when the
+check confirmed it — a repair session is spend disproportionate to a
+one-line fix, and never the door to rewriting the contract), **Authorize
+repair** (recommended when the check did not — a fresh-eyes session
+*testing* implementability beats an armchair verdict), or **Stop the run**
+(when the claim matches an ambiguity the foreman knows it left in the plan).
+The reply travels on the message's own reply path — `plan-defect: repair`,
+`plan-defect: apply` or `plan-defect: stop` — and the inspector turns it
+into the answer file the launcher waits on. No reply → the run keeps
+holding: the decision is the human's whenever they arrive, a stop request
+during the hold ends the run, and only an explicit timeout hands the claim
+to the repair unadvised. **On apply the hands are the inspector's**: the
+launcher keeps holding on a second file while the run's inspector — the one
+session attached to the workspace — applies exactly the declared edit to
+BOTH contract copies (the plan's `tests/phase-N/` and the in-tree copy,
+byte-identical), re-runs the phase's `Done:`, and reports the outcome in
+`<slug>-apply-outcome`: on green it has already flipped the phase `[x]`
 (`> Done:` re-stated as re-run, `> Applied: plan-defect edit — <one line>`,
 the `> Issue:` kept for the record) and committed `wf: plan defect phase
 N — applied — <one line>`; red — or the window closing
@@ -279,15 +282,14 @@ write `red`, stand down) — hands the claim to the repair as usual. The hold
 is the one sanctioned mid-run write: the tree is the applier's from the
 `apply` answer to the outcome file, for the declared edit and nothing more —
 an apply that grows into a rewrite is a stop wearing apply's clothes.
-**After a granted stop the work is the
-foreman's**: the run is dead and the tree free, so it clarifies with its
-user, edits the plan AND the contract tests itself (before-text →
-after-text discipline, committed as `wf: plan defect phase N — <one
-line>`), then decides whether the code the phase already committed needs
-`/repair-phase` — launched by the foreman, not left implicit — and
-relaunches `/run-workflow`. Every outcome is a ledger moment: a claim that
-was true — apply included — means `/write-workflow` let the defect through;
-a false one means the child's own gate cried wolf.
+**After a granted stop the work is the foreman's**: the run is dead and the
+tree free, so it clarifies with its user, edits the plan AND the contract
+tests itself (before-text → after-text discipline, committed as `wf: plan
+defect phase N — <one line>`), then decides whether the code the phase
+already committed needs `/repair-phase` — launched by the foreman, not left
+implicit — and relaunches `/run-workflow`. Every outcome is a ledger moment:
+a claim that was true — apply included — means `/write-workflow` let the
+defect through; a false one means the child's own gate cried wolf.
 
 **Replying on the desktop**: the reply travels by `send_message`
 (session-management) with the incoming message's `from` attribute as the
@@ -304,7 +306,7 @@ the user anything, and never becomes a retry loop. An undeliverable or
 unanswered *question* is the one exception to the silence — it falls back as
 its own paragraph states (for `clarify?`, to the disk re-read and then the
 child's user; for `stop-work?`, to the run's own stop conditions; for
-`plan-defect?`, to the gate's timeout and the repair) — and even
+`plan-defect?`, to holding the run until a human answers) — and even
 a question is never worth a retry loop. A foreman receiving one
 re-reads `.phased/` before answering — the plan on disk, not the message
 text, is the state — and answers with the DELTA, not the board: what

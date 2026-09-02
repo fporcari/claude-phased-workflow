@@ -2579,11 +2579,13 @@ rm -rf "$S41_MUT"
 echo "== S43: plan-defect claim — the foreman consult gate before repair =="
 # Live: a [!] whose > Issue: leads with "plan-defect claim" makes the launcher
 # emit phase-needs-foreman and HOLD the repair, polling the answer file outside
-# the repo. stop → no repair, foreman-stop; repair → fresh-eyes session; no
-# answer → timeout falls through to the repair (today's path — both field
-# claims were wrong and the repair found the better design). An ordinary [!]
-# never touches the gate.
-# (a) timeout → repair proceeds
+# the repo. stop → no repair, foreman-stop; repair → fresh-eyes session. The
+# hold has NO default deadline (6.31.0: the field's one TRUE claim was handed
+# to a repair by the 600s window while the user slept, and the repair bent the
+# code to the wrong test) — RUN_WORKFLOW_CONSULT_TIMEOUT is the explicit
+# opt-in, and a stop request during the hold ends the run with the phase
+# still [!]. An ordinary [!] never touches the gate.
+# (a) explicit timeout → declared, falls through to repair
 setup S43a; fixture2
 printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup
@@ -2621,6 +2623,32 @@ printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_ok; exit 0' 
 finish_setup
 RUN_WORKFLOW_CONSULT_TIMEOUT=1 PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
 assert "S43: an ordinary [!] skips the gate entirely" '! grep -q "phase-needs-foreman" out.log'
+# (e) no timeout set → the launcher holds; an answer arriving well past the old
+# window is honoured, and nothing ever "timed out"
+setup S43e; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" repair_ok_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$WF_T-foreman-answer"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { sleep 3; echo repair > "$WF_T-foreman-answer"; break; }; sleep 0.2; done ) &
+S43_W=$!
+run
+wait "$S43_W" 2>/dev/null
+assert "S43: with no timeout the hold is declared open-ended" 'grep -q "holding for the foreman'"'"'s answer" out.log && ! grep -q "waiting up to" out.log'
+assert "S43: the late answer is honoured, nothing timed out" 'grep -q "Foreman answered: repair" out.log && ! grep -q "No foreman answer within" out.log'
+assert "S43: the run completed after the open-ended hold" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
+# (f) a stop request during the hold ends the run cleanly: no repair, the
+# phase stays [!] for the foreman, both control files consumed
+setup S43f; fixture2
+printf '%s\n' 'python3 "$OPS" fail_claim; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
+finish_setup
+rm -f "$WF_T-foreman-answer" "$WF_T-stop-request"
+( for _ in $(seq 1 150); do grep -q "phase-needs-foreman" out.log 2>/dev/null && { echo stop > "$WF_T-stop-request"; break; }; sleep 0.2; done ) &
+S43_W=$!
+run
+wait "$S43_W" 2>/dev/null
+assert "S43: a stop request during the hold ends the run" 'grep -q "Stop requested" out.log && grep -q "^EVENT: run-end stopped-by-request " out.log'
+assert "S43: no repair launched on a stop request" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
+assert "S43: the phase stays [!] and the stop file was consumed" 'grep -q "^- \[!\] \*\*Phase 1\*\*" .phased/active/toy/plan.md && [ ! -f "$WF_T-stop-request" ]'
 # Static half: the claim token is single-source in contracts.md and spoken by
 # every consumer — the launcher's gate grep, the child that writes it, the
 # repair that tests it, the foreman section that judges it.
@@ -2630,6 +2658,12 @@ s43_guard() {  # $1 = refs dir, $2 = skills dir, $3 = launcher; one line per gap
   grep -qi 'plan-defect claim' "$3" 2>/dev/null || echo "launcher: gate grep missing"
   grep -q 'plan-defect claim' "$2/execute-phase-agent/SKILL.md" 2>/dev/null || echo "execute-phase-agent: claim token missing"
   grep -q 'plan-defect claim' "$2/repair-phase/SKILL.md" 2>/dev/null || echo "repair-phase: claim token missing"
+  # 6.31.0: the hold is open-ended, and every consumer says so — a numeric
+  # default creeping back into the launcher is the regression this guards.
+  grep -qE 'CONSULT_TIMEOUT:-[0-9]' "$3" 2>/dev/null && echo "launcher: the consult carries a default deadline"
+  grep -q 'holds until answered' "$1/foreman.md" 2>/dev/null || echo "foreman.md: the hold is not declared open-ended"
+  grep -q 'holds until answered' "$2/run-workflow/SKILL.md" 2>/dev/null || echo "run-workflow: the hold is not declared open-ended"
+  grep -q 'cost bound' "$2/repair-phase/SKILL.md" 2>/dev/null || echo "repair-phase: no cost bound on satisfying the contract"
 }
 S43_OUT="$(s43_guard "$S24_REFS" "$SKILLS_DIR" "$RUNNER_SRC")"
 [ -z "$S43_OUT" ] || echo "  offending: $S43_OUT"
@@ -2640,6 +2674,12 @@ cp -R "$S24_REFS"/. "$S43_MUT/"
 sed -i.bak 's/plan-defect claim/gone/g' "$S43_MUT/contracts.md" && rm -f "$S43_MUT/contracts.md.bak"
 assert "S43: the guard fails when contracts.md loses the claim token" \
   '[ -n "$(s43_guard "$S43_MUT" "$SKILLS_DIR" "$RUNNER_SRC")" ]'
+rm -rf "$S43_MUT"
+# Mutation: the launcher regaining a default deadline must bite.
+S43_MUT="$(mktemp -d)"
+sed 's/RUN_WORKFLOW_CONSULT_TIMEOUT:-}/RUN_WORKFLOW_CONSULT_TIMEOUT:-600}/' "$RUNNER_SRC" > "$S43_MUT/runner.sh"
+assert "S43: the guard fails when the launcher regains a default deadline" \
+  '[ -n "$(s43_guard "$S24_REFS" "$SKILLS_DIR" "$S43_MUT/runner.sh")" ]'
 rm -rf "$S43_MUT"
 
 echo "== S44: the quality-check stamp is single-source and gates finalize =="

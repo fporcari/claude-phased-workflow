@@ -92,20 +92,21 @@ realises, not a claim about what is there.
 the tests of EVERY phase now, while the whole design sits in one context —
 into `.phased/active/<slug>/tests/phase-N/`, committed with the plan, each
 phase's `Done:` opening with "the plan's tests for this phase, copied into
-the test tree, pass". Recommend it on refactoring and other well-specified
-work — behaviour that must survive is exactly what a test states best;
-where a signature is not settled yet, author that test as a skeleton
-(`wf:contract:` comment lines + red body) instead of guessing. The whole
-contract — the two precisions, where the tests live, the child's read-only
-rule, the integrity check at close — lives once in `contracts.md` → *Contract
-tests*; writing them inside `.phased/` keeps this skill's own first rule
-intact. Authoring them is plan-time work: derive each phase's tests from its
-`Details:` and `Done:`, in the repo's own test style, and present them with
-the plan. Then RUN the repo's own linter over what you authored, before the
-plan commit: a `Done:` demanding a clean lint on the copied test and a
-contract copy that must stay byte-identical are the same requirement, and a
-test that fails the lint forces every phase carrying it to break one of the
-two.
+the test tree, pass". Recommend it on well-specified work — behaviour that
+must survive is what a test states best; where a signature is not settled
+yet, author that test as a skeleton (`wf:contract:` comment lines + red
+body) instead of guessing. The whole contract — the two precisions, where
+the tests live, the child's read-only rule, the integrity check at close —
+lives once in `contracts.md` → *Contract tests*; writing them inside
+`.phased/` keeps this skill's own first rule intact. Authoring them is
+plan-time work: derive each phase's tests from its `Details:` and `Done:`,
+in the repo's own test style, and present them with the plan. Then, before
+the plan commit, RUN the repo's own linter over them (a `Done:` demanding a
+clean lint on the copied test and a copy that must stay byte-identical are
+one requirement) and CHECK every import path and fixture they lean on
+against the repo: an import no file in the repo uses is a premise to verify
+against the loader, not a convention to assume — the field's one true
+plan-defect claim was exactly such an import.
 
 **The consumer question.** When `.phased/roadmap.md` has unstarted
 macro-phases — or the discussion names later work that will consume this

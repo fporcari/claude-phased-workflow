@@ -512,19 +512,21 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     fi
 
     # Foreman consult gate: a child claiming the PLAN is at fault (its
-    # > Issue: leads with "plan-defect claim") is judging above its pay grade —
-    # both such claims in the first field run were wrong, and the repair found
-    # the better design each time. The claim is routed to the foreman through
-    # the parent session watching this log (the -p children reach nobody, and
-    # this EVENT log is the one channel that survived a host restart). The
-    # answer travels back as a file OUTSIDE the repo, so nothing dirties the
-    # tree; no answer within the window defaults to the repair — today's path,
-    # and the empirically better armchair-free verdict.
+    # > Issue: leads with "plan-defect claim") is judging above its pay grade,
+    # and so is a repair — field count: two claims wrong, one right, and the
+    # right one "dissolved" by the repair a 600s window handed it to while the
+    # user slept. The claim is routed to the foreman through the parent
+    # session watching this log (the -p children reach nobody, and this EVENT
+    # log is the one channel that survived a host restart). The answer travels
+    # back as a file OUTSIDE the repo, so nothing dirties the tree. The hold
+    # has no deadline: holding costs nothing, a wrong repair cost a session
+    # and a revert. RUN_WORKFLOW_CONSULT_TIMEOUT=<s> is the explicit opt-in
+    # bound (the old default), and a stop request during the hold ends the run.
     if first_bang_block | grep -qi 'plan-defect claim'; then
       CONSULT_DIR=$(dirname "$TRANSPORT")
       ANSWER_FILE="$TRANSPORT-foreman-answer"
       APPLY_OUTCOME_FILE="$TRANSPORT-apply-outcome"
-      CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"
+      CONSULT_TIMEOUT="${RUN_WORKFLOW_CONSULT_TIMEOUT:-}"
       # install -d -m, not mkdir -p: the transport must be 0700 whatever the
       # umask, and install also tightens a lax directory an older run left.
       # Owner-only on the DIRECTORY is what protects the files inside it.
@@ -535,13 +537,24 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       # writes it right after the answer.
       rm -f "$ANSWER_FILE" "$APPLY_OUTCOME_FILE"
       echo "EVENT: phase-needs-foreman $FAILED_PHASE"
-      echo "Phase $FAILED_PHASE claims a plan defect — waiting up to ${CONSULT_TIMEOUT}s for the foreman's answer ($ANSWER_FILE: repair|apply|stop)..."
+      if [ -n "$CONSULT_TIMEOUT" ]; then
+        echo "Phase $FAILED_PHASE claims a plan defect — waiting up to ${CONSULT_TIMEOUT}s for the foreman's answer ($ANSWER_FILE: repair|apply|stop)..."
+      else
+        echo "Phase $FAILED_PHASE claims a plan defect — holding for the foreman's answer ($ANSWER_FILE: repair|apply|stop); no deadline, a stop request ($STOP_REQUEST) ends the run instead."
+      fi
       FOREMAN_ANSWER=""
       CONSULT_WAITED=0
-      while [ "$CONSULT_WAITED" -lt "$CONSULT_TIMEOUT" ]; do
+      while :; do
         if [ -f "$ANSWER_FILE" ]; then
           FOREMAN_ANSWER=$(head -1 "$ANSWER_FILE" | tr -d '[:space:]')
           rm -f "$ANSWER_FILE"
+          break
+        fi
+        if [ -f "$STOP_REQUEST" ]; then
+          FOREMAN_ANSWER="stop-request"
+          break
+        fi
+        if [ -n "$CONSULT_TIMEOUT" ] && [ "$CONSULT_WAITED" -ge "$CONSULT_TIMEOUT" ]; then
           break
         fi
         sleep 1
@@ -551,6 +564,14 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
         stop)
           echo "Foreman answered: stop. The plan-defect claim is the foreman's to resolve — fix plan and contract tests, then relaunch /run-workflow."
           STOP_REASON="foreman-stop"
+          break
+          ;;
+        stop-request)
+          rm -f "$STOP_REQUEST"
+          echo ""
+          echo "Stop requested ($STOP_REQUEST) during the consult — ending the run with the claim unanswered; the phase stays [!] for the foreman. Relaunch /run-workflow to continue."
+          STOP_REASON="stop-requested"
+          RUN_END_STATUS="stopped-by-request"
           break
           ;;
         repair)

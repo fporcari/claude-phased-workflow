@@ -50,7 +50,7 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 ## Step 3: Diagnose from scratch
 
 1. Re-read the phase objective, `Details:`, `Done:` and its `Pattern:` example.
-2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified — in the first field run both such claims dissolved under fresh eyes (the contract was implementable in-dialect both times). Your first job is trying to satisfy the contract AS WRITTEN; the contract stays read-only either way (`refs/contracts.md` → *Contract tests*). Only a claim that survives your own attempt ends the repair `[!]` with `> Repair attempted: plan-defect confirmed — <what you tried, why the contract truly cannot hold>` — the plan and its tests are fixed from there by whoever owns the plan, never by you: the confirmed defect travels as an outcome, per `refs/phase-execution.md` → *Routing a decision*, so it reaches the foreman on the relayed road and the user at this repair's gate on `Channel: in-chat`.
+2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified — the field count is two claims that dissolved under fresh eyes (the contract was implementable in-dialect both times) and one that was TRUE, which a repair "dissolved" anyway: it built a `lib/resources/__init__.py` `__path__` shim so a test importing a resource by a dotted path could pass, deleted the failed phase's correct component, recorded its own verifier's warning as a `> Review:` and closed `[x]` — undone by hand the next morning. So your first job is trying to satisfy the contract AS WRITTEN, the contract stays read-only either way (`refs/contracts.md` → *Contract tests*), and **satisfying it has a cost bound**: a green that needs surface outside the phase's `Files:` and the failed phase's `> Files:` (a new module, a shim, a loader convention the repo does not have), or that Step 4's verifier flags as a JUDGMENT finding against the contract's own premise, does not dissolve the claim — it confirms it at a price the plan never bought. That outcome, like a claim that survives your honest attempt, ends the repair `[!]` as *Plan-defect confirmed* below — the plan and its tests are fixed from there by whoever owns the plan, never by you: the confirmed defect travels as an outcome, per `refs/phase-execution.md` → *Routing a decision*, so it reaches the foreman on the relayed road and the user at this repair's gate on `Channel: in-chat`.
 3. Reproduce the failure and confirm the recorded error signature still holds.
 4. **Establish whose failure it is.** The failed phase committed its own work as `wf(phase N): FAILED — <title>`, so its boundaries are exact: `git show --stat HEAD` is everything it changed, and `HEAD^` is the tree before it started. Re-run the green signal at `HEAD^` — a failure that reproduces there is **not this phase's**. Don't patch it here: keep the phase `[!]` with a `> Repair attempted:` note naming the real culprit, so the human fixes the right thing.
 
@@ -62,7 +62,7 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 
 Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
 
-Then run ONE `wf:phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays.
+Then run ONE `wf:phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays. On a plan-defect repair the two classes are not symmetric: a JUDGMENT finding against the contract's premise is Step 3's cost bound tripping, and it ends the repair `[!]` — never `[x]` with a `> Review:` asking a human to ratify a green already committed.
 
 ## Step 5: The verdict is yours
 
@@ -91,6 +91,8 @@ On your ok, record the outcome for the way in:
   > Repair attempted: <ISO timestamp> — <updated diagnosis: what you ruled out, what the human should look at first>
 ```
 
+**Plan-defect confirmed** — the same `[!]` record, its note reading `> Repair attempted: <ISO timestamp> — plan-defect confirmed — <what you tried; why the contract cannot hold as written, or what making it hold would cost>`, and the code goes back to the FAILED commit's before the note is written — `git checkout HEAD -- .` on everything outside the plan directory — so the workaround lives in the note and nowhere in the tree. What lands is the plan alone, as `wf(phase N): plan defect confirmed — <one line>`.
+
 **The `> Repair started:` marker goes, whatever the outcome** — it described a repair in progress, and the outcome supersedes it: remove it in the same edit that records the result, on a phase handed back `[>]` too. A marker left behind describes a chat that no longer exists.
 
 Either way, commit — the plan is tracked, and leaving the tree dirty would block the next phase's baseline:
@@ -101,4 +103,4 @@ git add -A && git commit -q -m "wf(phase N): repaired — <root cause>"
 
 or, on a failed repair, `wf(phase N): repair attempted — <diagnosis>`.
 
-Print `✓ Phase N repaired: <root cause>` or `✗ Phase N repair failed: <reason> — human review required`, then stop. A phase handed back `[>]` prints the same first line plus where to go: *"back to the phase chat — it has the verdict."*
+Print `✓ Phase N repaired: <root cause>`, `✗ Phase N repair failed: <reason> — human review required` or `✗ Phase N plan defect confirmed: <one line> — the plan's author decides`, then stop. A phase handed back `[>]` prints the same first line plus where to go: *"back to the phase chat — it has the verdict."*

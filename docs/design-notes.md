@@ -224,6 +224,33 @@ A plan that ships contract tests therefore has no `low` phases. The saving that
 tempts you there is the ritual light mode strips, and the ritual is the part
 that protects the contract.
 
+## The consult has no deadline
+
+The plan-defect consult held the repair for 600 seconds and then let the repair
+judge the claim. The window was sized for a user at the keyboard; the run it
+guards is the one the user walks away from. On the 7-location-hours-calendar run
+the phase failed at 00:10 with a TRUE claim — its contract test imported a
+resource by a dotted path GenroPy never resolves — the foreman verified it on
+the code within minutes, and the human was asleep. At 00:20 the repair took
+over, built a `lib/resources/__init__.py` shim so the path resolved, deleted the
+correct component the failed phase had written, recorded its own verifier's
+objection as a `> Review:` and closed green. The coherence phase read the green
+as legitimate. The morning cost one revert.
+
+Holding costs nothing — the launcher polls a file — while a wrong repair costs a
+fable session, a phase built on it and the revert. So the hold has no deadline:
+the human decides whenever they arrive, a stop request during the hold ends the
+run cleanly, and `RUN_WORKFLOW_CONSULT_TIMEOUT` remains as the explicit opt-in
+for whoever wants the old behaviour. Two rules follow it. The foreman checks the
+claim against the code while the launcher holds, so the morning decision is
+made on a verified finding — and the recommended option follows that check,
+apply when it confirmed the claim, repair when it did not. And a repair that
+reaches green only through surface outside the phase's `Files:`, or with a
+verifier JUDGMENT against the contract's own premise, has confirmed the claim
+at a price, not dissolved it: it closes `[!]` with the workaround described and
+not committed. The "both claims were wrong" prior the refs carried is now two
+wrong and one right, and it reads that way.
+
 ## The suite is not parallel-safe
 
 `tests/orchestration/run_tests.sh` cannot be run concurrently with itself. Two

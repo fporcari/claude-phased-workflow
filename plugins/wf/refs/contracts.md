@@ -176,12 +176,10 @@ exploratory work prefer skeletons (below) over guessed signatures.
 settled the surface is:
 
 - **Executable** — the design already fixes the signatures (a refactor: they
-  exist today). Real, runnable test code. Read-only for the child in its
-  entirety.
+  exist today). Real, runnable test code, read-only for the child entirely.
 - **Skeleton** — the behaviour is decided, the bindings are not. A named test
-  whose contract is stated in comment lines carrying the `wf:contract:`
-  marker, with a red body (`pytest.fail("phase N pending")` or the repo
-  equivalent):
+  whose contract is stated in comment lines carrying the `wf:contract:` marker,
+  with a red body (`pytest.fail("phase N pending")` or the repo equivalent):
 
   ```python
   def test_invoice_total_survives_rename():
@@ -214,11 +212,11 @@ The rules, in both execution modes:
   verbatim, they are what the launcher's consult gate greps for
   (`refs/foreman.md` → *Plan-defect claims*), and the before→after form is
   what licenses the foreman's apply road there. A **claim, never a
-  verdict**: the first field run made it twice
-  and was wrong twice — the "impossible" contract was implementable
-  in-dialect both times, and the repair found the better design. The claim
-  is judged upstream — the foreman through the gate, or fresh repair eyes on
-  its timeout — and in no case by the child editing the contract.
+  verdict**: the field count is two claims wrong — the contract was
+  implementable in-dialect and the repair found the better design — and one
+  right, "dissolved" by a repair bending the code to the wrong premise. The
+  claim is judged upstream — the foreman through the gate, fresh repair eyes
+  where the foreman sends them — never by the child editing the contract.
 - **The close verifies the copy.** `/close-phase`'s Done gate (and the
   phase-verifier, where it runs) checks the in-tree copy against the plan
   copy AND the plan copy against the plan commit (`git diff <plan-commit>

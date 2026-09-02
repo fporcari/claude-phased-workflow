@@ -143,7 +143,7 @@ A `Popen` of the launcher (`codice.patch:397-400`) skips all of it:
 | a Monitor armed on the `EVENT:` stream | `SKILL.md:59` | nobody watches the run |
 | PushNotification on first failure / needs-foreman / blocked / end | `SKILL.md:76` | no notification ever |
 | relay of every event to the foreman | `SKILL.md:78` | the foreman learns nothing |
-| the plan-defect consult **return leg** — the launcher HOLDS, polling `<slug>-foreman-answer` up to 600 s, and on `apply` this session performs the edit | `SKILL.md:80` | the consult times out unanswered and repair proceeds unadvised |
+| the plan-defect consult **return leg** — the launcher HOLDS, polling `<slug>-foreman-answer` with no deadline (`RUN_WORKFLOW_CONSULT_TIMEOUT` is the opt-in bound), and on `apply` this session performs the edit | `SKILL.md:80` | the consult is never answered and the run holds unadvised |
 | stop-work judgment | `SKILL.md:82` | a repair cascade burns unattended |
 | `## Run inspection` notes, committed | `SKILL.md:98` | `/quality-check` and `/finalize-workflow` lose their documented input |
 | closing report through `wf:report-judge` | `SKILL.md:90` | no report |
