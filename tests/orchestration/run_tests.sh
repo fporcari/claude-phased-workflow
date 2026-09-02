@@ -3810,6 +3810,39 @@ assert "S60: fails when help's introduction goes back to one road" \
 assert "S60: fails when help's closing line goes back to one road" \
   '[ -n "$(s60_mutate help/SKILL.md "s|of an actual workflow, ./wf:resume-workflow. — a fresh chat on|of an actual workflow, open a fresh chat on \`/wf:resume-workflow\`. Not on|")" ]'
 
+echo "== S61: the foreman's own model is a written hint, like Run: =="
+# 6.33.0: a chat's model and effort are chosen when it opens, so the foreman's
+# suggested fable / high is written where the next foreman is opened from —
+# the ref owns it, write-workflow's closing line and resume-workflow's fresh-chat
+# Next step repeat it.
+s61_guard() {  # $1 = skills dir, $2 = refs dir; one line per gap
+  grep -q "The foreman's own model" "$2/foreman.md" 2>/dev/null \
+    || echo "foreman.md: the foreman's own model paragraph is gone"
+  grep -q 'Suggested `fable` / `high`' "$2/foreman.md" 2>/dev/null \
+    || echo "foreman.md: the hint lost its value"
+  grep -q 'successor foreman chat opens on fable / high' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the closing line no longer carries the foreman hint"
+  grep -q "The foreman's own model" "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "resume-workflow: the fresh-chat Next step no longer quotes the foreman hint"
+}
+S61_OUT="$(s61_guard "$SKILLS_DIR" "$S24_REFS")"
+[ -z "$S61_OUT" ] || echo "  offending: $S61_OUT"
+assert "S61: the foreman hint is owned by the ref and repeated where a foreman opens" '[ -z "$S61_OUT" ]'
+S61_MUT="$(mktemp -d)"
+cp -R "$S24_REFS"/. "$S61_MUT/"
+sed -i.bak "/The foreman's own model is advice too/d" "$S61_MUT/foreman.md" \
+  && rm -f "$S61_MUT/foreman.md.bak"
+assert "S61: the guard fails when the ref loses the paragraph" \
+  '[ -n "$(s61_guard "$SKILLS_DIR" "$S61_MUT")" ]'
+rm -rf "$S61_MUT"
+S61_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S61_MUT/"
+sed -i.bak 's/successor foreman chat opens on fable \/ high/successor foreman chat opens/' "$S61_MUT/write-workflow/SKILL.md" \
+  && rm -f "$S61_MUT/write-workflow/SKILL.md.bak"
+assert "S61: the guard fails when write-workflow drops the value" \
+  '[ -n "$(s61_guard "$S61_MUT" "$S24_REFS")" ]'
+rm -rf "$S61_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

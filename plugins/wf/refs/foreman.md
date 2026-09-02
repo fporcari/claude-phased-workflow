@@ -26,6 +26,13 @@ command, a phase's ceremony buys nothing. Nothing is enforced — a user executi
 a phase in the foreman chat lands in the degenerate branches below (*when this
 chat IS the foreman*), which keep working: a fallback, never advice.
 
+**The foreman's own model is advice too, written down for the same reason the
+`Run:` hint is**: a chat's model and effort are chosen when it opens, before any
+skill has read the plan. Suggested `fable` / `high` — the foreman's output is
+judgment and prose to humans (a consult answered, a QA question worded, a report
+delivered), where `opus` reads flat and `sonnet` invents; `high` because the QA
+fix is code, and `xhigh` on pre-digested input is overthinking. Nothing enforces it.
+
 **And the mirror: a phase chat executes; it does not supervise.** No skill
 ever recommends `/resume-workflow` — or any re-planning of the whole plan —
 inside a chat that is executing a phase: a *Next step* naming it is always
@@ -121,24 +128,23 @@ A third branch reaches this channel from outside a chat: the dashboard's
 queued request (`board.md` → *The dashboard, where it exists*), which the
 attached chat drains and delivers here — the page never writes a session.
 
-**Sending to the foreman** (children, at phase end and on plan changes):
-read `foreman.json`, `list_sessions`, exact title match → `send_message` to
-that session id. In the CLI the same by name — `ListAgents` + `SendMessage`
-(*Channel floors* above). **`list_sessions` first, always** — and *first* means before any
-conclusion about who is reachable. **A tool missing from your tool list is not
-a missing tool.** `list_sessions` and `send_message` are deferred behind
+**Sending to the foreman** (children, at phase end and on plan changes): read
+`foreman.json`, `list_sessions`, exact title match → `send_message` to that
+session id. In the CLI the same by name — `ListAgents` + `SendMessage` (*Channel
+floors* above). **`list_sessions` first, always** — and *first* means before any
+conclusion about who is reachable. **A tool missing from your tool list is not a
+missing tool.** `list_sessions` and `send_message` are deferred behind
 `ToolSearch` while `ListAgents` is always loaded, so the branch that works is
 the one you have to go and fetch and the branch that fails is already there.
 Absence is proved by a `ToolSearch` that comes back with nothing, never by a
-tool list that does not mention it, and never by a channel that ran and
-returned no match — an empty `ListAgents` says nothing about a desktop
-session. A chat carrying both toolsets (Claude Code inside the desktop app)
-is neither world, and this is the whole reason the rule is written as an
-order. Field-tested on 2.1.226: a `claude -p` sub-session carries both tools
-but its `ListAgents` sees NO desktop sessions — CLI and desktop are separate
-worlds, so unattended children still end at the silent skip and the foreman
-messaging is desktop-chat-to-desktop-chat. One plain-text message, header
-line first:
+tool list that does not mention it, and never by a channel that ran and returned
+no match — an empty `ListAgents` says nothing about a desktop session. A chat
+carrying both toolsets (Claude Code inside the desktop app) is neither world,
+and this is the whole reason the rule is written as an order. Field-tested on
+2.1.226: a `claude -p` sub-session carries both tools but its `ListAgents` sees
+NO desktop sessions — CLI and desktop are separate worlds, so unattended
+children still end at the silent skip and the foreman messaging is
+desktop-chat-to-desktop-chat. One plain-text message, header line first:
 
 ```
 [wf:<slug>] phase N done — <title>. Commit <short hash>. Verify: <n now, m deferred>.
@@ -223,74 +229,71 @@ the other; the disk was the only channel that never failed):
    line>`. Nobody asks permission for that commit: the workflow branch is
    unpushed, the edit touches the plan directory only, and the human gate
    was the acceptance itself. A foreman in doubt
-does not guess: it replies `clarify: ask-user — <the question, rephrased
-better than the child put it>`, and the child asks the human. Either way
-the human lives ONLY in the child chat — the foreman never addresses the
-person: the child shows what the foreman decided and asks confirmation
-before acting on it. A rejected decision travels back up with its reason
-exactly ONCE (`clarify? phase N — user rejected: <reason>`); no convergence
-→ the question is the human's, as it is without the protocol. The child
-sends only when the foreman is ANOTHER session, and that check is free: the
-title lookup runs on `list_sessions`, which excludes the current session, so
-finding nothing there means this chat is the foreman or the foreman is dead —
-both land on asking the human directly, today's behaviour. That channel alone
-licenses the inference: an empty `ListAgents` is no evidence of an unreachable
-foreman, and a false unreachable degrades in silence into attending the
-human — the exact outcome this protocol exists to avoid. An unanswered
-question cannot skip in silence like a report: no reply within ~3 minutes (the
-foreman is an idle chat the message has to wake) → the child re-reads
-`.phased/` — `notes.md` included — before falling back: a committed decision
-found there IS the reply, presented to the human for confirmation with the
-note that the message never arrived; only a silent disk hands the question
-to the human as the foreman's failure to answer. A `clarify?` answered is
-also a skill gap made visible — the plan carried an ambiguity nothing
-surfaced earlier — so after the reply the foreman appends a ledger entry,
-best-effort, per *Skill lessons — the wf-lessons ledger* below.
+does not guess: it replies `clarify: ask-user — <the question, rephrased better
+than the child put it>`, and the child asks the human. Either way the human
+lives ONLY in the child chat — the foreman never addresses the person: the child
+shows what the foreman decided and asks confirmation before acting on it. A
+rejected decision travels back up with its reason exactly ONCE (`clarify? phase
+N — user rejected: <reason>`); no convergence → the question is the human's, as
+it is without the protocol. The child sends only when the foreman is ANOTHER
+session, and that check is free: the title lookup runs on `list_sessions`, which
+excludes the current session, so finding nothing there means this chat is the
+foreman or the foreman is dead — both land on asking the human directly, today's
+behaviour. That channel alone licenses the inference: an empty `ListAgents` is
+no evidence of an unreachable foreman, and a false unreachable degrades in
+silence into attending the human — the exact outcome this protocol exists to
+avoid. An unanswered question cannot skip in silence like a report: no reply
+within ~3 minutes (the foreman is an idle chat the message has to wake) → the
+child re-reads `.phased/` — `notes.md` included — before falling back: a
+committed decision found there IS the reply, presented to the human for
+confirmation with the note that the message never arrived; only a silent disk
+hands the question to the human as the foreman's failure to answer. A `clarify?`
+answered is also a skill gap made visible — the plan carried an ambiguity
+nothing surfaced earlier — so after the reply the foreman appends a ledger
+entry, best-effort, per *Skill lessons — the wf-lessons ledger* below.
 
-**Plan-defect claims.** An unattended phase that believes the PLAN is at
-fault — a contract test premise, a `Done:` built on a false assumption —
-closes `[!]` with `> Issue: plan-defect claim — …` (`refs/contracts.md` →
-*Contract tests*), and the launcher HOLDS the repair — no deadline unless
-`RUN_WORKFLOW_CONSULT_TIMEOUT` is set — while `/run-workflow`'s inspector
-relays the claim here as `plan-defect?`. The foreman takes neither the
-child's word nor a repair's green for it — field count: two claims wrong,
-one right, the right one "dissolved" by a repair bending the code to the
-test. While the launcher holds, the foreman CHECKS the claim against the
-code it names, then puts ONE AskUserQuestion to its user, claim, evidence
-and its own verdict attached: **Apply the declared edit** (only when the
-claim carries its edit as before-text → after-text; recommended when the
-check confirmed it — a repair session is spend disproportionate to a
-one-line fix, and never the door to rewriting the contract), **Authorize
-repair** (recommended when the check did not — a fresh-eyes session
-*testing* implementability beats an armchair verdict), or **Stop the run**
-(when the claim matches an ambiguity the foreman knows it left in the plan).
-The reply travels on the message's own reply path — `plan-defect: repair`,
-`plan-defect: apply` or `plan-defect: stop` — and the inspector turns it
-into the answer file the launcher waits on. No reply → the run keeps
-holding: the decision is the human's whenever they arrive, a stop request
-during the hold ends the run, and only an explicit timeout hands the claim
-to the repair unadvised. **On apply the hands are the inspector's**: the
-launcher keeps holding on a second file while the run's inspector — the one
-session attached to the workspace — applies exactly the declared edit to
-BOTH contract copies (the plan's `tests/phase-N/` and the in-tree copy,
-byte-identical), re-runs the phase's `Done:`, and reports the outcome in
-`<slug>-apply-outcome`: on green it has already flipped the phase `[x]`
-(`> Done:` re-stated as re-run, `> Applied: plan-defect edit — <one line>`,
-the `> Issue:` kept for the record) and committed `wf: plan defect phase
-N — applied — <one line>`; red — or the window closing
-(`RUN_WORKFLOW_APPLY_TIMEOUT`, a hard deadline: reset what was touched,
-write `red`, stand down) — hands the claim to the repair as usual. The hold
-is the one sanctioned mid-run write: the tree is the applier's from the
-`apply` answer to the outcome file, for the declared edit and nothing more —
-an apply that grows into a rewrite is a stop wearing apply's clothes.
-**After a granted stop the work is the foreman's**: the run is dead and the
-tree free, so it clarifies with its user, edits the plan AND the contract
-tests itself (before-text → after-text discipline, committed as `wf: plan
-defect phase N — <one line>`), then decides whether the code the phase
-already committed needs `/repair-phase` — launched by the foreman, not left
-implicit — and relaunches `/run-workflow`. Every outcome is a ledger moment:
-a claim that was true — apply included — means `/write-workflow` let the
-defect through; a false one means the child's own gate cried wolf.
+**Plan-defect claims.** An unattended phase that believes the PLAN is at fault —
+a contract test premise, a `Done:` built on a false assumption — closes `[!]`
+with `> Issue: plan-defect claim — …` (`refs/contracts.md` → *Contract tests*),
+and the launcher HOLDS the repair — no deadline unless
+`RUN_WORKFLOW_CONSULT_TIMEOUT` is set — while `/run-workflow`'s inspector relays
+the claim here as `plan-defect?`. The foreman takes neither the child's word nor
+a repair's green for it — field count: two claims wrong, one right, the right
+one "dissolved" by a repair bending the code to the test. While the launcher
+holds, the foreman CHECKS the claim against the code it names, then puts ONE
+AskUserQuestion to its user, claim, evidence and its own verdict attached:
+**Apply the declared edit** (only when the claim carries its edit as before-text
+→ after-text; recommended when the check confirmed it — a repair session is
+spend disproportionate to a one-line fix, and never the door to rewriting the
+contract), **Authorize repair** (recommended when the check did not — a
+fresh-eyes session *testing* implementability beats an armchair verdict), or
+**Stop the run** (when the claim matches an ambiguity the foreman knows it left
+in the plan). The reply travels on the message's own reply path — `plan-defect:
+repair`, `plan-defect: apply` or `plan-defect: stop` — and the inspector turns
+it into the answer file the launcher waits on. No reply → the run keeps holding:
+the decision is the human's whenever they arrive, a stop request during the hold
+ends the run, and only an explicit timeout hands the claim to the repair
+unadvised. **On apply the hands are the inspector's**: the launcher keeps
+holding on a second file while the run's inspector — the one session attached to
+the workspace — applies exactly the declared edit to BOTH contract copies (the
+plan's `tests/phase-N/` and the in-tree copy, byte-identical), re-runs the
+phase's `Done:`, and reports the outcome in `<slug>-apply-outcome`: on green it
+has already flipped the phase `[x]` (`> Done:` re-stated as re-run, `> Applied:
+plan-defect edit — <one line>`, the `> Issue:` kept for the record) and
+committed `wf: plan defect phase N — applied — <one line>`; red — or the window
+closing (`RUN_WORKFLOW_APPLY_TIMEOUT`, a hard deadline: reset what was touched,
+write `red`, stand down) — hands the claim to the repair as usual. The hold is
+the one sanctioned mid-run write: the tree is the applier's from the `apply`
+answer to the outcome file, for the declared edit and nothing more — an apply
+that grows into a rewrite is a stop wearing apply's clothes. **After a granted
+stop the work is the foreman's**: the run is dead and the tree free, so it
+clarifies with its user, edits the plan AND the contract tests itself
+(before-text → after-text discipline, committed as `wf: plan defect phase N —
+<one line>`), then decides whether the code the phase already committed needs
+`/repair-phase` — launched by the foreman, not left implicit — and relaunches
+`/run-workflow`. Every outcome is a ledger moment: a claim that was true — apply
+included — means `/write-workflow` let the defect through; a false one means the
+child's own gate cried wolf.
 
 **Replying on the desktop**: the reply travels by `send_message`
 (session-management) with the incoming message's `from` attribute as the
@@ -397,43 +400,40 @@ matters most — then one line per finding, and nothing else. Detail is never
 volunteered: the artifacts hold it, the reader pulls it through the question
 below. A wall of clear sentences is still a wall.
 
-**Delivery depends on the channel.** The closing reports —
-`/run-workflow`'s run-end summary, `/quality-check`'s findings
-presentation — are hypertext where the session can render a file to the
-user: a **report page**, the verdict on top, one line per finding, each
-finding a closed `<details>` expansion opening on its detail drawn from the
-plan artifacts. The page is written outside the repo
-(`<transport>-report.html`, the prefix `next-phase.py --transport` names — a file in the tree
-would dirty it) and handed over with `SendUserFile` and `display: render`,
-which is load-bearing: left to choose, the client attaches a page outside
-the project folder as a download card, which is what the field run got.
-The verdict line is repeated in chat beside it;
-the reader pulls detail at their own pace, and no detail question is asked.
-The cap survives inside the expansions: each one answers a precise question
-of the decision-maker — never the phase chronicle. Without a way
-to render the page (CLI, headless), degrade declared: the short form in
-chat, then exactly ONE question governs detail — a dedicated one (*Expand
-all / Let me pick / That's enough*) when the report ends the exchange,
-folded as an extra option into the decision question the skill already
-asks when there is one, never two questions stacked. A user who is away
+**Delivery depends on the channel.** The closing reports — `/run-workflow`'s
+run-end summary, `/quality-check`'s findings presentation — are hypertext where
+the session can render a file to the user: a **report page**, the verdict on
+top, one line per finding, each finding a closed `<details>` expansion opening
+on its detail drawn from the plan artifacts. The page is written outside the
+repo (`<transport>-report.html`, the prefix `next-phase.py --transport` names —
+a file in the tree would dirty it) and handed over with `SendUserFile` and
+`display: render`, which is load-bearing: left to choose, the client attaches a
+page outside the project folder as a download card, which is what the field run
+got. The verdict line is repeated in chat beside it; the reader pulls detail at
+their own pace, and no detail question is asked. The cap survives inside the
+expansions: each one answers a precise question of the decision-maker — never
+the phase chronicle. Without a way to render the page (CLI, headless), degrade
+declared: the short form in chat, then exactly ONE question governs detail — a
+dedicated one (*Expand all / Let me pick / That's enough*) when the report ends
+the exchange, folded as an extra option into the decision question the skill
+already asks when there is one, never two questions stacked. A user who is away
 answers when they return; the question waits, no special case. The one-way
-surfaces — the foreman one-liners, push notifications, the `stop-work?`
-reason (itself already a question, about the work) — carry the
-short form only: never a page, never the question.
+surfaces — the foreman one-liners, push notifications, the `stop-work?` reason
+(itself already a question, about the work) — carry the short form only: never a
+page, never the question.
 
 **The report-judge gate.** Before a closing report is shown, it passes the
-`wf:report-judge` agent (Agent tool — namespaced, like every agent this
-plugin ships) — a comprehension probe, not a critique.
-Fresh context by design: the agent gets the draft (for a report page, its
-collapsed layer only — what is visible with every expansion closed) and a
-one-line brief of what the workflow was about, not the code and not the
-plan. It first retells in its own words what it understood happened, then
-answers the decision-maker's three questions from the draft alone — did it
-land, what do I decide now, what is still pending. Compare retelling and
-answers with what the artifacts say: a misreading, a wrong or missing
-answer, or an `OPAQUE:` sentence names exactly what the report buries —
-rewrite and re-probe once, then show. Best-effort like every notification: no Agent
-tool, or the judge errors → show the report anyway, saying the gate was
+`wf:report-judge` agent (Agent tool — namespaced, like every agent this plugin
+ships) — a comprehension probe, not a critique. Fresh context by design: the
+agent gets the draft (for a report page, its collapsed layer only — what is
+visible with every expansion closed) and a one-line brief of what the workflow
+was about, not the code and not the plan. It first retells in its own words what
+it understood happened, then answers the decision-maker's three questions from
+the draft alone — did it land, what do I decide now, what is still pending.
+Compare retelling and answers with what the artifacts say: a misreading, a wrong
+or missing answer, or an `OPAQUE:` sentence names exactly what the report buries
+— rewrite and re-probe once, then show. Best-effort like every notification: no
+Agent tool, or the judge errors → show the report anyway, saying the gate was
 skipped. One-liners and pushes are not gated — they are one line by
 construction.
 

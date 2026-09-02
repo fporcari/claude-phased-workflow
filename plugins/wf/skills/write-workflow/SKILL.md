@@ -220,7 +220,7 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
-relayed → this chat is the foreman, now titled `wf:<slug>:foreman`, the address phase chats report to; launch /execute-phase in a new chat and this one stays the board. in-chat → no relay: /execute-phase runs here, phase after phase, every gate in this conversation.
+relayed → this chat is the foreman, now titled `wf:<slug>:foreman`, the address phase chats report to; launch /execute-phase in a new chat and this one stays the board (a successor foreman chat opens on fable / high — foreman.md). in-chat → no relay: /execute-phase runs here, phase after phase, every gate in this conversation.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 
