@@ -17,11 +17,14 @@ single source of the protocol** — the skills cite it, they never restate it.
 **The foreman commands; it does not execute.** Its context has to hold the whole
 plan — that is what lets it answer for any phase — so no skill ever recommends
 running `/execute-phase` in the foreman chat: a *Next step* naming that skill is
-always worded as a fresh chat. Launching an unattended run (`/run-workflow`) from
-the foreman is the exception and the intended one: it supervises there, it does
-not implement. Nothing is enforced — a user who executes a phase in the foreman
-chat lands in the degenerate branches below (*when this chat IS the foreman*),
-which keep working. Those are a fallback, never advice.
+always worded as a fresh chat. Two exceptions, both intended: launching
+`/run-workflow` from the foreman (it supervises, it does not implement), and the
+**QA fix** once every phase is `[x]` — a correction the user states in one
+sentence at the quality check, applied and committed by the foreman itself
+(`/quality-check` → *QA fixes*): with the human at the gate and no phase left to
+command, a phase's ceremony buys nothing. Nothing is enforced — a user executing
+a phase in the foreman chat lands in the degenerate branches below (*when this
+chat IS the foreman*), which keep working: a fallback, never advice.
 
 **And the mirror: a phase chat executes; it does not supervise.** No skill
 ever recommends `/resume-workflow` — or any re-planning of the whole plan —
@@ -154,14 +157,13 @@ The `<one line>` slots — the Issue, the blocked reason, the stop-work
 reason — are written in the reporting register (below): the consequence
 first, no bare identifiers.
 
-**Three of the messages are questions, not reports** — `stop-work?`,
-`clarify?` and `plan-defect?`. They ride the same upward channel and carry
-DIFFERENT decision policies, and the human sits at opposite ends: at the
-foreman for `stop-work?` and `plan-defect?` (their children are `claude -p`,
-with nobody in front of them), at the child for `clarify?` (an interactive
-phase, with its user watching).
-Unlike the reports, a question expects a reply on the message's own reply
-path — the silent-skip rule below still governs *sending* it, never
+**Three of the messages are questions, not reports** — `stop-work?`, `clarify?`
+and `plan-defect?`. They ride the same upward channel and carry DIFFERENT
+decision policies, and the human sits at opposite ends: at the foreman for
+`stop-work?` and `plan-defect?` (their children are `claude -p`, with nobody in
+front of them), at the child for `clarify?` (an interactive phase, with its
+user watching). Unlike the reports, a question expects a reply on the message's
+own reply path — the silent-skip rule below still governs *sending* it, never
 answering the human in its place.
 
 **Stop-work.** `/run-workflow`'s inspector sends `stop-work?` when continuing
@@ -196,11 +198,10 @@ the plan is wrong there, and the foreman's decision follows the ordinary
 roads below, a plan edit in the reply or a re-planning of what has not run
 (`refs/common.md` → *Failure and repair notes*).
 
-Where `stop-work?` forbids the foreman
-from judging, here deciding is its FIRST attempt — and the decision takes
-two roads, because the field test saw either one alone die (a permission
-prompt killed one round, an unresolvable address the other; the disk was the
-only channel that never failed):
+Where `stop-work?` forbids the foreman from judging, here deciding is its FIRST
+attempt — and the decision takes two roads, because the field test saw either
+one alone die (a permission prompt killed one round, an unresolvable address
+the other; the disk was the only channel that never failed):
 
 1. **Disk**: the foreman records the decision in `notes.md`, under the
    phase's `## Phase N` heading, and commits it BEFORE replying — its own
@@ -317,11 +318,10 @@ as an update, paid in tokens on every message (`refs/board.md` → *When it is
 drawn*).
 
 **Deposing a foreman** (`/resume-workflow`, when another session holds the
-title and the user wants this chat in charge): best-effort farewell message
-to the old session, retitle it to `wf:<slug>:deposed` (`set_session_title`
-takes the other session's id, read from `list_sessions`), then take command
-as above. The
-old chat may be dead; nothing here is allowed to block on it.
+title and the user wants this chat in charge): best-effort farewell message to
+the old session, retitle it to `wf:<slug>:deposed` (`set_session_title` takes
+the other session's id, read from `list_sessions`), then take command as above.
+The old chat may be dead; nothing here is allowed to block on it.
 
 **Per-phase rationale.** A phase that makes a non-obvious choice appends it
 to `notes.md` under a `## Phase N` heading — why this way, what was rejected.

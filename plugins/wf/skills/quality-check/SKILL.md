@@ -38,6 +38,8 @@ All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifi
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
+**QA fixes.** A defect the user reports while exercising the list is fixed HERE, by this chat, when it is a correction and not a design — the second of the foreman's two exceptions to *commands, does not execute* (`foreman.md` → *The foreman*). The test is whether the user's sentence is the whole decision: a wrong term, a label, a field's rule or default, a missing catalog entry. No new table, column or migration, no engine change, no new surface or callable, and only files the phases already touched plus the catalogs that serve them (localization, CSS). Apply it, re-run the suite and the linter on the touched files, and commit one `wf: qa fix — <one line>` per QA round; record each in `notes.md` under `## QA fixes` as *what the user saw → what changed* — finalize's lessons pass reads it, because every fix a human had to ask for is a check the plan did not author. Beyond that boundary — a decision the user has not given, a test nobody wrote, a surface nobody built — the correction is a phase, appended per `/resume-workflow`, and this chat says which road it took and why. Measured on the field: two one-sentence corrections went out as a phase — a plan refine, three commits, a session and an inspection note — where two edits and one commit were owed.
+
 ## Step 3: Naming review
 
 Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases created — nobody could answer a naming question mid-run (`contracts.md` → *New-method markers and minimality*). Collect them over the union of every phase's `> Files:` (`grep -rn "wf:phase-[0-9]*:new" <files>`); none → skip in one line. Found → run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` for the whole workflow: ONE map, accept-all as the recommended fast path, renames applied with their call sites, markers stripped, the narrow signal re-run when anything was renamed. Commit the result on the workflow branch:
@@ -114,6 +116,6 @@ Close with the stamp line repeated in chat and the next step: *"Quality check st
 
 ## Rules
 
-- **NO source code editing** — report findings, delegate fixes. The one exception is Step 3's naming review: renames the user chose and marker removal, committed as its own `wf:` commit
+- **NO source code editing** — report findings, delegate fixes. Two exceptions, each committed as its own `wf:` commit: Step 3's naming review (renames the user chose and marker removal) and Step 2's QA fixes (a correction the user states in one sentence, inside the boundary written there)
 - A finding never blocks the stamp: the user decides to fix first or stamp as-is, and the stamp records what was found either way
 - The stamp is written even when every answer was "no" — a declined QA and a `none` review are facts finalize must see, not omissions

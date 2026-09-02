@@ -2731,6 +2731,17 @@ s44_guard() {  # $1 = skills dir, $2 = refs dir, $3 = launcher; one line per gap
     || echo "finalize-workflow: lost the missing-stamp question"
   grep -q 'quality-check' "$3" 2>/dev/null \
     || echo "launcher: the closing pointer no longer names quality-check"
+  # 6.32.0: the QA fix is the foreman's second exception to "commands, does not
+  # execute", and every consumer names it — the ref, the skill that performs
+  # it, the lessons pass that reads it, the launcher's closing pointer.
+  grep -q 'QA fix' "$2/foreman.md" 2>/dev/null \
+    || echo "foreman.md: the QA-fix exception is gone"
+  grep -q '^\*\*QA fixes\.\*\*' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "quality-check: the QA fixes paragraph is gone"
+  grep -q 'QA fixes' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "finalize-workflow: the lessons pass no longer reads QA fixes"
+  grep -q 'QA fix' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the closing pointer no longer names the QA fix"
 }
 S44_OUT="$(s44_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
 [ -z "$S44_OUT" ] || echo "  offending: $S44_OUT"
@@ -2741,6 +2752,14 @@ cp -R "$SKILLS_DIR"/. "$S44_MUT/"
 sed -i.bak '/> Quality check:/d' "$S44_MUT/finalize-workflow/SKILL.md" \
   && rm -f "$S44_MUT/finalize-workflow/SKILL.md.bak"
 assert "S44: the guard fails when finalize stops gating on the stamp" \
+  '[ -n "$(s44_guard "$S44_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
+rm -rf "$S44_MUT"
+# Mutation: quality-check losing the QA fixes paragraph must bite.
+S44_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S44_MUT/"
+sed -i.bak '/^\*\*QA fixes\.\*\*/d' "$S44_MUT/quality-check/SKILL.md" \
+  && rm -f "$S44_MUT/quality-check/SKILL.md.bak"
+assert "S44: the guard fails when quality-check loses the QA fixes paragraph" \
   '[ -n "$(s44_guard "$S44_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
 rm -rf "$S44_MUT"
 

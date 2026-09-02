@@ -100,4 +100,4 @@ Report the run's outcome to the user per `foreman.md` → *The reporting registe
 Then:
 
 - `grep '^\- \[' "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve)"` — phase status
-- all `[x]` → `/quality-check`, then `/finalize-workflow`; any `[!]` → read its `> Issue:`/`> Attempted:` notes first
+- all `[x]` → `/quality-check`, then `/finalize-workflow` — what the user's check turns up there is fixed by the foreman as a QA fix when it is a correction, never appended as a phase (`/quality-check` → *QA fixes*); any `[!]` → read its `> Issue:`/`> Attempted:` notes first
