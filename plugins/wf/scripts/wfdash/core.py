@@ -47,10 +47,12 @@ HOME = pathlib.Path.home()
 PROJECTS = HOME / '.claude' / 'projects'
 TASKS = HOME / '.claude' / 'tasks'
 
-# $/1M tokens (input, output) — the claude-api skill's table as of 2026-06-24.
-# Cache: read 0.1x input, write 1.25x (TTL 5m) or 2.0x (TTL 1h).
+# $/1M tokens (input, output) — the claude-api skill's table as of 2026-09-02.
+# Cache: write 1.25x input (TTL 5m) or 2.0x (TTL 1h); read 0.1x input, except
+# for the models CACHE_READ prices on their own.
 PRICES = {
     'claude-fable-5': (10.0, 50.0),
+    'claude-fable-5-1': (10.0, 50.0),
     'claude-mythos-5': (10.0, 50.0),
     'claude-opus-5': (5.0, 25.0),
     'claude-opus-4-8': (5.0, 25.0),
@@ -59,6 +61,7 @@ PRICES = {
     'claude-sonnet-4-6': (3.0, 15.0),
     'claude-haiku-4-5': (1.0, 5.0),
 }
+CACHE_READ = {'claude-fable-5-1': 0.25}
 SONNET5_INTRO_END = '2026-09-01'
 ACTIVE_WINDOW_S = 120  # a transcript touched within this window is running
 TRAIL_LEN = 8          # how many recent actions are kept per agent
@@ -68,6 +71,10 @@ def price(model, ts):
     if model == 'claude-sonnet-5':
         return (2.0, 10.0) if (ts or '') < SONNET5_INTRO_END else (3.0, 15.0)
     return PRICES.get(model)
+
+
+def cache_read_rate(model, pin):
+    return CACHE_READ.get(model, pin * 0.1)
 
 
 CMD_TAG_RE = re.compile(r'<command-(?:message|name|args)>(.*?)</command-\\1>', re.S)
@@ -234,7 +241,7 @@ class Scan:
         else:
             pin, pout = p
             self.usd += (inp * pin + w5 * pin * 1.25 + w1 * pin * 2.0
-                         + rd * pin * 0.1 + out * pout) / 1e6
+                         + rd * cache_read_rate(model, pin) + out * pout) / 1e6
         if ts:
             self.first_ts = self.first_ts or ts
             self.last_ts = ts

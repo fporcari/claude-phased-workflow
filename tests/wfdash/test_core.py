@@ -33,10 +33,10 @@ Mode: interactive
 """
 
 
-def assistant_row(out, read, ts='2026-08-25T09:00:00Z'):
+def assistant_row(out, read, ts='2026-08-25T09:00:00Z', model='claude-opus-5'):
     return json.dumps({
         'type': 'assistant', 'timestamp': ts,
-        'message': {'model': 'claude-opus-5',
+        'message': {'model': model,
                     'content': [{'type': 'text', 'text': 'done'}],
                     'usage': {'input_tokens': 10, 'output_tokens': out,
                               'cache_read_input_tokens': read}}})
@@ -107,7 +107,28 @@ def main():
         # no plan: state still answers
         empty = core.Board(td).state()
         assert empty['plan'] is None
+
+        fable_priced(tmp)
     print('test_core: ok')
+
+
+def fable_priced(tmp):
+    """Fable 5.1 is priced, and its cache reads cost $0.25/Mtok — not the
+    0.1x-of-input the rest of the table follows, which would be $1.00."""
+    repo = tmp / 'fablerepo'
+    (repo / '.phased' / 'active' / 'myplan').mkdir(parents=True)
+    (repo / '.phased' / 'active' / 'myplan' / 'plan.md').write_text(PLAN)
+    project = tmp / 'projects' / str(repo).replace('/', '-')
+    project.mkdir(parents=True)
+    (project / 'eeee5555.jsonl').write_text(
+        title_row('wf:myplan:phase-2') + '\n'
+        + assistant_row(0, 1_000_000, model='claude-fable-5-1') + '\n')
+
+    state = core.Board(str(repo)).state()
+    assert state['totals']['unpriced'] == [], state['totals']['unpriced']
+    chat = next(c for c in state['chats'] if c['session_id'] == 'eeee5555')
+    # 10 input tokens at $10/Mtok + 1M cache reads at $0.25/Mtok
+    assert chat['usd'] == 0.25, chat['usd']
 
 
 if __name__ == '__main__':
