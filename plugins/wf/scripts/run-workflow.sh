@@ -92,6 +92,16 @@ if ! find "$REPO_ROOT/.phased/active" -mindepth 2 -maxdepth 2 -name plan.md 2>/d
       mkdir -p "$PLAN_CHECKOUT/.claude"
       [ -f "$REPO_ROOT/.claude/settings.local.json" ] \
         && cp "$REPO_ROOT/.claude/settings.local.json" "$PLAN_CHECKOUT/.claude/settings.local.json"
+      # genropy-worktree, when installed: writes the GenroPy env (own .gnr/,
+      # own ports) into the worktree's settings, read at session start — so the
+      # sub-sessions launched below run gnr against THIS checkout, not the root.
+      if command -v activate_gnr_context >/dev/null 2>&1; then
+        if (cd "$PLAN_CHECKOUT" && activate_gnr_context >/dev/null); then
+          echo "NOTE: GenroPy environment activated in $PLAN_CHECKOUT."
+        else
+          echo "NOTE: activate_gnr_context failed in $PLAN_CHECKOUT — gnr there may still target the main repo."
+        fi
+      fi
     else
       echo "NOTE: the active plan lives in $PLAN_CHECKOUT (branch $PLAN_BRANCH) — operating there."
     fi

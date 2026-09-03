@@ -85,8 +85,11 @@ skill, a ref or another doc.
 - **Why worktrees?** Git worktrees create isolated working directories on
   separate branches. Each worktree has its own file tree, so parallel workflows
   don't interfere. `git add -A` in a worktree is safe — everything there belongs
-  to that workflow. They are opt-in: `/run-workflow` creates one on demand for
-  autonomous runs; interactive work stays on the branch in your session.
+  to that workflow. `/write-workflow` opens one by default for a `wf/` branch
+  (flippable in its branch line; `Channel: in-chat` stays in the checkout, since
+  that conversation IS the workspace), so the checkout you planned from never
+  leaves the parent and a `git switch` there cannot break a run; the launcher
+  still creates one on demand for a plan whose branch has no checkout.
 - **Why one commit per phase, then a squash?** Both paths commit once per phase
   (`wf(phase N): <title>`) on the throwaway workflow branch, because the
   mechanics live once in `refs/phase-execution.md`. The per-phase commit is

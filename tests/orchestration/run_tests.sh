@@ -22,7 +22,8 @@
 #
 # Real-git scenarios (no mock): S17 drives /import-workflow's classifier and
 # its mid-run git sequence; S22 the --plans location service (root, worktree,
-# orphan branch).
+# orphan branch); S62 the worktree the launcher creates and its GenroPy
+# activation, plus the real activate_gnr_context's exclude-not-gitignore.
 #
 # Static checks on what the repo ships: no frozen copies of the shipped
 # contracts and the light contract's per-phase-commit clause intact (S14),
@@ -3842,6 +3843,91 @@ sed -i.bak 's/successor foreman chat opens on fable \/ high/successor foreman ch
 assert "S61: the guard fails when write-workflow drops the value" \
   '[ -n "$(s61_guard "$S61_MUT" "$S24_REFS")" ]'
 rm -rf "$S61_MUT"
+
+echo "== S62: a worktree the launcher creates gets the GenroPy activation =="
+# 6.34.0: the worktree opens at planning by default, and the GenroPy env must
+# be written into it BEFORE any session starts there — Claude Code reads the
+# worktree's settings.local.json at session start. Live: a plan on a wf/ branch
+# with no checkout, the launcher run from the root, a mock activate_gnr_context
+# on PATH — the worktree is created, the root settings copied, the activation
+# run from inside the worktree (its pwd is how the real script finds it), and
+# announced; without the script on PATH nothing about it is said. Then the real
+# activate_gnr_context against a fake ~/.gnr: `.gnr/` lands in the common
+# info/exclude and .gitignore stays untouched, since a phase commit stages with
+# `git add -A`. Static: agent-session.sh mirrors the launcher's call, and
+# write-workflow names the worktree command and the activation — by mutation.
+s62_repo() {  # $1 = scenario dir: root on main, plan on wf/s62 with no checkout
+  rm -rf "$1"; mkdir -p "$1/.claude"; cd "$1" || exit 1
+  git init -q -b main
+  git config user.email wf-tests@harness.local
+  git config user.name "wf test harness"
+  echo base > base.txt; git add -A; git commit -qm base
+  echo '{"env":{"S62":"root"}}' > .claude/settings.local.json
+  git worktree add -q "$1-tmp" -b wf/s62 main
+  mkdir -p "$1-tmp/.phased/active/toy"
+  ( cd "$1-tmp" && fixture2 )
+  git -C "$1-tmp" add -A; git -C "$1-tmp" commit -qm "wf: plan for toy"
+  git worktree remove --force "$1-tmp"
+}
+mkdir -p "$OT/gnrbin"
+printf '%s\n' '#!/bin/bash' 'pwd > "$S62_ACTIVATION_LOG"' > "$OT/gnrbin/activate_gnr_context"
+chmod +x "$OT/gnrbin/activate_gnr_context"
+s62_repo "$OT/scenarios/S62"
+S62_ACTIVATION_LOG="$OT/scenarios/S62.activation" PATH="$OT/gnrbin:$OT/bin:$PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S62: the launcher creates the worktree for the plan with no checkout" \
+  'grep -q "creating its worktree at .*/.claude/worktrees/toy" out.log && [ -f .claude/worktrees/toy/.phased/active/toy/plan.md ]'
+assert "S62: the root settings.local.json is copied into the worktree" \
+  'grep -q S62 .claude/worktrees/toy/.claude/settings.local.json'
+assert "S62: activate_gnr_context runs from inside the worktree" \
+  'grep -q "/scenarios/S62/.claude/worktrees/toy$" "$OT/scenarios/S62.activation"'
+assert "S62: the activation is announced" 'grep -q "GenroPy environment activated in .*/.claude/worktrees/toy" out.log'
+# The machine running the suite may have the real script installed (it is,
+# on the author's), so "not on PATH" is built, not assumed.
+S62_PATH="$OT/bin:$(printf '%s' "$PATH" | tr ':' '\n' | while read -r d; do
+  [ -n "$d" ] && [ ! -x "$d/activate_gnr_context" ] && printf '%s:' "$d"; done | sed 's/:$//')"
+s62_repo "$OT/scenarios/S62b"
+PATH="$S62_PATH" bash "$OT/runner.sh" > out.log 2>&1
+assert "S62: without the script on PATH the worktree is still created and GenroPy is not mentioned" \
+  '[ -f .claude/worktrees/toy/.phased/active/toy/plan.md ] && ! grep -qi "genropy" out.log'
+# The real activation against a fake system config: exclude, not .gitignore.
+S62_HOME="$OT/scenarios/S62-home"; mkdir -p "$S62_HOME/.gnr/siteconfig"
+printf '%s\n' '<?xml version="1.0"?>' '<environment><gnrdaemon host="localhost" port="40404"/></environment>' > "$S62_HOME/.gnr/environment.xml"
+printf '%s\n' '<?xml version="1.0"?>' '<siteconfig><wsgi port="8080"/></siteconfig>' > "$S62_HOME/.gnr/siteconfig/default.xml"
+S62_WT="$OT/scenarios/S62b/.claude/worktrees/toy"
+S62_ACT_OUT="$(cd "$S62_WT" && HOME="$S62_HOME" VIRTUAL_ENV= bash "$TESTDIR/../../plugins/genropy-worktree/bin/activate_gnr_context" 2>&1)"
+[ -f "$S62_WT/.gnr/environment.xml" ] || echo "  activation output: $S62_ACT_OUT"
+assert "S62: the real activation generates the worktree's .gnr/ and its Claude Code env" \
+  '[ -f "$S62_WT/.gnr/environment.xml" ] && grep -q GENRO_GNRFOLDER "$S62_WT/.claude/settings.local.json"'
+assert "S62: .gnr/ is excluded through the common info/exclude" \
+  'grep -qx ".gnr/" "$OT/scenarios/S62b/.git/info/exclude" && git -C "$S62_WT" check-ignore -q .gnr/'
+assert "S62: .gitignore is not created or edited by the activation" \
+  '[ ! -e "$S62_WT/.gitignore" ] && [ -z "$(git -C "$S62_WT" status --porcelain -- .gitignore)" ]'
+s62_guard() {  # $1 = skills dir, $2 = scripts dir; one line per gap
+  grep -q 'git worktree add .claude/worktrees/<slug> -b wf/<slug>' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the worktree command is gone from Step 4"
+  grep -q 'activate_gnr_context' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the activation step is gone"
+  grep -q 'cd "$PLAN_CHECKOUT" && activate_gnr_context' "$2/run-workflow.sh" 2>/dev/null \
+    || echo "run-workflow.sh: the activation call is gone"
+  grep -q 'cd "$PLAN_CHECKOUT" && activate_gnr_context' "$2/agent-session.sh" 2>/dev/null \
+    || echo "agent-session.sh: the activation call is gone"
+}
+S62_SCRIPTS="$TESTDIR/../../plugins/wf/scripts"
+S62_OUT="$(s62_guard "$SKILLS_DIR" "$S62_SCRIPTS")"
+[ -z "$S62_OUT" ] || echo "  offending: $S62_OUT"
+assert "S62: the worktree and its activation are named where the worktree opens" '[ -z "$S62_OUT" ]'
+S62_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S62_MUT/"
+sed -i.bak '/activate_gnr_context/d' "$S62_MUT/write-workflow/SKILL.md" && rm -f "$S62_MUT/write-workflow/SKILL.md.bak"
+assert "S62: the guard fails when write-workflow drops the activation" \
+  '[ -n "$(s62_guard "$S62_MUT" "$S62_SCRIPTS")" ]'
+rm -rf "$S62_MUT"
+S62_MUT="$(mktemp -d)"
+cp "$S62_SCRIPTS"/*.sh "$S62_MUT/"
+sed -i.bak '/activate_gnr_context/d' "$S62_MUT/agent-session.sh" && rm -f "$S62_MUT/agent-session.sh.bak"
+assert "S62: the guard fails when agent-session.sh drops the activation" \
+  '[ -n "$(s62_guard "$SKILLS_DIR" "$S62_MUT")" ]'
+rm -rf "$S62_MUT"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

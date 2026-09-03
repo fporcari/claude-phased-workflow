@@ -154,5 +154,5 @@ Autonomous-ready plan written to .phased/active/<slug>/plan.md (<N> phases + fin
 Every phase carries: pattern reference, files, pre-made decisions, a measurable done criterion.
 Each phase runs a self-correcting loop (3 test+lint attempts, independent review, gate on the Done); a failed phase gets ONE automatic fresh-eyes repair before it stops for you.
 The final review fixes the trivial slips and flags the rest in .phased/active/<slug>/review.md.
-To run it: /run-workflow (it will pass the pre-flight check with no questions).
+To run it: /run-workflow (it will pass the pre-flight check with no questions) — from this checkout or from .claude/worktrees/<slug> alike: the launcher attaches to the plan's checkout.
 ```

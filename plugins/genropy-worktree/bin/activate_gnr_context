@@ -54,9 +54,13 @@ if [ ! -f "$WORKTREE_ROOT/.gnr/environment.xml" ]; then
     if [ -d "$_gnr_config_dir/instanceconfig" ] && [ ! -e "$WORKTREE_ROOT/.gnr/instanceconfig" ]; then
         ln -s "$_gnr_config_dir/instanceconfig" "$WORKTREE_ROOT/.gnr/instanceconfig"
     fi
-    for entry in ".gnr/"; do
-        git -C "$WORKTREE_ROOT" check-ignore -q "$entry" 2>/dev/null || echo "$entry" >> "$WORKTREE_ROOT/.gitignore"
-    done
+    # Local exclude, never .gitignore: a worktree's phase commits stage with
+    # `git add -A`, and an edited .gitignore would ride into the first one.
+    _gnr_exclude="$(git -C "$WORKTREE_ROOT" rev-parse --git-common-dir)"
+    case "$_gnr_exclude" in /*) ;; *) _gnr_exclude="$WORKTREE_ROOT/$_gnr_exclude" ;; esac
+    mkdir -p "$_gnr_exclude/info"
+    git -C "$WORKTREE_ROOT" check-ignore -q ".gnr/" 2>/dev/null || echo ".gnr/" >> "$_gnr_exclude/info/exclude"
+    unset _gnr_exclude
 fi
 
 # siteconfig is a real copy, not a symlink: it carries the per-worktree ports.

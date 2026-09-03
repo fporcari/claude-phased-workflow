@@ -1,6 +1,6 @@
 # GenroPy Worktree Support
 
-Run GenroPy sites and CLI commands (`gnr web serve`, `gnr db setup`, etc.) from a git worktree — one created by `/write-workflow` on an autonomous plan, or by hand with `git worktree add` — and serve several worktrees side by side.
+Run GenroPy sites and CLI commands (`gnr web serve`, `gnr db setup`, etc.) from a git worktree — one opened by `/write-workflow` (the default for a `wf/` branch), one the `/run-workflow` launcher attaches for a plan with no checkout, or one made by hand with `git worktree add` — and serve several worktrees side by side.
 
 ## The Problem
 
@@ -59,7 +59,13 @@ preserved):
 Claude Code applies that block to every Bash invocation, so a session started in
 the worktree runs `gnr` against the right code and database with nothing to
 remember. Run the activation once per worktree before starting the session —
-settings are read at session start.
+settings are read at session start. The `wf` plugin does this itself when the
+scripts are installed: `/write-workflow` right after `git worktree add`, and the
+`/run-workflow` launcher when it creates a worktree for a plan with no checkout,
+so every phase chat and every sub-session opened there inherits the env. The
+`.gnr/` directory is excluded through `.git/info/exclude`, not `.gitignore`: a
+phase commit stages with `git add -A`, and an edited `.gitignore` would ride
+into it.
 
 **Deactivate** (or just close the terminal):
 ```bash

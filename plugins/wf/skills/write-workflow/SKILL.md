@@ -1,7 +1,7 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__ccd_session_mgmt__set_session_title, mcp__visualize__read_me, mcp__visualize__show_widget
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(cd:*), Bash(command:*), Bash(activate_gnr_context:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__ccd_session_mgmt__set_session_title, mcp__visualize__read_me, mcp__visualize__show_widget
 ---
 
 # Write Workflow
@@ -160,15 +160,23 @@ Only after approval, and before writing anything.
 
 Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a leading issue number kept as prefix (`123-fix-login`).
 
-**On the base branch** → `git switch -c wf/<slug>`, no question asked.
+**On the base branch** → `wf/<slug>`, no question asked — in a worktree by default, below.
 
 **On a feature branch** → the default is to **adopt it** as the workflow branch: `.phased/` goes there, no new branch, and `Parent:` is that branch's own base. You created that branch on purpose; nesting another inside it buys nothing. The alternative, offered in the branch line above, is `wf/<slug>` off it — take it when the workflow is a distinct chunk the user may want to merge or drop on its own; the current branch then becomes the `Parent:`.
 
-**No worktree here.** Planning creates the branch and the plan, nothing else: the workspace belongs to execution. `/run-workflow` attaches or creates the worktree itself when the run needs one, and `/finalize-workflow` removes it — the user never manages it.
+**Worktree by default.** On the `wf/<slug>` path the branch opens in its own worktree, cut from the parent, so this checkout never leaves it: whatever the user does here while the run or the phase chats work cannot collide with them, and a `git switch` here cannot break a run.
+
+```bash
+git worktree add .claude/worktrees/<slug> -b wf/<slug>
+mkdir -p .claude/worktrees/<slug>/.claude && cp .claude/settings.local.json .claude/worktrees/<slug>/.claude/
+command -v activate_gnr_context >/dev/null && (cd .claude/worktrees/<slug> && activate_gnr_context)
+```
+
+From here on every path and every git command of this skill is anchored at the worktree root (`common.md` → *Plan location*): `.phased/` and the plan commit land there, never in this checkout. The third line is the `genropy-worktree` plugin, when installed: it writes the GenroPy env (own `.gnr/`, own ports) into the worktree's `.claude/settings.local.json`, which Claude Code reads at session start — so every chat and sub-session opened there runs `gnr` against the worktree's code, and planning is the one moment early enough for that. The branch line flips it to "in this checkout" (`git switch -c wf/<slug>`); on `Channel: in-chat` that is the default instead, since this conversation IS the workspace. Not offered on the adopt path — a branch already checked out cannot be added as a worktree. `/finalize-workflow` removes the worktree; the user never manages it.
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and — on `Channel: relayed` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it). On `Channel: in-chat` there is no relay to command: no `foreman.json`, no take-command commit, and the same conversation carries the work.
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` at the workspace root (the worktree, when one was opened) holding `plan.md`, an empty `notes.md`, and — on `Channel: relayed` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it). On `Channel: in-chat` there is no relay to command: no `foreman.json`, no take-command commit, and the same conversation carries the work.
 
 ```
 # Context: <branch-name>
@@ -216,10 +224,11 @@ The plan is the branch's first commit — everything after it is the workflow:
 git add .phased && git commit -m "wf: plan for <slug>"
 ```
 
-Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/` is excluded by a `.gitignore` — say so and stop rather than working around it; the whole chain depends on the plan being tracked.
+In a worktree, both commands run there (`git -C .claude/worktrees/<slug>`). Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/` is excluded by a `.gitignore` — say so and stop rather than working around it; the whole chain depends on the plan being tracked.
 
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
+Workspace: .claude/worktrees/<slug> — open the phase chats there; /run-workflow and /resume-workflow find it from here too.   (worktree only; on in-chat this conversation operates there through the plan root)
 relayed → this chat is the foreman, now titled `wf:<slug>:foreman`, the address phase chats report to; launch /execute-phase in a new chat and this one stays the board (a successor foreman chat opens on fable / high — foreman.md). in-chat → no relay: /execute-phase runs here, phase after phase, every gate in this conversation.
 Phase 1 — suggested: <model>, effort <effort>.
 ```

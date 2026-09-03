@@ -1,8 +1,6 @@
 # Shared conventions — phased-workflow skills
 
-Single source of truth for the core blocks every phased-workflow skill needs.
-Skills point here instead of restating them. The doctrine is split by
-consumer, so a session pays only for the layers its skill actually uses:
+Single source of truth for the core blocks every phased-workflow skill needs. Skills point here instead of restating them. The doctrine is split by consumer, so a session pays only for the layers its skill actually uses:
 
 - `refs/common.md` (this file) — language, questions, the gate line, the plan
   directory and its location, the workflow branch, phase selection, failure
@@ -14,22 +12,13 @@ consumer, so a session pays only for the layers its skill actually uses:
 
 ## Language
 
-All written content (plans, phase notes, code, comments, commits, PRs,
-issues) in English: the artifacts outlive the chat that produced them, and
-what reads them next is usually another session.
+All written content (plans, phase notes, code, comments, commits, PRs, issues) in English: the artifacts outlive the chat that produced them, and what reads them next is usually another session.
 
-**The conversation is in the user's language, never in one this plugin
-picks.** Follow their own configuration — global instructions, output style,
-or simply the language they are writing in. Every wording quoted below and in
-the skills (gate lines, question options, closing messages, board labels) is
-the English **canon of what to say**, not the language to say it in.
+**The conversation is in the user's language, never in one this plugin picks.** Follow their own configuration — global instructions, output style, or simply the language they are writing in. Every wording quoted below and in the skills (gate lines, question options, closing messages, board labels) is the English **canon of what to say**, not the language to say it in.
 
 ## AskUserQuestion style
 
-Use `AskUserQuestion` for every question to the user. When a sensible
-default exists, put the recommended option FIRST and append
-"(Recommended)" to its label (the tool has no default-answer parameter).
-For multiple-choice lists, one option per line, checkbox style.
+Use `AskUserQuestion` for every question to the user. When a sensible default exists, put the recommended option FIRST and append "(Recommended)" to its label (the tool has no default-answer parameter). For multiple-choice lists, one option per line, checkbox style.
 
 ## The gate line
 
@@ -108,9 +97,10 @@ say so and stop).
 Every plan gets a branch, so that everything belonging to the run is
 identifiable without heuristics.
 
-- `/write-workflow` either creates `wf/<slug>` or adopts the branch you are
-  already on (its own rules decide); either way `Parent:` in the plan records
-  where the work goes back to.
+- `/write-workflow` either creates `wf/<slug>` — in its own worktree under
+  `.claude/worktrees/<slug>` by default, so the checkout it was run from stays
+  on the parent — or adopts the branch you are already on (its own rules
+  decide); either way `Parent:` in the plan records where the work goes back to.
 - The plan is committed first, as `wf: plan for <slug>`.
 - Each completed phase produces exactly ONE **phase commit**,
   `wf(phase N): <title>`, including the plan's own status update. Any number
