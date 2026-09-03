@@ -710,6 +710,62 @@ to trust an impression of slowness. Read it against the two causes it usually
 has (a channel nobody was consuming, or a plan written unseen) and confirm or
 discard by reading the apparatus commits themselves.
 
+## The final touch, and the loop it closes
+
+*Written 2026-09-03, landed in 6.35.0.*
+
+**The measurement.** The `3-accesso-ambulatorio-id` run on Demetra, issue #3 bug 1:
+where does an `accesso` born from `appuntamento.completa()`, a walk-in or the group
+branch get its `ambulatorio_id`. Foreman chat 2026-09-02 10:35 → 2026-09-03 12:30.
+
+| Round | Phases | Diff (`packages/ tools/ tests/ docs/`) | Outcome |
+|---|---|---|---|
+| 1 — the plan | 1–3 | 7 files, +302 −7 | bug fixed, verified by hand |
+| 2 — after quality check #1 | 4–9 | 39 files, +968 −426 | two `[!]`, two repairs |
+| 3 — after quality check #2 | 10–13 | 19 files, +302 −150 | done by the foreman in its chat, minutes |
+
+26 `wf:` commits, 13 phases, 145M cache-read tokens in the foreman alone. Round 2 is
+three times the diff of the fix it was reviewing.
+
+**The mechanism.** Two rules that are each right on their own compose into a loop.
+Step 5 of `/quality-check` runs a recall-biased review — *err on the side of
+surfacing* — which finds eight to ten things on any diff of a few hundred lines,
+and then says *fixing is delegated; re-run `/quality-check`*. The 6.32.0 QA fix
+could not absorb them: its boundary was the user's one sentence and *no new
+callable*, and a review finding is neither. So each finding became a phase via
+`/resume-workflow`, the phases produced a diff, the re-run review read it at the
+same effort and found ten more. Nothing in the protocol made the second review
+smaller than the first, so nothing made the sequence converge. It ended when the
+user asked the foreman to do the fixes itself — which it did, four phases in
+minutes, with the same contract tests as verification.
+
+**The correction.** Three moves, in the order they bite.
+
+1. *The boundary is decisions, not size.* A correction is a QA fix when no decision
+   is open — the user's sentence or the plan's `Decisions:` already says what right
+   looks like — whatever code it takes. Size was the wrong proxy: the second round's
+   three new helpers and three FK rules were all decided; they were only large.
+2. *The final touch.* Review findings are fixed by the foreman as one table and one
+   commit, and the re-check after it is Light at `low` over the touched files. A
+   second high-effort pass is the loop restarting, so it is forbidden by name.
+   What still leaves the chat is a surface the plan never built, as ONE phase.
+3. *One chat, or a workflow.* The fix itself was one session — its decisions were
+   in the issue, its diff read in one sitting. The plan's quality (recon, `Pattern:`,
+   `Done:`, contract tests) is the plan's, not the phase boundaries': a single session
+   handed it as a prompt gets the same quality in a warm context, and none of the
+   duplicated helpers that separate sessions produced. A workflow pays for exactly
+   three reasons — the work does not fit one context, an intermediate result changes
+   what comes next, it must run unattended — and `/issue` and `/write-workflow` now
+   ask the question on them; when none holds the plan becomes a one-chat brief — a
+   self-contained prompt with the decisions, the patterns, the method, the `Done:`
+   and two stop rules — written to `~/.phased/prompts/<slug>.md`, not a workflow.
+   `Channel: in-chat` sits between the two; this run took the most expensive tier,
+   relayed and autonomous, for a job that belonged to the cheapest.
+
+**What it owes the field.** One quality check that ends in a final touch and a
+stamp, on a run where the review found things — and a `/issue` that sends a
+one-session fix to one session.
+
 ## Known patterns
 
 Plan-and-Execute (LangChain/LlamaIndex) · Checkpoint & Resume (CI/CD) ·

@@ -19,19 +19,20 @@ plan — that is what lets it answer for any phase — so no skill ever recommen
 running `/execute-phase` in the foreman chat: a *Next step* naming that skill is
 always worded as a fresh chat. Two exceptions, both intended: launching
 `/run-workflow` from the foreman (it supervises, it does not implement), and the
-**QA fix** once every phase is `[x]` — a correction the user states in one
-sentence at the quality check, applied and committed by the foreman itself
-(`/quality-check` → *QA fixes*): with the human at the gate and no phase left to
-command, a phase's ceremony buys nothing. Nothing is enforced — a user executing
-a phase in the foreman chat lands in the degenerate branches below (*when this
-chat IS the foreman*), which keep working: a fallback, never advice.
+**QA fix** with its **final touch** once every phase is `[x]` — the corrections the
+user's check and the pre-commit review turn up, applied and committed by the foreman
+itself when no decision is open (`/quality-check` → *QA fixes*, *The final touch*):
+the human is at the gate, no phase is left to command, a phase's ceremony buys
+nothing and a phase per finding is a loop. Nothing is enforced — a user executing a
+phase in the foreman chat lands in the degenerate branches below (*when this chat IS
+the foreman*), which keep working: a fallback, never advice.
 
 **The foreman's own model is advice too, written down for the same reason the
 `Run:` hint is**: a chat's model and effort are chosen when it opens, before any
 skill has read the plan. Suggested `fable` / `high` — the foreman's output is
 judgment and prose to humans (a consult answered, a QA question worded, a report
 delivered), where `opus` reads flat and `sonnet` invents; `high` because the QA
-fix is code, and `xhigh` on pre-digested input is overthinking. Nothing enforces it.
+fix and the final touch are code, and `xhigh` on pre-digested input is overthinking. Nothing enforces it.
 
 **And the mirror: a phase chat executes; it does not supervise.** No skill
 ever recommends `/resume-workflow` — or any re-planning of the whole plan —
@@ -314,11 +315,10 @@ child's user; for `stop-work?`, to the run's own stop conditions; for
 a question is never worth a retry loop. A foreman receiving one
 re-reads `.phased/` before answering — the plan on disk, not the message
 text, is the state — and answers with the DELTA, not the board: what
-changed, what it blocks, what to launch next, in the register below. A board
-is for a human asking where the work stands; a phase closing is one line
-moving, and redrawing the whole position for it is a recomputation dressed
-as an update, paid in tokens on every message (`refs/board.md` → *When it is
-drawn*).
+changed, what it blocks, what to launch next, in the register below. A board is
+for a human asking where the work stands; a phase closing is one line moving, and
+redrawing the whole position for it is a recomputation dressed as an update, paid
+in tokens on every message (`refs/board.md` → *When it is drawn*).
 
 **Deposing a foreman** (`/resume-workflow`, when another session holds the
 title and the user wants this chat in charge): best-effort farewell message to

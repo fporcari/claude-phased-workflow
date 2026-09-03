@@ -2743,6 +2743,23 @@ s44_guard() {  # $1 = skills dir, $2 = refs dir, $3 = launcher; one line per gap
     || echo "finalize-workflow: the lessons pass no longer reads QA fixes"
   grep -q 'QA fix' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "run-workflow: the closing pointer no longer names the QA fix"
+  # 6.35.0: the final touch — review findings fixed by the foreman, one table,
+  # one commit, a Light re-check — is named in the same four places plus the
+  # stamp, and resume-workflow takes only what the final touch sends it.
+  grep -q 'final touch' "$2/foreman.md" 2>/dev/null \
+    || echo "foreman.md: the final-touch exception is gone"
+  grep -q '^\*\*The final touch\.\*\*' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "quality-check: the final touch paragraph is gone"
+  grep -q 'final touch <N corrections | none>' "$2/contracts.md" 2>/dev/null \
+    || echo "contracts.md: the stamp no longer records the final touch"
+  grep -q 'final touch <N corrections | none>' "$1/quality-check/SKILL.md" 2>/dev/null \
+    || echo "quality-check: the stamp written no longer records the final touch"
+  grep -q 'Final touch' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "finalize-workflow: the lessons pass no longer reads the final touch"
+  grep -q 'final touch' "$1/run-workflow/SKILL.md" 2>/dev/null \
+    || echo "run-workflow: the closing pointer no longer names the final touch"
+  grep -q 'After a quality check' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "resume-workflow: no longer says what a quality check may send it"
 }
 S44_OUT="$(s44_guard "$SKILLS_DIR" "$S24_REFS" "$RUNNER_SRC")"
 [ -z "$S44_OUT" ] || echo "  offending: $S44_OUT"
@@ -2761,6 +2778,14 @@ cp -R "$SKILLS_DIR"/. "$S44_MUT/"
 sed -i.bak '/^\*\*QA fixes\.\*\*/d' "$S44_MUT/quality-check/SKILL.md" \
   && rm -f "$S44_MUT/quality-check/SKILL.md.bak"
 assert "S44: the guard fails when quality-check loses the QA fixes paragraph" \
+  '[ -n "$(s44_guard "$S44_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
+rm -rf "$S44_MUT"
+# Mutation: quality-check losing the final touch paragraph must bite.
+S44_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S44_MUT/"
+sed -i.bak '/^\*\*The final touch\.\*\*/d' "$S44_MUT/quality-check/SKILL.md" \
+  && rm -f "$S44_MUT/quality-check/SKILL.md.bak"
+assert "S44: the guard fails when quality-check loses the final touch paragraph" \
   '[ -n "$(s44_guard "$S44_MUT" "$S24_REFS" "$RUNNER_SRC")" ]'
 rm -rf "$S44_MUT"
 
@@ -3928,6 +3953,48 @@ sed -i.bak '/activate_gnr_context/d' "$S62_MUT/agent-session.sh" && rm -f "$S62_
 assert "S62: the guard fails when agent-session.sh drops the activation" \
   '[ -n "$(s62_guard "$SKILLS_DIR" "$S62_MUT")" ]'
 rm -rf "$S62_MUT"
+
+echo "== S63: a job that is one session is told so before it becomes a plan =="
+# 6.35.0: a 3-phase plan whose whole diff was 7 files grew to 13 phases through
+# two quality-check rounds; the fix itself was one session. A workflow pays only
+# for one of three reasons (context, a gate between phases, unattended); /issue
+# sizes the job on them and closes with a prompt when none holds; /write-workflow
+# asks the same question at its gate and writes a self-contained one-chat brief.
+s63_guard() {  # $1 = skills dir; one line per gap
+  grep -q 'one session or a workflow' "$1/issue/SKILL.md" 2>/dev/null \
+    || echo "issue: Step 2 no longer asks one session or a workflow"
+  grep -q 'no workflow — here is its prompt' "$1/issue/SKILL.md" 2>/dev/null \
+    || echo "issue: the one-session closing line is gone"
+  grep -q 'one of three holds' "$1/issue/SKILL.md" 2>/dev/null \
+    || echo "issue: the three reasons a workflow pays are gone"
+  grep -q '^\*\*One chat, or a workflow\.\*\*' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the one-chat-or-workflow paragraph is gone"
+  grep -q 'one of three holds' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the three reasons a workflow pays are gone"
+  grep -q '~/.phased/prompts/<slug>.md' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the brief is no longer handed over as a prompt file"
+  grep -q '^\*\*The one-chat brief\*\*' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the one-chat brief template is gone"
+  grep -q '^## Stop: a decision not listed' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the brief lost its stop rules"
+  grep -q 'with \*\*One chat\*\* first' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "write-workflow: the gate no longer offers one chat"
+}
+S63_OUT="$(s63_guard "$SKILLS_DIR")"
+[ -z "$S63_OUT" ] || echo "  offending: $S63_OUT"
+assert "S63: the sizing gate is named where a workflow is entered and where it is planned" '[ -z "$S63_OUT" ]'
+S63_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S63_MUT/"
+sed -i.bak '/one session or a workflow/d' "$S63_MUT/issue/SKILL.md" && rm -f "$S63_MUT/issue/SKILL.md.bak"
+assert "S63: the guard fails when /issue stops sizing the job" \
+  '[ -n "$(s63_guard "$S63_MUT")" ]'
+rm -rf "$S63_MUT"
+S63_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S63_MUT/"
+sed -i.bak '/^\*\*One chat, or a workflow\.\*\*/d' "$S63_MUT/write-workflow/SKILL.md" && rm -f "$S63_MUT/write-workflow/SKILL.md.bak"
+assert "S63: the guard fails when /write-workflow drops the one-chat question" \
+  '[ -n "$(s63_guard "$S63_MUT")" ]'
+rm -rf "$S63_MUT"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

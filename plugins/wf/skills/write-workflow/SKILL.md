@@ -27,12 +27,10 @@ git rev-parse --verify origin/develop >/dev/null 2>&1 && echo develop || echo ma
 
 The user's answer is the primary input. Read code only in service of the plan.
 
-**Then look, before deciding anything.** A plan on hypotheses buys its imprecision
-back one clarify round at a time, and four classes account for most: a literal
-asserted unique and never grepped for duplicates, a behaviour transcribed from a
-design doc the code contradicts, a remedy (flag, env var, CLI option) unchecked
-against the tool's real interface, arithmetic stated without being computed —
-cheap here, expensive at a phase gate, and what Step 2 sizes on.
+**Then look, before deciding anything.** A plan on hypotheses buys its imprecision back one clarify round at a time, and four classes account for
+most: a literal asserted unique and never grepped for duplicates, a behaviour transcribed from a design doc the code contradicts, a remedy (flag, env
+var, CLI option) unchecked against the tool's real interface, arithmetic stated without being computed — cheap here, expensive at a phase gate, and
+what Step 2 sizes on.
 
 This same fork decides the branch in Step 4 — remember which side you are on.
 
@@ -55,18 +53,13 @@ The answer routes the rest of this skill:
 - **Autonomous** → read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
 - **Interactive** → continue with this file's format; the plan carries `Mode: interactive`.
 
-**Then the channel** — a second question, put only once the first is answered and never in the same `AskUserQuestion`, since the mode answer decides whether it is asked at all: `Mode:`
-says how the work runs, `Channel:` where its decisions travel (`contracts.md` →
-*The channel*). Every new plan writes the field.
+**Then the channel** — a second question, put only once the first is answered and never in the same `AskUserQuestion`, since the mode answer decides whether it is asked at all: `Mode:` says how the work runs, `Channel:` where its decisions travel (`contracts.md` → *The channel*). Every new plan writes the field.
 
-- `Mode: autonomous` → `Channel: relayed`, always: nobody is at a gate, so the
-  relay is the only route a decision has.
-- `Mode: interactive` → **ask**, one line, recommendation first. `in-chat` when
-  the same person sits at every gate: one conversation plans and executes in
-  sequence, and a hop between chats buys nothing where the loop is closed
-  already. `relayed` when different chats or times pick up the phases, or
-  several workflows run at once — anything putting a chat boundary between a
-  decision and the phase needing it. Phases stay ordered and serial either way.
+- `Mode: autonomous` → `Channel: relayed`, always: nobody is at a gate, so the relay is the only route a decision has.
+- `Mode: interactive` → **ask**, one line, recommendation first. `in-chat` when the same person sits at every gate: one conversation plans and
+  executes in sequence, and a hop between chats buys nothing where the loop is closed already. `relayed` when different chats or times pick up the
+  phases, or several workflows run at once — anything putting a chat boundary between a decision and the phase needing it. Phases stay ordered and
+  serial either way.
 
 ## Step 3: Build the plan
 
@@ -79,50 +72,58 @@ what comes next, never the number of files. Mechanical work is one phase however
 wide; three unknown root causes are three phases. A coherent phase whose diff is
 too large to review as one unit stays ONE phase and gets `> Batches:`.
 
-**Write nothing about the code you have not seen.** `Files:`, `Pattern:` and any
-`Decisions:` line asserting how the code behaves rest on the Step 1 pass. Files
-that do not exist yet are ordinary plan output: a new module is intent the phase
-realises, not a claim about what is there.
+**One chat, or a workflow.** The plan's quality — recon, `Pattern:`, a re-runnable
+`Done:`, contract tests first — belongs to the plan, not to the phase boundaries: one
+session handed the same plan as its prompt gets it too, with a warm context that knows
+the whole diff where separate sessions duplicate each other's helpers. A workflow pays
+only when one of three holds: the work does not fit one context; an intermediate result
+changes what comes next, so a human gate is owed between phases; it must run unattended,
+with checkpoints and repair. None of the three → the plan becomes a brief, not a workflow:
+the presentation's gate recommends **One chat**, and on that answer the brief below is
+written to `~/.phased/prompts/<slug>.md` and its path handed over — no branch, no
+`.phased/`, Steps 4–6 skipped. Measured: a 3-phase plan of 7 files ran relayed and
+autonomous, and grew to 13 phases at the quality check.
+
+**The one-chat brief** — filled from the plan just built, self-contained for a chat that has read nothing else; the recon, the decisions and the contract tests are already paid for:
+
+```
+Run in ONE fresh chat — model fable (or opus), effort high — from <repo root>, on <base branch>.
+# <objective, one paragraph: what done looks like for the user>
+## Decided — never reopened: <every Decisions: line of the plan>
+## Code: <file → pattern to copy-adapt as path:symbol, one line each; files that do not exist yet marked new>
+## Constraints: <Must not break: lines>; the repo's CLAUDE.md applies; no new dependency without asking
+## Method: contract tests first (<their paths, or the tests written below>), then implement; run <lint cmd> and <test cmd>; loop until green
+## Done: <the plan's re-runnable Done: criteria, merged into one list>
+## Deliverable: branch <wf/<slug>, or as the user said>, one commit, a report of at most 10 lines: what changed, what was verified, what was left
+## Stop: a decision not listed under Decided → stop and ask; Done not green after two attempts → stop and report what is red and why
+```
+
+**Write nothing about the code you have not seen.** `Files:`, `Pattern:` and any `Decisions:` line asserting how the code behaves rest on the Step 1 pass.
+Files that do not exist yet are ordinary plan output: a new module is intent the phase realises, not a claim about what is there.
 
 **Pattern references.** On `Channel: relayed` every `/execute-phase` runs in a fresh chat, so whatever isn't in the plan gets re-discovered there, phase after phase; on `Channel: in-chat` a compact costs the same. Either way the plan is the memory. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase — **at most 4 at a time**, in waves — instead of searching serially. Each returns at most 2 candidates as `<path>:<symbol> — <why it is the closest example>`, or exactly `NO CANDIDATE`. A phase coming back `NO CANDIDATE` gets `new-pattern`; it never gets a guess.
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into AskUserQuestion, and recorded in `Decisions:`. Two shapes are named because both cost a gate correction in the field: when two phases read and write the same table's UI surface, settle the row-set boundary between them explicitly — who lists what, who excludes whose rows — rather than settling each phase's surface in isolation; and on a `ui` phase, record layout composition (which surface carries which zone) as mockup-negotiable intent, not as a fixed Decision — the mockup loop is what exists to settle it, and freezing it before any visual makes the user's own gate judgment a plan contradiction. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
-**Contract tests.** One more option, asked with the Decisions batch: author
-the tests of EVERY phase now, while the whole design sits in one context —
-into `.phased/active/<slug>/tests/phase-N/`, committed with the plan, each
-phase's `Done:` opening with "the plan's tests for this phase, copied into
-the test tree, pass". Recommend it on well-specified work — behaviour that
-must survive is what a test states best; where a signature is not settled
-yet, author that test as a skeleton (`wf:contract:` comment lines + red
-body) instead of guessing. The whole contract — the two precisions, where
-the tests live, the child's read-only rule, the integrity check at close —
-lives once in `contracts.md` → *Contract tests*; writing them inside
-`.phased/` keeps this skill's own first rule intact. Authoring them is
-plan-time work: derive each phase's tests from its `Details:` and `Done:`,
-in the repo's own test style, and present them with the plan. Then, before
-the plan commit, RUN the repo's own linter over them (a `Done:` demanding a
-clean lint on the copied test and a copy that must stay byte-identical are
-one requirement) and CHECK every import path and fixture they lean on
-against the repo: an import no file in the repo uses is a premise to verify
-against the loader, not a convention to assume — the field's one true
-plan-defect claim was exactly such an import.
+**Contract tests.** One more option, asked with the Decisions batch: author the tests of EVERY phase now, while the whole design sits in one context —
+into `.phased/active/<slug>/tests/phase-N/`, committed with the plan, each phase's `Done:` opening with "the plan's tests for this phase, copied into
+the test tree, pass". Recommend it on well-specified work — behaviour that must survive is what a test states best; where a signature is not settled
+yet, author that test as a skeleton (`wf:contract:` comment lines + red body) instead of guessing. The whole contract — the two precisions, where the
+tests live, the child's read-only rule, the integrity check at close — lives once in `contracts.md` → *Contract tests*; writing them inside `.phased/`
+keeps this skill's own first rule intact. Authoring them is plan-time work: derive each phase's tests from its `Details:` and `Done:`, in the repo's
+own test style, and present them with the plan. Then, before the plan commit, RUN the repo's own linter over them (a `Done:` demanding a clean lint on
+the copied test and a copy that must stay byte-identical are one requirement) and CHECK every import path and fixture they lean on against the repo:
+an import no file in the repo uses is a premise to verify against the loader, not a convention to assume — the field's one true plan-defect claim was
+exactly such an import.
 
-**The consumer question.** When `.phased/roadmap.md` has unstarted
-macro-phases — or the discussion names later work that will consume this
-plan's output — ask it with the Decisions batch: *who consumes what this
-workflow builds, and what will they require of it?* The answer becomes the
-plan's `Must not break:` header lines, backed by skeleton contract tests
-where a requirement can be stated as behaviour; "nobody yet" is written
-down too. Field semantics live once in `contracts.md` → *Must not break:*.
-On a roadmap carrying mini-scopes, the answer starts there, confirmed
-rather than reconstructed: collect the lines of `Requires of earlier work`
-from the later macros that touch this plan's output, **inherit the
-contracts in transit across this macro** — produced by an earlier one,
-consumed by a later one, they enter this plan's `Must not break:` too
-(`contracts.md` → *Must not break:*, producer-to-consumer rule) — and take
-the macro's own `Ends at:` as a planning constraint: the last phases must
-land the system at that border.
+**The consumer question.** When `.phased/roadmap.md` has unstarted macro-phases — or the discussion names later work that will consume this plan's
+output — ask it with the Decisions batch: *who consumes what this workflow builds, and what will they require of it?* The answer becomes the plan's
+`Must not break:` header lines, backed by skeleton contract tests where a requirement can be stated as behaviour; "nobody yet" is written down too.
+Field semantics live once in `contracts.md` → *Must not break:*. On a roadmap carrying mini-scopes, the answer starts there, confirmed rather than
+reconstructed: collect the lines of `Requires of earlier work` from the later macros that touch this plan's output, **inherit the contracts in transit
+across this macro** — produced by an earlier one, consumed by a later one, they enter this plan's `Must not break:` too (`contracts.md` → *Must not
+break:*, producer-to-consumer rule) — and take the macro's own `Ends at:` as a planning constraint: the last phases must land the system at that
+border.
 
 **Sizing.** The boundary depends on the mode chosen in Step 2.
 
@@ -147,7 +148,7 @@ The split-vs-`vast` call and the `ui` tag materially change execution — batch 
 
 **Present the plan**, each phase with its `Run:` line, and iterate until the user approves.
 
-**Close the presentation with the branch line and the gate line** (`common.md` → *The gate line*):
+**Close the presentation with the branch line and the gate line** (`common.md` → *The gate line*). When *One chat, or a workflow* found none of its three reasons, the gate is instead an `AskUserQuestion` with **One chat** first (the prompt file, no branch) and **Workflow** second; otherwise:
 
 > Branch: \<what will happen\>   (say so if you would rather have it otherwise)
 > **Proceed?** On your ok, I create the branch and write `.phased/active/<slug>/plan.md`.

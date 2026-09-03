@@ -147,7 +147,7 @@ it, they never restate it. `/quality-check` appends it to `plan.md` under a
 last line governs) and commits it alone as `wf: quality check — <depth>`:
 
 ```
-> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>
+> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>, final touch <N corrections | none>
 ```
 
 The stamp records outcomes, never grants: a declined QA and a `none` review
