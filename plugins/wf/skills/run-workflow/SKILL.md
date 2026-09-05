@@ -10,13 +10,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
 **Usage:** `/run-workflow`
 
-`RUN_WORKFLOW_MAX_ATTEMPTS=N` caps worker launches in this invocation, including
-repair and provider fallback. Zero launches none. EVENT tokens `attempt-started`
-and `attempt-budget-exhausted` report the launches and the hard boundary. `RUN_WORKFLOW_MAX_PHASES=N`
-limits completed phases; it does not bound repair cost. At the attempt boundary,
-stop with durable state; relaunch needs remaining authority. Existing Repair
-attempted notes still prevent another automatic repair. There is no portable
-currency or soft-budget enforcement; report unknown usage as unavailable.
+**Bounds.** `RUN_WORKFLOW_MAX_PHASES=N` runs at most N more phases and stops the clean way (*Graceful stop* below); it bounds phases, not repairs. `RUN_WORKFLOW_MAX_ATTEMPTS=N` caps the sessions this invocation launches — phase sessions, repairs and the opus fallback alike (default: twice the pending phases plus two); `0` launches none. The launcher emits `EVENT: attempt-started:<k>:role=<worker|repair>:model=<m>:effort=<e>` per launch and `EVENT: attempt-budget-exhausted:<k>/<N>` when the cap ends the run — a hard boundary that leaves durable state, so the relaunch is the user's call; an existing `Repair attempted:` note still forbids another automatic repair. One more token comes from the launcher's helper, `runtime.py`: `EVENT: runtime-error:<reason>` — an outcome commit that failed the check every committed session gets (`missing-outcome-commit`, `dirty-worker-outcome`, `invalid-worker-transition`, or a changed phase list), or `writer-already-active` when another launcher or agent session holds this plan's lock — each followed by the launcher's own stop message. The dollar caps are runaway nets, not spend limits: on a subscription the launcher does not know the run's real usage and says so.
 
 ## Pre-flight review (MANDATORY — before running the script)
 
@@ -42,13 +36,13 @@ currency or soft-budget enforcement; report unknown usage as unavailable.
 
    **Model** — default `opus`; `fable` is the one exception:
    - `fable` — architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference (subject to credits; ask once if unsure).
-   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a fable repair. Mechanical work is `opus` at `low` effort (light mode). Legacy plans that carry it still run, with the launcher's sonnet steering — accepted is not recommended.
+   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a fable repair. Mechanical work is `opus` at `low` effort. Legacy plans that carry it still run, with the launcher's sonnet steering — accepted is not recommended.
    - In doubt → `opus`.
    - The launcher steers each session for its model via `--append-system-prompt` (log-style silent output for all; opus: no scope creep or extra verification; fable: act, don't re-derive settled decisions) — neither the plan nor the phases need to restate style or verbosity rules.
 
    **Effort** — **start low and climb only for a reason.** A phase that passed the check above is well-specified by construction, and that is where high effort buys least: it gets spent re-exploring and re-verifying decisions the plan already settled. `low` mechanical, `medium` the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` wide multi-file agentic work, `max` practically never (overthinking, diminishing returns). Effort levels copied from an older plan rarely transfer — re-decide them here.
 
-   It sets `--effort`, the runaway cap, and light mode: `low` phases run a slim `/goal` contract *without* the execute-phase-agent skill, so their `Details:`/`Done:` must be fully self-contained.
+   It sets `--effort` and the runaway cap. Every level runs the same `/goal` contract and the same skill — `low` is less reasoning depth, not a lighter doctrine (light mode was retired in 6.36.0: its slim contract withheld exactly the contract-test rules a plan depends on).
 
 6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), then show the user the final phase list with the model chosen for each and close with the gate line (`common.md` → *The gate line*): *"**Launch?** On your ok the run starts in the background over all \<N\> phases; keep the app open."* The line is the gate — AskUserQuestion exists in this skill solely for the stop-work question below, never for the launch.
 

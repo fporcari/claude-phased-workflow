@@ -227,6 +227,14 @@ A plan that ships contract tests therefore has no `low` phases. The saving that
 tempts you there is the ritual light mode strips, and the ritual is the part
 that protects the contract.
 
+*(Closed 2026-09-05, 6.36.0: light mode is retired. The 6.28.0 pre-flight
+refusal protected contract-test plans from the slim contract; the leaner cut is
+one contract for every effort level — `low` is reasoning depth, not a lighter
+doctrine — so the refusal, its env override and the second copy of the chain
+invariants are gone with it. The ~37% saving on record was `slim` against
+`plain`, never the shipped light contract against the full one; see
+tests/benchmark/results/README.md.)*
+
 ## The consult has no deadline
 
 The plan-defect consult held the repair for 600 seconds and then let the repair

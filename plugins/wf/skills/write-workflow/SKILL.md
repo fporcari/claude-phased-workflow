@@ -18,7 +18,8 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 ```bash
 git branch --show-current
 git rev-parse --show-toplevel
-gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null \
+  || git symbolic-ref --short refs/remotes/origin/HEAD   # the repo's default branch (origin/<name> on the fallback), never one from memory
 ```
 
 **On a feature branch** — read what is already there (`git log origin/<base>..HEAD --oneline`, `git diff --stat origin/<base>...HEAD`, the full diff, and `gh issue view <number>` if the branch starts with one), summarise it, then ask: *"What do you want to plan on this branch?"*
@@ -82,7 +83,7 @@ Run in ONE fresh chat — model fable (or opus), effort high — from <repo root
 ## Decided — never reopened: <every Decisions: line of the plan>
 ## Code: <file → pattern to copy-adapt as path:symbol, one line each; files that do not exist yet marked new>
 ## Constraints: <Must not break: lines>; the repo's CLAUDE.md applies; no new dependency without asking
-## Method: contract tests first (<their paths, or the tests written below>), then implement; run <lint cmd> and <test cmd>; allow one diagnosed correction, then stop if still red
+## Method: contract tests first (<their paths, or the tests written below>), then implement; run <lint cmd> and <test cmd>; loop until green, at most two diagnosed corrections (the Stop rule below)
 ## Done: <the plan's re-runnable Done: criteria, merged into one list>
 ## Deliverable: branch <wf/<slug>, or as the user said>, one commit, a report of at most 10 lines: what changed, what was verified, what was left
 ## Stop: a decision not listed under Decided → stop and ask; Done not green after two attempts → stop and report what is red and why

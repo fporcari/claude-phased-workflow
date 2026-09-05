@@ -11,10 +11,7 @@ Review the branch as the maintainer who has to approve it, then open the PR — 
 
 ## Step 1: Base branch and issue
 
-Resolve the PR target with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
-Use the repository default unless the user explicitly chose another target.
-The plan's Parent is its workflow integration boundary, not automatically the
-PR base. Verify the chosen remote ref before reviewing the delivery diff.
+Default base: the repository's default branch — `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` — never the harness's idea of the main branch, never a base from memory. The plan's `Parent:` (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*) is the workflow's integration boundary, not automatically the PR base: when it names a branch other than the default (a stacked feature branch), ask ONE AskUserQuestion — the default first and "(Recommended)", the parent as the alternative. Verify the chosen branch exists (`git ls-remote --heads origin <base>`) and use it as `<base>` throughout.
 
 Issue number: `$1` if given, otherwise the leading number of the branch name (`123-fix-login` → 123); none → proceed without one.
 
@@ -33,11 +30,7 @@ Then read `git diff --name-only origin/<base>...HEAD` and the full `git diff ori
 
 ## Step 3: Review
 
-**3.1 — Independent pass.** Reuse traceable quality-check evidence from notes.md
-for the reviewed revision. Review changes since that revision and affected
-consumers; unchanged covered code does not need a duplicate full pass. Missing
-evidence or new requirements require review of the uncovered scope. Preserve
-unresolved findings and check the delivery requirements below every time.
+**3.1 — Delegated pass, over the delta.** When the plan's `notes.md` carries a `## Final touch` ledger naming the revision `/quality-check` reviewed, run the built-in `code-review` skill (Skill tool) on `git diff <that revision>...HEAD` plus the consumers of what changed — the whole diff was already reviewed once at that revision, and a second whole-diff pass is the loop `/quality-check` exists to close. No ledger, or a ledger without a revision → the whole branch diff, effort `medium` (`high` for large or risky diffs). Either way its confirmed findings feed Step 4, and the ledger's residual findings come along unresolved.
 
 **3.2 — Maintainer checks** (what only this workflow knows):
 

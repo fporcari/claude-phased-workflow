@@ -1,4 +1,10 @@
-"""Host-neutral ownership and durable worker-outcome checks."""
+"""Writer lock and outcome check for the launchers.
+
+`lock` re-executes the caller holding an exclusive flock on the plan's
+transport, so two launchers (or a launcher and an agent session) never write
+the same plan. `record` checks a session's outcome commit — one legal plan
+transition, clean tree, history preserved — and folds the session log into it.
+"""
 import argparse
 import fcntl
 import importlib.util
@@ -78,6 +84,9 @@ def main():
             record(args.plan, args.before, args.log, args.name)
     except (RuntimeError, OSError, subprocess.CalledProcessError) as error:
         print('EVENT: runtime-error:%s' % error, file=sys.stderr)
+        if args.action == 'lock':
+            print('Another launcher or agent session holds this plan\'s writer lock (%s). Stopping.' % args.path)
+            print('EVENT: run-end stopped 0/0')
         return 1
     return 0
 

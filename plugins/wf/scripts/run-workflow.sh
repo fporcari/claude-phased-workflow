@@ -6,7 +6,7 @@
 # the session, and handles repair, blocked and no-progress outcomes. The skill
 # runs this file; it is never read into the model's context.
 #
-# The PHASE_PROMPT / LIGHT_PROMPT / REPAIR_PROMPT assignments below are the
+# The PHASE_PROMPT / REPAIR_PROMPT assignments below are the
 # shipped goal contracts: tests/orchestration/run_tests.sh and
 # tests/benchmark/bench.sh extract them from here, so keep them as
 # single-quoted one-line assignments.
@@ -220,13 +220,10 @@ CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
 if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
   PHASE_PROMPT='/goal Use the execute-phase-agent skill to execute exactly ONE phase of the active plan under .phased/active/. Read the whole plan, preserve Must not break: contracts and choose what does not complicate later phases. Finish with one outcome commit for the phase and its plan notes. Condition: the plan gains exactly one phase marked [x] with Done and Files notes and its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
   REPAIR_PROMPT='/goal Use the repair-phase-agent skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
-  LIGHT_PROMPT="$PHASE_PROMPT"
-
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
   PHASE_PROMPT="/$PLUGIN_NAME:execute-phase-agent"
   REPAIR_PROMPT="/$PLUGIN_NAME:repair-phase-agent"
-  LIGHT_PROMPT=''   # light mode needs the goal guard; without it, full skill
 fi
 
 # Per-model steering, injected via --append-system-prompt so the goal
@@ -389,6 +386,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   # Snapshot completed-phase count BEFORE the run (progress guard)
   BEFORE_DONE=$(phase_count x)
   BEFORE_DONE=${BEFORE_DONE:-0}
+  BEFORE_HEAD=$(git rev-parse HEAD)
 
   # Look up model and effort from the execution config table, by COLUMN
   # (| Phase | Effort | Model |) rather than by grepping the whole
@@ -435,13 +433,10 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     BUDGET=$((BUDGET * 2))
   fi
 
-  # Effort=low + goal guard available → light mode (slim contract, no skill)
+  # One contract for every effort level: `low` changes reasoning depth, never
+  # the doctrine the phase receives (light mode retired in 6.36.0 — the slim
+  # contract withheld the contract-test rules, see docs/design-notes.md).
   RUN_PROMPT="$PHASE_PROMPT"
-  MODE_LABEL="full"
-  if [ -n "$LIGHT_PROMPT" ] && [ "$EFFORT" = "low" ]; then
-    RUN_PROMPT="$LIGHT_PROMPT"
-    MODE_LABEL="light"
-  fi
 
   # Steering for the model this phase runs on (see the STEER_* block above).
   case "$MODEL" in
@@ -463,7 +458,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   # the plan). Skip the phase session and drop straight to the repair handling.
   if [ "$RUN_PHASE" -eq 1 ]; then
     echo "========================================="
-    echo "Phase $NEXT_PHASE — model: $MODEL, effort: $EFFORT, mode: $MODE_LABEL, $CAP_LABEL"
+    echo "Phase $NEXT_PHASE — model: $MODEL, effort: $EFFORT, $CAP_LABEL"
     echo "========================================="
     # Tee the session into the plan's log directory: this transcript is the
     # only record of what a headless sub-session actually did, and
@@ -474,7 +469,6 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     # be read as success.
     set -o pipefail
     T0=$SECONDS
-    BEFORE_HEAD=$(git rev-parse HEAD)
     # --append-system-prompt LAST: the orchestration tests assert the
     # model/effort/permission/cap sequence contiguously.
     reserve_attempt worker "$MODEL" "$EFFORT"
@@ -487,11 +481,20 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
 
     CLAUDE_EXIT=$?
     set +o pipefail
-    if [ "$CLAUDE_EXIT" -eq 0 ]; then
-      python3 "$SCRIPT_DIR/runtime.py" record "$PLAN" "$BEFORE_HEAD" \
-        "$TRANSPORT-phase-$NEXT_PHASE.log" "phase-$NEXT_PHASE.txt" || exit 1
+    add_timing "phase $NEXT_PHASE ($MODEL/$EFFORT)" "$((SECONDS - T0))"
+    # The outcome check runs only when the session committed: it verifies the
+    # commit is one legal plan transition on a clean tree and folds the log
+    # into it. A [~] outcome on a dirty tree commits nothing by design and is
+    # handled below; a session that did nothing is the progress guard's case.
+    if [ "$CLAUDE_EXIT" -eq 0 ] && [ "$(git rev-parse HEAD)" != "$BEFORE_HEAD" ]; then
+      if ! python3 "$SCRIPT_DIR/runtime.py" record "$PLAN" "$BEFORE_HEAD" \
+          "$TRANSPORT-phase-$NEXT_PHASE.log" "phase-$NEXT_PHASE.txt"; then
+        echo ""
+        echo "The phase session's outcome commit failed the launcher's check (see the runtime-error line above). Stopping for review."
+        STOP_REASON="bad-outcome"
+        break
+      fi
     fi
-    add_timing "phase $NEXT_PHASE ($MODEL/$EFFORT/$MODE_LABEL)" "$((SECONDS - T0))"
     if [ "$CLAUDE_EXIT" -ne 0 ]; then
       echo ""
       echo "claude exited with code $CLAUDE_EXIT. Stopping."
@@ -682,8 +685,19 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
         add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
       fi
 
-      [ "$REPAIR_EXIT" -eq 0 ] || exit "$REPAIR_EXIT"
-      python3 "$SCRIPT_DIR/runtime.py" record "$PLAN" "$BEFORE_HEAD" "$REPAIR_LOG" "$REPAIR_NAME" || exit 1
+      if [ "$(git rev-parse HEAD)" != "$BEFORE_HEAD" ]; then
+        if ! python3 "$SCRIPT_DIR/runtime.py" record "$PLAN" "$BEFORE_HEAD" "$REPAIR_LOG" "$REPAIR_NAME"; then
+          echo ""
+          echo "The repair session's outcome commit failed the launcher's check (see the runtime-error line above). Stopping for review."
+          STOP_REASON="bad-outcome"
+          break
+        fi
+      elif [ "$REPAIR_EXIT" -ne 0 ]; then
+        echo ""
+        echo "Repair session exited $REPAIR_EXIT without an outcome commit. Stopping for review — relaunch /run-workflow once the phase is sorted out."
+        STOP_REASON="repair-exit"
+        break
+      fi
       if phase_any '!'; then
         echo ""
         echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."
@@ -707,8 +721,9 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   fi
 
   # Progress guard: a successful run must either complete a phase ([x] count
-  # grows) or leave a resumable WIP ([>] + WIP note). Anything else means the
-  # session died leaving the phase stuck — looping again would burn runs.
+  # grows) or leave a resumable WIP ([>] + WIP note, COMMITTED — a WIP nobody
+  # committed is a session that died, not progress). Anything else means the
+  # session left the phase stuck — looping again would burn runs.
   AFTER_DONE=$(phase_count x)
   AFTER_DONE=${AFTER_DONE:-0}
   # Stable event line (see phase-failed above): a grown [x] count means the
@@ -725,7 +740,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   # guard when a repair landed this round, or the run would stop on a
   # misleading "no progress".
   if [ "$AFTER_DONE" -le "$BEFORE_DONE" ] && [ "$REPAIRED_THIS_ROUND" -eq 0 ]; then
-    if phase_any '>' && grep -q '^[[:space:]]*> WIP:' "$PLAN" 2>/dev/null; then
+    if [ "$(git rev-parse HEAD)" != "$BEFORE_HEAD" ] && phase_any '>' && grep -q '^[[:space:]]*> WIP:' "$PLAN" 2>/dev/null; then
       echo "Phase left in WIP state — next session will resume it."
     else
       echo ""

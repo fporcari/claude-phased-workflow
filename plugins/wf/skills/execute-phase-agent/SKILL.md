@@ -68,7 +68,7 @@ Phases with contract tests start from them: copy `tests/phase-N/` verbatim and m
 Green signal = test suite + linter scoped to the touched files. Both must pass.
 
 - **Green** → Step 5.
-- **Failure** → **one diagnosed local correction**. Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
+- **Failure** → up to **two fix attempts** (the interactive skill's stop-loss: never a third). Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
 - **No-progress detector**: identical failure signature twice in a row → stop early.
 - **Revert, don't stack**: an attempt that leaves the signal worse gets undone (`git checkout -- <files it touched>` returns to `HEAD`, the Step 0.4 restore point) before re-diagnosing. Patch-on-patch also poisons what `/repair-phase` receives.
 - **Budget exhausted or stuck** → `[!]` with the shared core's notes. Leave the failing code **in place** — repair needs to see it.

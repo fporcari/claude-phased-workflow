@@ -21,7 +21,7 @@ always worded as a fresh chat. Two exceptions, both intended: launching
 `/run-workflow` from the foreman (it supervises, it does not implement), and the
 **QA fix** with its **final touch** once every phase is `[x]` — the corrections the
 user's check and the pre-commit review turn up, applied and committed by the foreman
-itself when no decision is open (`/quality-check` → *QA fixes*, *The final touch*):
+itself when no decision is open (`/quality-check` → *Step 5: One final touch*):
 the human is at the gate, no phase is left to command, a phase's ceremony buys
 nothing and a phase per finding is a loop. Nothing is enforced — a user executing a
 phase in the foreman chat lands in the degenerate branches below (*when this chat IS

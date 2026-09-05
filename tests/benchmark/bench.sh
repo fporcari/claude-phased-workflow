@@ -9,7 +9,7 @@
 #     plain    = full execute-phase-agent skill, no guard
 #     goal     = full execute-phase-agent skill under the /goal guard   (shipped PHASE_PROMPT)
 #     slim     = minimal prompt, NO skill discipline, no guard  (hardcoded control)
-#     slimgoal = discipline carried ONLY by the goal contract   (shipped LIGHT_PROMPT)
+#     slimgoal = the retired light contract; since 6.36.0 an alias of goal (same PHASE_PROMPT)
 #   effort defaults to the fixture's own declared Effort for Phase 1, else high.
 #   The goal/slimgoal contracts are EXTRACTED LIVE from the shipped
 #   run-workflow.sh, so the benchmark cannot silently measure a stale version.

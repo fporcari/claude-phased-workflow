@@ -172,19 +172,19 @@ assert() {
 
 skip() { SKIP=$((SKIP+1)); echo "  SKIP: $1"; }
 
-echo "== S1: happy path — light mode for low effort, full for the rest =="
+echo "== S1: happy path — one contract for every effort level =="
 setup S1; fixture3
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
 assert "phase1 (low) keeps the full contract" 'grep -q -- "-p /goal Use the execute-phase-agent skill.*--model sonnet --effort [a-z]* --permission-mode auto --max-budget-usd 50" .claude/invocations.log'
-assert "light contract demands bookkeeping notes" 'grep -q -- "with Done and Files notes" .claude/invocations.log'
+assert "the contract demands bookkeeping notes" 'grep -q -- "with Done and Files notes" .claude/invocations.log'
 assert "all phases use the full skill contract" '[ "$(grep -c -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log)" = 3 ]'
 assert "phase2 opus cap 100"   'grep -q -- "--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 100" .claude/invocations.log'
 assert "phase3 fable cap 400 (doubled)" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
 assert "no repair launched" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
-assert "wall time recorded per session, with the config that ate it" 'grep -qE "Session wall time: [0-9]+m[0-9]{2}s — phase 1 \(sonnet/low/light\)" out.log'
-assert "wall times summarised at the end" 'grep -q "Session wall times:" out.log && grep -qE "  phase 3 \(fable/high/full\): [0-9]+m[0-9]{2}s" out.log'
+assert "wall time recorded per session, with the config that ate it" 'grep -qE "Session wall time: [0-9]+m[0-9]{2}s — phase 1 \(sonnet/low\)" out.log'
+assert "wall times summarised at the end" 'grep -q "Session wall times:" out.log && grep -qE "  phase 3 \(fable/high\): [0-9]+m[0-9]{2}s" out.log'
 # $HOME-independence: the launcher now resolves its selector beside itself, so a
 # run must no longer depend on $HOME. Re-run the happy path with HOME pointing at
 # a nonexistent dir and prove phases still complete and per-phase models still read.
@@ -200,7 +200,7 @@ printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_ok; exit 0' 
 finish_setup; run
 assert "repair via /goal on fable cap 300" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 300" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
-assert "loop continued to phase 2 (both low -> light)" '[ "$(grep -c -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log)" = 2 ]'
+assert "loop continued to phase 2" '[ "$(grep -c -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log)" = 2 ]'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 assert "Repaired note present" 'grep -q "> Repaired:" .phased/active/toy/plan.md'
 
@@ -238,7 +238,7 @@ echo "== S6: no progress -> stop =="
 setup S6; fixture2
 printf '%s\n' 'python3 "$OPS" noop; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "no-progress stop" 'grep -q "missing-outcome-commit" out.log'
+assert "no-progress stop" 'grep -q "No progress in the last run" out.log'
 assert "single call only" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 1 ]'
 
 echo "== S7: CLI older than 2.1.139 -> plain prompt fallback =="
@@ -326,7 +326,7 @@ open('.phased/active/toy/plan.md','w').write(s)
 EOF
 printf '%s\n' 'python3 "$OPS" reopen; exit 0' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "progress guard did NOT fire" '! grep -q "missing-outcome-commit" out.log'
+assert "progress guard did NOT fire" '! grep -q "No progress in the last run" out.log'
 assert "repair launched after reopen" 'grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "reopened phase back to [x]" 'grep -q "^- \[x\] \*\*Phase 1\*\*" .phased/active/toy/plan.md'
 assert "pending phase still ran after the repair round" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
@@ -369,26 +369,22 @@ BENCH="$TESTDIR/../benchmark/bench.sh"
 extract() { python3 - "$SKILL_RAP" "$1" <<'PYX'
 import re, sys
 t = open(sys.argv[1], encoding='utf-8').read()
-if sys.argv[2] == "LIGHT_PROMPT":
-    sys.argv[2] = "PHASE_PROMPT"
 v = re.findall(rf"^\s*{re.escape(sys.argv[2])}='([^']*)'\s*$", t, re.M)
 sys.stdout.write(max(v, key=len) if v else '')
 PYX
 }
-XP="$(extract PHASE_PROMPT)"; XL="$(extract LIGHT_PROMPT)"
+XP="$(extract PHASE_PROMPT)"
 assert "PHASE_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XP" ]'
-assert "LIGHT_PROMPT is extractable as a single-quoted one-liner" '[ -n "$XL" ]'
-assert "light contract carries the baseline check" 'printf "%s" "$XL" | grep -q "baseline check finds tests or lint already red"'
-assert "light contract carries the attribution/reopen clause" 'printf "%s" "$XL" | grep -q "reopened from"'
+assert "phase contract carries the baseline check" 'printf "%s" "$XP" | grep -q "baseline check finds tests or lint already red"'
 # Guards the clause, NOT the model obeying it — same limitation as the other S14
-# contract checks. Until 4.1.0 the light contract ended 'Never commit.', so a
-# low-effort phase left its work uncommitted.
-assert "light contract no longer forbids committing" '! printf "%s" "$XL" | grep -q "Never commit"'
-assert "light contract carries the per-phase commit clause" 'printf "%s" "$XL" | grep -q "outcome commit"'
+# contract checks. Until 4.1.0 the (since retired) light contract ended 'Never
+# commit.', so a low-effort phase left its work uncommitted.
+assert "phase contract does not forbid committing" '! printf "%s" "$XP" | grep -q "Never commit"'
+assert "phase contract carries the per-phase commit clause" 'printf "%s" "$XP" | grep -q "outcome commit"'
 assert "phase contract admits the Case A reopen outcome" 'printf "%s" "$XP" | grep -q "reopened from \[x\] to \[!\]"'
 assert "phase contract admits the Case B [~] outcome" 'printf "%s" "$XP" | grep -q "marked \[~\]"'
 assert "bench.sh holds NO frozen copy of a shipped contract" '! grep -qE "^(GOAL_CONTRACT|SLIM_GOAL_CONTRACT)=" "$BENCH"'
-assert "bench.sh extracts the contracts live" 'grep -q "extract_contract PHASE_PROMPT" "$BENCH" && grep -q "extract_contract LIGHT_PROMPT" "$BENCH"'
+assert "bench.sh extracts the contract live" 'grep -q "extract_contract PHASE_PROMPT" "$BENCH"'
 assert "bench.sh passes --effort" 'grep -q -- "--effort" "$BENCH"'
 
 echo "== S15: every skill stays inside its own allowed-tools =="
@@ -565,7 +561,7 @@ assert "S18: exactly 2 phase sessions ran" '[ "$(grep -c "CALL:" .claude/invocat
 assert "S18: the [!] decoy launched no repair" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 assert "S18: the [!] decoy did not report a failed phase" '! grep -q "A phase failed" out.log'
 assert "S18: the [~] decoy did not block the run" '! grep -q "A phase is blocked" out.log'
-assert "S18: no false no-progress stop" '! grep -q "missing-outcome-commit" out.log'
+assert "S18: no false no-progress stop" '! grep -q "No progress in the last run" out.log'
 
 # Static regression guard: no unqualified phase-state match may re-enter the
 # launcher. Every grep whose pattern carries a bracketed state (\[x\], \[ \],
@@ -903,8 +899,8 @@ Mode: autonomous
 EOF
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "S20b: unrecognised Model warns loudly" 'grep -q "Model" out.log'
-assert "S20b: unrecognised Effort warns loudly" 'grep -q "Effort" out.log'
+assert "S20b: unrecognised Model is named by the validator" 'grep -q "Model .banana." out.log'
+assert "S20b: unrecognised Effort is named by the validator" 'grep -q "Effort .turbo." out.log'
 assert "S20b: invalid config spends no worker" '[ ! -s .claude/invocations.log ]'
 
 echo "== S21: skills and refs address the plugin, not ~/.claude =="
@@ -1816,7 +1812,7 @@ s31_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints 
   grep -q 'The plan is context' "$2/phase-execution.md" 2>/dev/null \
     || echo "$2/phase-execution.md: missing the plan-is-context paragraph"
   grep -q 'does not complicate later phases' "$3" 2>/dev/null \
-    || echo "$3: the light contract lost its cross-phase clause"
+    || echo "$3: the phase contract lost its cross-phase clause"
   for S31_S in quality-check finalize-workflow run-workflow; do
     S31_F="$1/$S31_S/SKILL.md"
     grep -qi 'reporting register' "$S31_F" 2>/dev/null \
@@ -1854,7 +1850,7 @@ assert "S31: the guard fails when a presenting skill drops the citation" \
 rm -rf "$S31_MUT"
 S31_MUT="$(mktemp -d)"
 sed '/does not complicate later phases/d' "$RUNNER_SRC" > "$S31_MUT/run-workflow.sh"
-assert "S31: the guard fails when the light contract loses the cross-phase clause" \
+assert "S31: the guard fails when the phase contract loses the cross-phase clause" \
   '[ -n "$(s31_guard "$SKILLS_DIR" "$S24_REFS" "$S31_MUT/run-workflow.sh")" ]'
 rm -rf "$S31_MUT"
 S31_MUT="$(mktemp -d)"; mkdir -p "$S31_MUT/refs"; cp "$S24_REFS"/*.md "$S31_MUT/refs/"
@@ -1963,7 +1959,7 @@ echo "== S33: the QA pass is a page and the review depth is the user's call =="
 # closing report, so the report-judge gate does not apply and only contracts.md
 # knows its filename. (b) quality-check's pre-commit review asks its depth
 # (Extended / Light / None) instead of always paying the extended pass, Light
-# is scoped to it focuses on integration, and the report-judge probe is skipped
+# is scoped to cross-phase issues only, and the report-judge probe is skipped
 # on a clean review — the token cost tracks what a human has already vetted.
 s33_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S33_C="$2/contracts.md"
@@ -1978,9 +1974,9 @@ s33_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S33_F: Step 2 no longer delivers the QA pass as the QA page"
   grep -qE 'AskUserQuestion.+Extended.+Light.+None' "$S33_F" 2>/dev/null \
     || echo "$S33_F: the review depth question (Extended / Light / None) is gone"
-  grep -q 'it focuses on integration' "$S33_F" 2>/dev/null \
+  grep -q 'cross-phase issues only' "$S33_F" 2>/dev/null \
     || echo "$S33_F: Light lost its cross-phase-only scope"
-  grep -q 'Report judging is optional' "$S33_F" 2>/dev/null \
+  grep -q 'skip the probe when the review returns no findings' "$S33_F" 2>/dev/null \
     || echo "$S33_F: the zero-findings probe skip is gone"
   # Nobody but contracts.md carries the page filename.
   for S33_S in "$1"/*/SKILL.md; do
@@ -2322,7 +2318,7 @@ s37_guard() {  # $1 = a skills dir, $2 = a refs dir, $3 = launcher path; prints 
   grep -q '^## Must not break:' "$2/contracts.md" 2>/dev/null \
     || echo "$2/contracts.md: missing the 'Must not break:' section"
   grep -q 'Must not break' "$3" 2>/dev/null \
-    || echo "$3: the light contract no longer carries the programme contract"
+    || echo "$3: the phase contract no longer carries the programme contract"
   grep -q 'Must not break' "$1/run-workflow/SKILL.md" 2>/dev/null \
     || echo "$1/run-workflow/SKILL.md: the inspector coherence look no longer reads the programme contract"
   grep -q 'consumer question' "$1/write-workflow/SKILL.md" 2>/dev/null \
@@ -2373,7 +2369,7 @@ rm -rf "$S37_MUT"
 # The light contract sheds the programme contract.
 S37_MUT="$(mktemp -d)"
 sed 's/Must not break/nice to keep/g' "$RUNNER_SRC" > "$S37_MUT/run-workflow.sh"
-assert "S37: the guard fails when the light contract sheds the programme contract" \
+assert "S37: the guard fails when the phase contract sheds the programme contract" \
   '[ -n "$(s37_guard "$SKILLS_DIR" "$S24_REFS" "$S37_MUT/run-workflow.sh")" ]'
 rm -rf "$S37_MUT"
 
@@ -2465,8 +2461,8 @@ assert "S39: no exhaustion message on a completed run" '! grep -q "Session budge
 setup S39_exhaust; fixture2
 printf '%s\n' 'python3 "$OPS" wip1; exit 0' 'python3 "$OPS" noop; exit 0' 'python3 "$OPS" noop; exit 0' 'python3 "$OPS" noop; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "S39: missing durable progress stops a WIP retry" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 2 ]'
-assert "S39: missing durable outcome is declared" 'grep -q "missing-outcome-commit" out.log'
+assert "S39: a session that commits nothing ends a WIP run at once" '[ "$(grep -c "CALL:" .claude/invocations.log)" = 2 ]'
+assert "S39: the stop is declared as no progress" 'grep -q "No progress in the last run" out.log'
 assert "S39: exhausted run still ends stopped, not ok" 'grep -q "EVENT: run-end stopped" out.log'
 
 echo "== S40: messaging floors live once, and the channel is declared, not discovered =="
