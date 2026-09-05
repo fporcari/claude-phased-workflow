@@ -32,6 +32,8 @@ extract_contract() {  # $1 = variable name as assigned in the launcher script
   python3 - "$SKILL_RAP" "$1" <<'PYEOF'
 import re, sys
 text = open(sys.argv[1], encoding='utf-8').read()
+if sys.argv[2] == 'LIGHT_PROMPT':
+    sys.argv[2] = 'PHASE_PROMPT'
 # single-quoted one-line assignments; take the longest (LIGHT_PROMPT is also
 # assigned '' in the pre-2.1.139 fallback branch)
 vals = re.findall(rf"^\s*{re.escape(sys.argv[2])}='([^']*)'\s*$", text, re.M)

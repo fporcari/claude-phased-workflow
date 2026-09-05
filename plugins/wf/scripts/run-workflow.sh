@@ -64,6 +64,10 @@ emit_run_end() {
 }
 trap 'LAUNCHER_RC=$?; emit_run_end' EXIT
 
+if [ ! -f "$NEXT_PHASE_PY" ] || [ ! -f "$SCRIPT_DIR/runtime.py" ]; then
+  echo "Incomplete workflow plugin: restore next-phase.py and runtime.py before running."
+  exit 2
+fi
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Workspace create-or-attach: the launcher runs from anywhere. If the current
@@ -129,7 +133,6 @@ fi
 
 PLAN="$PLAN_LIST"
 PLAN_DIR=$(dirname "$PLAN")
-mkdir -p "$PLAN_DIR/log"
 
 # The out-of-tree prefix every control file of THIS plan is named from —
 # uid segment for a shared host, repo key so two checkouts carrying the same
@@ -142,6 +145,13 @@ if [ -z "$TRANSPORT" ]; then
   TRANSPORT="${TMPDIR:-/tmp}/phased-workflow-$(id -u)/$(basename "$PLAN_DIR")"
   echo "NOTE: next-phase.py could not name the transport — falling back to the slug alone ($TRANSPORT-*)."
 fi
+
+if [ "${PHASED_RUN_LOCK_PID:-}" != "$$" ]; then
+  RUN_SHELL=bash
+  [ -n "${ZSH_VERSION:-}" ] && RUN_SHELL=zsh
+  exec python3 "$SCRIPT_DIR/runtime.py" lock "$TRANSPORT-writer.lock" "$RUN_SHELL" "$0" "$@"
+fi
+install -d -m 700 "$(dirname "$TRANSPORT")"
 
 # Graceful stop channel: "finish the phase in flight, then stop". The request
 # rides a file OUTSIDE the repo (same transport as the consult answer — nothing
@@ -202,49 +212,16 @@ else
   echo "NOTE: next-phase.py not found beside the launcher — skipping plan validation."
 fi
 
-# A plan carrying contract tests cannot afford a light phase. Effort=low runs
-# the phase under the slim /goal contract, which ships neither the read-only
-# contract rule nor the plan-defect claim road, and the field run measured the
-# consequence: all three light phases edited their own contract test, the two
-# full-mode ones did not touch it. So the pre-flight REFUSES the combination:
-# a warning inside a run already launched protects nothing. The override is an
-# env flag, not prose — RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 runs anyway, with
-# the note, and owning the consequence is the caller's.
-if [ -d "$PLAN_DIR/tests" ]; then
-  LOW_PHASES=$(grep -Ei "^\|[[:space:]]*Phase [0-9]+[[:space:]]*\|[[:space:]]*low[[:space:]]*\|" "$PLAN" \
-    | sed -E 's/^\|[[:space:]]*(Phase [0-9]+).*/\1/' | tr '\n' ' ')
-  if [ -n "$LOW_PHASES" ]; then
-    if [ "${RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS:-}" = "1" ]; then
-      echo "NOTE: this plan carries contract tests and runs ${LOW_PHASES}at Effort=low — light mode ships no contract doctrine; RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 runs it anyway."
-    else
-      echo "This plan carries contract tests and runs ${LOW_PHASES}at Effort=low — light mode ships no contract doctrine, so those phases would edit the contract instead of raising a plan-defect claim."
-      echo "Raise those phases above low in the plan's config table, or relaunch with RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1 to run anyway."
-      exit 1
-    fi
-  fi
-fi
-
 # /goal guard (Claude Code >= 2.1.139): each phase session runs under a native
 # goal loop — an independent evaluator (small fast model) re-checks the exit
 # condition after every turn, so a session cannot declare itself done before
 # the plan shows the outcome. Older CLIs fall back to the plain skill prompt.
 CLAUDE_VER=$(claude --version 2>/dev/null | awk '{print $1}')
 if [ -n "$CLAUDE_VER" ] && [ "$(printf '%s\n' "2.1.139" "$CLAUDE_VER" | sort -V | head -1)" = "2.1.139" ]; then
-  PHASE_PROMPT='/goal Use the execute-phase-agent skill to execute exactly ONE phase of the active plan under .phased/active/. Condition: the plan gains exactly one phase marked [x] with its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
+  PHASE_PROMPT='/goal Use the execute-phase-agent skill to execute exactly ONE phase of the active plan under .phased/active/. Read the whole plan, preserve Must not break: contracts and choose what does not complicate later phases. Finish with one outcome commit for the phase and its plan notes. Condition: the plan gains exactly one phase marked [x] with Done and Files notes and its Done criterion demonstrated in this conversation (tests and lint actually run), or one phase marked [!] with Issue and Attempted notes after the bounded fix attempts are exhausted, or -- when the skill baseline check finds tests or lint already red before the phase started -- either one earlier completed phase reopened from [x] to [!] with an Issue note naming the regression it introduced (attribution Case A), or the pending phase marked [~] with a Blocked note (attribution Case B), or no pending phase exists. Apart from a Case A reopen, no other phase may change state. Stop after 25 turns.'
   REPAIR_PROMPT='/goal Use the repair-phase-agent skill on the first [!] phase of the active plan under .phased/active/. Condition: that phase is marked [x] with a Repaired note and its Done criterion demonstrated in this conversation, or it keeps [!] and gains a Repair attempted note, or no [!] phase exists. Stop after 25 turns.'
-  # Light mode for Effort=low phases: no skill ritual — the goal contract
-  # carries the chain invariants itself (bookkeeping notes included: what the
-  # contract omits, the session silently drops). The one invariant it did NOT
-  # carry was the per-phase commit: the clause used to forbid committing, so a
-  # light phase completed its work but left it uncommitted, and a later full-skill
-  # phase, seeing predecessors with no commits, inferred a repo-wide no-commit mode
-  # and followed suit. The commit instruction now lives in the contract; S14 guards
-  # the clause. Measured on the seeded toy fixture (n=3): ~37% cheaper and ~60% of
-  # the wall time. That figure is the `slim` hardcoded control vs `plain`, the two
-  # arms whose provenance survived the frozen-copy defect — not this shipped light
-  # contract, whose "same external outcomes" was never measured against it. See
-  # tests/benchmark/results/README.md. Hard phases keep the full ritual.
-  LIGHT_PROMPT='/goal Execute the next pending [ ] phase of the active plan under .phased/active/ exactly as its Details describe. Read the whole plan first: the Done and Files notes of completed phases say what already exists, and the pending phases say where the work is heading -- when a detail is left open, choose what does not complicate later phases, without implementing any part of them. The plan header may carry Must not break: lines -- contracts owned by work outside this plan, later macro-phases included: treat them as later phases of the same rank and never break one. Before your first edit, run the tests and the linter: if they are already red, that failure is not yours -- stop without editing anything and attribute it. If it touches files listed in the > Files: note of a phase already marked [x], reopen THAT phase from [x] to [!] with an > Issue: note naming the regression. Otherwise mark the pending phase [~] with a > Blocked: note naming the failure signature. When in doubt, prefer [~]. Condition: the plan shows the pending phase marked [x] with > Done: and > Files: notes recorded, and its Done criterion demonstrated in this conversation (tests and lint actually run and green); or marked [!] with > Issue: and > Attempted: notes if you cannot complete it; or an earlier completed phase reopened to [!]; or the pending phase marked [~] on an unattributable red baseline; or no pending phase exists. When the phase is done, make exactly one commit for it -- the phase code and its own plan status update together, git add -A && git commit -m "wf(phase N): <title>" -- so the next phase starts from a clean tree. Stop after 25 turns.'
+  LIGHT_PROMPT="$PHASE_PROMPT"
+
 else
   echo "NOTE: claude ${CLAUDE_VER:-unknown} < 2.1.139 — /goal guard unavailable, using plain skill prompts."
   PHASE_PROMPT="/$PLUGIN_NAME:execute-phase-agent"
@@ -319,6 +296,20 @@ PHASES_THIS_RUN=0
 # out loud: without the message this exit is indistinguishable from other stops.
 MAX_SESSIONS=$((REMAINING * 2))
 SESSIONS=0
+WORKER_ATTEMPTS=0
+ATTEMPT_LIMIT="${RUN_WORKFLOW_MAX_ATTEMPTS:-$((REMAINING * 2 + 2))}"
+case "$ATTEMPT_LIMIT" in
+  ''|*[!0-9]*) echo "Invalid RUN_WORKFLOW_MAX_ATTEMPTS"; exit 2 ;;
+esac
+reserve_attempt() {
+  if [ "$WORKER_ATTEMPTS" -ge "$ATTEMPT_LIMIT" ]; then
+    echo "EVENT: attempt-budget-exhausted:$WORKER_ATTEMPTS/$ATTEMPT_LIMIT"
+    exit 1
+  fi
+  WORKER_ATTEMPTS=$((WORKER_ATTEMPTS + 1))
+  echo "EVENT: attempt-started:$WORKER_ATTEMPTS:role=$1:model=$2:effort=$3"
+}
+
 STOP_REASON=""
 while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
   SESSIONS=$((SESSIONS + 1))
@@ -483,17 +474,23 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     # be read as success.
     set -o pipefail
     T0=$SECONDS
+    BEFORE_HEAD=$(git rev-parse HEAD)
     # --append-system-prompt LAST: the orchestration tests assert the
     # model/effort/permission/cap sequence contiguously.
+    reserve_attempt worker "$MODEL" "$EFFORT"
     claude -p "$RUN_PROMPT" \
       --model "$MODEL" \
       --effort "$EFFORT" \
       --permission-mode auto \
       "${BUDGET_ARGS[@]}" \
-      --append-system-prompt "$STEER" 2>&1 | tee "$PLAN_DIR/log/phase-$NEXT_PHASE.txt"
+      --append-system-prompt "$STEER" 2>&1 | tee "$TRANSPORT-phase-$NEXT_PHASE.log"
 
     CLAUDE_EXIT=$?
     set +o pipefail
+    if [ "$CLAUDE_EXIT" -eq 0 ]; then
+      python3 "$SCRIPT_DIR/runtime.py" record "$PLAN" "$BEFORE_HEAD" \
+        "$TRANSPORT-phase-$NEXT_PHASE.log" "phase-$NEXT_PHASE.txt" || exit 1
+    fi
     add_timing "phase $NEXT_PHASE ($MODEL/$EFFORT/$MODE_LABEL)" "$((SECONDS - T0))"
     if [ "$CLAUDE_EXIT" -ne 0 ]; then
       echo ""
@@ -647,33 +644,46 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
       [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
       set -o pipefail
       T0=$SECONDS
+      BEFORE_HEAD=$(git rev-parse HEAD)
+      reserve_attempt repair fable max
       claude -p "$REPAIR_PROMPT" \
         --model fable \
         --effort max \
         --permission-mode auto \
         "${REPAIR_BUDGET_ARGS[@]}" \
-        --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-fable.txt"
+        --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$TRANSPORT-repair-$FAILED_PHASE-fable.log"
       REPAIR_EXIT=$?
       set +o pipefail
+      REPAIR_LOG="$TRANSPORT-repair-$FAILED_PHASE-fable.log"
+      REPAIR_NAME="repair-$FAILED_PHASE-fable.txt"
       add_timing "repair phase $FAILED_PHASE (fable/max)" "$((SECONDS - T0))"
 
       # Only fall back if the fable session never ran at all (non-zero exit AND no
       # outcome written). If it ran and gave up, it left the marker — do not
       # spend a second repair on the same phase.
-      if [ "$REPAIR_EXIT" -ne 0 ] && ! first_bang_block | grep -q 'Repair attempted:'; then
+      if [ "$REPAIR_EXIT" -ne 0 ] && [ "$(git rev-parse HEAD)" = "$BEFORE_HEAD" ] \
+         && [ -z "$(git status --porcelain)" ]; then
         echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
         REPAIR_BUDGET_ARGS=()
         [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
         T0=$SECONDS
+        reserve_attempt repair opus max
+        set -o pipefail
         claude -p "$REPAIR_PROMPT" \
           --model opus \
           --effort max \
           --permission-mode auto \
           "${REPAIR_BUDGET_ARGS[@]}" \
-          --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$PLAN_DIR/log/repair-$FAILED_PHASE-opus.txt"
+          --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$TRANSPORT-repair-$FAILED_PHASE-opus.log"
+        REPAIR_EXIT=$?
+        set +o pipefail
+        REPAIR_LOG="$TRANSPORT-repair-$FAILED_PHASE-opus.log"
+        REPAIR_NAME="repair-$FAILED_PHASE-opus.txt"
         add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
       fi
 
+      [ "$REPAIR_EXIT" -eq 0 ] || exit "$REPAIR_EXIT"
+      python3 "$SCRIPT_DIR/runtime.py" record "$PLAN" "$BEFORE_HEAD" "$REPAIR_LOG" "$REPAIR_NAME" || exit 1
       if phase_any '!'; then
         echo ""
         echo "Repair failed. Stopping for review — see the 'Repair attempted:' note in the plan."

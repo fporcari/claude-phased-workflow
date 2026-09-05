@@ -27,20 +27,13 @@ The user picks autonomous when the task suits it, so friction usually means a mi
 
 ## Macro-phases (rolling wave)
 
-Split when more than ~8-10 phases would be needed, or a phase can only be written concretely after an earlier one lands, or the combined diff would be too large for one quality-check review.
+Use macro-phases when outcomes must inform later planning or integration needs
+an accepted checkpoint. Detail only the next ready macro; keep later scopes in
+`.phased/roadmap.md`, which survives archival of the current plan.
 
-Detail ONLY the first macro as the Work Plan (5-8 phases). The rest go in `.phased/roadmap.md` — a file of its own, one level above `active/`, because the roadmap has to outlive the macro currently being worked: when `/finalize-workflow` moves `active/<slug>/` into `done/`, the roadmap stays where the next `/write-workflow` will look for it.
-
-**The split is scoped, not just listed.** The moment the split is proposed
-is the only moment the whole programme sits in one context, and a macro
-reduced to a one-line bullet is how a future consumer's requirements die
-(issue #15). So every macro — not only the first — gets a **mini-scope**, at
-`/scope-workflow`'s bar but produced here, automated: ground facts come from
-the codebase (one read-only Explore subagent per area from ~3 up, at most 4 at a
-time, each returning the paths it verified and the premises it could not — a fact is
-looked up, never asked), and the decisions that belong to the user are
-batched into ONE AskUserQuestion round — never one interview per macro. The
-format, one block per macro:
+**Scope every macro.** Verify factual premises in the code; batch unresolved
+product decisions once. Each mini-scope records the itinerary and contracts below.
+Later detail is deferred, not its consumer requirements.
 
 ```
 # Roadmap
@@ -55,40 +48,16 @@ format, one block per macro:
 - Open decisions: <what must be settled when this macro is planned — recorded, not resolved now>
 ```
 
-*Delivers* names the forward half of the contract — what lands and who
-consumes it — and *Requires of earlier work* the backward half: when a later
-`/write-workflow` details a macro, it collects from the LATER macros'
-`Requires` lines everything that touches what this macro builds, and those
-become its `Must not break:` header (`contracts.md` → *Must not break:*) —
-confirmed from the roadmap, not reconstructed from memory.
-`Starts from:`/`Ends at:` are the **itinerary**: plan a European tour as
-Italy, France, Spain, and the Italy leg must not end in Puglia — internally
-perfect, and stranded at the wrong border.
+Collect later macros' Requires of earlier work into this macro's Must not break,
+including contracts in transit. Ends at and Starts from must describe compatible
+states; a locally convenient stopping point is not sufficient.
 
-**The coherence judge.** Before the split is presented, ONE fresh-context
-subagent (Agent tool; read-only; fallback: a general-purpose subagent told
-to stay read-only) gets the mini-scopes ALONE — not the conversation — and
-returns one `ITINERARY: <macro N -> macro N+1> — <the gap>` per broken seam,
-one `CONTRACT: <edge> — <what is lost>` per broken edge, or exactly
-`COHERENT`. It checks:
-
-1. **The itinerary first**: the `Ends at:` of every macro ≡ the
-   `Starts from:` of the next. A gap here blocks the presentation — it is
-   the split itself that is wrong.
-2. **The contract graph**: every `Consumes` is delivered by an earlier
-   macro; every `Delivers` has a consumer or is the final deliverable;
-   every `Requires of earlier work` names output some earlier macro
-   actually builds; no two macros contradict each other's semantics (a
-   stack kept parallel by one macro and assumed cut over by another).
-   The edges hop: a `Requires` may point several legs back, and every
-   macro the edge crosses inherits the constraint — what is in transit
-   must not be lost by a leg it merely crosses (`contracts.md` →
-   *Must not break:*, producer-to-consumer rule). Flag any intermediate
-   macro whose scope plausibly destroys what crosses it.
-
-Findings → fix the mini-scopes, re-judge ONCE, then present the split.
-Fresh eyes by design: the author of a split is the worst judge of its own
-seams.
+**One seam review.** For a multi-macro plan, a fresh read-only reviewer checks
+mini-scopes against the itinerary and contract graph: each Ends at matches the
+next Starts from; every Consumes has a producer; every Delivers has a consumer or
+is the final result; Requires of earlier work survives every intermediate macro.
+Consolidate gaps, correct the split once and verify the changed seams. Do not
+turn this into another implementation phase or a repeated whole-plan review.
 
 Keeping the roadmap out of `plan.md` also means the launcher cannot mistake its blocks for phase lines: the separation is structural (no `[ ]` markers here), not a matter of formatting.
 
@@ -118,15 +87,6 @@ Must not break: <one line per contract owned by later work — contracts.md → 
 
 [... more phases ...]
 
-- [ ] **Phase N+1**: Coherence review and auto-fix (final, mandatory)
-  - Pattern reference: same as Phases 1..N (cross-check against them)
-  - Files: only the files written by Phases 1..N (collect them from their `Files:` fields). Never touch a pre-existing file they did not modify.
-  - Decisions:
-    - Auto-fix directly: tool-fixable lint (ruff/prettier/eslint/black), unused imports, formatting, trivially mechanical fixes. Re-run the tests after each non-tooling fix; if one breaks a test, roll back that fix and flag it instead.
-    - Never auto-fix: logic errors, design divergences from the pattern reference, missing edge cases, anything architectural. Those go to `review.md` only.
-  - Details: convergence loop (max 3 cycles) of linter scoped to the file set → auto-fix → linter → test suite; stop early if a cycle makes no progress. Then write `.phased/active/<slug>/review.md` with three sections: **Auto-fixed** (file, what, tool), **Flagged for human** (file, description, suggested action), **Final state** (linter output, suite result, files reviewed).
-  - Done: `review.md` exists in the plan directory with the three sections, linter zero errors on the file set, full suite green.
-
 ## Notes
 [Attention points, dependencies, breaking changes, scope deviations recorded during refinement]
 
@@ -134,25 +94,21 @@ Must not break: <one line per contract owned by later work — contracts.md → 
 | Phase | Effort | Model |
 |-------|--------|-------|
 | Phase 1 | ... | ... |
-| Phase N+1 | xhigh | opus |
 ```
 
 Keep the column order exactly as above — `/run-workflow` reads Effort and Model **by column position**. The Phase cell carries the number ALONE: `next-phase.py --validate` matches `^Phase \d+$` on it and rejects any parenthetical, so a row written `| Phase 3 (review) |` fails the launcher's own pre-flight gate. S52 renders this template and validates it, so the two cannot drift apart again.
 
 - **Effort**: sets `--effort` and the runaway cap. **Start low and climb only for a reason.** An autonomous phase is by construction well-specified — `Details:`, `Done:` and `Pattern:` leave nothing to invent — and that is exactly where high effort buys least: the model spends it re-exploring and re-verifying decisions the plan already made. So `low` for mechanical work, `medium` for the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` for wide multi-file agentic work, `max` practically never (prone to overthinking, diminishing returns). Do not carry over effort levels from older plans — defaults tuned on a previous model rarely transfer.
-  `low` phases run in **light mode** — a slim `/goal` contract, no execute-phase-agent skill — so their `Details:`/`Done:` must be fully self-contained. **Never `low` on a phase that carries contract tests**: light mode ships no contract doctrine, so the phase never learns the contract is read-only nor how to raise a plan-defect claim, and it fixes the contract locally instead. Measured, not feared — the wfdash-open-findings run's three light phases all edited their own contract test and one deleted `wf:contract:` lines binding a later phase, while the two full-mode phases touched it not at all. The launcher's pre-flight refuses a plan with `tests/` that still carries one (`RUN_WORKFLOW_ALLOW_LIGHT_CONTRACTS=1` is the explicit override).
+  Low effort retains the full execute-phase-agent contract, including immutable
+  tests and plan-defect escalation. It changes reasoning depth, not quality gates.
 - **Model**: `opus` is the default and the answer whenever in doubt.
   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a fable repair. Mechanical work is `opus` at `low` effort: light mode already strips the ritual there, which is where sonnet's supposed saving lived. The launcher still *accepts* legacy plans that carry it, with its own steering — accepted is not recommended.
   - `fable` — genuinely hard phases: architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference. Subject to credits.
-  - The final review phase is `opus` at `xhigh`: it needs judgment to separate the trivial fixes to apply from the findings worth flagging for a human.
   - **Do not write style or verbosity rules into phases.** The launcher injects per-model steering at session start (silent log-style output, plus a per-model line damping each model's known drift) — a phase restating them just spends plan tokens twice.
 
 ## Closing message
 
-```
-Autonomous-ready plan written to .phased/active/<slug>/plan.md (<N> phases + final review), committed on <branch>.
-Every phase carries: pattern reference, files, pre-made decisions, a measurable done criterion.
-Each phase runs a self-correcting loop (3 test+lint attempts, independent review, gate on the Done); a failed phase gets ONE automatic fresh-eyes repair before it stops for you.
-The final review fixes the trivial slips and flags the rest in .phased/active/<slug>/review.md.
-To run it: /run-workflow (it will pass the pre-flight check with no questions) — from this checkout or from .claude/worktrees/<slug> alike: the launcher attaches to the plan's checkout.
-```
+Report the plan path, delivery-phase count, branch and checks. Each phase carries
+pattern, scope, decisions and measurable Done; one diagnosed local correction
+and one fresh repair are bounded. Point to run-workflow, then quality-check for
+one consolidated correction batch. Do not add a mandatory review phase.

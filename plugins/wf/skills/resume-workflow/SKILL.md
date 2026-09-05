@@ -72,14 +72,11 @@ format and take-command mechanics live once in `foreman.md` → *The foreman*):
 
 ## Step 2: Attribute the work
 
-Each completed phase committed its own work, so attribution is **exact — never infer it**:
-
-```bash
-git log --oneline "$BASE"..HEAD
-git show --stat <phase commit>
-```
-
-For each `[x]` phase, compare its commit's files against its own `> Files:` note. For each pending phase, there is simply no commit yet.
+Attribute a phase from the union of its outcome, partial/batch and repair commits
+in `BASE..HEAD`, grouped by the explicit `wf(phase N):` token. Compare that union
+with its recorded Files notes; the final commit alone omits earlier batches.
+Inspect ambiguous or missing attribution and report it as unknown rather than
+assigning unrelated commits by proximity. Pending phases have no outcome yet.
 
 Then look at `git status --short`. **A clean tree is the normal state.** Uncommitted changes are legitimate only while a phase is `[>]` — anything else is a finding, not context: a session that died before committing, or hand edits nobody recorded.
 
@@ -88,7 +85,10 @@ Two distinct kinds of drift, and they mean different things:
 1. **Unlisted files** — inside a phase's commit but absent from its `> Files:`. The work landed but the record is wrong, which silently breaks later baseline attribution and `/repair-phase`.
 2. **Uncommitted leftovers** — in the tree, in no commit, with no `[>]` phase to explain them.
 
-Flag a phase as **oversized** when its commit spans more than ~10 files, covers unrelated areas (model + UI + tests for different features), or is too large to review as one commit. On a phase carrying `> Batches:` the same judgment applies to each **batch** — its `partial` commit — not to the phase total: batches exist so a large phase stays reviewable, so an oversized *batch* is the finding, and a fat phase made of readable batches is not one. **Exception:** a `vast` phase is intentionally whole — that size is by design, never propose re-phasing it for size alone. For a pending phase the same judgment is a projection from its `Files:`, not a measurement; say which one you are making.
+Flag a phase as **oversized** for unrelated concerns, unresolved decision
+boundaries or insufficient context, not file count alone. Prefer coherent batches
+for broad mechanical work; judge each batch rather than its phase total.
+Distinguish measured commits from projected pending scope.
 
 ## Step 3: Report
 

@@ -6,118 +6,129 @@ allowed-tools: Bash(git:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(grep:*),
 
 # Quality Check
 
-The quality half of closing a workflow: verify the plan is complete, put the QA checks in the user's hands, review the whole diff at the depth the user chooses, and stamp the plan with the outcome. `/finalize-workflow` reads the stamp and does the rest — lessons, archive, consolidation. **Never edit source code here** beyond three declared exceptions, all corrections on decisions already taken: Step 3's naming review (the user's own naming decisions plus marker removal), Step 2's QA fixes and Step 5's final touch. What needs a decision nobody gave, or a surface nobody built, is reported and goes to `/resume-workflow` as one phase.
+Collect the finished workflow's evidence, diagnose the complete finding set, apply
+one approved correction batch, and verify it once. Finalize reads the quality
+stamp; a stamp is a record, not permission to hide a residual defect.
 
-**Usage:** `/quality-check` — or `/quality-check light|extended|panel|none` to pre-answer Step 5's depth question (the argument is the user's call made early; everything else still runs).
+**Usage:** `/quality-check light|extended|panel|none`; an explicit depth already
+answers the depth question. Read `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`,
+`${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` and `${CLAUDE_PLUGIN_ROOT}/refs/execution-policy.md`.
+Use the reporting register for user-facing findings.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md`, `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` once at start — core conventions, the contract layer (verify.md, markers, the stamp, Must not break:), the reporting register.
+## Step 1: Resolve scope and previous evidence
 
-## Step 1: Find the plan and the base
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve
-git branch --show-current
-git worktree list --porcelain
-```
-
-No active plan → stop; the plan lives on the workflow branch, so check `git branch --show-current` before concluding there is nothing to check — and check `--plans` first: the workflow may live in another checkout (`common.md` → *Plan location*). When it does, every git command below runs `git -C <plan root>` and every path is anchored there.
-
-Read the plan for `Parent:` and the phase states. **Resolve the parent ref**: `origin/<parent>` if `git rev-parse --verify` finds it, otherwise the local `<parent>`. Then:
+Resolve the active plan with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`.
+If necessary use `--plans` to locate its checkout; run every Git command there.
+Read the plan, notes.md, verify.md and review.md when present. Resolve:
 
 ```bash
-BASE=$(git log -1 --diff-filter=A --format=%H -- <plan path>)   # the commit that ADDED the plan
+BASE=$(git log -1 --diff-filter=A --format=%H -- <plan path>)
+REVIEW_HEAD=$(git rev-parse HEAD)
+git status --short
+git diff --stat "$BASE".."$REVIEW_HEAD"
 ```
 
-`BASE` is the workflow's base: everything after it belongs to this run, everything before it does not. Consolidation shape (dedicated vs adopted branch) is `/finalize-workflow`'s concern, not this skill's.
+An absent/ambiguous base or unrelated dirty work must be resolved before review.
+All phases must be `[x]` for close-out; an incomplete run can be assessed when
+requested, but the report must name the missing acceptance.
 
-## Step 2: Verify completion, and put the QA in the user's hands
+A `## Final touch` heading is not proof of coverage. Read its recorded reviewed
+revision, correction revision, scope, checks and remaining findings. Reuse only
+traceable evidence covering the current scope. After a completed correction,
+resume at its pending verification, not at a fresh whole-diff review. New code,
+new phases, changed contracts or changed dependencies need a delta review and
+related integration checks. Missing revision evidence means coverage is unknown.
 
-All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to check anyway (default: no).
+## Step 2: Collect QA and naming findings without editing
 
-**Present the QA pass.** Collect every `Verify:` step from the plan — authored fields and `> Verify:` notes alike — *and* the whole of `verify.md` if it exists (the deferred checks the executing skill dated to a later phase — `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*). Deliver them as the **QA page** defined there: ONE checklist, grouped by phase, each check with the action to exercise and the result the user should see; a deferred step whose phase has since landed is now due. Phrase every item per `foreman.md` → *The reporting register*: the reader knows what the feature should do, not how the phases built it. Then ask whether they have been done — not as a blocker, but never silently skipped either: if the user says no, say plainly that the stamp will record those checks as declined. **Keep the answer**: whether a human exercises the result is one of the inputs Step 5's recommendation reads, and it lands in the stamp.
+Present the QA page defined in contracts.md as one checklist from authored and recorded `Verify:` items and verify.md,
+grouped by observable result. Ask whether the human checks were exercised; retain
+`done`, `declined` or `none` honestly. Review.md contains judgments, not substitutes
+for exercising behavior. Collect defects and reproduction steps into the same
+finding set used below; do not run a separate QA-fix commit cycle.
 
-`verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
+Collect `wf:phase-N:new` markers across the recorded files. Build the naming map
+using `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md`, but defer its edits and marker removal to
+Step 5. Gather naming decisions once. A remaining marker is a reported blocker.
+An urgent correction needed to exercise QA can be made when already authorized;
+record its exact revision and finish collecting evidence before the final batch.
 
-**QA fixes.** A defect the user reports while exercising the list is fixed HERE, by this chat — the second of the foreman's two exceptions to *commands, does not execute* (`foreman.md` → *The foreman*). The boundary is decisions, not size: a report is a QA fix when no decision is open — the user's sentence, or the plan's `Decisions:`, already says what right looks like — whatever it takes to get there: a label, a field's rule or default, a helper, a foreign-key rule, a seed, a test. It is a phase only when it needs a decision the user has not given and does not give in one sentence when asked, or a surface the plan never built — a new table, page or migration. Apply it, re-run the suite and the linter on the touched files, and commit one `wf: qa fix — <one line>` per QA round; record each in `notes.md` under `## QA fixes` as *what the user saw → what changed* — finalize's lessons pass reads it, because every fix a human had to ask for is a check the plan did not author. Beyond the boundary the correction is a phase, appended per `/resume-workflow`, and this chat says which road it took and why. Measured on the field twice: two one-sentence corrections went out as a phase where two edits and one commit were owed; then, under a size-based boundary, ten review findings went out as six phases and ten more as four — and the second lot was done in the foreman chat in minutes once the user asked.
+## Step 3: Review the complete scope once
 
-## Step 3: Naming review
+Review `BASE..REVIEW_HEAD` for acceptance, behavior, contracts and integration.
+Include every `> Review:` note, Run inspection finding and roadmap seam; each
+receives a confirmed/dismissed/deferred outcome. Check produced and consumed
+contracts in transit, including constraints crossing intermediate macros. Compare
+the roadmap Ends at: with the delivered state in this roadmap check.
 
-Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases created — nobody could answer a naming question mid-run (`contracts.md` → *New-method markers and minimality*). Collect them over the union of every phase's `> Files:` (`grep -rn "wf:phase-[0-9]*:new" <files>`); none → skip in one line. Found → run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` for the whole workflow: ONE map, accept-all as the recommended fast path, renames applied with their call sites, markers stripped, the narrow signal re-run when anything was renamed. Commit the result on the workflow branch:
+AskUserQuestion offers Extended, Light and None when no depth was specified.
+Recommend Light only when informative phase checks and exercised human QA already
+cover implementation; it focuses on integration. Recommend Extended for unreviewed
+implementation, declined QA, uncertain contracts or high consequence changes.
+Explicit None remains possible and is recorded as omitted review. It does not
+waive acceptance checks or turn an unchecked result into a clean review.
+Panel is one strong reviewer plus at most one specialist for a distinct material
+risk. Do not dispatch a fixed panel or decide findings by majority vote.
 
-```bash
-git add -A && git commit -q -m "wf: method naming review"
-```
+Use a fresh read-only reviewer with the actual diff, acceptance and dependencies.
+For another checkout use `${CLAUDE_PLUGIN_ROOT}/scripts/agent-session.sh quality-check-agent`;
+its default is an independent integration/acceptance pass. For a resumed delta
+check use a fresh read-only reviewer given the exact revision range and affected
+consumers; do not relaunch the whole-diff agent. Checkout location never changes
+quality requirements. Keep author and reviewer separate for non-trivial code.
+Report judging is optional and justified only by a material comprehension risk.
+When needed, use the read-only `wf:report-judge` agent.
 
-**This is the one step of the quality check that edits source, by design** — the edits are the user's naming decisions plus marker removal, and the commit lands before the reviews so what gets reviewed is what will ship. The ref's sweep is blocking: a marker that survives here reaches the parent branch.
+## Step 4: Consolidate and diagnose before correction
 
-## Step 4: Review the scope
+An engineer checks all findings against the real code and contracts, groups shared
+root causes and prepares ONE table:
 
-No staging heuristics and no guessing: the workflow is exactly `git log --oneline "$BASE"..HEAD` — the plan commit plus, per phase, one phase commit and any `partial` commits that preceded it (`refs/common.md`). Group the log by the `wf(phase N):` prefix each line already carries and show one line per phase, naming its partials where it has them; then `git diff --stat "$BASE"..HEAD`. A phase with no partials reads exactly as it always did.
+| Finding and evidence | Root cause | Fix and affected consumers | Verification | Outcome |
+|---|---|---|---|---|
 
-The tree must be clean. If `git status --short` shows anything, a phase closed without committing or someone edited by hand — report it and ask whether it belongs to the workflow before going on; do not sweep it in silently.
+Require a reproduction, violated acceptance/contract or concrete code evidence
+for a defect. Label preferences and new requirements separately. Include naming,
+QA and reviewer findings together. Determine whether one fix addresses several
+symptoms; inspect callers before proposing edits. Resolve open product decisions
+with the user in one batch. Present one reviewable correction proposal and obtain
+approval unless the current authorization already covers it.
 
-**On a programme (`.phased/roadmap.md` exists): the roadmap check.** Compare
-what this macro actually built — the diff above, read against the plan's
-`Must not break:` lines — with the remaining macro-phases' mini-scopes:
-every shape a later macro would have to undo or work around is a finding
-(`contracts.md` → *Must not break:*). Where the roadmap declares an `Ends at:`
-for this macro, compare it with the state actually delivered — a leg about
-to close in Puglia is caught at the close of the leg, not at the departure
-of the next. Contracts in transit across this macro — produced by an
-earlier one, consumed by a later one — are checked the same way: lost
-luggage is a finding. This is the last cheap moment to act — the next macro is
-planned against this commit. Findings feed Step 5's
-review as explicit focus points and the stamp; deep measurement
-(retro-fitted contract tests against the landed code) belongs to `/doctor`,
-not here.
+Do not append a phase for each defect. Existing-scope corrections stay here;
+only a genuine new requirement or unresolved decision can lead to one grouped
+follow-up through `/resume-workflow`. Report its effect on close-out explicitly.
 
-## Step 5: Pre-commit review
+## Step 5: One final touch and one focused verification
 
-**When the plan lives in another checkout (its own worktree), or the cwd is outside the plan's root**, do not review in-session: silently run the shipped verify agent in a clean sub-session at the plan's root —
+Apply the approved table, including renames/callers and marker removal. Run the
+narrow relevant checks after each edit, then integration checks justified by the
+combined change. Commit once as `wf: final touch — <N> corrections` when commits
+are authorized. Preserve any user instruction forbidding commits.
 
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/agent-session.sh" quality-check-agent
-```
+Record under `## Final touch` in notes.md: reviewed revision, correction revision
+(or pending commit), table, checks actually run, covered dependencies and residual
+findings. This existing notes section is the durable correction ledger; no new
+mandatory plan field is introduced.
 
-— and read its report (stdout, teed to the plan's `log/quality-check-agent.txt`). Its prompt ships in the plugin, not composed here: that is what keeps the review independent. Treat its FINDINGS exactly like the in-session review's below, and its VERIFY-NOTES as Step 2's `> Verify:` collection. The agent never touches history; every decision stays here, with the user.
+One fresh read-only reviewer verifies that the corrections resolve the recorded
+causes and do not break affected consumers. Review the correction delta plus its
+dependencies, with effort appropriate to risk. Re-exercise affected human checks.
+Do not restart Extended/Panel over unchanged scope. A residual defect stops a
+clean close-out: report the evidence and failed premise, then propose a bounded
+engineering intervention or an explicit risk decision. No automatic phase growth,
+no concealed second repair loop, no invented clean verdict.
 
-**Otherwise** (the plan is in this root, no worktree of its own), the review runs in-session via the built-in `code-review` skill (Skill tool) — never with `--fix` — and its depth is the user's call, not a guess (an argument on the invocation IS that call, already made). Ask ONE `AskUserQuestion` — **Extended** / **Light** / **None** — and compute the recommended option from what this check already knows:
+## Step 6: Stamp the actual result
 
-- **The QA pass exercises the deliverable** (Step 2's checks cover what the workflow built, and the user does them — a human eye lands on the result) → recommend **Light**. Every phase was already verified in isolation — in interactive runs by the user as each diff landed — so what nobody has seen is the diff as a whole. Light hunts exactly that residue and nothing else: effort `low`, scoped to **cross-phase issues only** — one phase breaking another's assumption, helpers duplicated by sessions unaware of each other, naming or pattern drift between phases.
-- **Nothing a human will exercise** (internal work with no QA check on the deliverable, or the user declined the QA pass) → recommend **Extended**: this review is the only eye on the work. Whole diff, effort `medium` — `high` when the plan is `Mode: autonomous`.
-- **`> Review:` notes on any phase, or a `## Run inspection` section in `notes.md`** → recommend **Extended** regardless (nobody read that code as it landed), effort `high`. Whatever the user picks, those notes are never dropped: Extended and Light take each one as an explicit focus point that must come out confirmed or explicitly dismissed; **None** presents them raw, for the user to judge alone.
-- **None** is always on offer, its price stated in the option itself: nobody — the user included — has seen the whole diff at once, and the stamp will say so.
-
-Extended also hunts cross-phase issues — Light's whole scope is a subset of Extended's.
-
-**Large autonomous diffs:** add a fourth option, **Panel**, and recommend it in place of Extended — one subagent per dimension (correctness, cross-phase coherence, pattern conformance, test coverage) in parallel over `BASE..HEAD`, each read-only and each returning its findings in the `MECHANICAL:`/`JUDGMENT:` shape the shipped judges use, most severe first, or exactly `NO FINDINGS`. Then rank the union and take the **4 most severe**: one skeptic per finding, 3 in parallel, each read-only and each returning exactly `REFUTED: <why>` or `STANDS: <the line of the diff that proves it>`; a finding survives on 2 of 3 `STANDS`, and a refuted one is dropped without reaching the user. Findings past the fourth are presented unverified and labelled so — a silent truncation reads as "the panel covered everything". That is 4 + 12 = **16 agents, fixed by construction**, not a ceiling to stay under.
-
-The worktree path above is exempt from the question: the agent's prompt ships fixed in the plugin, and that is what keeps its review independent.
-
-Findings → present them per `foreman.md` → *The reporting register*: the short form (verdict line, one line per finding, its consequence for the user), passed through the `wf:report-judge` comprehension probe before showing — **skip the probe when the review returns no findings**: a clean verdict line has nothing to misread — delivered as the register's report page where the session can render one. Then ONE question — *"The pre-commit review found N problems. Fix them first, or shall I stamp the check as it stands?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Expand the details before deciding*), never as a second question. *Fix them first* is the final touch below, done here.
-
-**The final touch.** The review's findings are fixed HERE, by this chat, on the QA-fix boundary above — corrections to a design already decided. A phase per finding is the loop measured on the field: a recall-biased review finds ten things on any diff, ten phases produce a new diff, the next review finds ten more, and the plan grows from three phases to thirteen. Present the corrections as ONE table — finding → fix → files — and on the user's ok apply them all, re-run the suite and the linter on the touched files, commit once as `wf: final touch — <N> corrections`, and record the table in `notes.md` under `## Final touch` (finalize's lessons pass reads it like the QA fixes). A finding that opens a decision the user has not given is asked in one sentence at that table; one that needs a surface the plan never built goes to `/resume-workflow` as ONE phase for all such findings together, never one phase each — and the table says which rows took that road. Then the re-check, and only this one: **Light at effort `low`** over the files the final touch touched, plus the `verify.md` items those files serve, re-exercised by the user — never Extended or Panel again on this branch, a second high-effort pass is the loop restarting. Then Step 6, which records the count.
-
-This is the only whole-diff review on the "Merge into parent" and "Commit only" close-out paths — `/pull-request` adds a maintainer-grade one only on the PR path.
-
-## Step 6: Stamp the plan
-
-Record the outcome as the stamp `/finalize-workflow` reads (`contracts.md` → *The quality-check stamp*): append to `plan.md`, under a `## Quality check` heading (created on first use, one line appended per run — the last line governs):
+Append the existing compatible stamp under `## Quality check` in plan.md:
 
 ```
 > Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>, final touch <N corrections | none>
 ```
 
-The hash is HEAD at stamp time — it is what lets finalize detect a stale check when commits land after it. Commit the stamp alone:
-
-```bash
-git add .phased && git commit -q -m "wf: quality check — <review depth>"
-```
-
-Close with the stamp line repeated in chat and the next step: *"Quality check stamped. Next: `/finalize-workflow` to consolidate and close the branch."*
-
-## Rules
-
-- **NO source code editing** beyond three exceptions, each committed as its own `wf:` commit: Step 3's naming review (renames the user chose and marker removal), Step 2's QA fixes and Step 5's final touch (corrections on a decided design, inside the boundary written at *QA fixes*). What crosses that boundary is reported and goes to `/resume-workflow` as one phase
-- A finding never blocks the stamp: the user decides to fix first or stamp as-is, and the stamp records what was found either way
-- The stamp is written even when every answer was "no" — a declined QA and a `none` review are facts finalize must see, not omissions
+Record unresolved findings and any explicit risk acceptance in notes.md, linked to
+the stamp revision. A diagnostic stamp with residual findings is not a clean gate;
+finalize must read their disposition. Never automatically recommend consolidation
+while required acceptance fails. When authorized, commit the stamp and ledger
+alone as `wf: quality check — <review depth>`. Repeat the outcome in chat and name
+the next action justified by it.

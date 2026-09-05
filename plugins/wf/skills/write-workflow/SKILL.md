@@ -18,7 +18,7 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 ```bash
 git branch --show-current
 git rev-parse --show-toplevel
-git rev-parse --verify origin/develop >/dev/null 2>&1 && echo develop || echo main
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
 ```
 
 **On a feature branch** — read what is already there (`git log origin/<base>..HEAD --oneline`, `git diff --stat origin/<base>...HEAD`, the full diff, and `gh issue view <number>` if the branch starts with one), summarise it, then ask: *"What do you want to plan on this branch?"*
@@ -33,6 +33,11 @@ var, CLI option) unchecked against the tool's real interface, arithmetic stated 
 what Step 2 sizes on.
 
 This same fork decides the branch in Step 4 — remember which side you are on.
+
+Before the automation fork, apply `${CLAUDE_PLUGIN_ROOT}/refs/execution-policy.md` to choose
+one engineer task, one durable phase, several phases or macro-phases. Present the
+shape and reason once. If one task wins, present the self-contained brief from
+Step 3 and stop at its handoff gate; skip workflow mode/channel questions.
 
 ## Step 2: The automation fork
 
@@ -65,24 +70,9 @@ The answer routes the rest of this skill:
 
 Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
-**Sizing: one phase per decision boundary.** A phase is the largest coherent unit
-executable, verifiable and reviewable without an intermediate result forcing the
-rest to be re-planned — the count is the number of points where a result changes
-what comes next, never the number of files. Mechanical work is one phase however
-wide; three unknown root causes are three phases. A coherent phase whose diff is
-too large to review as one unit stays ONE phase and gets `> Batches:`.
-
-**One chat, or a workflow.** The plan's quality — recon, `Pattern:`, a re-runnable
-`Done:`, contract tests first — belongs to the plan, not to the phase boundaries: one
-session handed the same plan as its prompt gets it too, with a warm context that knows
-the whole diff where separate sessions duplicate each other's helpers. A workflow pays
-only when one of three holds: the work does not fit one context; an intermediate result
-changes what comes next, so a human gate is owed between phases; it must run unattended,
-with checkpoints and repair. None of the three → the plan becomes a brief, not a workflow:
-the presentation's gate recommends **One chat**, and on that answer the brief below is
-written to `~/.phased/prompts/<slug>.md` and its path handed over — no branch, no
-`.phased/`, Steps 4–6 skipped. Measured: a 3-phase plan of 7 files ran relayed and
-autonomous, and grew to 13 phases at the quality check.
+**One chat, or a workflow.** Apply the shared delivery-shape policy; carry the settled
+contract into a self-contained brief for a fresh engineer session. On One chat,
+write `~/.phased/prompts/<slug>.md` and hand over its path; skip Steps 4–6.
 
 **The one-chat brief** — filled from the plan just built, self-contained for a chat that has read nothing else; the recon, the decisions and the contract tests are already paid for:
 
@@ -92,7 +82,7 @@ Run in ONE fresh chat — model fable (or opus), effort high — from <repo root
 ## Decided — never reopened: <every Decisions: line of the plan>
 ## Code: <file → pattern to copy-adapt as path:symbol, one line each; files that do not exist yet marked new>
 ## Constraints: <Must not break: lines>; the repo's CLAUDE.md applies; no new dependency without asking
-## Method: contract tests first (<their paths, or the tests written below>), then implement; run <lint cmd> and <test cmd>; loop until green
+## Method: contract tests first (<their paths, or the tests written below>), then implement; run <lint cmd> and <test cmd>; allow one diagnosed correction, then stop if still red
 ## Done: <the plan's re-runnable Done: criteria, merged into one list>
 ## Deliverable: branch <wf/<slug>, or as the user said>, one commit, a report of at most 10 lines: what changed, what was verified, what was left
 ## Stop: a decision not listed under Decided → stop and ask; Done not green after two attempts → stop and report what is red and why
@@ -129,12 +119,12 @@ border.
 
 *Interactive plans — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
 
-*Autonomous plans — one concern, ~6-8 files, closed by a re-runnable `Done:`* (the stricter rules live in `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md`).
+*Autonomous plans — one coherent result, closed by a re-runnable `Done:`* (the stricter rules live in `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md`).
 
 Either way:
 1. Too small to verify alone (a model half, a migration, a schema)? Merge it into the phase that makes it verifiable — a phase boundary the user cannot verify is a boundary in the wrong place.
 2. **Split** — two concerns in one phase: just write more phases, no tag.
-3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the file ceiling is lifted for it only.
+3. **`vast`** — one indivisible concern with a broad surface. Use bounded reconnaissance and reviewable batches; file count alone never requires a split.
 4. **`ui`** — a phase whose deliverable is judged by eye: a page, a form, a dashboard. Interactive plans only (an autonomous run has nobody to approve a mockup). At execution the approval gate includes a rendered HTML mockup iterated with the user, and verification adds a browser pass plus a fidelity judge against that mockup (`contracts.md` → *Verification*). Tag it here so the executing chat knows before exploring.
 
 The split-vs-`vast` call and the `ui` tag materially change execution — batch them into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.

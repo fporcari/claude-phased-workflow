@@ -546,7 +546,12 @@ def read_foreman(plan_dir):
     if not f.is_file():
         return None
     try:
-        return json.loads(f.read_text())
+        value = json.loads(f.read_text())
+        if not isinstance(value, dict):
+            return None
+        value.setdefault('foreman', value.get('title'))
+        value.setdefault('since', value.get('claimed_at'))
+        return value
     except ValueError:
         return None
 

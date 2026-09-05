@@ -10,6 +10,14 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
 **Usage:** `/run-workflow`
 
+`RUN_WORKFLOW_MAX_ATTEMPTS=N` caps worker launches in this invocation, including
+repair and provider fallback. Zero launches none. EVENT tokens `attempt-started`
+and `attempt-budget-exhausted` report the launches and the hard boundary. `RUN_WORKFLOW_MAX_PHASES=N`
+limits completed phases; it does not bound repair cost. At the attempt boundary,
+stop with durable state; relaunch needs remaining authority. Existing Repair
+attempted notes still prevent another automatic repair. There is no portable
+currency or soft-budget enforcement; report unknown usage as unavailable.
+
 ## Pre-flight review (MANDATORY — before running the script)
 
 1. **Read** the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from outside the plan's root, `--plans` per `common.md` → *Plan location* — the launcher itself attaches or creates the plan's workspace), and read its `Mode:` header first:

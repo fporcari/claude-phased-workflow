@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 mem = os.environ['MEM']
 s = open(mem).read()
 op = sys.argv[1]
@@ -55,3 +56,7 @@ elif op == 'apply_ok':
 elif op == 'noop':
     pass
 open(mem, 'w').write(s)
+
+if op != 'noop':
+    subprocess.run(['git', 'add', '--', mem], check=True)
+    subprocess.run(['git', 'commit', '--allow-empty', '-qm', 'fixture outcome'], check=True)

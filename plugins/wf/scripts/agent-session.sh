@@ -93,7 +93,14 @@ if [ -z "$PLAN" ]; then
   exit 1
 fi
 PLAN_DIR=$(dirname "$PLAN")
-mkdir -p "$PLAN_DIR/log"
+TRANSPORT=$(python3 "$NEXT_PHASE_PY" --transport "$PLAN") || exit 1
+if [ "${PHASED_RUN_LOCK_PID:-}" != "$$" ]; then
+  RUN_SHELL=bash
+  [ -n "${ZSH_VERSION:-}" ] && RUN_SHELL=zsh
+  exec python3 "$SCRIPT_DIR/runtime.py" lock "$TRANSPORT-writer.lock" "$RUN_SHELL" "$0" \
+    "$SKILL" --model "$MODEL" --effort "$EFFORT"
+fi
+install -d -m 700 "$(dirname "$TRANSPORT")"
 
 echo "========================================="
 echo "$SKILL — model: $MODEL, effort: $EFFORT, at: $PLAN_ROOT"
@@ -110,7 +117,7 @@ claude -p "/$PLUGIN_NAME:$SKILL" \
   --model "$MODEL" \
   --effort "$EFFORT" \
   --permission-mode auto \
-  "${AGENT_BUDGET_ARGS[@]}" 2>&1 | tee "$PLAN_DIR/log/$SKILL.txt"
+  "${AGENT_BUDGET_ARGS[@]}" 2>&1 | tee "$TRANSPORT-$SKILL.log"
 AGENT_EXIT=$?
 set +o pipefail
 exit "$AGENT_EXIT"
