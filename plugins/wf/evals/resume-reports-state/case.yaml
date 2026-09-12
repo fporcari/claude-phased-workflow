@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: resume-reports-state
+tags: [behavior]
+description: resume-workflow on a seeded wf/ branch reports the pending phase and routes to the next command without touching source files.
+context:
+  scaffold_script: scaffold.sh
