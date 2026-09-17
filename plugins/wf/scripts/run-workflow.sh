@@ -189,6 +189,26 @@ add_timing() {  # $1 = label, $2 = elapsed seconds
 "
 }
 
+# Runaway-loop safety net, NOT a spend limit on subscription plans: generous
+# enough that a normal session never trips one, so a trip is a bug to look at.
+# ONE mapping for the phase sessions and the repair — a hardcoded repair cap
+# drifted from the scale the phases actually use.
+budget_for() {  # $1 = effort, $2 = model
+  local b
+  case "$1" in
+    low)    b=50 ;;
+    medium) b=100 ;;
+    high)   b=200 ;;
+    xhigh)  b=250 ;;
+    max)    b=300 ;;
+    *)      b=200 ;;
+  esac
+  # Fable burns more notional dollars per token — double the cap so the net
+  # keeps the same "only trips on a real bug" semantics.
+  [ "$2" = "fable" ] && b=$((b * 2))
+  printf '%s\n' "$b"
+}
+
 # Pre-loop validation gate. next-phase.py --validate shares the selector's own
 # regexes, so a plan it rejects is one the loop could not drive correctly. Print
 # its output verbatim (no re-wording) and stop before spending a single session.
@@ -417,21 +437,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     *) echo "NOTE: unrecognised Effort '${EFFORT:-<empty>}' from the config table — using 'high'."; EFFORT="high" ;;
   esac
 
-  # Cap per phase (runaway-loop safety net, NOT a real spend limit on subscription plans).
-  # Generous defaults so normal phases never trip the cap; trips signal a bug, not a budget issue.
-  case "$EFFORT" in
-    low)    BUDGET=50 ;;
-    medium) BUDGET=100 ;;
-    high)   BUDGET=200 ;;
-    xhigh)  BUDGET=250 ;;
-    max)    BUDGET=300 ;;
-  esac
-
-  # Fable burns more notional dollars per token — double the cap so the
-  # safety net keeps the same "only trips on a real bug" semantics.
-  if [ "$MODEL" = "fable" ]; then
-    BUDGET=$((BUDGET * 2))
-  fi
+  BUDGET=$(budget_for "$EFFORT" "$MODEL")
 
   # One contract for every effort level: `low` changes reasoning depth, never
   # the doctrine the phase receives (light mode retired in 6.36.0 — the slim
@@ -637,44 +643,69 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
     # A landed apply already closed the phase under the foreman's own edit —
     # launching a repair on top of it would spend a session on a solved plan.
     if [ "$FOREMAN_APPLIED" -eq 0 ]; then
-      # Repair runs on the strongest model: it is by definition the case where
-      # the phase's model already failed once. Fallback to opus only if the
-      # fable session cannot start (e.g. no credits — claude exits non-zero
-      # without touching the plan).
+      # Model and effort for the repair are the foreman's call, written on the
+      # config table's optional `| Repair | <effort> | <model> |` row. Absent
+      # → opus / high: the phase's own model failed once, which argues for
+      # fresh eyes, not necessarily for a bigger model at a deeper effort.
+      REPAIR_LINE=$(grep -iE "^\|[[:space:]]*Repair[[:space:]]*\|" "$PLAN" | head -1)
+      rcol() { printf '%s\n' "$REPAIR_LINE" | awk -F'|' -v n="$1" \
+                 '{gsub(/^[ \t]+|[ \t]+$/, "", $n); print tolower($n)}'; }
+      REPAIR_EFFORT=$(rcol 3)
+      REPAIR_MODEL=$(rcol 4)
+      case "$REPAIR_MODEL" in
+        fable|opus) ;;
+        '') REPAIR_MODEL="opus" ;;
+        *) echo "NOTE: Repair row Model '$REPAIR_MODEL' is not fable|opus — using 'opus'."; REPAIR_MODEL="opus" ;;
+      esac
+      case "$REPAIR_EFFORT" in
+        low|medium|high|xhigh|max) ;;
+        '') REPAIR_EFFORT="high" ;;
+        *) echo "NOTE: Repair row Effort '$REPAIR_EFFORT' is not a known level — using 'high'."; REPAIR_EFFORT="high" ;;
+      esac
+      if [ "$REPAIR_MODEL" = "fable" ]; then
+        STEER_REPAIR="$STEER_COMMON $STEER_FABLE"
+      else
+        STEER_REPAIR="$STEER_COMMON $STEER_OPUS"
+      fi
+
       echo ""
-      echo "A phase failed [!] — launching one fresh-eyes repair session (fable)..."
+      echo "A phase failed [!] — launching one fresh-eyes repair session ($REPAIR_MODEL/$REPAIR_EFFORT)..."
       REPAIR_BUDGET_ARGS=()
-      [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 300)
+      [ -z "$RUN_WORKFLOW_NO_BUDGET" ] \
+        && REPAIR_BUDGET_ARGS=(--max-budget-usd "$(budget_for "$REPAIR_EFFORT" "$REPAIR_MODEL")")
       set -o pipefail
       T0=$SECONDS
       BEFORE_HEAD=$(git rev-parse HEAD)
-      reserve_attempt repair fable max
+      reserve_attempt repair "$REPAIR_MODEL" "$REPAIR_EFFORT"
       claude -p "$REPAIR_PROMPT" \
-        --model fable \
-        --effort max \
+        --model "$REPAIR_MODEL" \
+        --effort "$REPAIR_EFFORT" \
         --permission-mode auto \
         "${REPAIR_BUDGET_ARGS[@]}" \
-        --append-system-prompt "$STEER_COMMON $STEER_FABLE" 2>&1 | tee "$TRANSPORT-repair-$FAILED_PHASE-fable.log"
+        --append-system-prompt "$STEER_REPAIR" 2>&1 | tee "$TRANSPORT-repair-$FAILED_PHASE-$REPAIR_MODEL.log"
       REPAIR_EXIT=$?
       set +o pipefail
-      REPAIR_LOG="$TRANSPORT-repair-$FAILED_PHASE-fable.log"
-      REPAIR_NAME="repair-$FAILED_PHASE-fable.txt"
-      add_timing "repair phase $FAILED_PHASE (fable/max)" "$((SECONDS - T0))"
+      REPAIR_LOG="$TRANSPORT-repair-$FAILED_PHASE-$REPAIR_MODEL.log"
+      REPAIR_NAME="repair-$FAILED_PHASE-$REPAIR_MODEL.txt"
+      add_timing "repair phase $FAILED_PHASE ($REPAIR_MODEL/$REPAIR_EFFORT)" "$((SECONDS - T0))"
 
-      # Only fall back if the fable session never ran at all (non-zero exit AND no
-      # outcome written). If it ran and gave up, it left the marker — do not
-      # spend a second repair on the same phase.
-      if [ "$REPAIR_EXIT" -ne 0 ] && [ "$(git rev-parse HEAD)" = "$BEFORE_HEAD" ] \
+      # Fall back only from fable, and only if that session never ran at all
+      # (non-zero exit AND no outcome written — e.g. no credits). If it ran and
+      # gave up, it left the marker: no second repair on the same phase. A
+      # repair already on opus has nothing to fall back to.
+      if [ "$REPAIR_EXIT" -ne 0 ] && [ "$REPAIR_MODEL" = "fable" ] \
+         && [ "$(git rev-parse HEAD)" = "$BEFORE_HEAD" ] \
          && [ -z "$(git status --porcelain)" ]; then
         echo "Fable repair session did not run (exit $REPAIR_EXIT) — retrying with opus..."
         REPAIR_BUDGET_ARGS=()
-        [ -z "$RUN_WORKFLOW_NO_BUDGET" ] && REPAIR_BUDGET_ARGS=(--max-budget-usd 200)
+        [ -z "$RUN_WORKFLOW_NO_BUDGET" ] \
+          && REPAIR_BUDGET_ARGS=(--max-budget-usd "$(budget_for "$REPAIR_EFFORT" opus)")
         T0=$SECONDS
-        reserve_attempt repair opus max
+        reserve_attempt repair opus "$REPAIR_EFFORT"
         set -o pipefail
         claude -p "$REPAIR_PROMPT" \
           --model opus \
-          --effort max \
+          --effort "$REPAIR_EFFORT" \
           --permission-mode auto \
           "${REPAIR_BUDGET_ARGS[@]}" \
           --append-system-prompt "$STEER_COMMON $STEER_OPUS" 2>&1 | tee "$TRANSPORT-repair-$FAILED_PHASE-opus.log"
@@ -682,7 +713,7 @@ while [ "$SESSIONS" -lt "$MAX_SESSIONS" ]; do
         set +o pipefail
         REPAIR_LOG="$TRANSPORT-repair-$FAILED_PHASE-opus.log"
         REPAIR_NAME="repair-$FAILED_PHASE-opus.txt"
-        add_timing "repair phase $FAILED_PHASE (opus/max)" "$((SECONDS - T0))"
+        add_timing "repair phase $FAILED_PHASE (opus/$REPAIR_EFFORT)" "$((SECONDS - T0))"
       fi
 
       if [ "$(git rev-parse HEAD)" != "$BEFORE_HEAD" ]; then

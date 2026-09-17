@@ -21,7 +21,7 @@ breaking change by definition.
 | Floor | Feature | Detected / declared at |
 |---------|---------|------------------------|
 | 2.1.139 | `/goal` guard for phase sessions | `run-workflow.sh` runtime check, declared NOTE fallback |
-| 2.1.170 | `fable` model alias | `run-workflow.sh` (repair hardcodes it; phases may pin it) |
+| 2.1.170 | `fable` model alias | `run-workflow.sh` — opt-in only: a phase or the config table's `Repair` row may pin it |
 | 2.1.224 | cross-session `SendMessage` in the CLI | `refs/foreman.md` → *Channel floors* (single source for messaging floors) — conditional on `Channel: relayed`: an in-chat workflow sends nothing and needs no floor |
 
 ## Plugin surfaces
@@ -41,8 +41,9 @@ code changing. Every new changelog entry is judged against this list.
    run depends on headless sessions resolving plugin slash commands.
 3. **CLI flags** — `--model fable|opus`, `--permission-mode auto` in the same
    scripts. A renamed flag or a removed model alias fails the run at launch.
-   `fable` landed in 2.1.170 and sets the floor for autonomous runs; the repair
-   session hardcodes it, a phase may pin it via `Model:`.
+   `fable` landed in 2.1.170; nothing reaches for it on its own any more, so it
+   is a floor only for a plan that pins it — on a phase's `Model:` cell or on
+   the config table's `Repair` row (default `opus` / `high`).
 4. **Settings inheritance** — the scripts copy `.claude/settings.local.json`
    into the plan checkout so sub-sessions inherit permissions. A change in
    where/how sessions read settings stalls the autonomous run on permission

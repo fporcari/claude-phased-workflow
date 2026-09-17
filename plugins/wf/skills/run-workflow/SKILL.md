@@ -36,13 +36,15 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
    **Model** — default `opus`; `fable` is the one exception:
    - `fable` — architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference (subject to credits; ask once if unsure).
-   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a fable repair. Mechanical work is `opus` at `low` effort. Legacy plans that carry it still run, with the launcher's sonnet steering — accepted is not recommended.
+   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a whole repair session. Mechanical work is `opus` at `low` effort. Legacy plans that carry it still run, with the launcher's sonnet steering — accepted is not recommended.
    - In doubt → `opus`.
    - The launcher steers each session for its model via `--append-system-prompt` (log-style silent output for all; opus: no scope creep or extra verification; fable: act, don't re-derive settled decisions) — neither the plan nor the phases need to restate style or verbosity rules.
 
    **Effort** — **start low and climb only for a reason.** A phase that passed the check above is well-specified by construction, and that is where high effort buys least: it gets spent re-exploring and re-verifying decisions the plan already settled. `low` mechanical, `medium` the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` wide multi-file agentic work, `max` practically never (overthinking, diminishing returns). Effort levels copied from an older plan rarely transfer — re-decide them here.
 
    It sets `--effort` and the runaway cap. Every level runs the same `/goal` contract and the same skill — `low` is less reasoning depth, not a lighter doctrine (light mode was retired in 6.36.0: its slim contract withheld exactly the contract-test rules a plan depends on).
+
+   **The `Repair` row** — an optional last row, `| Repair | <effort> | <model> |`, setting the fresh-eyes session launched when a phase comes back `[!]`. Omitted → `opus` / `high`. Decide it here rather than leaving it to the launcher: only the plan knows whether a failure on these phases is a hard problem or a slipped detail. `fable` earns it when the phases carry architectural or multi-file work (the cap doubles with it); `sonnet` is a validation error on this row.
 
 6. **Rewrite the plan** with the refined phases and the table, committing the edit as `wf: refine plan for autonomous run` (the plan is tracked), then show the user the final phase list with the model chosen for each and close with the gate line (`common.md` → *The gate line*): *"**Launch?** On your ok the run starts in the background over all \<N\> phases; keep the app open."* The line is the gate — AskUserQuestion exists in this skill solely for the stop-work question below, never for the launch.
 
@@ -91,7 +93,7 @@ If the launcher is killed outright (`kill -9`, machine shutdown) even `run-end` 
 
 Report the run's outcome to the user per `foreman.md` → *The reporting register*: the short form (verdict line, one line per finding — what landed and what it now does, what failed and what the user would see because of it), passed through the `wf:report-judge` comprehension probe before showing, delivered as the register's report page where the session can render one — degraded path: the short form in chat, closed with the register's single detail question. The launcher's raw summary is the record, not the report.
 
-**Runaway cap:** `--max-budget-usd` is a bugged-loop safety net, not a spend limit — on a subscription plan quota is the 5-hour window, not dollars. Caps come from effort ($50 low → $300 max, doubled for fable). A phase that actually trips its cap is a signal to investigate, not to raise it. `RUN_WORKFLOW_NO_BUDGET=1` removes the flag entirely.
+**Runaway cap:** `--max-budget-usd` is a bugged-loop safety net, not a spend limit — on a subscription plan quota is the 5-hour window, not dollars. Caps come from effort ($50 low → $300 max, doubled for fable), one mapping for the phase sessions and the repair alike. A phase that actually trips its cap is a signal to investigate, not to raise it. `RUN_WORKFLOW_NO_BUDGET=1` removes the flag entirely.
 
 **Stop conditions:** all phases `[x]`; a `[!]` phase after its one repair attempt (marker `> Repair attempted:` — delete it to grant another round); a foreman answering `stop` on a plan-defect consult (the plan fix and any repair are then the foreman's, per `foreman.md` → *Plan-defect claims*); a `[~]` blocked phase (unattributable red baseline); a stop request or an exhausted `RUN_WORKFLOW_MAX_PHASES` budget (clean stops between sessions, above); `claude` exiting non-zero; no progress. An *attributable* red baseline does not stop the run — the culprit phase is reopened `[x] → [!]` and repaired.
 

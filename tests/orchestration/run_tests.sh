@@ -137,6 +137,10 @@ Mode: autonomous
 EOF
 }
 
+add_repair_row() {  # $1 = effort, $2 = model — the foreman's repair choice
+  printf '| Repair | %s | %s |\n' "$1" "$2" >> .phased/active/toy/plan.md
+}
+
 setup() {
   DIR="$OT/scenarios/$1"
   rm -rf "$DIR"; mkdir -p "$DIR/.claude" "$DIR/.phased/active/toy"; cd "$DIR" || exit 1
@@ -194,11 +198,12 @@ finish_setup; HOME=/nonexistent PATH="$OT/bin:$PATH" bash "$OT/runner.sh" > out.
 assert "run completes with HOME=/nonexistent" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 3 ]'
 assert "per-phase model still read under HOME=/nonexistent" 'grep -q -- "--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 
-echo "== S2: phase fails -> fable repair succeeds -> loop continues =="
+echo "== S2: phase fails -> default repair (no Repair row) succeeds -> loop continues =="
 setup S2; fixture2
 printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
-assert "repair via /goal on fable cap 300" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model fable --effort [a-z]* --permission-mode auto --max-budget-usd 300" .claude/invocations.log'
+assert "repair via /goal on opus/high cap 200 with no Repair row" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model opus --effort high --permission-mode auto --max-budget-usd 200" .claude/invocations.log'
+assert "no fable reached for on its own" '! grep -q -- "repair-phase-agent skill.*--model fable" .claude/invocations.log'
 assert "repair succeeded message" 'grep -q "Repair succeeded" out.log'
 assert "loop continued to phase 2" '[ "$(grep -c -- "-p /goal Use the execute-phase-agent skill" .claude/invocations.log)" = 2 ]'
 assert "all phases [x]" '[ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
@@ -226,12 +231,13 @@ finish_setup; run
 assert "stops citing prior repair" 'grep -q "repair was already attempted" out.log'
 assert "no repair call" '! grep -q "repair-phase-agent skill" .claude/invocations.log'
 
-echo "== S5: fable repair crashes -> opus fallback repairs =="
-setup S5; fixture2
+echo "== S5: Repair row asks fable -> it crashes -> opus fallback repairs =="
+setup S5; fixture2; add_repair_row high fable
 printf '%s\n' 'python3 "$OPS" fail1; exit 0' 'exit 1' 'python3 "$OPS" repair_ok; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
+assert "the Repair row's fable/high is honoured, cap doubled to 400" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model fable --effort high --permission-mode auto --max-budget-usd 400" .claude/invocations.log'
 assert "fallback message" 'grep -q "retrying with opus" out.log'
-assert "opus repair cap 200" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model opus --effort [a-z]* --permission-mode auto --max-budget-usd 200" .claude/invocations.log'
+assert "opus fallback keeps the row's effort, cap 200" 'grep -q -- "-p /goal Use the repair-phase-agent skill.*--model opus --effort high --permission-mode auto --max-budget-usd 200" .claude/invocations.log'
 assert "repair succeeded, loop continued" 'grep -q "Repair succeeded" out.log && [ "$(grep -c "^- \[x\]" .phased/active/toy/plan.md)" = 2 ]'
 
 echo "== S6: no progress -> stop =="
@@ -263,7 +269,7 @@ EOF
 printf '%s\n' 'python3 "$OPS" repair_ok; exit 0' > .claude/mock-queue
 finish_setup
 MOCK_CLAUDE_VERSION=2.1.100 run
-assert "S7b: namespaced /wf:repair-phase-agent prompt used" 'grep -q -- "-p /wf:repair-phase-agent --model fable" .claude/invocations.log'
+assert "S7b: namespaced /wf:repair-phase-agent prompt used" 'grep -q -- "-p /wf:repair-phase-agent --model opus" .claude/invocations.log'
 assert "S7b: no bare-slash repair prompt" '! grep -q -- "-p /repair-phase" .claude/invocations.log'
 assert "S7b: repair succeeded on the old CLI too" 'grep -q "Repair succeeded" out.log'
 
@@ -1361,8 +1367,8 @@ echo "== S28: per-model steering reaches every sub-session =="
 # a common token-discipline steer (headless output is a log nobody reads live)
 # plus one line damping the chosen model's known drift. Live half: on the
 # happy path each phase carries the common steer AND its own model's line,
-# never another model's. Static half: the repair call sites (fable, and the
-# opus fallback) append a steer too, so no session is ever launched bare.
+# never another model's. Static half: neither repair call site (the Repair
+# row's model, and the opus fallback) is launched bare.
 setup S28; fixture3
 printf '%s\n' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' 'python3 "$OPS" complete; exit 0' > .claude/mock-queue
 finish_setup; run
@@ -1377,7 +1383,11 @@ assert "S28: fable phase carries the act-not-replan steer" \
 assert "S28: the sonnet phase does not carry the fable steer" \
   '! grep -- "--model sonnet" .claude/invocations.log | grep -q "re-derive decisions"'
 assert "S28: both repair call sites append a steer" \
-  '[ "$(grep -c -- "--append-system-prompt \"\$STEER_COMMON" "$RUNNER_SRC")" = 2 ]'
+  '[ "$(grep -c -- "--append-system-prompt \"\$STEER_REPAIR\"" "$RUNNER_SRC")" = 1 ] \
+   && [ "$(grep -c -- "--append-system-prompt \"\$STEER_COMMON \$STEER_OPUS\"" "$RUNNER_SRC")" = 1 ]'
+assert "S28: the repair steer is the common one plus the chosen model's line" \
+  'grep -q -- "STEER_REPAIR=\"\$STEER_COMMON \$STEER_FABLE\"" "$RUNNER_SRC" \
+   && grep -q -- "STEER_REPAIR=\"\$STEER_COMMON \$STEER_OPUS\"" "$RUNNER_SRC"'
 
 echo "== S29: the resume path leaves machine-readable evidence =="
 # A [>] phase is resumed by a session that was not there: the > WIP: note's
@@ -3166,6 +3176,7 @@ plan = '\n'.join(ln for ln in block.splitlines()
                  if '[... more phases ...]' not in ln)
 plan = plan.replace('N+1', '2')
 plan = plan.replace('| Phase 1 | ... | ... |', '| Phase 1 | medium | opus |')
+plan = plan.replace('| Repair | ... | ... |', '| Repair | high | opus |')
 open(out, 'w').write(plan + '\n')
 S52PY
 }
@@ -3921,6 +3932,44 @@ sed -i.bak '/^\*\*One chat, or a workflow\.\*\*/d' "$S63_MUT/write-workflow/SKIL
 assert "S63: the guard fails when /write-workflow drops the one-chat question" \
   '[ -n "$(s63_guard "$S63_MUT")" ]'
 rm -rf "$S63_MUT"
+
+echo "== S64: the config table's Repair row is validated, and narrower than the phase rows =="
+# The row the foreman writes to choose the repair session's model and effort.
+# It must pass the same gate the phase rows do, and reject `sonnet` outright:
+# a repair is by construction the case where a model already failed once.
+NEXTPHASE="$TESTDIR/../../plugins/wf/scripts/next-phase.py"
+S64_DIR="$(mktemp -d)"
+s64_plan() {  # $1 = the Repair row (empty for none)
+  {
+    printf '%s\n' '# Context: s64' 'Parent: main' 'Mode: autonomous' '' \
+      '## Work Plan' '- [ ] **Phase 1**: only phase' '  - Details: do it' \
+      '  - Done: it is done' '' '## Suggested execution config' \
+      '| Phase | Effort | Model |' '|-------|--------|-------|' \
+      '| Phase 1 | medium | opus |'
+    [ -n "$1" ] && printf '%s\n' "$1"
+  } > "$S64_DIR/plan.md"
+}
+s64_plan ''
+assert "S64: a plan with no Repair row still validates clean" \
+  'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" >/dev/null 2>&1'
+s64_plan '| Repair | high | opus |'
+assert "S64: a well-formed Repair row validates clean" \
+  'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" >/dev/null 2>&1'
+s64_plan '| Repair | max | fable |'
+assert "S64: fable is accepted on the Repair row" \
+  'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" >/dev/null 2>&1'
+s64_plan '| Repair | high | sonnet |'
+assert "S64: sonnet on the Repair row is an error" \
+  'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" 2>&1 | grep -q "Repair Model \"sonnet\" is not one of fable|opus"'
+s64_plan '| Repair | turbo | opus |'
+assert "S64: an unknown Repair effort is an error" \
+  'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" 2>&1 | grep -q "Repair Effort \"turbo\" is not one of"'
+# A phase row is still held to its own shape: the Repair exemption must not
+# turn every unparsable first cell into a silently accepted row.
+s64_plan '| Repairs | high | opus |'
+assert "S64: a near-miss first cell is still rejected as a malformed row" \
+  'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" 2>&1 | grep -q "is not \"| Phase N | ... |\" or \"| Repair | ... |\""'
+rm -rf "$S64_DIR"
 
 echo ""
 if [ "$SKIP" -gt 0 ]; then

@@ -478,6 +478,10 @@ KNOWN_NOTE_FIELDS = (
 )
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')
+# The optional `| Repair | <effort> | <model> |` row: the foreman's own
+# choice for the fresh-eyes session. Narrower than MODELS — a repair is
+# the case where a model already failed once on that phase.
+REPAIR_MODELS = ('fable', 'opus')
 CONFIG_HEADING = 'Suggested execution config'
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
@@ -717,11 +721,21 @@ def validate(path, phases, text):
                     add(rln, 'error',
                         'config table row has too few columns')
                     continue
+                if cells[1].lower() == 'repair':
+                    if cells[2].lower() not in EFFORTS:
+                        add(rln, 'error',
+                            'Repair Effort "%s" is not one of %s'
+                            % (cells[2], '|'.join(EFFORTS)))
+                    if cells[3].lower() not in REPAIR_MODELS:
+                        add(rln, 'error',
+                            'Repair Model "%s" is not one of %s'
+                            % (cells[3], '|'.join(REPAIR_MODELS)))
+                    continue
                 pm = re.match(r'^Phase (\d+)$', cells[1])
                 if not pm:
                     add(rln, 'error',
-                        'config table row is not "| Phase N | ... |": "%s"'
-                        % cells[1])
+                        'config table row is not "| Phase N | ... |" or '
+                        '"| Repair | ... |": "%s"' % cells[1])
                     continue
                 num = int(pm.group(1))
                 rowed.add(num)

@@ -94,6 +94,7 @@ Must not break: <one line per contract owned by later work — contracts.md → 
 | Phase | Effort | Model |
 |-------|--------|-------|
 | Phase 1 | ... | ... |
+| Repair | ... | ... |
 ```
 
 Keep the column order exactly as above — `/run-workflow` reads Effort and Model **by column position**. The Phase cell carries the number ALONE: `next-phase.py --validate` matches `^Phase \d+$` on it and rejects any parenthetical, so a row written `| Phase 3 (review) |` fails the launcher's own pre-flight gate. S52 renders this template and validates it, so the two cannot drift apart again.
@@ -101,9 +102,10 @@ Keep the column order exactly as above — `/run-workflow` reads Effort and Mode
 - **Effort**: sets `--effort` and the runaway cap. **Start low and climb only for a reason.** An autonomous phase is by construction well-specified — `Details:`, `Done:` and `Pattern:` leave nothing to invent — and that is exactly where high effort buys least: the model spends it re-exploring and re-verifying decisions the plan already made. So `low` for mechanical work, `medium` for the standard well-specified phase, `high` only where real design judgment survives inside the phase, `xhigh` for wide multi-file agentic work, `max` practically never (prone to overthinking, diminishing returns). Do not carry over effort levels from older plans — defaults tuned on a previous model rarely transfer.
   Every level runs the same execute-phase-agent contract — read-only contract tests, the plan-defect claim road, the phase commit included: `low` is reasoning depth, never a lighter doctrine (light mode was retired in 6.36.0).
 - **Model**: `opus` is the default and the answer whenever in doubt.
-  - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a fable repair. Mechanical work is `opus` at `low` effort — the same contract, less reasoning depth, which is where sonnet's supposed saving actually lived. The launcher still *accepts* legacy plans that carry it, with its own steering — accepted is not recommended.
+  - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a whole repair session. Mechanical work is `opus` at `low` effort — the same contract, less reasoning depth, which is where sonnet's supposed saving actually lived. The launcher still *accepts* legacy plans that carry it, with its own steering — accepted is not recommended.
   - `fable` — genuinely hard phases: architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference. Subject to credits.
   - **Do not write style or verbosity rules into phases.** The launcher injects per-model steering at session start (silent log-style output, plus a per-model line damping each model's known drift) — a phase restating them just spends plan tokens twice.
+- **The `Repair` row** — optional, one per plan, last: the model and effort of the fresh-eyes session `/run-workflow` launches when a phase comes back `[!]`. Omitted → `opus` / `high`. It is yours to set because only the plan knows whether a failure here is likely to be a hard problem or a slipped detail; the launcher no longer reaches for the strongest model on its own. `sonnet` is a validation error on this row — a repair is by definition the case where a model already failed once. `fable` when the phases it guards carry architectural or multi-file work; the cap doubles with it, so do not write it for a plan of mechanical phases.
 
 ## Closing message
 

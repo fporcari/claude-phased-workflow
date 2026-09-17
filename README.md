@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.36.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.37.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -238,7 +238,7 @@ Every command declares its own `allowed-tools`, and the test suite fails if a sk
 
 Prerequisites:
 
-- [Claude Code](https://claude.com/claude-code) **≥ 2.1.170** for autonomous runs — `/goal` guards the sub-sessions (2.1.139; older versions fall back to plain skill prompts at runtime) and the repair session runs on `fable` (2.1.170; on an older CLI the run still completes, falling back to `opus`, and a phase that pins `Model: fable` fails to launch). The interactive path needs no more than **≥ 2.1.139**.
+- [Claude Code](https://claude.com/claude-code) **≥ 2.1.139** for autonomous runs — `/goal` guards the sub-sessions (older versions fall back to plain skill prompts at runtime). **≥ 2.1.170** only for a plan that pins `fable`, on a phase's `Model:` cell or on the config table's `Repair` row: on an older CLI a fable repair still completes, falling back to `opus`, while a fable *phase* fails to launch. The interactive path needs no more than **≥ 2.1.139**.
 - `bash` and `python3` on `PATH` — every skill resolves the active plan through `scripts/next-phase.py`, and the autonomous launchers are shell scripts. This holds for the interactive path too, not just for `/run-workflow`.
 - `git` with a remote, `gh` authenticated.
 
@@ -310,7 +310,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**437 assertions over 62 scenarios** (S1–S63, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**446 assertions over 63 scenarios** (S1–S64, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -356,6 +356,8 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.37.0 | The repair session is the foreman's call, not the launcher's: the execution config table takes an optional `| Repair | <effort> | <model> |` row, absent → `opus` / `high` instead of the hardcoded `fable` / `max`; `sonnet` is a validation error there, and one `budget_for` mapping now caps the phase sessions and the repair alike |
+| 6.36.1 | An eval suite for the plugin under `claude plugin eval`: six routing cases (`/resume-workflow` in English and Italian and on a `wf/`/`.phased/` mention, `/repair-phase` on a red phase, the user-only skills named not invoked, off-topic firing nothing) and one behaviour case on a seeded `wf/bench` branch |
 | 6.36.0 | An outside review applied and corrected: one `refs/execution-policy.md` for delivery shape, roles and budget; `/quality-check` collects QA, naming and review findings at ONE revision and fixes them in ONE commit verified once (Panel is one reviewer plus at most one specialist); light mode retired — one contract for every effort level; the launcher gains a writer lock, an outcome check on every committed session and a hard attempt budget, bounded so `[~]` and no-op sessions still reach the blocked handling and the progress guard |
 | 6.35.0 | The foreman closes the quality check itself: review findings are fixed in one **final touch** (a corrections table, one commit, a Light re-check at `low`), the QA-fix boundary is *no decision open* instead of *one sentence*, and `/resume-workflow` gets only findings needing a surface the plan never built — one phase for all of them; `/issue` and `/write-workflow` ask *one chat, or a workflow?* on the three reasons a workflow pays (context, a gate between phases, unattended) and hand over a self-contained one-chat brief when none holds |
 | 6.34.0 | The worktree opens at planning: `/write-workflow` puts a `wf/` branch in `.claude/worktrees/<slug>` by default (flippable; `in-chat` stays put), so the checkout you plan from never leaves the parent; the GenroPy activation runs there before any session, in the skill and in the launcher, and excludes `.gnr/` locally instead of editing `.gitignore` |
