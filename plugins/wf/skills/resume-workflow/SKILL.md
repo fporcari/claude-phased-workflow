@@ -9,7 +9,7 @@ Supervision and resume view of the work plan. **Read-only on source code** — t
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` at Step 1b, only once the plan's `Channel:` is known to be `relayed` or absent — an `in-chat` workflow has no relay to take command of and never reads it.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` at Step 1b, only once the plan's `Mode:` is known to be `autonomous` — an interactive workflow has no relay to take command of and never reads it.
 
 ## The map
 
@@ -21,7 +21,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 | `/write-workflow` | there is no plan yet, and the work was just discussed |
 | `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
 | `/issue` | the work starts from a GitHub issue (analysis only) |
-| `/execute-phase` | run the next phase with an approval gate — in a new chat on `Channel: relayed` and on a legacy plan, in this same conversation on `Channel: in-chat` |
+| `/execute-phase` | run the next phase — the approval gate in this same conversation, the build in a fresh executor, the verdict back here (`Mode: interactive`) |
 | `/run-workflow` | run every remaining phase unattended (`Mode: autonomous` plans) |
 | `/repair-phase` | a phase is `[!]` and needs fresh eyes |
 | `/doctor` | the work and the plan may have drifted apart — coherence audit, contract-test integrity, blind retro-fit of missing tests |
@@ -43,12 +43,15 @@ The third command gives `BASE`, the commit that added the plan. Everything after
 
 ## Step 1b: The foreman
 
-On `Channel: in-chat` there is no relay and nothing to take command of: the
-plan's decisions belong to the user in this conversation, so skip to Step 2 and
-report the channel instead of a foreman. Everything below is the relayed
-channel, which is also every plan carrying no `Channel:`.
+On `Mode: interactive` — and on a plan carrying no `Mode:`, which reads as
+interactive — there is no relay and nothing to take command of: the plan's
+decisions belong to the user in this conversation, so title this chat
+`wf:<slug>` (`set_session_title` on `session_id: "self"`, best-effort), skip to
+Step 2 and report the mode instead of a foreman. A `foreman.json` left by an
+older interactive plan is inert: read nothing from it, write nothing to it.
+Everything below is `Mode: autonomous`.
 
-On the relayed road, read `.phased/active/<slug>/foreman.json` (protocol, file
+On an autonomous plan, read `.phased/active/<slug>/foreman.json` (protocol, file
 format and take-command mechanics live once in `foreman.md` → *The foreman*):
 
 - **Absent** → **assume command, without asking**: the normal state of every
@@ -92,7 +95,7 @@ Distinguish measured commits from projected pending scope.
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`contracts.md` → *Verification*): report those, and that the phase closes when they pass. A stale `[>]` with a run log at `<transport>-run.log` (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport` names the prefix — uid and repo key included, so it is this checkout's log and not another's) is more than a dead chat: an **unattended run was in flight when everything died** — a host-app restart kills the launcher, its Monitor and the phase session in one blow, and that log is the only channel that survives. Check for it (`T=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport); [ -f "$T-run.log" ] && echo "$T-run.log" || echo "no run log"`); when it exists, say exactly that, read its last `EVENT:` lines to report how far the run got, and make the *Next step* the **reset + relaunch** path: Step 4's stale-`[>]` reset, then a fresh `/run-workflow` over what remains. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two chats in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Channel** line closes the point. On `Channel: in-chat`: the channel, and that the work continues in this conversation — there is no foreman to name and no messaging branch to test. On `Channel: relayed` and on a legacy plan it is the **Foreman** line as before: who commands (this chat, another session with its `since`, or just assumed per Step 1b) — and which messaging branch is alive in this installation (desktop session tools, CLI `SendMessage`, or neither), per `foreman.md` → *Channel floors*: a dead channel is declared here, not discovered at the first silent skip.
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the executor that had it is probably gone"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`contracts.md` → *Verification*): report those, and that the phase closes when they pass. A stale `[>]` with a run log at `<transport>-run.log` (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport` names the prefix — uid and repo key included, so it is this checkout's log and not another's) is more than a dead chat: an **unattended run was in flight when everything died** — a host-app restart kills the launcher, its Monitor and the phase session in one blow, and that log is the only channel that survives. Check for it (`T=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport); [ -f "$T-run.log" ] && echo "$T-run.log" || echo "no run log"`); when it exists, say exactly that, read its last `EVENT:` lines to report how far the run got, and make the *Next step* the **reset + relaunch** path: Step 4's stale-`[>]` reset, then a fresh `/run-workflow` over what remains. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two writers in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Mode** line closes the point. On `Mode: interactive`: the mode, and that the work continues in this conversation — there is no foreman to name and no messaging branch to test. On `Mode: autonomous` it is the **Foreman** line: who commands (this chat, another session with its `since`, or just assumed per Step 1b) — and which messaging branch is alive in this installation (desktop session tools, CLI `SendMessage`, or neither), per `foreman.md` → *Channel floors*: a dead channel is declared here, not discovered at the first silent skip.
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
@@ -109,7 +112,7 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
-- **A phase for the remainder of one closed short** — announced by the `phase N closed short` message on the relayed road, and said at the gate where there is no relay (the shared core's *Routing a decision*, re-planning row); the reason it is not the child's either way is that the phase which overran is evidence the sizing was wrong, and sizing belongs to whoever owns the plan. Write what remains as its own phase (or phases, if the overrun says the slice was too big), from the remainder recorded in `notes.md` under that phase's heading.
+- **A phase for the remainder of one closed short** — said at the gate on an interactive plan, announced by the `phase N closed short` message on an autonomous one (the shared core's *Routing a decision*, re-planning row); the reason it is not the executor's either way is that the phase which overran is evidence the sizing was wrong, and sizing belongs to whoever owns the plan. Write what remains as its own phase (or phases, if the overrun says the slice was too big), from the remainder recorded in `notes.md` under that phase's heading.
 - **Re-planning after a rejected result** — the answer to *"this phase passed and is still wrong"*, and the case the `phase N closed, result rejected` message announces. It is not only an append: the phases that have not run were written for the design just rejected, so they are re-planned too — rewritten where they no longer fit, dropped where they no longer apply — while the closed phase keeps its `[x]` and its `> Review:` verdict. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (the user's own account of it, here in this chat).
 
   **In the tail, never in the middle**, even when the work logically belongs at Phase 2. Phase numbers must be contiguous ascending from 1, so an insertion renumbers everything after it — while the commits already made say `wf(phase 3)`, `wf(phase 4)` with the old numbers, and the correspondence between the plan and the history breaks silently. Execution order stays the numeric order; the new phase's text says what it remedies.
@@ -130,4 +133,4 @@ git add .phased && git commit -q -m "wf: <what changed>"
 
 Leaving it uncommitted would break the clean-tree invariant the next phase's baseline check relies on.
 
-After any such commit, on `Channel: relayed`, send the foreman one `plan changed` message per `foreman.md` → *The foreman* — best-effort, and naturally skipped when this chat is the foreman (`list_sessions` excludes it). Where there is no relay the change is reported to the user here, and the record in the plan commit is the same either way. A plan reshaped from a supervision chat must not surface for the first time at finalize.
+After any such commit, on `Mode: autonomous`, send the foreman one `plan changed` message per `foreman.md` → *The foreman* — best-effort, and naturally skipped when this chat is the foreman (`list_sessions` excludes it). On an interactive plan the change is reported to the user here, and the record in the plan commit is the same either way. A plan reshaped from a supervision chat must not surface for the first time at finalize.

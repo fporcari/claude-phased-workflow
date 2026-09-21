@@ -38,10 +38,11 @@ message they were drawn in cannot compete with that.
   *Awaiting the human's checks*). An `[x]` whose result was rejected is marked as
   closed-with-a-problem, muted — its work stands, its design did not.
 - **The next phase is the only emphasis** — the first unfinished row, with its
-  `Run: <model> / <effort>` hint beside it, since both are chosen when that chat
-  opens and reading them afterwards is too late.
+  `Run: <model> / <effort>` hint beside it: the model goes to the executor at
+  launch, and reading it afterwards is too late.
 - **The launch command appears once, under the strip, as text**: `/wf:execute-phase`.
-  It takes no argument — the phase comes from the plan and the chat titles itself.
+  It takes no argument — the phase comes from the plan — and it runs here, in
+  the conversation that holds the workflow.
 
 ## The dashboard, where it exists
 
@@ -57,8 +58,8 @@ message they were drawn in cannot compete with that.
 ## Why nothing is clickable
 
 `sendPrompt` is a widget's only channel and it writes into the chat you are in, so
-a run button would run the phase in the supervision chat — the one place the
-protocol says must not execute. A refresh button could only re-run the whole skill
+a run button would start `/run-workflow` from a widget instead of from the skill
+that owns its pre-flight. A refresh button could only re-run the whole skill
 and print a second report below: a recomputation dressed as an update. And a
 `spawn_task` chip does open a session of its own, but its UI decides how — including
 a *new worktree* for a plan that already has a branch and a checkout, with no

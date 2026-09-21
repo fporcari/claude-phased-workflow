@@ -487,13 +487,10 @@ CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
 MODES = ('autonomous', 'interactive')
+# `Channel:` (6.30.0–6.37.0) named where decisions travel separately from the
+# mode; since 6.38.0 that follows from Mode: alone. A plan still carrying the
+# header is read by its Mode: and told so — never rejected, never rewritten.
 CHANNEL_RE = re.compile(r'^Channel:\s*(\S+)\s*$')
-CHANNELS = ('in-chat', 'relayed')
-# A header line carrying a channel VALUE under any other name: the field
-# decides where decisions travel, so a misspelt name that reads as "no header"
-# would silently route a workflow to the legacy path. Same near-miss idea as
-# _taglike, applied to the one field whose absence is meaningful.
-CHANNEL_NEARMISS_RE = re.compile(r'^([A-Za-z][A-Za-z-]*):\s*(?:in-chat|relayed)\s*$')
 # `> Batches: 1 <label> | 2 <label> | ...` — the planned subdivision, numbered
 # from 1. The commits refer to it as `batch M/K`, so a body that does not parse
 # leaves the plan's list and the log unable to line up.
@@ -530,8 +527,6 @@ def validate(path, phases, text):
     has_parent = False
     mode_value = None
     mode_lineno = None
-    channel_value = None
-    channel_lineno = None
     heading = None
     phase_linenos = {}
     in_work_plan = False
@@ -565,20 +560,11 @@ def validate(path, phases, text):
                     '"Mode: <value>"' % line.strip())
         if line.startswith('Channel:'):
             cm = CHANNEL_RE.match(line)
-            if cm:
-                if channel_value is None:
-                    channel_value = cm.group(1).lower()
-                    channel_lineno = idx
-            else:
-                add(idx, 'error',
-                    'malformed Channel: line "%s" — expected exactly '
-                    '"Channel: <value>"' % line.strip())
-        else:
-            nm = CHANNEL_NEARMISS_RE.match(line)
-            if nm:
-                add(idx, 'error',
-                    '"%s" carries a channel value under the name "%s" — the '
-                    'field is "Channel:"' % (line.strip(), nm.group(1)))
+            add(idx, 'warning',
+                'Channel: header is obsolete since 6.38.0 and ignored — an '
+                'interactive plan is one conversation, an autonomous one '
+                'relays through the foreman; the plan is read by its Mode:'
+                + (' (was %s)' % cm.group(1) if cm else ''))
 
         if line.startswith('## '):
             heading = line[3:].strip()
@@ -684,17 +670,6 @@ def validate(path, phases, text):
         add(mode_lineno, 'error',
             "Mode: '%s' is not one of: %s"
             % (mode_value, ', '.join(MODES)))
-
-    if channel_value is not None and channel_value not in CHANNELS:
-        add(channel_lineno, 'error',
-            "Channel: '%s' is not one of: %s"
-            % (channel_value, ', '.join(CHANNELS)))
-    # No attended gate exists in an unattended run, so an in-chat channel there
-    # would name a conversation nobody is in.
-    if mode_autonomous and channel_value == 'in-chat':
-        add(channel_lineno, 'error',
-            'Mode: autonomous with Channel: in-chat — an unattended run has '
-            'no attended gate to carry the decisions')
 
     table_present = config_header is not None
     if mode_autonomous and not table_present:

@@ -94,43 +94,44 @@ absent**: an autonomous project startup still wants human eyes on the result.
 fields — `Done:`, the authored `Verify:` steps, the contract tests where the
 plan carries them — belong to the plan's author, never to the phase executing
 them. Ownership is **a position, not a chat**:
-on `Channel: relayed` it sits in the foreman chat, on `Channel: in-chat` it is
-co-located with the executor and the authority is the user at the gate. No
-channel leaves the checks unowned or hands them to the phase running them. On a `ui` phase the authored `Verify:` list is written COMPLETE at
+on `Mode: autonomous` it sits in the foreman chat, on `Mode: interactive` it is
+co-located with the gate and the authority is the user at the gate —
+the executor that builds the phase is never it. No mode leaves the checks
+unowned or hands them to the phase running them. On a `ui` phase the authored `Verify:` list is written COMPLETE at
 planning time: the checks the human will run at that phase are pre-established
 in the plan, not improvised at the gate — the mockup loop refines the look,
 never the checklist. The executing chat may ADD surfaced steps — an addition
 strengthens the contract — but never drops or rewords an authored one on its
 own: a check that no longer fits is a plan ambiguity, routed per
-`refs/phase-execution.md` → *Routing a decision* — `clarify?` to the foreman on
-the relayed road, the user at the gate on `Channel: in-chat` — and the answer
+`refs/phase-execution.md` → *Routing a decision* — the user at the gate on an
+interactive plan, the foreman's consult on an autonomous one — and the answer
 carries the edit. The sanctioned protocols that already reshape the contract —
 closed short, a rejected result — keep working as written: both report their
-outcome and re-plan by the rows of that same table, on either road.
+outcome and re-plan by the rows of that same table, in either mode.
 
 `verify.md` and `review.md` are siblings, not duplicates: `review.md` says
 *"here is what I noticed and will not decide for you"* — the user reads and
 judges; `verify.md` says *"here is what you must exercise"* — the user does.
 
-## The channel — where decisions travel
+## Where decisions travel
 
-`Channel:` is an optional plan header deciding one thing: the route a decision
-takes from the person who owns it to the phase that needs it. `relayed` — as a
-message between chats, through the foreman (`refs/foreman.md`). `in-chat` — no
-relay: the foreman's procedural role is co-located with the executor, and the
-authority is the user at the gate.
+`Mode:` decides two things at once: how the work runs, and the route a decision
+takes from the person who owns it to the phase that needs it. `interactive` —
+one conversation holds the workflow; every decision is taken at its gate, by the
+user, and the phase is built by an executor subagent that returns there. No
+relay, no foreman, no message. `autonomous` — nobody is at a gate, so a decision
+travels as a message between chats, through the foreman (`refs/foreman.md`).
 
-Orthogonal to `Mode:`, which keeps meaning the execution mode. **A plan with no
-`Channel:` keeps today's behaviour**, unrewritten and uninterpreted:
-`Mode: interactive` still means a chat per phase with the relay between them.
-New plans always write the field. `Mode: autonomous` with `Channel: in-chat` is
-invalid — an unattended run has no attended gate for a decision to reach.
+There is no third field. `Channel:` (6.30.0–6.37.0) named the route separately
+from the mode, and the two values it took are now what the two modes mean; a
+plan still carrying it is read by its `Mode:`, the header is ignored, and the
+validator says so. A plan with no `Mode:` reads as interactive.
 
-**Record and message are two obligations, not one.** The relayed channel
+**Record and message are two obligations, not one.** The autonomous road
 delivers them together, which is what makes them easy to confuse: the decision
-record is mandatory on both channels (`notes.md`, under `## Phase N`, is what
-every gate reads); the message is mandatory only on `Channel: relayed`, the one
-route that crosses a chat boundary. **No channel waives a contractual gate** — a
+record is mandatory in both modes (`notes.md`, under `## Phase N`, is what
+every gate reads); the message is mandatory only on `Mode: autonomous`, the one
+route that crosses a chat boundary. **No mode waives a contractual gate** — a
 gate asking for a covering decision keeps asking wherever it was taken.
 
 `Batches:` is the other new field: an optional per-phase note listing a planned
@@ -202,8 +203,7 @@ The rules, in both execution modes:
   written — a wrong premise, an assertion the design outgrew — is a plan
   ambiguity, never a local fix: interactive phases route it per
   `refs/phase-execution.md` → *Routing a decision*, and the answer — the
-  foreman's on the relayed road, the user's at the gate where there is none —
-  carries the exact test edit as
+  user's at the gate — carries the exact test edit as
   before-text → after-text, applied verbatim by the child and committed as
   `wf: clarify phase N — <one line>`. Unattended phases have nobody to ask
   mid-phase: the phase closes `[!]` with `> Issue: plan-defect claim — <the
@@ -225,7 +225,7 @@ The rules, in both execution modes:
   contract. Executable tests byte-identical; skeletons with their test names
   and every `wf:contract:` line surviving verbatim and no red body left. Any divergence must be covered by a decision
   recorded in `notes.md` under the phase's `## Phase N` — a silent one
-  blocks the close, on either channel.
+  blocks the close, in either mode.
 
 A plan without the option keeps today's behaviour: tests are written by each
 phase, and the cross-phase direction is prose

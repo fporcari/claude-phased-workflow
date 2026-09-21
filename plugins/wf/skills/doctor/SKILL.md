@@ -35,7 +35,7 @@ git log -1 --diff-filter=A --format=%H -- <plan path>
 
 No active plan → stop and say so (`--plans` first, per `common.md` → *Plan
 location*). The second command gives `BASE`. Read the whole plan — every
-phase, every note: the diagnosis is exactly the cross-reading a phase chat
+phase, every note: the diagnosis is exactly the cross-reading an executor
 cannot afford.
 
 ## Step 2: Coherence audit (cheap, no agents)
@@ -65,8 +65,8 @@ Per `contracts.md` → *Contract tests*: for each `[x]` phase with
 executable tests byte-identical; skeletons with names and every
 `wf:contract:` line surviving verbatim, no red body left — then re-run them.
 A divergence with no covering decision in `notes.md`, or a test gone red, is
-a finding — the record is what the gate reads, on either channel
-(`contracts.md` → *The channel*). Pending phases: their plan copies exist and are red by
+a finding — the record is what the gate reads, in either mode
+(`contracts.md` → *Where decisions travel*). Pending phases: their plan copies exist and are red by
 construction — nothing to run yet.
 
 ## Step 4: Blind retro-fit (where the plan has no contract tests)
@@ -125,20 +125,19 @@ finding, classified:
 - **COHERENCE** — a pending premise broken, or a red retro-test on a `[x]`
   phase: re-planning territory — remedy phases in the tail, via
   `/resume-workflow`, which takes the re-planning road of the shared core's
-  *Routing a decision*: the foreman chat on `Channel: relayed` and on a legacy
-  plan, this same conversation on `Channel: in-chat`.
+  *Routing a decision*: this same conversation on `Mode: interactive`, the
+  foreman chat on `Mode: autonomous`.
 - **INTEGRITY** — a contract test edited outside the sanctioned road: name the
   edit; the decision on it belongs to whoever owns the authored checks, which
   is a position, not a chat (`contracts.md` → *Authored checks are
-  foreman-owned*): the foreman on the relayed road, the user at the gate where
-  there is no relay.
+  foreman-owned*): the user at the gate on an interactive plan, the foreman on
+  an autonomous one.
 
 Append the same findings to `notes.md` under a `## Doctor <ISO date>`
 heading, committed (`wf: doctor — findings`): the chat dies, the file is
 what `/resume-workflow` and finalize read. Healthy plan → say so in one
 line and stop; no commit, no note.
 
-Close with the next step, always: `/resume-workflow` for re-planning — in the
-foreman chat on `Channel: relayed` and on a legacy plan, here on
-`Channel: in-chat` — `/repair-phase` only for a genuinely machine-red `Done:`,
-nothing when healthy.
+Close with the next step, always: `/resume-workflow` for re-planning — here on
+`Mode: interactive`, in the foreman chat on `Mode: autonomous` —
+`/repair-phase` only for a genuinely machine-red `Done:`, nothing when healthy.

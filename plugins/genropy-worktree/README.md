@@ -62,7 +62,7 @@ remember. Run the activation once per worktree before starting the session —
 settings are read at session start. The `wf` plugin does this itself when the
 scripts are installed: `/write-workflow` right after `git worktree add`, and the
 `/run-workflow` launcher when it creates a worktree for a plan with no checkout,
-so every phase chat and every sub-session opened there inherits the env. The
+so every chat and every sub-session opened there inherits the env. The
 `.gnr/` directory is excluded through `.git/info/exclude`, not `.gitignore`: a
 phase commit stages with `git add -A`, and an edited `.gitignore` would ride
 into it.

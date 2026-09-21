@@ -56,7 +56,7 @@ the codebase or flagged as unverifiable.
 ## Step 3: Map the decision tree
 
 First apply `${CLAUDE_PLUGIN_ROOT}/refs/execution-policy.md`. One engineer task needs
-acceptance and constraints, not workflow mode/channel questions. For a workflow,
+acceptance and constraints, not the workflow mode question. For a workflow,
 continue with the mode fork below.
 
 Every question here exists to fill a field of the plan. Know which one before you ask:
@@ -64,7 +64,6 @@ Every question here exists to fill a field of the plan. Know which one before yo
 | Field | What the question settles |
 |---|---|
 | `Mode:` | interactive or autonomous — **ask this first** |
-| `Channel:` | in-chat or relayed — asked right after the mode, on interactive plans only; the question and its derivation rule are `/write-workflow`'s *Step 2*, not restated here |
 | `Decisions:` | naming, signatures, library, API shape, trade-offs, and validation: what the new surface must REFUSE, and at which layer |
 | `Pattern:` | which existing example each non-trivial phase copy-adapts |
 | `Files:` | the surface each phase touches, or its discovery rule |
@@ -75,10 +74,9 @@ close where a human can look at something, autonomous ones close on one concern 
 re-runnable `Done:`. The same work splits into different phases under the two. Derive
 a recommendation from the work itself — *"I'll know it when I see it"* (UI, visual,
 declarative) → interactive; measurable (refactor, migration, well-specified startup) →
-autonomous — and put it as the recommended answer. The channel follows it:
-`relayed` by construction on autonomous, asked on interactive — the same person at
-every gate → `in-chat`, a chat boundary between a decision and the phase needing
-it → `relayed`.
+autonomous — and put it as the recommended answer. Where decisions travel follows
+from it: an interactive plan is one conversation with a gate before every phase,
+an autonomous one relays them to the chat that launched the run.
 
 Order the rest by **what they unlock**: a decision that changes the shape of the ones
 below it comes first. Decisions that cannot affect each other are siblings, and their
@@ -123,7 +121,6 @@ confirm the shared understanding**:
 
 ```
 Mode: <interactive|autonomous> — <reason, half a line>
-Channel: <in-chat|relayed> — <reason, half a line; relayed always on autonomous>
 
 Settled:
 - <decision> → <choice> (<reason>)                   [Decisions:]

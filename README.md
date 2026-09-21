@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.37.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.38.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -13,7 +13,7 @@
 
 ```bash
 > /write-workflow      # asks: interactive or autonomous? then branch + plan
-> /execute-phase       # interactive: one phase per chat
+> /execute-phase       # interactive: the gate here, the build in a fresh executor
 > /run-workflow        # autonomous: the whole plan, unattended
 > /quality-check       # QA page, whole-diff review — stamps the plan
 > /finalize-workflow   # lessons, archive, one clean commit
@@ -56,7 +56,7 @@ Instead of one endless chat, you first write a **plan** that splits the work int
   - Done: tests pass && the log reports the total
 ```
 
-Then every phase runs in a **brand-new session** that reads the plan and starts with fresh context. No 400-message chats: the memory of the work lives in the plan, not in the conversation. Like a construction site — today's crew reads the drawings pinned in the site office, not the memories of yesterday's crew.
+Then every phase is built by an **executor born with fresh context** — a subagent when you are at the gate, a headless session when the run is unattended — that reads the plan and nothing else. No 400-message chats: the memory of the work lives in the plan, not in the conversation. Like a construction site — today's crew reads the drawings pinned in the site office, not the memories of yesterday's crew.
 
 ## Interactive or autonomous
 
@@ -64,13 +64,13 @@ Then every phase runs in a **brand-new session** that reads the plan and starts 
 
 The plan is the same; what changes is **who verifies**:
 
-- **Interactive** — one phase at a time; you look at the result and say go, and the phase does not close until you have. Claude Code as you already use it, but with a map.
+- **Interactive** — one conversation holds the whole workflow. Before each phase you approve the plan and settle every open question; the build then runs in an executor with a fresh context and comes back to you; you look at the result and say go, and the phase does not close until you have. The code of a phase never enters the conversation you are in.
 - **Autonomous** — you launch it and go grocery shopping. "Done" is not declared by whoever wrote the code: a separate checker says it (the loop below). You get a notification when it finishes or when it stops.
 
 |  | Interactive | Autonomous |
 |---|---|---|
 | Who verifies | you, phase by phase | tests, lint, and an independent reviewer |
-| When something fails | you discuss it in the chat, or send the defect to a repair chat of its own | one fresh-eyes repair, then it stops |
+| When something fails | you say what is wrong, a repair agent with fresh eyes fixes it, you decide when it is fixed | one fresh-eyes repair, then it stops |
 | Interfaces | a mockup is approved before any code is written | runs straight through with no visual judgment: the eye check lands on the bill, for you, at the end |
 | Login | always the human | always the human — fixed rule, no exceptions |
 
@@ -136,17 +136,17 @@ Messages between chats are best-effort by design — any of them can be lost and
 
 | Role | Runs where | Writes what | Dies when |
 |---|---|---|---|
-| Foreman | desktop chat | nothing on the code: decisions only | replaceable — its identity lives in `foreman.json`, not in the chat |
+| Workflow chat | desktop chat — interactive plans | the plan, the gate decisions, the phase commit at close; never the code | when you close it — the disk holds the state, `/resume-workflow` reopens it anywhere |
+| Foreman | desktop chat — autonomous plans | nothing on the code: decisions only | replaceable — its identity lives in `foreman.json`, not in the chat |
 | Inspector | desktop chat | inspection notes | with the chat that launched the run |
-| Phase chat | desktop chat | code + the phase commit | when its phase closes — or earlier, handing over or standing down for a repair |
-| Executor | headless `claude -p` | code + the phase commit | every phase — born with fresh context |
+| Executor | subagent of the workflow chat (interactive) or headless `claude -p` (autonomous) | code + its commits — a `partial` handed back to the gate, or the phase commit itself unattended | every phase — born with fresh context, gone when it returns |
 | Verifier | headless | nothing: read-only, emits findings | after the verdict |
 | UI judge | headless | nothing: compares screenshots to the approved mockup — interactive `ui` phases only | after the verdict |
-| Repair | desktop chat (`/repair-phase`) or headless (`-agent`) | the fix, one attempt | after the attempt — one chat is one attempt |
+| Repair | subagent (`/repair-phase`) or headless (`-agent`) | the fix, one attempt | after the attempt — one agent is one attempt |
 
 ## Succession
 
-`foreman.json` says who commands: if the foreman chat dies, the first `/resume-workflow` takes command by reading the file. Succession never depends on the old chat answering — it works on the plan and the notes alone. The same holds one level down: a phase chat hands over through a `partial` commit, a `> WIP:` note and its rationale in `notes.md`, and the chat that picks the phase up asks the old one only for what the disk could not carry.
+On autonomous plans `foreman.json` says who commands: if the foreman chat dies, the first `/resume-workflow` takes command by reading the file. Succession never depends on the old chat answering — it works on the plan and the notes alone. The same holds one level down: an executor that runs out of context hands over through a `partial` commit, a `> WIP:` note and its rationale in `notes.md`, and the executor that picks the phase up reads the disk, because the old one is already gone. And an interactive workflow's own conversation needs no successor at all: every gate is committed before its executor starts, so a fresh chat and `/resume-workflow` find the work exactly where it was left.
 
 If a phase dies midway (a `[>]` marker left hanging), the committed evidence of the work in progress lets the next session resume from there: the phase is reopened, not the story reconstructed.
 
@@ -156,21 +156,19 @@ The inspector has one power beyond reporting: when continuing looks like waste �
 
 The foreman **does not decide alone**: it turns the question to you (*Stop workflow / Go on*). The agent is the smoke detector; the switch stays in your hand.
 
-## Clarify
+## The gate, and why the executor cannot ask
 
-The protocol's other question belongs to interactive mode, and its decision policy is the mirror image. When a phase chat hits an ambiguity in the plan — what the objective means, what `Done:` covers — you are not the first responder: the foreman authored the plan and holds the reasons it is shaped that way, so the phase chat asks it first (`clarify?`). The foreman decides, writes the decision to disk (its notes, committed), and replies carrying the plan edit the decision implies; the phase chat shows you the decision and, on your ok, applies that edit and commits it — no other confirmation asked of anyone, anywhere. A foreman in doubt does not guess: it sends the question back down, rephrased, and the phase chat puts it to you.
+The protocol's other question belonged to interactive mode, and interactive mode no longer needs it. When phases ran in chats of their own, a phase chat that hit an ambiguity in the plan asked the foreman first (`clarify?`), and you confirmed what it decided. Now the plan's author and the person at the gate are the same conversation: every open question about the plan — what the objective means, what `Done:` covers, a `Files:` that does not match the code — is asked **before the executor is launched**, batched into the one approval gate, and its answer written to `notes.md` and committed. The executor reads the plan and that record, and nothing else.
 
-Either way you stay in one chat: the foreman never speaks to you directly. And because the decision is committed before the reply travels, a lost message loses nothing: the phase chat re-reads the plan directory before bothering you, and only a silent disk means the question falls back to you exactly as it did before the protocol existed.
+That is also why the executor **cannot ask**. A doubt the gate did not settle comes back as `blocked`, to the same gate, where it is answered, recorded and the executor relaunched — a miss counted against the gate, not the executor. Struggle is routed the same way, without needing to be recognised: two failed attempts at one obstacle close the phase `[!]` with what was tried, and the repair starts from your account of the symptom rather than from the executor's diagnosis. Every question that had to come back leaves a trace beyond this workflow: it is appended, with a proposed skill patch, to `~/.phased/wf-lessons.md` — a ledger a human reviews in the plugin's own repository; nothing patches itself.
 
-The ambiguity does not have to be recognized to be routed. A phase chat that keeps failing against the same obstacle — or finds itself debating with you about *why* something does not work — is showing the symptom of an ambiguity nobody has named: after the second attempt it stops and sends the foreman its suspected presupposition instead of burning your time on diagnosis. The answer lands the phase on known ground — a defect goes to `/repair-phase`, a wrong plan follows the rejection road. And every misunderstanding that reached the foreman leaves a trace beyond this workflow: the foreman appends what failed, why, and a proposed skill patch to `~/.phased/wf-lessons.md` — a ledger a human reviews in the plugin's own repository; nothing patches itself.
+## One conversation, or a relay
 
-## The channel
+Everything above the gate — foreman, inspector, messages, receipts — is a **channel, not a control**: it exists because when nobody sits at the gate, disk and messages are the only way a decision can travel. With the same person at every gate it removes nobody from the loop and adds a hop in the middle of one that was already closed. One measured 10-phase attended run paid exactly that: 11 chats, ~35 messages, ~25 apparatus commits against 10 phase commits, nine clarify rounds — almost all of them repairing a plan written before the code was read ([#22](https://github.com/fporcari/claude-phased-workflow/issues/22)).
 
-Everything above — foreman, `clarify?`, receipts — is a **channel, not a control**: it exists because when nobody sits at the gate, disk and messages are the only way a decision can travel. With the same person at every gate it removes nobody from the loop and adds a hop in the middle of one that was already closed. One measured 10-phase attended run paid exactly that: 11 chats, ~35 messages, ~25 apparatus commits against 10 phase commits, nine clarify rounds — almost all of them repairing a plan written before the code was read ([#22](https://github.com/fporcari/claude-phased-workflow/issues/22)).
+So the mode says where decisions travel, and there is no second field. **`Mode: interactive`** — one conversation plans and executes, phase after phase, every gate here: no `foreman.json`, no message, and `refs/foreman.md` is never loaded; the phase is built by a subagent, so the conversation keeps only gates and verdicts. **`Mode: autonomous`** — the relay, unchanged, for a run nobody is watching. (6.30.0 introduced a separate `Channel:` header for this, with `in-chat` and `relayed` as its values; 6.38.0 retired it, because the two values were the two modes. A plan still carrying it is read by its `Mode:` and the validator says so.)
 
-So the plan says where its decisions travel. **`Channel: in-chat`** — one conversation plans and executes, phase after phase, every gate here: no `foreman.json`, no message, and `refs/foreman.md` is never loaded. **`Channel: relayed`** — the protocol above, unchanged, for work picked up across chats or times, or several workflows at once. `Mode:` keeps meaning how the work runs; a plan carrying no `Channel:` behaves exactly as before; `Mode: autonomous` with `in-chat` fails validation, since an unattended run has no gate for a decision to reach.
-
-What stays on every channel is what paid at every size: the tracked plan, a re-runnable `Done:`, one phase commit per phase, `notes.md` as the record every gate reads. Phases are sized on **decision boundaries**, not file counts — one per point where a result changes what comes next — and a phase too large to read as one diff is committed in planned `> Batches:` and still closes once.
+What stays in both modes is what paid at every size: the tracked plan, a re-runnable `Done:`, one phase commit per phase, `notes.md` as the record every gate reads. Phases are sized on **decision boundaries**, not file counts — one per point where a result changes what comes next — and a phase too large to read as one diff is committed in planned `> Batches:` and still closes once.
 
 ## The plan's markers
 
@@ -193,7 +191,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
     plan.md                     # the work plan
     notes.md                    # per-phase rationale + run inspection notes
     verify.md                   # the bill: human checks deferred to the end
-    foreman.json                # which chat commands this workflow — Channel: relayed only
+    foreman.json                # which chat commands this workflow — Mode: autonomous only
     mockups/phase-N.html        # ui phases — the approved visual contract
     log/phase-N.txt             # transcript of each autonomous sub-session
   done/<slug>/                  # archived by /finalize-workflow
@@ -208,7 +206,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | `/scope-workflow <what>` | the work is still vague | interrogates you one question at a time until every decision the plan needs is settled — facts looked up, never asked |
 | `/write-workflow` | after discussing the work | asks the one automation question (interactive or autonomous?), opens the `wf/` branch, writes and commits the plan |
 | `/import-workflow` | you already have a plan or a handoff | adapts it to the format, preserving phase states verbatim and reporting gaps instead of inventing them |
-| `/execute-phase` | interactive execution | one phase per chat: one approval gate up front (with a rendered mockup on `ui` phases), then no interruptions |
+| `/execute-phase` | interactive execution | one approval gate up front (with a rendered mockup on `ui` phases), then the build in a fresh-context executor, then your checks and the close back here — one conversation, phase after phase |
 | `/close-phase` | the phase's work is finished | naming review of the new methods (accept-all is one keypress), Done gate, `[x]` record, one phase commit — invoked by `/execute-phase`, by the model when the work is done, or manually on a `[>]` phase a dead session left complete |
 | `/resume-workflow` | "where were we?" | read-only audit of plan vs git: drift, stale phases, next step — and the board strip, on interactive plans |
 | `/quality-check` | all phases done | QA page from `verify.md` (a checklist you tick as you exercise), naming review of what autonomous phases created, whole-diff review at the depth you choose — then it stamps the plan |
@@ -220,8 +218,8 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | Command | When | What it does |
 |---------|------|--------------|
 | `/run-workflow` | the whole plan, unattended | pre-flight review, then one fresh `/goal`-guarded session per phase; the launching chat stays on as the run's inspector |
-| `/execute-phase-agent` | one phase, unattended | the same phase execution with nobody to ask: convergence loop, independent verification where it earns its keep, `Done:` gate |
-| `/repair-phase` | a phase came back `[!]`, or you found a defect mid-phase | fresh-eyes repair in a chat of its own — asks you what is wrong, never repeats a listed attempt, and you decide when it is fixed. Closes an `[!]` phase; hands a `[>]` one back to the chat that owns it |
+| `/execute-phase-agent` | one phase, unattended | the executor of both modes — as a subagent after `/execute-phase`'s gate, headless under `/run-workflow`: convergence loop, independent verification where it earns its keep, `Done:` gate |
+| `/repair-phase` | a phase came back `[!]`, or you found a defect at the gate | fresh-eyes repair in an agent of its own — asks you what is wrong, never repeats a listed attempt, and you decide when it is fixed. Closes an `[!]` phase; hands a `[>]` one back to its gate |
 | `/repair-phase-agent` | the same, unattended | `[!]` only, no questions, the outcome is the run's exit condition |
 
 ### Auxiliary
@@ -297,7 +295,7 @@ First use:
 claude
 # discuss the work, then:
 > /write-workflow      # it asks: interactive or autonomous?
-# interactive: here, or a chat per phase   autonomous: one command
+# interactive: here, phase after phase     autonomous: one command
 > /execute-phase                           > /run-workflow
 # when every phase is done:
 > /quality-check
@@ -310,7 +308,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**446 assertions over 63 scenarios** (S1–S64, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**444 assertions over 63 scenarios** (S1–S64, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -328,15 +326,15 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | turn the discussion into a plan on a branch | `/write-workflow` | it asks: interactive or autonomous? |
 | bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
 | start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
-| do the next phase | `/execute-phase` | interactive — in this conversation on `Channel: in-chat`, one chat per phase on `relayed` |
+| do the next phase | `/execute-phase` | interactive — in this conversation: the gate here, the build in a fresh executor |
 | close a phase whose work is finished | `/close-phase` | interactive — usually called for you |
 | run the whole plan unattended | `/run-workflow` | autonomous |
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
 | retry a phase that came back `[!]` | `/repair-phase` | one attempt, fresh eyes — `-agent` for the unattended run |
-| chase a defect without burning the phase chat | `/repair-phase` in a new chat | the phase chat stands down, the repair hands back |
-| hand a long phase to a fresh chat | say *"pass the baton"* | it commits, writes down the why, and stops |
+| chase a defect without burning this conversation | `/repair-phase` | a repair agent diagnoses and fixes; you decide when it is fixed |
+| carry on in a fresh chat | `/resume-workflow` there | the disk already holds the whole state — nothing to hand over |
 | close a phase on what it reached | `/close-phase` | when the rest deserves a phase of its own |
-| ask where the work stands | `/resume-workflow` | the foreman chat on `relayed` — never the one running a phase; the conversation itself on `in-chat` |
+| ask where the work stands | `/resume-workflow` | the conversation itself on interactive plans; the foreman chat on autonomous ones |
 | check the job: QA page, whole-diff review, the stamp | `/quality-check` | when every phase is `[x]` |
 | close the job: lessons, archive, one commit | `/finalize-workflow` | when the quality check is stamped |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
@@ -344,7 +342,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 
 **Plan markers** — `[ ]` to do · `[>]` in progress, or done and waiting for your checks (`> Testing:`) · `[x]` done and verified · `[!]` something is demonstrably broken: failed, or under repair · `[~]` blocked on a red baseline nobody owns.
 
-**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands (`relayed` only) · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
+**On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands (autonomous only) · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
 
 **Who says "done"** — interactive: you do, phase by phase, and nothing closes or is reported before you have. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
 
@@ -356,6 +354,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.38.0 | Or a workflow is one conversation, or it is a relay — the `Channel:` axis is retired: `Mode: interactive` runs the whole workflow in one chat, each phase built by `/execute-phase-agent` as a fresh-context subagent after the gate and handed back `[>]` for your checks; `/repair-phase` runs its diagnosis in a repair agent and keeps the verdict yours; `clarify?` leaves the protocol, the foreman relay is the autonomous mode's alone |
 | 6.37.0 | The repair session is the foreman's call, not the launcher's: the execution config table takes an optional `| Repair | <effort> | <model> |` row, absent → `opus` / `high` instead of the hardcoded `fable` / `max`; `sonnet` is a validation error there, and one `budget_for` mapping now caps the phase sessions and the repair alike |
 | 6.36.1 | An eval suite for the plugin under `claude plugin eval`: six routing cases (`/resume-workflow` in English and Italian and on a `wf/`/`.phased/` mention, `/repair-phase` on a red phase, the user-only skills named not invoked, off-topic firing nothing) and one behaviour case on a seeded `wf/bench` branch |
 | 6.36.0 | An outside review applied and corrected: one `refs/execution-policy.md` for delivery shape, roles and budget; `/quality-check` collects QA, naming and review findings at ONE revision and fixes them in ONE commit verified once (Panel is one reviewer plus at most one specialist); light mode retired — one contract for every effort level; the launcher gains a writer lock, an outcome check on every committed session and a hard attempt budget, bounded so `[~]` and no-op sessions still reach the blocked handling and the progress guard |

@@ -1,28 +1,29 @@
 ---
-description: Close the phase whose work is finished — naming review of the new methods, Done gate, plan update to [x], ONE phase commit, foreman notification. Invoke at the end of an interactive phase, when the user says the phase is done, or manually on a [>] phase whose work a dead session left complete but unclosed.
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+description: Close the phase whose work is finished — naming review of the new methods, Done gate, plan update to [x], ONE phase commit. Invoke at the end of an interactive phase, when the user says the phase is done, or manually on a [>] phase whose work a dead executor left complete but unclosed.
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion
 ---
 
 # Close Phase
 
 Turn finished work into a closed phase: naming review, Done gate, `[x]`
-record, ONE phase commit, foreman notification. **The happy path only** — a
-failing phase closes `[!]` where it failed, inside the executing skill; this one never writes `[!]` or `[~]`.
+record, ONE phase commit. **The happy path only** — a failing phase closes
+`[!]` where it failed, inside the executor; this one never writes `[!]` or `[~]`.
+Interactive plans only: an autonomous run's executor closes inline, and an
+interactive plan has no foreman to notify, so nothing is sent from here.
 
 Three ways in, one mechanic:
 
 - **From `/execute-phase`** — its closing step is this skill.
 - **Model-invoked** — the phase work is done and verified; closing is not
   a question, so nothing asks permission to *start*.
-- **Manual** — `/close-phase` on a `[>]` phase whose work a dead session
+- **Manual** — `/close-phase` on a `[>]` phase whose work a dead executor
   finished but never closed.
 
 **Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and
 `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start — core conventions
-plus the contract layer this close verifies. The relay's message formats are
-reached at the notify step through the shared core, not read at start.
+plus the contract layer this close verifies. The relay layer is never read.
 **Shared mechanics:** `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md`
-(outcome format, phase commit, notify) and
+(outcome format, phase commit) and
 `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` — cited, never restated.
 
 ## Step 1: Identify the phase
@@ -57,7 +58,7 @@ makes them agree): executable tests byte-identical, skeleton names and every
 no covering decision in `notes.md` under `## Phase N` blocks the
 close like a red criterion: the wrong writer edited the contract, and
 closing would launder the edit into `[x]`. The gate reads the record, never
-the route it arrived by (`contracts.md` → *The channel*).
+the route it arrived by (`contracts.md` → *Where decisions travel*).
 
 **The contract FIELDS gate it the same way** (`contracts.md` → *Authored
 checks are foreman-owned*: `Done:`, authored `Verify:`, `Pattern:`, `Files:`,
@@ -80,11 +81,10 @@ Something the phase built is red — a failing test, a lint error — and the
 close stops, full stop: that is repair territory, never absorbed here. A
 criterion covering work the phase never got to, with what exists green, is
 the **closed short** case (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` →
-*When the phase outgrows its chat*): say which criteria are unreached,
+*When the phase outgrows its executor*): say which criteria are unreached,
 propose the `Done:` narrowed to the sub-result that exists, and close on the
-user's ok — the `closed short` outcome, whose closing line names
-`/resume-workflow` in the foreman chat on `Channel: relayed`, and the
-re-planning with the user at the gate where there is no relay.
+user's ok — the `closed short` outcome, whose re-planning happens with the
+user at this gate (`refs/phase-execution.md` → *Routing a decision*).
 
 ## Step 3: Naming review
 
@@ -92,19 +92,20 @@ Run `${CLAUDE_PLUGIN_ROOT}/refs/naming-review.md` scoped to this phase's
 touched files. Fast path, one keypress: accept all → markers stripped.
 Renames re-run the narrow signal per the ref before anything commits.
 
-## Step 4: Record, commit, notify
+## Step 4: Record and commit
 
 A phase held open for the human's checks carries a `> Testing:` note (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` → *Awaiting the human's checks*): drop it here — `[x]` and the note contradict each other, and the checks it was waiting for are recorded as `> Verify:` like every other.
 
-**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the outcome is the `result rejected` one instead of the `done` one (`refs/phase-execution.md` → *Rejected result*), because what follows is a re-planning, not the next phase. On `Channel: relayed` the closing line names `/resume-workflow` **in the foreman chat** — never here, since a phase chat executes and does not supervise. Where there is no relay the re-planning happens with the user at this gate.
+**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the outcome is the `result rejected` one instead of the `done` one (`refs/phase-execution.md` → *Rejected result*), because what follows is a re-planning, not the next phase — with the user, here at this gate, per *Routing a decision*.
 
 Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
-phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`,
-`> Files:` (ALL touched files), the `> Review:`/`> Verify:` notes handed
-over by the caller; ONE phase commit `wf(phase N): <title>` carrying code,
-naming-review edits and plan update together, whatever `partial` commits
-preceded it; then, on `Channel: relayed`, the message, best-effort. A rename worth remembering goes to `notes.md` under
-`## Phase N` before the commit.
+phase commit*: the `[x]` entry with `> Done:`, `> Files:` (ALL touched
+files), the `> Review:`/`> Verify:` notes handed over by the caller; ONE
+phase commit `wf(phase N): <title>` carrying code, naming-review edits and
+plan update together, whatever `partial` commits preceded it — the gate
+commit and the executor's included. No message: an interactive plan has no
+foreman. A rename worth remembering goes to `notes.md` under `## Phase N`
+before the commit.
 
 ```bash
 osascript -e 'display notification "Phase N closed: <title>" with title "Claude — <repo>/<branch>" sound name "Glass"'
@@ -112,10 +113,9 @@ osascript -e 'display notification "Phase N closed: <title>" with title "Claude 
 
 Close with the next step, always: the next phase with its `Run:` hint quoted,
 or `/quality-check` (then `/finalize-workflow`) when this was the last — the
-user must never need to know the flow by heart to keep moving. On
-`Channel: relayed` the next phase is a new chat's `/execute-phase`; on
-`Channel: in-chat` it is `/execute-phase` again in this same conversation,
-which is where the gate already is.
+user must never need to know the flow by heart to keep moving. The next
+phase is `/execute-phase` again, in this same conversation, which is where
+the gate already is.
 
 ## Rules
 

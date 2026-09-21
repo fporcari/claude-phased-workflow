@@ -774,6 +774,64 @@ minutes, with the same contract tests as verification.
 stamp, on a run where the review found things — and a `/issue` that sends a
 one-session fix to one session.
 
+## Phases as subagents: the channel axis retired
+
+**Originating conversation, 2026-09-21**, over the compat baseline: *if
+interactive mode is this simplified, what does the workflow add — the model
+already splits work into steps.* The honest answer was that `Channel: in-chat`
+(6.30.0) kept the record and the gate and gave up the one thing the README
+leads with — a fresh context per phase — while `relayed` kept the context and
+paid the relay #22 had measured. A field with two values, one of which
+sacrificed wall 1 and the other of which cost the apparatus, was not a design
+but a fork left open; and the user's own first reading of `in-chat` — *it
+launches agents and you check the work in the chat* — described the design
+neither value implemented.
+
+**The decision.** Or a workflow is one conversation, or it is a relay; the
+mode says which, and there is no third field. `Mode: interactive` is one
+conversation in which `/execute-phase` puts the gate, launches
+`/execute-phase-agent` as an Agent-tool subagent for the build, and takes the
+verdict when it hands the phase back `[>]` with a `> Testing:` note.
+`Mode: autonomous` is the relay, unchanged. `Channel:` is read as a warning and
+ignored.
+
+**What the subagent buys, measured against the four walls.** Wall 1 (long
+chats rot): the executor is born with the plan and dies with the phase, so the
+conversation holds gates, one diff read and verdicts — the property `relayed`
+had and `in-chat` did not. Wall 2 (a chat is not a medium): unchanged, the
+record was already on disk in both channels. Wall 3 (tokens in the dark): the
+build is bounded by the executor's own convergence budget, the same as
+unattended. Wall 4 (self-certification): the executor still runs the `Done:`
+gate and the verifier, and now the human's checks are structurally in a
+different context from the code they judge.
+
+**What it costs, said before it was built.** (1) Interactive phases must be
+written to the autonomous-ready bar: the executor cannot ask, so a question the
+gate did not settle is a `blocked` return and a relaunch — counted against the
+gate, and the number to watch on the first attended run; a phase that comes
+back `blocked` twice is a sizing signal, not an executor defect. (2) The user
+does not see the build happen; they see the diff at the gate, which is the
+reviewer's position by design. (3) The executor's closing message is prose; the
+gate reads the plan and `git log` instead, the same discipline the launcher
+already applied to its sessions. (4) A gate commit per phase
+(`wf(phase N): partial — gate`) when the gate wrote decisions or a mockup, so
+the executor starts from the clean tree it requires — a `partial` the squash
+drops, not an apparatus commit of the #22 kind.
+
+**What went with it.** `clarify?` — it existed because the phase chat was not
+the plan's author; they are one conversation now. The `wf:<slug>:phase-N` and
+`repair-N` titles — nothing addresses a subagent. The *hand over to a live chat*
+message on resume — an executor is gone when its turn ends, the disk is the
+whole handover. The channel validator's near-miss rule — there is no field to
+misspell. `/repair-phase`'s chat of its own — the repair body runs in a repair
+agent, fresh eyes by construction, and the human keeps both ends: the account
+of the symptom and the verdict.
+
+**Not verified this session**: no run was launched. The two things the first
+attended run on 6.38.0 owes the field are the `blocked` count per phase and
+whether a subagent can commit and hand back under the desktop's permission
+mode without a prompt nobody is there to answer.
+
 ## Known patterns
 
 Plan-and-Execute (LangChain/LlamaIndex) · Checkpoint & Resume (CI/CD) ·

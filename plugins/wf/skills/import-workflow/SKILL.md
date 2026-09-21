@@ -9,7 +9,7 @@ allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(python3:*), Read, Grep, Glob, Wr
 
 Turn an existing plan or a handoff document into a `.phased/` workflow. This is an **adapter, not a planner**: it maps what the source already says onto the plan format and reports what is missing. It never invents phases, and it never writes source code.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` only at Step 4, only once Step 3 has settled `Channel: relayed` or a legacy plan — on `Channel: in-chat` the import creates no relay and never reads it.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` only at Step 4, only once Step 3 has settled `Mode: autonomous` — an interactive import creates no relay and never reads it.
 
 Typical sources: a pre-4.0 `.claude/MEMORY.md`, a parallel `memory_<name>.md` from the same era, or a free-form handoff written by a previous session or another person.
 
@@ -58,7 +58,7 @@ Phase 5 — no Pattern:, and the code is not trivial
 
 Inventing a plausible `Done:` for a phase whose author never wrote one is worse than leaving the gap visible: it looks settled and nobody checks it again. Offer to refine them now, one at a time, or to import as-is and leave `/write-workflow` to it.
 
-**Then settle how it will run** — the same automation fork `/write-workflow` asks. If the source already carries a `Mode:` header, keep it (it is a decision the author already made). Otherwise ask the fork question and the derivation rule from `/write-workflow`'s *Step 2: The automation fork* — do not restate them here, that skill is the one source — and write the resulting header (`Mode: autonomous` or `Mode: interactive`) into the imported plan, together with the `Channel:` the same step settles — a source already carrying one keeps it, and a source carrying none is a legacy plan whose behaviour the import must not change silently: ask before writing the field. The autonomous answer is what the gap report above feeds: an imported plan still below the autonomous-ready bar gets its gaps flagged, not hidden by the header.
+**Then settle how it will run** — the same automation fork `/write-workflow` asks. If the source already carries a `Mode:` header, keep it (it is a decision the author already made). Otherwise ask the fork question and the derivation rule from `/write-workflow`'s *Step 2: The automation fork* — do not restate them here, that skill is the one source — and write the resulting header (`Mode: autonomous` or `Mode: interactive`) into the imported plan. A source carrying an old `Channel:` header keeps it untouched — the validator reports it as ignored, and the import never rewrites somebody else's plan beyond the fields it adds. The autonomous answer is what the gap report above feeds: an imported plan still below the autonomous-ready bar gets its gaps flagged, not hidden by the header.
 
 ## Step 4: Land it
 
@@ -74,18 +74,19 @@ Then write and commit:
 
 ```bash
 mkdir -p .phased/active/<slug>
-# plan.md + empty notes.md (+ foreman.json on the relayed road only)
+# plan.md + empty notes.md (+ foreman.json on autonomous plans only)
 git add .phased && git commit -m "wf: import plan for <slug>"
 ```
 
-**On `Channel: relayed`, and on a legacy plan carrying no `Channel:`, importing
-is taking command.** On the relayed road, and only there, write `foreman.json` alongside the plan, per `foreman.md` → *The foreman*: the file rides the import commit above, no second commit; the
+**On `Mode: autonomous`, importing is taking command.** On autonomous plans, and only there, write `foreman.json` alongside the plan,
+per `foreman.md` → *The foreman*: the file rides the import commit above, no second commit; the
 title suggestion to the user is in the Step 5 close. An imported workflow is
 thereby born with a foreman, exactly like a written one.
 
-**On `Channel: in-chat` it is not.** No `foreman.json`, no take-command, no
+**On `Mode: interactive` it is not.** No `foreman.json`, no take-command, no
 foreman title on this chat: there is no relay to command, the work continues in
-this same conversation, and the close below says so.
+this same conversation — this chat titles itself `wf:<slug>` (`set_session_title`
+on `session_id: "self"`, best-effort) — and the close below says so.
 
 Verify the commit is not empty (`git show --stat HEAD`).
 
@@ -95,10 +96,10 @@ Verify the commit is not empty (`git show --stat HEAD`).
 
 ```
 Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), committed on <branch>.
-relayed → this chat is the foreman, now titled `wf:<slug>:foreman`, the address phase chats report to; to carry on, launch /execute-phase in a new chat and this one stays the board.
-in-chat → no relay and no foreman: to carry on, /execute-phase here, in this same conversation.
+autonomous → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the run's sessions report to; to carry on, launch /run-workflow here.
+interactive → no relay and no foreman: to carry on, /execute-phase here, in this same conversation.
 Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>
 ```
 
-On the relayed road, where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.
+On an autonomous plan, where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.

@@ -2,30 +2,35 @@
 
 The supervision half of the shared conventions, split out so that only its
 consumers pay for it: the skills that take command, depose, message upward or
-report to the decision-maker read this file. A headless `-agent` session
-needs only the *Sending to the foreman* message formats, and only when it
-reaches its notify step — read that section then, not at start. Core
-conventions stay in `refs/common.md`; the contract layer in
+report to the decision-maker read this file. **The chat hierarchy is the
+autonomous mode's**: an interactive workflow is one conversation with no
+relay (`refs/phase-execution.md` → *Routing a decision*), and it reaches this
+file only for the reporting register and the wf-lessons ledger. A headless
+`-agent` session needs only the *Sending to the foreman* message formats, and
+only when it reaches its notify step — read that section then, not at start.
+Core conventions stay in `refs/common.md`; the contract layer in
 `refs/contracts.md`.
 
 ## The foreman — chat hierarchy and messaging
 
-One chat commands each workflow (the **foreman**); the chats
-that execute phases are its children and report to it. **This section is the
-single source of the protocol** — the skills cite it, they never restate it.
+One chat commands each autonomous workflow (the **foreman**) — the chat that
+launched `/run-workflow`; the headless sessions that execute its phases are
+its children and report to it. **This section is the single source of the
+protocol** — the skills cite it, they never restate it.
 
 **The foreman commands; it does not execute.** Its context has to hold the whole
-plan — that is what lets it answer for any phase — so no skill ever recommends
-running `/execute-phase` in the foreman chat: a *Next step* naming that skill is
-always worded as a fresh chat. Two exceptions, both intended: launching
-`/run-workflow` from the foreman (it supervises, it does not implement), and the
-**QA fix** with its **final touch** once every phase is `[x]` — the corrections the
-user's check and the pre-commit review turn up, applied and committed by the foreman
-itself when no decision is open (`/quality-check` → *Step 5: One final touch*):
-the human is at the gate, no phase is left to command, a phase's ceremony buys
-nothing and a phase per finding is a loop. Nothing is enforced — a user executing a
-phase in the foreman chat lands in the degenerate branches below (*when this chat IS
-the foreman*), which keep working: a fallback, never advice.
+plan — that is what lets it answer for any phase — so no skill ever runs a
+phase inside the foreman chat while a run is in flight: the launcher holds the
+plan's writer lock, and the phases are its sub-sessions' to build. Two
+exceptions, both intended: launching `/run-workflow` from the foreman (it
+supervises, it does not implement), and the **QA fix** with its **final touch**
+once every phase is `[x]` — the corrections the user's check and the pre-commit
+review turn up, applied and committed by the foreman itself when no decision is
+open (`/quality-check` → *Step 5: One final touch*): the human is at the gate,
+no phase is left to command, a phase's ceremony buys nothing and a phase per
+finding is a loop. An interactive plan has no foreman at all: its one
+conversation decides at the gate and launches an executor subagent for the
+build — a different mode, not a breach of this rule.
 
 **The foreman's own model is advice too, written down for the same reason the
 `Run:` hint is**: a chat's model and effort are chosen when it opens, before any
@@ -34,21 +39,22 @@ judgment and prose to humans (a consult answered, a QA question worded, a report
 delivered), where `opus` reads flat and `sonnet` invents; `high` because the QA
 fix and the final touch are code, and `xhigh` on pre-digested input is overthinking. Nothing enforces it.
 
-**And the mirror: a phase chat executes; it does not supervise.** No skill
+**And the mirror: a phase session executes; it does not supervise.** No skill
 ever recommends `/resume-workflow` — or any re-planning of the whole plan —
-inside a chat that is executing a phase: a *Next step* naming it is always
+inside a session that is executing a phase: a *Next step* naming it is always
 worded as the foreman chat, or a fresh one if the foreman is gone. The hazard
 is concrete, not stylistic: `/resume-workflow` takes command when no session
-bears the title, so a phase chat running it writes `foreman.json` in its own
-name and becomes a foreman that is also executing — the very thing the
+bears the title, so an executing session running it writes `foreman.json` in
+its own name and becomes a foreman that is also executing — the very thing the
 paragraph above forbids, reached from the other side. A child that believes
 the foreman is dead is usually a child that looked on the wrong channel
 (*Sending to the foreman*, below): check that before concluding anything.
-What a phase chat may always do is edit the plan for its OWN phase, which
-mid-phase it is the only writer of — never its contract fields, though
+What an executing session may always do is edit the plan for its OWN phase,
+which mid-phase it is the only writer of — never its contract fields, though
 (`Done:`, authored `Verify:`, `Pattern:`, `Files:`, `Decisions:`): additions
-ride `>` lines, a contract edit needs a foreman reply, and the close diffs
-the phase block against the plan commit to catch a silent loss.
+ride `>` lines, a contract edit is a plan-defect claim the foreman judges, and
+the close diffs the phase block against the plan commit to catch a silent
+loss.
 
 **The foreman's identity lives in a file, and its address is its TITLE.**
 A session cannot read its own id, but every *other* session sees both title
@@ -87,28 +93,23 @@ absence is migration, not an error):
    `session_id: "self"`. Best-effort like the rest of this channel: where
    the tool is absent (CLI sessions, unattended runs) ask the user instead,
    one line — *"Rename this chat to `wf:<slug>:foreman` — it is the
-   address phase chats report to."* Until the chat bears the title,
+   address the run's sessions report to."* Until the chat bears the title,
    notifications skip silently; nothing breaks.
 4. In the same breath, one more line: *"Allow this chat to send
    cross-session messages and commit under `.phased/` without asking —
-   answering a phase chat's `clarify?` happens while you are in the other
-   chat, and a permission prompt here has nobody in front of it."*
+   answering a run's `stop-work?` or `plan-defect?` happens while you are in
+   another chat, and a permission prompt here has nobody in front of it."*
    Field-tested: on default permissions the foreman DECIDES and then dies on
-   the prompt — the child times out into its fallback and the human ends up
-   attending two chats, the exact thing the protocol exists to avoid. Advice,
-   like the rename: nothing breaks if ignored, the fallback absorbs it.
+   the prompt — the run falls back to its own stop conditions and the human
+   ends up attending two chats, the exact thing the protocol exists to avoid.
+   Advice, like the rename: nothing breaks if ignored, the fallback absorbs it.
 
-**Children title themselves too**, `wf:<slug>:phase-N — <phase title>`, by
-the same call at the start of the phase. Nothing addresses them — only the
-foreman's title is an address — so this is legibility, not protocol: the
-session list stops being a wall of auto-generated summaries, one prefix
-groups the workflow, and each chat says which phase it is holding.
-
-A repair chat titles itself too, `wf:<slug>:repair-N — <phase title>`, and the
-`repair-` prefix is not cosmetic: `/repair-phase` sends its outcome to
-`wf:<slug>:phase-N` by exact match when it hands a phase back, so a repair
-wearing that title would address itself. Unattended repairs skip the title —
-a `claude -p` session has neither the tools nor a reader for it.
+**An interactive workflow's one conversation titles itself too**, `wf:<slug>`,
+once, when `/write-workflow` or `/execute-phase` first runs there. Nothing
+addresses it — only a foreman's title is an address — so this is legibility,
+not protocol: the session list stops being a wall of auto-generated summaries
+and one prefix groups the workflows. Unattended sessions carry no title — a
+`claude -p` session has neither the tools nor a reader for it.
 
 **Channel floors — single source.** The messaging layer rides the most
 unstable platform surface this plugin touches, so its version floors live
@@ -116,7 +117,8 @@ HERE and nowhere else (a skill cites this section, it never restates a
 number): cross-session `SendMessage` in the CLI needs **≥ 2.1.224**; the
 desktop session-management tools (`list_sessions`/`send_message`) have no
 version floor but exist only in desktop chats; a `claude -p` sub-session
-reaches neither world (field-tested, below). The launcher's own floors
+reaches neither world (field-tested, below); an interactive plan needs none
+of it. The launcher's own floors
 (`/goal` ≥ 2.1.139, `fable` ≥ 2.1.170) are detected at runtime by
 `run-workflow.sh`, which declares its fallback in a NOTE. **Declare the
 channel when reporting state**: a skill that reports where the workflow
@@ -156,7 +158,6 @@ desktop-chat-to-desktop-chat. One plain-text message, header line first:
 [wf:<slug>] plan changed at phase N — <one-line summary of the approved deviation>.
 [wf:<slug>] workflow finalized — <consolidation outcome, one line>.
 [wf:<slug>] stop-work? — <what looks wrong, one line; the run keeps burning until answered>.
-[wf:<slug>] clarify? phase N — <the plan ambiguity, one line; the phase waits until answered>.
 [wf:<slug>] plan-defect? phase N — <the child's claim, one line; the run holds until answered>.
 ```
 
@@ -164,14 +165,15 @@ The `<one line>` slots — the Issue, the blocked reason, the stop-work
 reason — are written in the reporting register (below): the consequence
 first, no bare identifiers.
 
-**Three of the messages are questions, not reports** — `stop-work?`, `clarify?`
-and `plan-defect?`. They ride the same upward channel and carry DIFFERENT
-decision policies, and the human sits at opposite ends: at the foreman for
-`stop-work?` and `plan-defect?` (their children are `claude -p`, with nobody in
-front of them), at the child for `clarify?` (an interactive phase, with its
-user watching). Unlike the reports, a question expects a reply on the message's
-own reply path — the silent-skip rule below still governs *sending* it, never
-answering the human in its place.
+**Two of the messages are questions, not reports** — `stop-work?` and
+`plan-defect?`. They ride the same upward channel and carry DIFFERENT decision
+policies, and the human sits at the foreman for both: their children are
+`claude -p`, with nobody in front of them. Unlike the reports, a question
+expects a reply on the message's own reply path — the silent-skip rule below
+still governs *sending* it, never answering the human in its place. (A third
+question, `clarify?`, existed while interactive phases ran in chats of their
+own; an interactive workflow is now one conversation, so a plan ambiguity is
+asked at its gate and nothing is relayed.)
 
 **Stop-work.** `/run-workflow`'s inspector sends `stop-work?` when continuing
 looks like wasted tokens. A foreman receiving it does not judge on its own —
@@ -182,76 +184,6 @@ continue`. No reply reaching the inspector → the run's own stop conditions
 govern, as if nothing was asked. After a granted stop the flow is human:
 talk it through, correct the plan (`/resume-workflow` re-phasing or hand
 edits), then a fresh `/run-workflow` restarts the work.
-
-**Clarify.** `/execute-phase` sends `clarify?` when an interactive phase hits
-an ambiguity in the PLAN — objective, `Done:`, `Files:`, `Pattern:` — before
-asking its own user: the foreman authored the plan and holds the reasons it
-is shaped that way, so it answers better than the human, who would have to
-reconstruct them. The scope is strict: local technical choices and the
-phase's own approval gates stay with the human in the child chat, or
-interactive mode loses its point.
-
-An ambiguity does not have to be recognized to be routed: **struggle is the
-symptom of one nobody has named**. A phase failing twice against the same
-obstacle, or a chat whose exchange with its user has turned from deciding
-into diagnosing why the approach does not work, stops before the third
-attempt and before the next diagnostic message — checkpoint, then `clarify?`
-carrying the suspected presupposition (*assuming X — does it hold?*): tokens
-spent debating a symptom in the child chat are the cost this routing exists
-to avoid. The answer lands the phase on known ground — the presupposition
-holds → what remains is a defect, and it leaves the chat
-(`refs/phase-execution.md` → *Handing a defect to repair*); it was false →
-the plan is wrong there, and the foreman's decision follows the ordinary
-roads below, a plan edit in the reply or a re-planning of what has not run
-(`refs/common.md` → *Failure and repair notes*).
-
-Where `stop-work?` forbids the foreman from judging, here deciding is its FIRST
-attempt — and the decision takes two roads, because the field test saw either
-one alone die (a permission prompt killed one round, an unresolvable address
-the other; the disk was the only channel that never failed):
-
-1. **Disk**: the foreman records the decision in `notes.md`, under the
-   phase's `## Phase N` heading, and commits it BEFORE replying — its own
-   file, never contended with the child's working tree.
-2. **Reply**: `clarify: <decision, one line>`. When the decision changes the
-   plan, the reply also carries the exact plan edit, as before-text →
-   after-text pairs — never a literal patch: the child's plan holds a `[>]`
-   marker the foreman never saw. That full text, plan edits included,
-   belongs on disk at road 1 and the reply may just point at it: delivery is
-   never assumed — the channel has been seen accepting a message and taking
-   minutes to arrive — so a child re-reads `notes.md` before waiting on it,
-   and a plan change sent mid-phase closes with **confirm receipt before
-   acting**, so a late batch cannot execute a superseded instruction. The
-   foreman does NOT touch the plan: one writer per working tree, and
-   mid-phase that writer is the child.
-3. **The child applies on acceptance**: it shows the human the decision and,
-   accepted, applies the foreman's edit verbatim — the hands, not the
-   author — committing `.phased/` alone as `wf: clarify phase N — <one
-   line>`. Nobody asks permission for that commit: the workflow branch is
-   unpushed, the edit touches the plan directory only, and the human gate
-   was the acceptance itself. A foreman in doubt
-does not guess: it replies `clarify: ask-user — <the question, rephrased better
-than the child put it>`, and the child asks the human. Either way the human
-lives ONLY in the child chat — the foreman never addresses the person: the child
-shows what the foreman decided and asks confirmation before acting on it. A
-rejected decision travels back up with its reason exactly ONCE (`clarify? phase
-N — user rejected: <reason>`); no convergence → the question is the human's, as
-it is without the protocol. The child sends only when the foreman is ANOTHER
-session, and that check is free: the title lookup runs on `list_sessions`, which
-excludes the current session, so finding nothing there means this chat is the
-foreman or the foreman is dead — both land on asking the human directly, today's
-behaviour. That channel alone licenses the inference: an empty `ListAgents` is
-no evidence of an unreachable foreman, and a false unreachable degrades in
-silence into attending the human — the exact outcome this protocol exists to
-avoid. An unanswered question cannot skip in silence like a report: no reply
-within ~3 minutes (the foreman is an idle chat the message has to wake) → the
-child re-reads `.phased/` — `notes.md` included — before falling back: a
-committed decision found there IS the reply, presented to the human for
-confirmation with the note that the message never arrived; only a silent disk
-hands the question to the human as the foreman's failure to answer. A `clarify?`
-answered is also a skill gap made visible — the plan carried an ambiguity
-nothing surfaced earlier — so after the reply the foreman appends a ledger
-entry, best-effort, per *Skill lessons — the wf-lessons ledger* below.
 
 **Plan-defect claims.** An unattended phase that believes the PLAN is at fault —
 a contract test premise, a `Done:` built on a false assumption — closes `[!]`
@@ -309,9 +241,8 @@ where one exists the target may still be invisible to `ListAgents`), no
 session bearing the title, delivery refused → skip in silence and move on. A notification never fails a phase, never asks
 the user anything, and never becomes a retry loop. An undeliverable or
 unanswered *question* is the one exception to the silence — it falls back as
-its own paragraph states (for `clarify?`, to the disk re-read and then the
-child's user; for `stop-work?`, to the run's own stop conditions; for
-`plan-defect?`, to holding the run until a human answers) — and even
+its own paragraph states (for `stop-work?`, to the run's own stop conditions;
+for `plan-defect?`, to holding the run until a human answers) — and even
 a question is never worth a retry loop. A foreman receiving one
 re-reads `.phased/` before answering — the plan on disk, not the message
 text, is the state — and answers with the DELTA, not the board: what
@@ -335,9 +266,10 @@ the file is the only mechanism.
 ## Skill lessons — the wf-lessons ledger
 
 A misunderstanding that reached the foreman is evidence about a SKILL, not
-only about this plan: a `clarify?` answered means the plan carried an
-ambiguity that `/write-workflow`'s questions did not surface and
-`/execute-phase`'s gate did not catch; a rejected result says the same about
+only about this plan: an executor that stopped `blocked` on a question, or a
+plan-defect claim that proved true, means the plan carried an ambiguity that
+`/write-workflow`'s questions did not surface and `/execute-phase`'s gate did
+not catch; a rejected result says the same about
 the design conversation; a repair whose root cause was a plan defect says it
 about the planning again. The plan-level lesson goes to `notes.md` as
 always. The plugin-level lesson would die with the chat, so it goes to a

@@ -47,7 +47,7 @@ git repository root:
     plan.md               # the work plan
     notes.md              # free-form annotations + per-phase rationale
                           #   (## Phase N headings — see refs/foreman.md)
-    foreman.json          # which chat commands it — Channel: relayed only (refs/foreman.md)
+    foreman.json          # which chat commands it — Mode: autonomous only (refs/foreman.md)
     verify.md             # human checks a phase deferred to a wider context
                           #   (see refs/contracts.md)
     mockups/phase-N.html  # ui-tagged phases — the approved visual contract
@@ -98,9 +98,11 @@ Every plan gets a branch, so that everything belonging to the run is
 identifiable without heuristics.
 
 - `/write-workflow` either creates `wf/<slug>` — in its own worktree under
-  `.claude/worktrees/<slug>` by default, so the checkout it was run from stays
-  on the parent — or adopts the branch you are already on (its own rules
-  decide); either way `Parent:` in the plan records where the work goes back to.
+  `.claude/worktrees/<slug>` on an autonomous plan, so the checkout it was run
+  from stays on the parent while the run works; in this checkout on an
+  interactive one, since the conversation that planned it is where the work
+  happens — or adopts the branch you are already on (its own rules decide);
+  either way `Parent:` in the plan records where the work goes back to.
 - The plan is committed first, as `wf: plan for <slug>`.
 - Each completed phase produces exactly ONE **phase commit**,
   `wf(phase N): <title>`, including the plan's own status update. Any number
@@ -182,21 +184,23 @@ that have not run yet were written for the design just rejected, so
 is missing — from the person's own account of what went wrong. It owns that
 edit and its commit.
 
-`phase N closed short` is the same family: a phase that outgrew its chat
-(`refs/phase-execution.md` → *When the phase outgrows its chat*) closes on
-the sub-result it reached, and the remainder needs a phase the child does not
-write — sizing belongs to the plan's author, not to the phase running, and a
-phase that overran is evidence about the sizing.
+`phase N closed short` is the same family: a phase that outgrew its executor
+(`refs/phase-execution.md` → *When the phase outgrows its executor*) closes on
+the sub-result it reached, and the remainder needs a phase the executor does
+not write — sizing belongs to the plan's author, not to the phase running, and
+a phase that overran is evidence about the sizing.
 
-**The foreman is told, in one line** — `phase N closed, result rejected`,
-above. It is the one report that is not routine: the plan it authored is
-about to change, and it holds the reasons the plan was shaped that way. It
-answers as it answers any message, with the delta (`refs/board.md` → *When it
-is drawn*): a rejection is the moment a board is most tempting and least
-useful — the shape is about to change, so drawing the old one costs tokens to
-show a position nobody will act on. The re-planning itself is a conversation,
-and it happens where the person is. A rejection is also a ledger moment
-(`refs/foreman.md` → *Skill lessons — the wf-lessons ledger*): the design conversation let a bad
+**On an interactive plan the re-planning is a conversation, here**: the person
+who rejected the result is at the gate, and the plan's reasons are in this
+same chat's `notes.md`. **On an autonomous plan the foreman is told, in one
+line** — `phase N closed, result rejected`, above. It is the one report that
+is not routine: the plan it authored is about to change, and it holds the
+reasons the plan was shaped that way. It answers as it answers any message,
+with the delta (`refs/board.md` → *When it is drawn*): a rejection is the
+moment a board is most tempting and least useful — the shape is about to
+change, so drawing the old one costs tokens to show a position nobody will act
+on. A rejection is also a ledger moment in both modes (`refs/foreman.md` →
+*Skill lessons — the wf-lessons ledger*): the design conversation let a bad
 idea through, and where it did is a lesson about the skill, not only about
 this plan.
 
@@ -211,7 +215,7 @@ Note fields the autonomous chain writes on phases, and what consumes them:
   `/repair-phase` the moment it takes the phase under repair, committed with
   that transition, and removed by the edit that records the outcome. It is
   what separates a phase somebody is repairing right now from one left
-  broken: `[!]` alone does not say, so a foreman reading the plan cold would
+  broken: `[!]` alone does not say, so a chat reading the plan cold would
   send a second repair into the same working tree. A marker whose chat is
   gone is stale, and a stale one means the repair can be taken up again.
 - `> Repaired:` — on a phase turned `[x]` by `/repair-phase`: the actual
@@ -224,9 +228,9 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 - `> Review:` — judgment-level findings from the per-phase independent
   verification, flagged for the human at the quality check; they never block `[x]`.
 - `> Verify:` — one manual check left to the human, carrying its *when*
-  (`now` / `deferred: needs Phase M`); written by the executing skill —
-  thick in `/execute-phase`, thin in `/execute-phase-agent` — deferred
-  ones copied into `verify.md`, all of them collected by
+  (`now` / `deferred: needs Phase M`); the executor writes the thin pass,
+  `/execute-phase` thickens it at the gate with what only human eyes can
+  judge — deferred ones copied into `verify.md`, all of them collected by
   `/quality-check`. Semantics in `refs/contracts.md` → *Verification*.
 - `> Verified:` — optional record of the verification evidence a phase ran
   (which test, which check, what confirmed the `Done:`).

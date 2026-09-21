@@ -1,5 +1,5 @@
 ---
-description: Execute the next phase unattended — no questions, baseline attribution, convergence loop, one commit per phase
+description: Execute the next phase unattended — the executor of both modes, launched as a subagent by /execute-phase after its gate or headless by /run-workflow; no questions, baseline attribution, convergence loop, one commit
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
@@ -7,9 +7,9 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, SendMessage, ListAgen
 
 Execute ONE phase of the active plan unattended: implement, test, record the outcome, commit, exit.
 
-**Base skill: execute-phase** — the same work with nobody to answer a question. This variant states only the unattended constraints; the mechanics shared by both modes (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` and are not restated here.
+**Base skill: execute-phase** — the gate; this is the executor of both modes. `/execute-phase` launches it as a subagent once its gate is passed — fresh context, the plan and `notes.md` as its whole memory — and `/run-workflow` launches it as a headless session; the work is the same, and nobody can answer a question in either. This file states only the unattended constraints; the mechanics (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` and are not restated here.
 
-**Usage:** `claude -p '/execute-phase-agent'` — or `/run-workflow` for the whole plan.
+**Usage:** as the Agent-tool subagent `/execute-phase` launches (*Launched from the workflow chat*, below); `claude -p '/execute-phase-agent'` by hand; or `/run-workflow` for the whole plan.
 
 **Non-negotiables:**
 - **No questions.** Never AskUserQuestion — there is nobody here who can answer. Decide, and document the decision in the plan.
@@ -17,7 +17,17 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 - **The outcome in the plan is the exit condition**, not bookkeeping — under `/run-workflow` an independent evaluator re-checks it every turn.
 - One phase, one commit at the end, everything written in English — per the shared core.
 
-**Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`. The foreman layer is NOT read at start: only its message formats matter here, at the notify step, per the shared core.
+**Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`. The foreman layer is NOT read at start: only its message formats matter here, at the notify step, per the shared core — and only under `/run-workflow`.
+
+## Launched from the workflow chat
+
+When the brief says you were launched from `/execute-phase`, three things change and nothing else:
+
+- **The gate is passed.** The decisions it took are in `notes.md` under `## Phase N`, the mockup of a `ui` phase under `mockups/phase-N.html`; read them with the plan, and treat them as `Decisions:`. A question the gate did not settle is not yours to answer: stop with a `> WIP:` checkpoint (`refs/phase-execution.md` → *WIP checkpoints*) and report `blocked — <the question, one line>`; the gate asks it and relaunches you. Never a guess, never a default: a wrong default here costs the human a repair.
+- **You do not close.** Step 6 ends with the `Done:` green and the phase still `[>]`: write the `> Testing:` note and its `partial` commit exactly as `refs/phase-execution.md` → *Awaiting the human's checks* specifies — `wf(phase N): partial — built, awaiting the gate` — markers left in place, `[x]` never written. The naming review, the browser pass on a `ui` phase, the human's own checks and the phase commit belong to the gate, where somebody can answer. `[!]` and `[~]` are recorded and committed here as always.
+- **Nothing is notified.** An interactive plan has no foreman: skip Step 6's message without looking for one.
+
+Everything else — the baseline check, the restore point, the convergence loop, the Done gate, the verifier rule — is unchanged: the gate trusts none of it to have happened because a summary says so, it re-reads the plan and `git log` when you return.
 
 ## Step 0: Read the plan
 
@@ -50,7 +60,7 @@ Ambiguous attribution → prefer Case B. A wrong reopen burns the culprit's only
 
 ## Step 1: Select the phase
 
-Per the shared core. The mode-specific outcomes, decided here instead of asked: `resume-candidate: N` → resume it if `wip: yes`, else take it over if older than 2h, else exit reporting it busy; `attention: ...` → mark the pending phase `[~] Blocked` and exit.
+Per the shared core. The mode-specific outcomes, decided here instead of asked: `resume-candidate: N` → resume it if `wip: yes` (always the case when the brief names a resume), else take it over if older than 2h, else exit reporting it busy; `attention: ...` → mark the pending phase `[~] Blocked` and exit.
 
 ## Step 2: Implement
 
@@ -85,6 +95,6 @@ When it does run: ONE `wf:phase-verifier` subagent (Agent tool — namespaced: a
 
 Record the outcome and make the phase commit exactly as the shared core specifies. The `wf:phase-N:new` markers on new callables stay in place — nobody here can answer a naming question; `/quality-check` runs the whole-workflow naming review (`contracts.md` → *New-method markers and minimality*). **Thin `Verify:` pass — thin, never absent** (`${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` → *Verification*): the phase's authored `Verify:` fields, plus anything only human eyes can judge, become `> Verify:` notes with their *when*; deferred ones are appended to `verify.md` under a `## Phase N` heading. No browser skill runs here, and `Verify:` never carries what the tests already cover — most phases end with none. A `ui`-tagged phase reaching this skill lost its mockup gate and browser pass by construction (the tag belongs to interactive plans): note it, and hand the visual check to the human as a `Verify: now` step.
 
-Then the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
+Then, under `/run-workflow` only, the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
 
-Print `✓ Phase N completed: <title>` or `⚠ Phase N has issues: <reason>` and stop.
+Print `✓ Phase N completed: <title>` — `✓ Phase N built: <title> — awaiting the gate` when launched from the workflow chat — or `⚠ Phase N has issues: <reason>`, and stop.
