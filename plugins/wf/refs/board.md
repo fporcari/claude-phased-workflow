@@ -14,7 +14,7 @@ message they were drawn in cannot compete with that.
 
 ## When it is drawn, and when it is not
 
-- **`Mode: interactive` only.** On an autonomous plan, render nothing: the report
+- **Attended plans only** (`manual`, `assisted`). On an autonomous plan, render nothing: the report
   stays text. There the next step is `/run-workflow`, a single launcher that owns
   every remaining phase.
 - **Only where the `visualize` MCP server is available.** Absent → the same rows as

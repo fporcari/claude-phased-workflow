@@ -17,11 +17,11 @@ The fork already asked whether the plan targets autonomous execution — do not 
 
 ## Honesty check
 
-If the refinement reveals the task doesn't fit autonomous execution, say so instead of forcing it — flip the fork (Step 2 of `/write-workflow`) back to interactive rather than bending the plan to a mode it resists. Red flags: the work *is* the exploration; decisions that only implementation can settle; visual/UX output needing human judgment per iteration; heavy dependence on external state; tests requiring human setup; success meaning "the user will recognise it when they see it".
+If the refinement reveals the task doesn't fit autonomous execution, say so instead of forcing it — flip the fork (Step 2 of `/write-workflow`) back to an attended mode — manual or assisted — rather than bending the plan to a mode it resists. Red flags: the work *is* the exploration; decisions that only implementation can settle; visual/UX output needing human judgment per iteration; heavy dependence on external state; tests requiring human setup; success meaning "the user will recognise it when they see it".
 
 The user picks autonomous when the task suits it, so friction usually means a misunderstanding, not a stubborn user. Stop and ask:
 
-> *"Wait — this plan resists being made autonomous. Reason: <concrete reason>. It is probably one of two things: (a) I misunderstood something — let's clear it up; (b) the task really does suit interactive better — shall I go on with a normal interactive plan? Which is it?"*
+> *"Wait — this plan resists being made autonomous. Reason: <concrete reason>. It is probably one of two things: (a) I misunderstood something — let's clear it up; (b) the task really does suit an attended mode better — shall I go on with a manual or an assisted plan? Which is it?"*
 
 **Not a rejection:** phases unspecifiable only because they depend on *earlier phases' outcomes* — that plan is too ambitious for one wave, so split it into macro-phases.
 

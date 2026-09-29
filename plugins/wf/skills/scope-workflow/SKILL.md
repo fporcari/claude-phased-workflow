@@ -63,20 +63,23 @@ Every question here exists to fill a field of the plan. Know which one before yo
 
 | Field | What the question settles |
 |---|---|
-| `Mode:` | interactive or autonomous — **ask this first** |
+| `Mode:` | manual, assisted or autonomous — **ask this first** |
 | `Decisions:` | naming, signatures, library, API shape, trade-offs, and validation: what the new surface must REFUSE, and at which layer |
 | `Pattern:` | which existing example each non-trivial phase copy-adapts |
 | `Files:` | the surface each phase touches, or its discovery rule |
 | `Done:` | what "finished" means, re-runnably |
 
-**The mode fork leads** because it reshapes everything below it: interactive phases
-close where a human can look at something, autonomous ones close on one concern with a
-re-runnable `Done:`. The same work splits into different phases under the two. Derive
-a recommendation from the work itself — *"I'll know it when I see it"* (UI, visual,
-declarative) → interactive; measurable (refactor, migration, well-specified startup) →
-autonomous — and put it as the recommended answer. Where decisions travel follows
-from it: an interactive plan is one conversation with a gate before every phase,
-an autonomous one relays them to the chat that launched the run.
+**The mode fork leads** because it reshapes everything below it: attended phases
+(manual, assisted) close where a human can look at something, autonomous ones close on
+one concern with a re-runnable `Done:`. The same work splits into different phases
+under them. Derive a recommendation from the work itself — *"I'll know it when I see
+it"* and a design that will still move once the page exists → manual; phase-by-phase
+approval with every decision fitting the gate → assisted; measurable (refactor,
+migration, well-specified startup) → autonomous — and put it as the recommended
+answer (`/write-workflow` → *Step 2* is the source of the rule). Where decisions travel
+follows from it: a manual plan is a chat per phase with the foreman between them, an
+assisted one is one conversation with a gate before every phase, an autonomous one
+relays them to the chat that launched the run.
 
 Order the rest by **what they unlock**: a decision that changes the shape of the ones
 below it comes first. Decisions that cannot affect each other are siblings, and their
@@ -120,7 +123,7 @@ Present it in the shape `/write-workflow` reads, and **wait for the user to
 confirm the shared understanding**:
 
 ```
-Mode: <interactive|autonomous> — <reason, half a line>
+Mode: <manual|assisted|autonomous> — <reason, half a line>
 
 Settled:
 - <decision> → <choice> (<reason>)                   [Decisions:]

@@ -486,10 +486,12 @@ CONFIG_HEADING = 'Suggested execution config'
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
-MODES = ('autonomous', 'interactive')
-# `Channel:` (6.30.0–6.37.0) named where decisions travel separately from the
-# mode; since 6.38.0 that follows from Mode: alone. A plan still carrying the
-# header is read by its Mode: and told so — never rejected, never rewritten.
+MODES = ('autonomous', 'assisted', 'manual')
+# `interactive` (up to 6.39.0) is read as `manual`, the relay it meant until
+# 6.38.0, and told so. `Channel:` (6.30.0–6.37.0) named where decisions travel
+# separately from the mode; since 6.38.0 that follows from Mode: alone. Neither
+# is rejected, neither is rewritten.
+LEGACY_MODES = {'interactive': 'manual'}
 CHANNEL_RE = re.compile(r'^Channel:\s*(\S+)\s*$')
 # `> Batches: 1 <label> | 2 <label> | ...` — the planned subdivision, numbered
 # from 1. The commits refer to it as `batch M/K`, so a body that does not parse
@@ -553,7 +555,7 @@ def validate(path, phases, text):
                     mode_lineno = idx
             else:
                 # "Mode: autonomous (fast lane)" must not silently read as
-                # "no header" and degrade to the interactive default — the
+                # "no header" and degrade to the manual default — the
                 # same threat the unknown-value error below exists for.
                 add(idx, 'error',
                     'malformed Mode: line "%s" — expected exactly '
@@ -561,9 +563,8 @@ def validate(path, phases, text):
         if line.startswith('Channel:'):
             cm = CHANNEL_RE.match(line)
             add(idx, 'warning',
-                'Channel: header is obsolete since 6.38.0 and ignored — an '
-                'interactive plan is one conversation, an autonomous one '
-                'relays through the foreman; the plan is read by its Mode:'
+                'Channel: header is obsolete since 6.38.0 and ignored — the '
+                'plan is read by its Mode:'
                 + (' (was %s)' % cm.group(1) if cm else ''))
 
         if line.startswith('## '):
@@ -664,8 +665,15 @@ def validate(path, phases, text):
                 'phase numbers must be contiguous ascending from 1, found %s'
                 % numbers)
 
+    if mode_value in LEGACY_MODES:
+        add(mode_lineno, 'warning',
+            "Mode: %s is read as %s since 6.40.0 — write manual (a chat per "
+            "phase, the foreman between them) or assisted (one conversation, "
+            "each phase built by an executor)"
+            % (mode_value, LEGACY_MODES[mode_value]))
+        mode_value = LEGACY_MODES[mode_value]
     mode_autonomous = mode_value == 'autonomous'
-    mode_interactive = mode_value == 'interactive'
+    mode_attended = mode_value in ('assisted', 'manual')
     if mode_value is not None and mode_value not in MODES:
         add(mode_lineno, 'error',
             "Mode: '%s' is not one of: %s"
@@ -675,11 +683,11 @@ def validate(path, phases, text):
     if mode_autonomous and not table_present:
         add(config_lineno or 1, 'error',
             'Mode: autonomous requires a "## Suggested execution config" table')
-    if mode_interactive and table_present:
+    if mode_attended and table_present:
         add(config_lineno or 1, 'warning',
-            'Mode: interactive plan carries a "## Suggested execution config" '
-            'table, which nothing reads on an interactive plan — a half-'
-            'converted plan')
+            'Mode: %s plan carries a "## Suggested execution config" '
+            'table, which nothing reads on an attended plan — a half-'
+            'converted plan' % mode_value)
 
     if table_present:
         hln, hcells = config_header

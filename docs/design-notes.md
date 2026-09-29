@@ -832,6 +832,50 @@ attended run on 6.38.0 owes the field are the `blocked` count per phase and
 whether a subagent can commit and hand back under the desktop's permission
 mode without a prompt nobody is there to answer.
 
+## Three modes: the relay comes back as manual
+
+**Originating conversation, 2026-09-29**, on the first attended run of 6.38:
+*inside a phase I change my mind, analyse and study — if the phase is delegated
+to an agent I lose all that.* The transcripts said the same thing in numbers.
+On two UI programmes run on 6.37 (demetra phases 7–12, anaci phases 1–4), 124
+user messages arrived after a phase's gate; 58 were a change of mind or a
+study, and **45 of those arose only from seeing the code or the page take
+shape** — a real grid, a browser pass, a failed probe — none of them askable at
+a gate before the code existed. They clustered in the `ui` phases; the phases
+with nothing to look at (demetra 11, anaci 4) had none that arose mid-build. And the one phase
+built by an executor on 6.38.1 proposed its close without the browser pass
+the user then asked for, which found its only defect.
+
+**The decision.** `Mode:` takes three values, one per way of working, and
+there is still one field. `manual` is the 6.37 relayed road restored: a chat
+per phase with the user in the build, the foreman between them, `clarify?`
+back. `assisted` is what 6.38 called interactive: one conversation, an
+executor per phase, the verdict at the gate. `autonomous` is unchanged.
+`Mode: interactive` and a plan with no `Mode:` read as `manual` — the plans
+written under that word were written for the relay, and the validator warns.
+
+**What changed in `clarify?`**, from the user's own rule: *the phase chat asks
+the foreman; the foreman has the answer, we go on; it does not, the phase chat
+asks me, I answer, and the foreman takes note.* So the answer's form follows
+where it comes from — **cited** from the plan or `notes.md` proceeds without a
+question, **proposed** (a decision the foreman takes now, a plan edit) is
+confirmed by the user in the phase chat, **ask-user** hands the question over
+at once and the answer travels back as `clarify: noted`. The foreman never
+addresses the user about a phase question, and it no longer guesses: an answer
+it has to infer is an answer it does not have. On the field, every anaci
+`clarify?` was a plan edit — form 2 — which is why the confirmation stays there.
+
+**What it costs, and why it is paid by choice now.** The relay's logistics are
+back on manual plans — permissions on the foreman chat, titles, a message that
+can go to a mistyped session id (demetra phase 12 did) — and the phase chat can
+fill up (demetra phase 8 and 12 handed over). What 6.38 bought stays where it
+pays: an assisted plan keeps one conversation and a fresh executor per phase,
+with 6.39's plan-defect gate and the browser pass before the close.
+
+**Not verified this session**: no run was launched on 6.40.0. The first manual
+run owes the field the `clarify?` count by form, and whether `clarify: noted`
+reaches the foreman before the next phase's gate.
+
 ## Known patterns
 
 Plan-and-Execute (LangChain/LlamaIndex) · Checkpoint & Resume (CI/CD) ·

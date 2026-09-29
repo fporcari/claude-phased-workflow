@@ -56,9 +56,10 @@ steps are read from the plan and shown as text.
 one it pressed. The unattended road queues `/wf:run-workflow`, which owns the
 pre-flight, the Monitor, the push policy, the foreman relay and the
 plan-defect return leg — a spawn from here would skip all of them. The phase
-road queues nothing at all: an interactive phase runs in the conversation that
-holds the workflow, at a gate a page cannot stand in for, so the command comes
-back as TEXT for that conversation.
+road queues nothing at all: an attended phase starts at a gate a page cannot
+stand in for — in the conversation that holds an assisted workflow, in a chat
+of its own on a manual one — so the command comes back as TEXT, with the mode
+that says where it goes.
 
 Neither road takes a recipient, a phase number or a command from the request:
 the phase is the plan's own next one, and the foreman is the title
@@ -441,10 +442,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return {'error': f'phase {blocked} is not closed — nothing to launch' if blocked
                     else 'every phase is done'}
         if body.get('road') == 'chat':
-            # An interactive phase runs at a gate in the workflow's own
-            # conversation, so this road delivers nothing anywhere: it hands
-            # the command back as text for that conversation.
-            return {'road': 'chat', 'phase': plan['next'],
+            # An attended phase starts at a gate, so this road delivers nothing
+            # anywhere: it hands the command back as text, and the mode says
+            # which chat it belongs in.
+            return {'road': 'chat', 'phase': plan['next'], 'mode': plan.get('mode', 'manual'),
                     'command': '/wf:execute-phase'}
         # Only a FRESH request refuses the next one. A queue nobody drained —
         # the chat was closed, or never asked — would otherwise leave the button

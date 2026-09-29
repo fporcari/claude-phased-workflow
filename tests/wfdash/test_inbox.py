@@ -8,8 +8,9 @@ resolution the dashboard still does before it queues a request:
   - the target is the title `foreman.json` names: no foreman, a foreman whose
     chat is not running, and a live one are three distinct answers;
   - the title beats every other chat in the list, whatever its position;
-  - only an autonomous plan has a foreman: an interactive one, or one with no
-    `Mode:`, is refused even when a stale `foreman.json` names a live chat.
+  - an assisted plan has no foreman: it is refused even when a stale
+    `foreman.json` names a live chat; a manual plan has one, like an
+    autonomous plan.
 
 No live session is read and none is written to.
 
@@ -28,10 +29,10 @@ live = {'name': TITLE, 'live': True, 'pid': PID, 'session_id': 'stub'}
 dead = {'name': TITLE, 'live': False, 'pid': None, 'session_id': 'stub'}
 
 assert 'error' in inbox.foreman_target({'mode': 'autonomous', 'foreman': None}, [live])
-for mode in ('interactive', None):
-    stale = dict(plan, mode=mode)
-    assert inbox.foreman_target(stale, [live])['error'] == inbox.NO_FOREMAN
-    assert inbox.mirror('.', stale, [live])['error'] == inbox.NO_FOREMAN
+stale = dict(plan, mode='assisted')
+assert inbox.foreman_target(stale, [live])['error'] == inbox.NO_FOREMAN
+assert inbox.mirror('.', stale, [live])['error'] == inbox.NO_FOREMAN
+assert inbox.foreman_target(dict(plan, mode='manual'), [live])['pid'] == PID
 assert inbox.foreman_target(plan, [])['error'].endswith('it is gone')
 assert 'not running' in inbox.foreman_target(plan, [dead])['error']
 assert inbox.foreman_target(plan, [{'name': 'other'}, live])['pid'] == PID

@@ -9,7 +9,7 @@ Supervision and resume view of the work plan. **Read-only on source code** — t
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` at Step 1b, only once the plan's `Mode:` is known to be `autonomous` — an interactive workflow has no relay to take command of and never reads it.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` at Step 1b, only once the plan's `Mode:` is known to be `manual` or `autonomous` — an assisted workflow has no relay to take command of and never reads it.
 
 ## The map
 
@@ -21,7 +21,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 | `/write-workflow` | there is no plan yet, and the work was just discussed |
 | `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
 | `/issue` | the work starts from a GitHub issue (analysis only) |
-| `/execute-phase` | run the next phase — the approval gate in this same conversation, the build in a fresh executor, the verdict back here (`Mode: interactive`) |
+| `/execute-phase` | run the next phase — on `Mode: manual` in a new chat of its own, built there with you in it; on `Mode: assisted` the gate in this same conversation, the build in a fresh executor, the verdict back here |
 | `/run-workflow` | run every remaining phase unattended (`Mode: autonomous` plans) |
 | `/repair-phase` | a phase is `[!]` and needs fresh eyes |
 | `/doctor` | the work and the plan may have drifted apart — coherence audit, contract-test integrity, blind retro-fit of missing tests |
@@ -43,15 +43,15 @@ The third command gives `BASE`, the commit that added the plan. Everything after
 
 ## Step 1b: The foreman
 
-On `Mode: interactive` — and on a plan carrying no `Mode:`, which reads as
-interactive — there is no relay and nothing to take command of: the plan's
-decisions belong to the user in this conversation, so title this chat
+On `Mode: assisted` there is no relay and nothing to take command of: the
+plan's decisions belong to the user in this conversation, so title this chat
 `wf:<slug>` (`set_session_title` on `session_id: "self"`, best-effort), skip to
-Step 2 and report the mode instead of a foreman. A `foreman.json` left by an
-older interactive plan is inert: read nothing from it, write nothing to it.
-Everything below is `Mode: autonomous`.
+Step 2 and report the mode instead of a foreman. A `foreman.json` left
+on an assisted plan is inert: read nothing from it, write nothing to it. Everything below is
+`Mode: manual` — and `interactive`, and a plan carrying no `Mode:`, which read
+as manual — and `Mode: autonomous`.
 
-On an autonomous plan, read `.phased/active/<slug>/foreman.json` (protocol, file
+On a manual or autonomous plan, read `.phased/active/<slug>/foreman.json` (protocol, file
 format and take-command mechanics live once in `foreman.md` → *The foreman*):
 
 - **Absent** → **assume command, without asking**: the normal state of every
@@ -95,14 +95,14 @@ Distinguish measured commits from projected pending scope.
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the executor that had it is probably gone"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`contracts.md` → *Verification*): report those, and that the phase closes when they pass. A stale `[>]` with a run log at `<transport>-run.log` (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport` names the prefix — uid and repo key included, so it is this checkout's log and not another's) is more than a dead chat: an **unattended run was in flight when everything died** — a host-app restart kills the launcher, its Monitor and the phase session in one blow, and that log is the only channel that survives. Check for it (`T=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport); [ -f "$T-run.log" ] && echo "$T-run.log" || echo "no run log"`); when it exists, say exactly that, read its last `EVENT:` lines to report how far the run got, and make the *Next step* the **reset + relaunch** path: Step 4's stale-`[>]` reset, then a fresh `/run-workflow` over what remains. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two writers in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Mode** line closes the point. On `Mode: interactive`: the mode, and that the work continues in this conversation — there is no foreman to name and no messaging branch to test. On `Mode: autonomous` it is the **Foreman** line: who commands (this chat, another session with its `since`, or just assumed per Step 1b) — and which messaging branch is alive in this installation (desktop session tools, CLI `SendMessage`, or neither), per `foreman.md` → *Channel floors*: a dead channel is declared here, not discovered at the first silent skip.
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the session that had it is probably gone"* — unless it carries a `> Testing:` note, which means it is not running at all but waiting for the user's own checks (`contracts.md` → *Verification*): report those, and that the phase closes when they pass. A stale `[>]` with a run log at `<transport>-run.log` (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport` names the prefix — uid and repo key included, so it is this checkout's log and not another's) is more than a dead chat: an **unattended run was in flight when everything died** — a host-app restart kills the launcher, its Monitor and the phase session in one blow, and that log is the only channel that survives. Check for it (`T=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --transport); [ -f "$T-run.log" ] && echo "$T-run.log" || echo "no run log"`); when it exists, say exactly that, read its last `EVENT:` lines to report how far the run got, and make the *Next step* the **reset + relaunch** path: Step 4's stale-`[>]` reset, then a fresh `/run-workflow` over what remains. A `[!]` phase carrying `> Repair started:` is **under repair**, not available: report it as such, with the marker's timestamp and the chat named in it, and do not offer `/repair-phase` on it — a second repair would put two writers in one working tree. Judge staleness rather than applying a threshold: a marker whose chat is nowhere in `list_sessions`, or one old enough that the run it names is plainly over, says the repair died and can be taken up again — say which of the two you are reporting. One **Mode** line closes the point. On `Mode: assisted`: the mode, and that the work continues in this conversation — there is no foreman to name and no messaging branch to test. On `Mode: manual` and `Mode: autonomous` it is the **Foreman** line: who commands (this chat, another session with its `since`, or just assumed per Step 1b) — and which messaging branch is alive in this installation (desktop session tools, CLI `SendMessage`, or neither), per `foreman.md` → *Channel floors*: a dead channel is declared here, not discovered at the first silent skip.
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
 5. **Oversized phases** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
 6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, clean up drift — or, when what smells is incoherence between the landed work and the pending phases' premises rather than record drift, `/doctor` for the verdict instead of the suspicion. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is. When the step is `/resume-workflow` in a fresh chat because the foreman is gone, quote the foreman's own hint the same way — `fable` / `high` (`foreman.md` → *The foreman's own model*).
 
-**The board.** On a `Mode: interactive` plan, render points 1 and 6 as the strip specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the shape; it is the single source, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a strip argues badly. On an autonomous plan, no board at all. No `visualize` server → the same rows as a plain list, per the ref.
+**The board.** On an attended plan (`manual`, `assisted`), render points 1 and 6 as the strip specified in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it there rather than inferring the shape; it is the single source, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a strip argues badly. On an autonomous plan, no board at all. No `visualize` server → the same rows as a plain list, per the ref.
 
 **Healthy plan → stop here.** No `[!]`/`[~]`, no stale `[>]`, no drift: the report ends with the next step and nothing to resume — no questions asked.
 
@@ -112,7 +112,7 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
-- **A phase for the remainder of one closed short** — said at the gate on an interactive plan, announced by the `phase N closed short` message on an autonomous one (the shared core's *Routing a decision*, re-planning row); the reason it is not the executor's either way is that the phase which overran is evidence the sizing was wrong, and sizing belongs to whoever owns the plan. Write what remains as its own phase (or phases, if the overrun says the slice was too big), from the remainder recorded in `notes.md` under that phase's heading.
+- **A phase for the remainder of one closed short** — said at the gate on an assisted plan, announced by the `phase N closed short` message on a manual or autonomous one (the shared core's *Routing a decision*, re-planning row); the reason it is not the executor's either way is that the phase which overran is evidence the sizing was wrong, and sizing belongs to whoever owns the plan. Write what remains as its own phase (or phases, if the overrun says the slice was too big), from the remainder recorded in `notes.md` under that phase's heading.
 - **Re-planning after a rejected result** — the answer to *"this phase passed and is still wrong"*, and the case the `phase N closed, result rejected` message announces. It is not only an append: the phases that have not run were written for the design just rejected, so they are re-planned too — rewritten where they no longer fit, dropped where they no longer apply — while the closed phase keeps its `[x]` and its `> Review:` verdict. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (the user's own account of it, here in this chat).
 
   **In the tail, never in the middle**, even when the work logically belongs at Phase 2. Phase numbers must be contiguous ascending from 1, so an insertion renumbers everything after it — while the commits already made say `wf(phase 3)`, `wf(phase 4)` with the old numbers, and the correspondence between the plan and the history breaks silently. Execution order stays the numeric order; the new phase's text says what it remedies.
@@ -121,7 +121,7 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **After a quality check** — only what `/quality-check` → *The final touch* sends here: a finding that needs a surface the plan never built (a table, a page, a migration). ONE phase for all such findings together, written to the same bar as above; a correction on a decided design never arrives here, the foreman applies it in the final touch. Measured on the field: findings routed one phase each turned a three-phase plan into thirteen, through two rounds of high-effort review.
 
-- **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent, and on an interactive plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
+- **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent (and `Mode: interactive` rewritten as the `manual` it reads as), and on an attended plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
 
   **Fill in defaults, never gaps.** A missing `Run:` is a default made explicit (`opus` / `high`), which is why proposing it is legitimate. A missing `Done:`, `Pattern:` or `Decisions:` is something its author never settled: report it and stop there, exactly as `/import-workflow` Step 3 does. Inventing a plausible `Done:` makes an open question look closed, and nobody checks it twice.
 
@@ -133,4 +133,4 @@ git add .phased && git commit -q -m "wf: <what changed>"
 
 Leaving it uncommitted would break the clean-tree invariant the next phase's baseline check relies on.
 
-After any such commit, on `Mode: autonomous`, send the foreman one `plan changed` message per `foreman.md` → *The foreman* — best-effort, and naturally skipped when this chat is the foreman (`list_sessions` excludes it). On an interactive plan the change is reported to the user here, and the record in the plan commit is the same either way. A plan reshaped from a supervision chat must not surface for the first time at finalize.
+After any such commit, on `Mode: manual` or `Mode: autonomous`, send the foreman one `plan changed` message per `foreman.md` → *The foreman* — best-effort, and naturally skipped when this chat is the foreman (`list_sessions` excludes it). On an assisted plan the change is reported to the user here, and the record in the plan commit is the same either way. A plan reshaped from a supervision chat must not surface for the first time at finalize.

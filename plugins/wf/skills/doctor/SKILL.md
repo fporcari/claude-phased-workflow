@@ -125,13 +125,13 @@ finding, classified:
 - **COHERENCE** — a pending premise broken, or a red retro-test on a `[x]`
   phase: re-planning territory — remedy phases in the tail, via
   `/resume-workflow`, which takes the re-planning road of the shared core's
-  *Routing a decision*: this same conversation on `Mode: interactive`, the
-  foreman chat on `Mode: autonomous`.
+  *Routing a decision*: this same conversation on `Mode: assisted`, the
+  foreman chat on `Mode: manual` and `Mode: autonomous`.
 - **INTEGRITY** — a contract test edited outside the sanctioned road: name the
   edit; the decision on it belongs to whoever owns the authored checks, which
   is a position, not a chat (`contracts.md` → *Authored checks are
-  foreman-owned*): the user at the gate on an interactive plan, the foreman on
-  an autonomous one.
+  foreman-owned*): the user at the gate on an assisted plan, the foreman on
+  a manual or autonomous one.
 
 Append the same findings to `notes.md` under a `## Doctor <ISO date>`
 heading, committed (`wf: doctor — findings`): the chat dies, the file is
@@ -139,5 +139,5 @@ what `/resume-workflow` and finalize read. Healthy plan → say so in one
 line and stop; no commit, no note.
 
 Close with the next step, always: `/resume-workflow` for re-planning — here on
-`Mode: interactive`, in the foreman chat on `Mode: autonomous` —
+`Mode: assisted`, in the foreman chat on `Mode: manual` and `Mode: autonomous` —
 `/repair-phase` only for a genuinely machine-red `Done:`, nothing when healthy.

@@ -453,6 +453,12 @@ def selection(path=None, text=None):
     return sel
 
 
+def plan_mode(meta):
+    """The plan's `Mode:` as the plugin reads it: `interactive` and no header are `manual`."""
+    mode = (meta.get('mode') or 'manual').strip().lower()
+    return 'manual' if mode == 'interactive' else mode
+
+
 def plan_shape(path, slug, directory, sel, foreman_dir=None):
     """The dict every consumer of a plan reads, from the selection payload.
 
@@ -468,7 +474,7 @@ def plan_shape(path, slug, directory, sel, foreman_dir=None):
         'total': len(phases),
         'next': sel['next'], 'blocked_by': sel['blocked_by'],
         'recommendation': sel['recommendation'],
-        'mode': meta.get('mode'), 'parent': meta.get('parent'),
+        'mode': plan_mode(meta), 'parent': meta.get('parent'),
         'quality': meta.get('quality_check'),
         'foreman': read_foreman(foreman_dir) if foreman_dir else None,
     }
