@@ -136,7 +136,7 @@ restate it.
 
 | what travels | `Mode: interactive`, and a plan carrying no `Mode:` | `Mode: autonomous` |
 |---|---|---|
-| a **question** the plan's author owns | put to the user at the gate, in this conversation, batched with the rest, before the executor is launched; mid-phase the executor cannot ask, so it stops `blocked` and the question comes back to this same gate | there is no gate: the executor closes `[!]` with a `plan-defect claim` and the launcher holds while the foreman decides (`refs/foreman.md` → *Plan-defect claims*) |
+| a **question** the plan's author owns | answered at the gate, in this conversation, batched with the rest, before the executor is launched — the conversation that wrote the plan proposes the answer with its reasons, the user confirms; mid-phase the executor cannot ask, so it stops `blocked`, or closes `[!]` with a `plan-defect claim` when its attempts ran into a premise, and either comes back to this same gate before any repair (`/execute-phase` Step 4) | there is no gate: the executor closes `[!]` with a `plan-defect claim` and the launcher holds while the foreman decides (`refs/foreman.md` → *Plan-defect claims*) |
 | an **outcome** — done, FAILED, blocked, closed short, result rejected | reported at the gate, in this conversation; no message, and nothing waits for one | one message to the foreman chat, best-effort (*Notify the foreman*) |
 | a **re-planning** — the remainder of a short close, the phases after a rejected result | sized with the user at that same gate, and the plan edit committed as usual | the foreman sizes it; the executor never appends phases |
 

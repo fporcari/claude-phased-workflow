@@ -50,6 +50,9 @@ def session_record(pid):
         return None
 
 
+NO_FOREMAN = "an interactive plan has no foreman: its decisions are the workflow chat's"
+
+
 def foreman_chat(plan, chats):
     """The foreman's title, and the chat wearing it — running or not.
 
@@ -70,6 +73,8 @@ def foreman_target(plan, chats):
     chats already carry it: `core.Board.agents` reads the title from the
     transcript and the pid from the live sessions. Nothing new is scanned.
     """
+    if (plan or {}).get('mode') != 'autonomous':
+        return {'error': NO_FOREMAN}
     title, chat = foreman_chat(plan, chats)
     if not title:
         return {'error': 'this plan has no foreman.json, so there is nobody to write to'}
@@ -196,6 +201,8 @@ def mirror(project_dir, plan, chats, limit=MIRROR_TURNS):
     The state and the exchange are independent: a foreman that is not running
     still has a transcript, and losing the channel must not lose the record.
     """
+    if (plan or {}).get('mode') != 'autonomous':
+        return {'error': NO_FOREMAN}
     title, chat = foreman_chat(plan, chats)
     if not title:
         return {'error': 'this plan has no foreman.json, so there is nobody to write to'}

@@ -201,22 +201,19 @@ The rules, in both execution modes:
   copy — and a skeleton's body — is the phase's work; the contract is not.
 - **The contract is read-only for the child.** A test that cannot pass as
   written — a wrong premise, an assertion the design outgrew — is a plan
-  ambiguity, never a local fix: interactive phases route it per
-  `refs/phase-execution.md` → *Routing a decision*, and the answer — the
-  user's at the gate — carries the exact test edit as
-  before-text → after-text, applied verbatim by the child and committed as
-  `wf: clarify phase N — <one line>`. Unattended phases have nobody to ask
-  mid-phase: the phase closes `[!]` with `> Issue: plan-defect claim — <the
+  ambiguity, never a local fix. The executor has nobody to ask mid-phase, in
+  either mode: the phase closes `[!]` with `> Issue: plan-defect claim — <the
   test, the premise it believes wrong, and the exact edit it thinks the plan
   needs, as before-text → after-text>` — the words `plan-defect claim`
-  verbatim, they are what the launcher's consult gate greps for
-  (`refs/foreman.md` → *Plan-defect claims*), and the before→after form is
-  what licenses the foreman's apply road there. A **claim, never a
+  verbatim, they are what the consult greps for — the workflow chat's gate
+  on an interactive plan (`/execute-phase` Step 4), the launcher's on an
+  autonomous one (`refs/foreman.md` → *Plan-defect claims*) — and the
+  before→after form is what licenses the apply road in both. A **claim, never a
   verdict**: the field count is two claims wrong — the contract was
   implementable in-dialect and the repair found the better design — and one
   right, "dissolved" by a repair bending the code to the wrong premise. The
-  claim is judged upstream — the foreman through the gate, fresh repair eyes
-  where the foreman sends them — never by the child editing the contract.
+  claim is judged upstream — the plan's author at the gate, fresh repair eyes
+  where the author sends them — never by the child editing the contract.
 - **The close verifies the copy.** `/close-phase`'s Done gate (and the
   phase-verifier, where it runs) checks the in-tree copy against the plan
   copy AND the plan copy against the plan commit (`git diff <plan-commit>

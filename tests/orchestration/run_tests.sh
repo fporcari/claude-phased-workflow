@@ -4008,6 +4008,45 @@ assert "S64: a near-miss first cell is still rejected as a malformed row" \
   'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" 2>&1 | grep -q "is not \"| Phase N | ... |\" or \"| Repair | ... |\""'
 rm -rf "$S64_DIR"
 
+echo "== S65: an interactive plan-defect claim reaches the plan's author before any repair =="
+# 6.39.0 — the executor names the premise its failed attempts leaned on, and the
+# workflow chat, which wrote the plan, judges the claim before /repair-phase
+# sees it; a phase that touches a page is never closed before the browser pass.
+s65_guard() {  # $1 = a skills dir; prints one line per violation
+  S65_E="$1/execute-phase/SKILL.md"
+  S65_A="$1/execute-phase-agent/SKILL.md"
+  grep -q '^- \*\*`\[!\]` whose `> Issue:` carries `plan-defect claim`\*\*.*BEFORE any repair' "$S65_E" 2>/dev/null \
+    || echo "$S65_E: a plan-defect claim is not routed to the gate before repair"
+  grep -q '^- \*\*`\[!\]`\*\*, no `plan-defect claim`' "$S65_E" 2>/dev/null \
+    || echo "$S65_E: the plain [!] road does not exclude plan-defect claims"
+  grep -q "never before Step 5's browser pass" "$S65_E" 2>/dev/null \
+    || echo "$S65_E: the close does not wait for the browser pass"
+  grep -q 'Struggle is a symptom before it is a defect' "$S65_A" 2>/dev/null \
+    || echo "$S65_A: the executor's stop-loss does not name the premise"
+  grep -q "the interactive skill's stop-loss" "$S65_A" 2>/dev/null \
+    && echo "$S65_A: cites a stop-loss that no longer exists"
+}
+assert "S65: the plan-defect gate, the named premise and the browser-pass close hold" \
+  '[ -z "$(s65_guard "$SKILLS_DIR")" ]'
+S65_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S65_MUT/"
+python3 - "$S65_MUT/execute-phase/SKILL.md" <<'PY'
+import sys
+p = sys.argv[1]
+lines = open(p).read().split('\n')
+lines = [l for l in lines if 'carries `plan-defect claim`' not in l]
+open(p, 'w').write('\n'.join(lines))
+PY
+assert "S65: the guard fails when the plan-defect road is dropped" \
+  '[ -n "$(s65_guard "$S65_MUT")" ]'
+rm -rf "$S65_MUT"
+S65_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S65_MUT/"
+sed -i.bak "s/never before Step 5's browser pass/after the executor's green/" "$S65_MUT/execute-phase/SKILL.md"
+assert "S65: the guard fails when the close stops waiting for the browser pass" \
+  '[ -n "$(s65_guard "$S65_MUT")" ]'
+rm -rf "$S65_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

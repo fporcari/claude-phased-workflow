@@ -89,11 +89,11 @@ assert [(x['role'], x['text']) for x in inbox.transcript_tail(busy)] == [
     ('sent', 'chiedo'), ('foreman', 'rispondo')], inbox.transcript_tail(busy)
 
 # --- the mirror, with no foreman and with one that is not running -------------
-no_foreman = inbox.mirror(root, {'slug': 'fixture'}, [])
+no_foreman = inbox.mirror(root, {'slug': 'fixture', 'mode': 'autonomous'}, [])
 assert 'error' in no_foreman and 'foreman.json' in no_foreman['error'], no_foreman
 assert 'exchange' not in no_foreman, no_foreman
 
-plan = {'slug': 'fixture', 'foreman': {'foreman': FOREMAN}}
+plan = {'slug': 'fixture', 'mode': 'autonomous', 'foreman': {'foreman': FOREMAN}}
 gone = inbox.mirror(root, plan, [])
 assert gone['live'] is False and gone['exchange'] == [], gone
 assert 'never opened' in gone['state'], gone

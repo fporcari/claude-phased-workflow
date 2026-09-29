@@ -78,10 +78,10 @@ Phases with contract tests start from them: copy `tests/phase-N/` verbatim and m
 Green signal = test suite + linter scoped to the touched files. Both must pass.
 
 - **Green** → Step 5.
-- **Failure** → up to **two fix attempts** (the interactive skill's stop-loss: never a third). Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
+- **Failure** → up to **two fix attempts** (the stop-loss: never a third). Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
 - **No-progress detector**: identical failure signature twice in a row → stop early.
 - **Revert, don't stack**: an attempt that leaves the signal worse gets undone (`git checkout -- <files it touched>` returns to `HEAD`, the Step 0.4 restore point) before re-diagnosing. Patch-on-patch also poisons what `/repair-phase` receives.
-- **Budget exhausted or stuck** → `[!]` with the shared core's notes. Leave the failing code **in place** — repair needs to see it.
+- **Budget exhausted or stuck** → `[!]` with the shared core's notes. Leave the failing code **in place** — repair needs to see it. **Struggle is a symptom before it is a defect.** Two attempts lost against the same obstacle usually mean a premise nobody named. Before writing the `> Issue:`, name the one the attempts leaned on — a `Done:`, `Pattern:`, `Files:` or pre-made decision the code contradicts. When there is one, the `> Issue:` is a `plan-defect claim` (Step 3's format) written as that premise — *assuming X — it does not hold because <the code, file:line>* — with the before-text → after-text edit when you know it: the claim goes to the plan's author before any repair. No premise in doubt → an ordinary `[!]`.
 
 ## Step 5: Verify and gate
 
