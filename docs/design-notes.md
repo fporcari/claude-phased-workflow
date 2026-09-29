@@ -135,6 +135,15 @@ The README states the inverted rule; the operative detail lives in
   is opus at low effort, where light mode already strips the ritual that was
   sonnet's supposed saving. The launcher still accepts legacy plans carrying
   it.)*
+  *(Reopened 2026-09-29, 6.41.0: the exclusion was measured on Sonnet 5, and
+  Sonnet 5.5 recalibrates effort at half Opus 5.5's price. Its docs, and the
+  effort article's finding that a highly specified task levels models and
+  effort, put it back in autonomous plans for mechanical, fully specified phases at `medium`; attended plans keep their two values. The
+  benchmark was stopped after 9 runs on the plain fixture to save credits — see
+  `tests/benchmark/results/run-2026-09-29-sonnet55-partial/`; the seeded
+  fixture was not measured, so the first-pass-success bet is re-taken on the
+  docs, narrowed to the phases where it is likeliest to win. Repair stays
+  opus|fable.)*
 - Effort: start low and climb only for a reason. A phase that passed pre-flight
   is well-specified *by construction*, so high effort gets spent re-exploring
   decisions the plan already settled. `max` overthinks; effort levels copied

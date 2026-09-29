@@ -36,7 +36,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
    **Model** — default `opus`; `fable` is the one exception:
    - `fable` — architectural change, hairy debugging, multi-file consistency, novel design with no pattern reference (subject to credits; ask once if unsure).
-   - `sonnet` is **not in the palette** — field experience regretted every sonnet phase, and a failed one costs a whole repair session. Mechanical work is `opus` at `low` effort. Legacy plans that carry it still run, with the launcher's sonnet steering — accepted is not recommended.
+   - `sonnet` at `medium` — only for a mechanical, fully specified phase: nothing left to invent, a few files, no design decision, no shared contract. Same outcome as opus on the benchmark fixture in half the wall time, at about opus/`medium` cost; `opus` at `low` stays the cheaper choice. Never on the `Repair` row.
    - In doubt → `opus`.
    - The launcher steers each session for its model via `--append-system-prompt` (log-style silent output for all; opus: no scope creep or extra verification; fable: act, don't re-derive settled decisions) — neither the plan nor the phases need to restate style or verbosity rules.
 
