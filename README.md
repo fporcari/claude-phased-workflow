@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.38.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.38.2** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -308,7 +308,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**444 assertions over 63 scenarios** (S1–S64, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**445 assertions over 63 scenarios** (S1–S64, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -354,6 +354,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.38.2 | `/execute-phase` titles its chat `wf:<slug>` before routing on the recommendation, so a chat that opens on the awaiting-checks gate, a resume or a report-and-stop is titled too — the title had sat after the routing and only `next: N` reached it |
 | 6.38.1 | Calibrated to the 5.5 lineup: `phase-verifier` and `ui-judge` run at `effort: high` (verification is where effort pays), `report-judge` at `low` (it reads like the decision-maker would); the dashboard prices `claude-opus-5-5` ($4/$20, cache read $0.20) and `claude-sonnet-5-5` ($2/$10); the effort guidance adds that effort buys edge-case coverage, not approach. |
 | 6.38.0 | Or a workflow is one conversation, or it is a relay — the `Channel:` axis is retired: `Mode: interactive` runs the whole workflow in one chat, each phase built by `/execute-phase-agent` as a fresh-context subagent after the gate and handed back `[>]` for your checks; `/repair-phase` runs its diagnosis in a repair agent and keeps the verdict yours; `clarify?` leaves the protocol, the foreman relay is the autonomous mode's alone |
 | 6.37.0 | The repair session is the foreman's call, not the launcher's: the execution config table takes an optional `| Repair | <effort> | <model> |` row, absent → `opus` / `high` instead of the hardcoded `fable` / `max`; `sonnet` is a validation error there, and one `budget_for` mapping now caps the phase sessions and the repair alike |

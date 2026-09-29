@@ -1517,6 +1517,13 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     grep -q 'set_session_title' "$S30_F" 2>/dev/null \
       || echo "$S30_F: does not title its chat (set_session_title)"
   done
+  # 6.38.2 — execute-phase titles before routing on recommendation:, or
+  # every early road (awaiting-checks gate, resume, report-and-stop) skips it.
+  S30_T=$(grep -n 'Title this chat' "$1/execute-phase/SKILL.md" 2>/dev/null | head -1 | cut -d: -f1)
+  S30_R=$(grep -n '^Act on `recommendation:`' "$1/execute-phase/SKILL.md" 2>/dev/null | head -1 | cut -d: -f1)
+  if [ -z "$S30_T" ] || [ -z "$S30_R" ] || [ "$S30_T" -gt "$S30_R" ]; then
+    echo "$1/execute-phase/SKILL.md: the chat is titled after the recommendation routing, so its early roads skip it"
+  fi
   # 6.6.0 — repair splits by environment, not by method: the base asks the
   # human and can hand a phase back, the -agent variant is [!]-only and closes
   # on its own, and the launcher must reach the unattended one. 6.38.0 — the
@@ -1780,6 +1787,22 @@ cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 sed -i.bak 's/set_session_title//g' "$S30_MUT/execute-phase/SKILL.md" \
   && rm -f "$S30_MUT/execute-phase/SKILL.md.bak"
 assert "S30: the guard fails when a titling skill drops set_session_title" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+# execute-phase titles its chat only after the recommendation routing.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+python3 - "$S30_MUT/execute-phase/SKILL.md" <<'PY'
+import sys
+p = sys.argv[1]
+lines = open(p).read().split('\n')
+t = next(i for i, l in enumerate(lines) if l.startswith('**Title this chat**'))
+title = lines.pop(t)
+r = next(i for i, l in enumerate(lines) if l.startswith('Act on `recommendation:`'))
+lines.insert(r + 1, title)
+open(p, 'w').write('\n'.join(lines))
+PY
+assert "S30: the guard fails when execute-phase titles after routing" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 
