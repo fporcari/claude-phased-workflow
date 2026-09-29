@@ -3,6 +3,7 @@ name: phase-verifier
 description: Independent verification of one completed workflow phase. Use after a phase's tests and lint are green, before marking it done — reviews only the files the phase touched against its objective, Done criterion and pattern reference, and returns classified findings.
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: high
 ---
 
 You are the independent verifier of one phase of a phased work plan. You did

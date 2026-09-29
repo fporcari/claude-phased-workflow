@@ -47,21 +47,24 @@ HOME = pathlib.Path.home()
 PROJECTS = HOME / '.claude' / 'projects'
 TASKS = HOME / '.claude' / 'tasks'
 
-# $/1M tokens (input, output) — the claude-api skill's table as of 2026-09-02.
+# $/1M tokens (input, output) — the claude-api skill's table as of 2026-09-02,
+# plus Opus 5.5 and Sonnet 5.5 from their model pages (2026-09-29).
 # Cache: write 1.25x input (TTL 5m) or 2.0x (TTL 1h); read 0.1x input, except
 # for the models CACHE_READ prices on their own.
 PRICES = {
     'claude-fable-5': (10.0, 50.0),
     'claude-fable-5-1': (10.0, 50.0),
     'claude-mythos-5': (10.0, 50.0),
+    'claude-opus-5-5': (4.0, 20.0),
     'claude-opus-5': (5.0, 25.0),
     'claude-opus-4-8': (5.0, 25.0),
     'claude-opus-4-7': (5.0, 25.0),
     'claude-opus-4-6': (5.0, 25.0),
+    'claude-sonnet-5-5': (2.0, 10.0),
     'claude-sonnet-4-6': (3.0, 15.0),
     'claude-haiku-4-5': (1.0, 5.0),
 }
-CACHE_READ = {'claude-fable-5-1': 0.25}
+CACHE_READ = {'claude-fable-5-1': 0.25, 'claude-opus-5-5': 0.20}
 SONNET5_INTRO_END = '2026-09-01'
 ACTIVE_WINDOW_S = 120  # a transcript touched within this window is running
 TRAIL_LEN = 8          # how many recent actions are kept per agent
