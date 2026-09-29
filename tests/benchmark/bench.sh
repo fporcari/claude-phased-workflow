@@ -121,3 +121,13 @@ done
 echo ""
 echo "=== Results ($CSV) ==="
 column -s, -t < "$CSV"
+
+# BENCH_OUT archives the run under results/: the CSV plus each session's JSON.
+if [ -n "${BENCH_OUT:-}" ]; then
+  mkdir -p "$BENCH_OUT"
+  cp "$CSV" "$BENCH_OUT/results.csv"
+  for D in "$WORK"/*/; do
+    [ -f "$D/result.json" ] && cp "$D/result.json" "$BENCH_OUT/$(basename "$D").result.json"
+  done
+  echo "archived to $BENCH_OUT"
+fi
