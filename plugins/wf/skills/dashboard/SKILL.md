@@ -16,8 +16,10 @@ through `/wf:run-workflow` and a message to the foreman still through
 `refs/foreman.md`. Step 5 is where this chat serves what the page asked for.
 
 The server outlives this turn: a dashboard is watched while the work goes on,
-so it is started detached and left running. The user closes it by killing the
-process, and this skill says how.
+so it is started detached (`--detach`, from a foreground call — never
+`run_in_background`, which Claude Code stops at its time limit since 2.1.285)
+and left running. The user closes it by killing the process, and this skill
+says how.
 
 ## Step 1: The repository to watch
 
@@ -71,16 +73,16 @@ to ask them to pick a recipient instead. `$$` is the skill's own Bash and its
 parent is the session, so the pid is read, never guessed.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/server.py" -C "<repo root>" \
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wfdash/server.py" --detach -C "<repo root>" \
   -O "$(ps -o ppid= -p $$ | tr -d ' ')"
 ```
 
-Run it with `run_in_background`. Its first line is
-`wfdash on http://127.0.0.1:<port>/?k=<one-shot>  repo: <root>` — **read the
-whole URL from that line**, never assume 8787 and never drop the `?k=`: the
-port is not known in advance, and the one-shot is the only way the page is
-ever let in. No line after a few seconds → report the process output as it
-stands and stop.
+The call returns once the server is up, in a session of its own. Its first
+line is `wfdash on http://127.0.0.1:<port>/?k=<one-shot>  repo: <root>  pid <n>` —
+**read the whole URL from that line**, never assume 8787 and never drop the
+`?k=`: the port is not known in advance, and the one-shot is the only way the
+page is ever let in. A non-zero exit or no such line → report the output as
+it stands and stop.
 
 The one-shot is spent on the first request and exchanged for an `HttpOnly`
 cookie, so it authenticates exactly one navigation. A server reused from

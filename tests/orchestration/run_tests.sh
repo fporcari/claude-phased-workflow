@@ -4086,6 +4086,52 @@ assert "S65: the guard fails when the close stops waiting for the browser pass" 
   '[ -n "$(s65_guard "$S65_MUT")" ]'
 rm -rf "$S65_MUT"
 
+echo "== S66: the launcher and the dashboard start detached, never as background commands =="
+# 6.42.0 — Claude Code 2.1.285 stops a run_in_background command at its time
+# limit (2 h at most), which killed a multi-phase run and the dashboard server
+# mid-flight. Both now start from a foreground call in a session of their own;
+# the watch ends on run-end or on the pid file, and a stale [>] is reset only
+# when the launcher is gone.
+s66_guard() {  # $1 = a skills dir; prints one line per violation
+  S66_R="$1/run-workflow/SKILL.md"
+  S66_D="$1/dashboard/SKILL.md"
+  grep -q 'runtime.py" detach "$T-run.log" "$T-run.pid"' "$S66_R" 2>/dev/null \
+    || echo "$S66_R: the launcher is not started through runtime.py detach"
+  grep -q 'kill -0 "$(cat "$T-run.pid")"' "$S66_R" 2>/dev/null \
+    || echo "$S66_R: the watch no longer checks the launcher pid"
+  grep -q 'tee "$T-run.log"' "$S66_R" 2>/dev/null \
+    && echo "$S66_R: the launcher is teed from a tool call again"
+  grep -q 'with `run_in_background`' "$S66_R" "$S66_D" 2>/dev/null \
+    && echo "a skill starts a long-lived process with run_in_background again"
+  grep -q 'server.py" --detach' "$S66_D" 2>/dev/null \
+    || echo "$S66_D: the dashboard server is not started with --detach"
+  grep -q -- '-run\.pid' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "resume-workflow: the stale-[>] reset no longer checks the launcher pid"
+}
+S66_OUT="$(s66_guard "$SKILLS_DIR")"
+[ -z "$S66_OUT" ] || echo "  offending: $S66_OUT"
+assert "S66: run-workflow, dashboard and resume-workflow hold the detached launch" \
+  '[ -z "$S66_OUT" ]'
+S66_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S66_MUT/"
+python3 - "$S66_MUT/run-workflow/SKILL.md" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+s = s.replace('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/runtime.py" detach "$T-run.log" "$T-run.pid" bash',
+              'bash') + '\nbash run-workflow.sh 2>&1 | tee "$T-run.log"\n'
+open(p, 'w').write(s)
+PY
+assert "S66: the guard fails when the launcher goes back to a teed tool call" \
+  '[ -n "$(s66_guard "$S66_MUT")" ]'
+rm -rf "$S66_MUT"
+S66_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S66_MUT/"
+sed -i.bak 's/server.py" --detach/server.py"/' "$S66_MUT/dashboard/SKILL.md"
+assert "S66: the guard fails when the dashboard server stops detaching" \
+  '[ -n "$(s66_guard "$S66_MUT")" ]'
+rm -rf "$S66_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

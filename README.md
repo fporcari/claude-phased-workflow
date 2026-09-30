@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.41.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.42.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -316,7 +316,7 @@ claude
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 ```
 
-**453 assertions over 64 scenarios** (S1–S65, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**456 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -362,6 +362,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.42.0 | The run and the dashboard start detached, from a foreground call, since Claude Code 2.1.285 stops a background command at its time limit: `runtime.py detach` for the launcher (own session, `$T-run.pid`), `server.py --detach` for the dashboard; the watch ends on `run-end` or on a launcher gone without it, the Monitor is re-armed on its deadline, and `/resume-workflow` resets a stale `[>]` only when the launcher is gone. |
 | 6.41.0 | `sonnet` is back in the autonomous palette, narrowly: at `medium`, for a phase that is mechanical and fully specified (nothing to invent, a few files, no design decision, no shared contract); `opus` everywhere else and in doubt, and never on the `Repair` row. The 6.13.0 exclusion was measured on Sonnet 5; the reopening rests on Sonnet 5.5's docs and a partial benchmark (same outcome as opus in half the wall time, about opus/`medium` cost), archived under `tests/benchmark/results/run-2026-09-29-sonnet55-partial/`. |
 | 6.40.1 | A benchmark to re-measure Sonnet for mechanical phases: `tests/benchmark/sonnet55.sh` runs opus 5.5 at `low`/`medium` against sonnet 5.5 at `medium`/`high` on the shipped `/goal` contract, over `fixture` and `fixture-seeded` (whose plan is restored in the current `.phased/` layout; its hidden edge case is the `REGISTRY` test), with the decision rule fixed in the script before the numbers; `bench.sh` archives a run under `results/` when `BENCH_OUT` is set. |
 | 6.40.0 | Three modes, one field: `Mode: manual` brings back the chat per phase with you inside the build and the foreman between them, `clarify?` included — cited from the plan it proceeds, proposed you confirm it, unknown you answer and the foreman is told (`clarify: noted`); `Mode: assisted` is 6.38's one conversation with an executor per phase; `interactive` and a missing `Mode:` read as manual |

@@ -1,9 +1,11 @@
-"""Writer lock and outcome check for the launchers.
+"""Writer lock, outcome check and detached launch for the launchers.
 
 `lock` re-executes the caller holding an exclusive flock on the plan's
 transport, so two launchers (or a launcher and an agent session) never write
 the same plan. `record` checks a session's outcome commit — one legal plan
 transition, clean tree, history preserved — and folds the session log into it.
+`detach` starts a command in a session of its own, output appended to a log,
+so no tool call that launched it can reap it.
 """
 import argparse
 import fcntl
@@ -30,6 +32,17 @@ def lock(path, command):
     os.set_inheritable(fd, True)
     os.environ['PHASED_RUN_LOCK_PID'] = str(os.getpid())
     os.execvp(command[0], command)
+
+
+def detach(log, pidfile, command):
+    log = Path(log)
+    log.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(log, os.O_CREAT | os.O_WRONLY | os.O_APPEND, 0o600)
+    with os.fdopen(fd, 'ab') as out:
+        child = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=out,
+                                 stderr=subprocess.STDOUT, start_new_session=True)
+    Path(pidfile).write_text('%d\n' % child.pid)
+    print('launched pid %d — log %s' % (child.pid, log))
 
 
 def record(plan, before, log, name):
@@ -73,6 +86,10 @@ def main():
     own = commands.add_parser('lock')
     own.add_argument('path')
     own.add_argument('command', nargs=argparse.REMAINDER)
+    launch = commands.add_parser('detach')
+    launch.add_argument('log')
+    launch.add_argument('pidfile')
+    launch.add_argument('command', nargs=argparse.REMAINDER)
     outcome = commands.add_parser('record')
     for field in ('plan', 'before', 'log', 'name'):
         outcome.add_argument(field)
@@ -80,6 +97,8 @@ def main():
     try:
         if args.action == 'lock':
             lock(args.path, args.command)
+        elif args.action == 'detach':
+            detach(args.log, args.pidfile, args.command)
         else:
             record(args.plan, args.before, args.log, args.name)
     except (RuntimeError, OSError, subprocess.CalledProcessError) as error:

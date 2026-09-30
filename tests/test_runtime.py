@@ -35,6 +35,28 @@ class RuntimeTest(unittest.TestCase):
                 child.wait(timeout=5)
             self.assertEqual(subprocess.run(prefix + ['true']).returncode, 0)
 
+    def test_detach_starts_its_own_session_and_writes_the_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / 'transport/run.log'
+            pidfile = Path(directory) / 'run.pid'
+            probe = ('import os, time; print(os.getsid(0), os.getpgid(0), flush=True); '
+                     'time.sleep(30)')
+            result = subprocess.run([sys.executable, str(RUNTIME), 'detach', str(log),
+                                     str(pidfile), sys.executable, '-c', probe],
+                                    capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            pid = int(pidfile.read_text())
+            try:
+                self.assertIn('launched pid %d' % pid, result.stdout)
+                deadline = time.monotonic() + 5
+                while not (log.exists() and log.read_text()) and time.monotonic() < deadline:
+                    time.sleep(.02)
+                self.assertEqual(log.read_text().split(), [str(pid), str(pid)])
+                self.assertNotEqual(os.getsid(pid), os.getsid(0))
+                self.assertEqual(log.stat().st_mode & 0o777, 0o600)
+            finally:
+                os.killpg(pid, 15)
+
     def test_only_committed_clean_outcomes_can_archive_logs(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'repo'
