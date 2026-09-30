@@ -442,7 +442,7 @@ How a skill surfaces state depends on whether the user is at the keyboard:
   present. `/execute-phase` runs one chat at a time with the user watching, so
   a desktop notification on each phase outcome is the right, cheap signal.
 - **PushNotification** — when the user may be away. `/run-workflow` launches a
-  background run they are meant to walk away from. Where the push lands is the
+  detached run they are meant to walk away from. Where the push lands is the
   user's own notification setup, never this chain's business. Reserve it for
   what is worth an interruption: the
   **first** failure of a run, any plan-defect consult (the run holds for the

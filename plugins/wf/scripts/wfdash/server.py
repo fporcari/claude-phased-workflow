@@ -664,6 +664,9 @@ def main():
                     help='report the live server on this repository with a '
                          'fresh one-shot URL, and start nothing; exit 1 when '
                          'there is none')
+    ap.add_argument('--detach', action='store_true',
+                    help='serve from a session of its own and return once the '
+                         'URL line is printed, so the caller cannot reap it')
     args = ap.parse_args()
     if args.probe:
         found = probe(args.cwd, owner=args.owner)
@@ -691,11 +694,26 @@ def main():
                           f'repository — the page has no owner to send to.')
     srv = serve(args.port or DEFAULT_PORT, args.port is None)
     Handler.cookie_port = srv.server_address[1]
+    ready = None
+    if args.detach:
+        ready_r, ready = os.pipe()
+        if os.fork():
+            os.close(ready)
+            os._exit(0 if os.read(ready_r, 1) else 1)
+        os.close(ready_r)
+        os.setsid()
     write_registry(Handler.board.repo, Handler.cookie_port, Handler.token)
     print(f'wfdash on http://127.0.0.1:{srv.server_address[1]}/?k={new_one_shot()}'
-          f'  repo: {Handler.board.repo}', flush=True)
+          f'  repo: {Handler.board.repo}  pid {os.getpid()}', flush=True)
     if owner_note:
         print(owner_note, flush=True)
+    if ready is not None:
+        # Released before the parent returns: a caller reading to EOF would hang.
+        null = os.open(os.devnull, os.O_RDWR)
+        for fd in (0, 1, 2):
+            os.dup2(null, fd)
+        os.write(ready, b'1')
+        os.close(ready)
     srv.serve_forever()
 
 

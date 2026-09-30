@@ -38,7 +38,7 @@ flowchart TD
 | `/write-workflow` | branch + plan **+ worktree** | branch + plan **only** | worktree moves to execution |
 | "Automate everything?" | inferred — interactive unless the user says robottino, and the skill is told *don't ask* | an **explicit** question, asked before the plan is written (it selects the format) | new fork |
 | `/run-all-phases` | must be launched from inside the plan's root | launched from anywhere; creates-or-attaches the workspace | plan location + workspace lifecycle |
-| Walking away | the loop is a child of the Claude app process tree | notification when it ends, or when a phase goes `[!]` | notification, not detachment — see D2 |
+| Walking away | the loop is a child of the Claude app process tree | notification when it ends, or when a phase goes `[!]` | notification from the launching session; the launcher detached since 6.42.0 — see D2 |
 | `/execute-phase` (manual mode) | one approval gate, then runs; verification burden lands on the user per phase, often on trivial or context-dependent checks | bigger phases bounded by "something demoable exists"; strong model; questions asked live as they arise (a trivial "try this" interruption stays a sizing defect, see J3); a human `Verify:` list at the end | item J |
 | Interrupted run | nothing finds it from another chat | find the workflow across worktrees **and branches**, ask which, drop the user in, analyse, repair by hand | the largest missing piece |
 | `/finalize-workflow` | must run where the branch is checked out | runs from anywhere; squashes onto `Parent:`, removes the worktree, leaves the user in the main repo | plan location + cleanup |
@@ -157,7 +157,9 @@ inside that phase's commit, breaking the clean-tree invariant red-baseline attri
 on, so the events go to stdout and the log lives outside the repo; `osascript` in the
 launcher — the launcher must stay silent under the test suite, and the local ping belongs to
 `/execute-phase` where the user is present; and detachment (per D2) — a detached run has no
-session to notify from.
+session to notify from. *Superseded in 6.42.0* (D2): the launcher is detached, the watching
+session stays, and `run-end` — or the pid check when even that cannot arrive — replaces the
+background command's completion as the end signal.
 
 *Amended right after the release, on the user's decision:* where a notification lands
 (desktop, phone, anything else) is the user's own setup, managed by hand — never named
@@ -491,7 +493,13 @@ writable once the first lands. Rolling wave, three macros:
 steps are a strict subset of the new skill's analysis. See A0 for the retirement path
 and for the one step that must be ported verbatim.
 
-**D2 · Detachment is probably not needed.** The original worry was that the loop dies
+**D2 · Detachment is probably not needed.** *Reversed in 6.42.0:* Claude Code 2.1.285
+stops a background command at its time limit (2 h at most), so an attached multi-phase run
+is killed mid-flight. The launcher is now detached (`runtime.py detach`: own session, pid
+file, log outside the repo) and the objection below no longer holds — the session that
+launched it still watches the log with the Monitor and sends the pushes, so there is still a
+session to notify from; only the run no longer dies with it. The original reasoning, kept
+for the record: The original worry was that the loop dies
 with the Claude app, since it lives in the app's process tree. But "I have to do the
 shopping" means the user leaves the house, not that the Mac shuts down. If the app
 stays open, the run survives and a live session can send the notification. Full
