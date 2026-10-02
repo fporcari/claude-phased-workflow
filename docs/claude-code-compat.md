@@ -112,6 +112,11 @@ only (`agentId` absent), and `skill.prompt` on `wf:execute-phase`. A model alias
 the engine stops resolving at `turn.step` runs the worker on a wrong model — the
 line under the prompt is where that shows. It reads the plan format `next-phase.py` reads
 (`hooks/plan.js`), so a change of the plan's phase or `Run:` line breaks it too.
+Also `$.prompt.fill` (a command that needs its argument is drafted), and a
+scan of `.claude/worktrees/*/.phased/active/` for the foreman chat. **Rollout:** on
+2.1.287 mods are gated server-side — `claude plugin test` there answers "hooks
+modules are turned off in this process: the rollout switch served off" until the
+account is enabled — so a missing band is first a rollout question, then a bug.
 Optional by construction: a break costs the button, never a workflow.
 
 ### genropy-worktree

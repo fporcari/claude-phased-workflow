@@ -110,3 +110,67 @@ test('execute-phase is told the button set model and effort', async ($, on) => {
   expect((await $.skill.prompt({ skill: 'wf:execute-phase', text: 'BODY' })).text)
     .toBe('BODY\n\nwf-bar: this chat runs Phase 2 on opus / low, set by the button.')
 })
+
+test('☰ wf opens the palette: every user command, the ones that fit now undimmed', async ($, on) => {
+  stubPlan(on, PLAN)
+  const ran = recordCommands(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ key: 'wf-cmd-close-phase' })).toBeUndefined()
+  await ui.press({ key: 'wf-menu' })
+  expect((await ui.find({ key: 'wf-cmd-execute-phase' }))?.props.dimColor).toBe(false)
+  expect((await ui.find({ key: 'wf-cmd-close-phase' }))?.props.dimColor).toBe(true)
+  expect((await ui.find({ key: 'wf-cmd-dashboard' }))?.props.dimColor).toBe(false)
+  await ui.press({ key: 'wf-cmd-dashboard' })
+  expect(ran).toEqual(['wf:dashboard'])
+  await ui.press({ key: 'wf-menu' })
+  expect(await ui.find({ key: 'wf-cmd-dashboard' })).toBeUndefined()
+})
+
+test('a [>] phase offers close-phase, which runs without clearing the chat', async ($, on) => {
+  stubPlan(on, PLAN.replace('[ ] **Phase 2', '[>] **Phase 2'))
+  const ran = recordCommands(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'wf-menu' })
+  expect((await ui.find({ key: 'wf-cmd-close-phase' }))?.props.dimColor).toBe(false)
+  await ui.press({ key: 'wf-cmd-close-phase' })
+  expect(ran).toEqual(['wf:close-phase'])
+})
+
+test('a command that needs its argument is drafted in the prompt, not run', async ($, on) => {
+  stubPlan(on, PLAN)
+  const ran = recordCommands(on)
+  const drafts: string[] = []
+  on('prompt.fill', ($, e) => {
+    drafts.push(e.text)
+    return { isFilled: true }
+  })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'wf-menu' })
+  await ui.press({ key: 'wf-cmd-issue' })
+  expect(drafts).toEqual(['/wf:issue '])
+  expect(ran).toEqual([])
+})
+
+test('the foreman chat finds the plan in its worktree and never offers to build the phase', async ($, on) => {
+  mock.clock(on)
+  on('fs.list', ($, e) => {
+    const p = String(e.path ?? '')
+    if (p.endsWith('.claude/worktrees')) return { value: [{ name: 'foo', kind: 'dir', size: 0, isLink: false }] }
+    if (p.endsWith('.claude/worktrees/foo/.phased/active')) return { value: [{ name: 'foo', kind: 'dir', size: 0, isLink: false }] }
+    return { value: [] }
+  })
+  on('fs.read', () => ({ value: PLAN }))
+  on('session.start', () => ({ cwd: '/work' }))
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  on('ui.status', () => ({ value: undefined }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'wf · foo · 1/2 · foreman' })).toBeDefined()
+  expect(await ui.find({ key: 'wf-next' })).toBeUndefined()
+  await ui.press({ key: 'wf-menu' })
+  expect((await ui.find({ key: 'wf-cmd-execute-phase' }))?.props.dimColor).toBe(true)
+  expect((await ui.find({ key: 'wf-cmd-doctor' }))?.props.dimColor).toBe(false)
+})

@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.47.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.48.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -308,7 +308,7 @@ claude
 
 ```bash
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
-claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the button
+claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the palette (needs mods turned on)
 ```
 
 **451 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
@@ -321,7 +321,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 
 ## The button above the prompt
 
-`wf-bar` is a separate plugin of this marketplace, a [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) (Claude Code 2.1.287 or later). In a chat whose folder holds `.phased/active/<slug>/plan.md` it draws one line above the prompt: the workflow, the phases done, and the next step as a button. In the worker that is `▶ execute-phase · Phase N: <title> · <model> / <effort>`, from the phase's `Run:` line: pressed, it clears the chat, runs every request of the chat on that model and effort — subagents keep their own — and launches `/wf:execute-phase`, which is told so and skips its model check. A line under the prompt names the model actually running, which the model menu does not show. On a `[!]` the button is `/wf:repair-phase`, with every phase `[x]` `/wf:quality-check`; nothing on an autonomous plan, nothing while Claude works. The skill it launches keeps its own gate. Without it, or on an older Claude Code: `/clear`, the model menu, `/execute-phase` — and `/execute-phase` asks when the chat's model or effort is not the phase's.
+`wf-bar` is a separate plugin of this marketplace, a [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) (Claude Code 2.1.287 or later). In a chat whose folder holds `.phased/active/<slug>/plan.md` it draws one line above the prompt: the workflow, the phases done, and the next step as a button. In the worker that is `▶ execute-phase · Phase N: <title> · <model> / <effort>`, from the phase's `Run:` line: pressed, it clears the chat, runs every request of the chat on that model and effort — subagents keep their own — and launches `/wf:execute-phase`, which is told so and skips its model check. A line under the prompt names the model actually running, which the model menu does not show. On a `[!]` the button is `/wf:repair-phase`, with every phase `[x]` `/wf:quality-check`; nothing on an autonomous plan, nothing while Claude works. Beside it `☰ wf` opens a palette of every command you can run — Phase (`execute-phase`, `close-phase`, `repair-phase`), Plan (`resume-workflow`, `run-workflow`, `quality-check`, `finalize-workflow`, `doctor`), Other (`dashboard`, `write-workflow`, `import-workflow`, `issue`, `pull-request`, `help`) — with the ones that fit the plan's state highlighted; `issue` is drafted in the prompt for its number. The band shows in the foreman chat too: it finds the plan in `.claude/worktrees/*/`, says `foreman`, and never offers to build the phase there — `run-workflow` is its next step on an autonomous plan, `dashboard` and `doctor` sit in the palette. The skill it launches keeps its own gate. Without it, or on an older Claude Code: `/clear`, the model menu, `/execute-phase` — and `/execute-phase` asks when the chat's model or effort is not the phase's.
 
 ```bash
 claude plugin install wf-bar@claude-phased-workflow
@@ -364,6 +364,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.48.0 | `wf-bar` grows `☰ wf`, a palette of every user command grouped as Phase / Plan / Other, the ones that fit the plan's state highlighted, `close-phase` among them on a `[>]` phase; and the band shows in the foreman chat too, which finds the plan in its worktree and never offers to build the phase. |
 | 6.47.0 | `/scope-workflow` is gone: `/write-workflow` interrogates a vague start itself — after the look at the code, a fact looked up and never asked, one question per turn with its recommended answer — until every field the plan needs is settled. |
 | 6.46.0 | The last trace of `assisted` goes: `Mode: assisted` is no longer read as manual but rejected by the validator like any unknown mode, and no skill, ref or page mentions it. |
 | 6.45.0 | `assisted` is retired: two modes, manual (foreman + worker) and autonomous; `/execute-phase` builds only in the worker, the executor runs only unattended, and a plan saying `Mode: assisted` reads as `manual` with a validator warning. |

@@ -42,3 +42,36 @@ export function nextAction(plan) {
   if (head.marker === '!') return { ...base, command: 'wf:repair-phase' }
   return { ...base, command: null }
 }
+
+export const GROUPS = [
+  ['Phase', ['execute-phase', 'close-phase', 'repair-phase']],
+  ['Plan', ['resume-workflow', 'run-workflow', 'quality-check', 'finalize-workflow', 'doctor']],
+  ['Other', ['dashboard', 'write-workflow', 'import-workflow', 'issue', 'pull-request', 'help']],
+]
+
+// Skills whose argument is required: the button drafts the command, the user completes it.
+export const NEEDS_ARGS = new Set(['issue'])
+
+// The worker builds the phase; the foreman — a chat whose plan sits in a worktree below it — never does.
+export function relevant(plan, action, role) {
+  const on = new Set(['resume-workflow', 'dashboard', 'help'])
+  if (!plan) {
+    for (const c of ['write-workflow', 'import-workflow', 'issue']) on.add(c)
+    return on
+  }
+  const head = action.phase
+  if (plan.mode === 'autonomous') {
+    on.add(head ? 'run-workflow' : 'quality-check')
+    if (!head) on.add('finalize-workflow')
+    return on
+  }
+  if (!head) {
+    for (const c of ['quality-check', 'finalize-workflow', 'pull-request']) on.add(c)
+    return on
+  }
+  if (head.marker === '!') on.add('repair-phase')
+  if (role === 'worker' && (head.marker === ' ' || head.marker === '>')) on.add('execute-phase')
+  if (role === 'worker' && head.marker === '>') on.add('close-phase')
+  if (role === 'foreman') on.add('doctor')
+  return on
+}
