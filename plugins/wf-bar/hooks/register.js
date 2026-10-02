@@ -15,14 +15,15 @@ async function dirs($, path) {
   return (await $.fs.list(path).catch(() => [])).filter((d) => d.kind === 'dir').map((d) => d.name)
 }
 
-// The worker sits in the plan's checkout; the foreman in the checkout the worktree hangs from.
+// The plan's own checkout first, then the worktrees below a project chat. Which chat is the
+// foreman cannot be read from here — /execute-phase refuses to build in it.
 async function locate($) {
   const here = await dirs($, ACTIVE)
-  if (here.length === 1) return { role: 'worker', dir: `${ACTIVE}/${here[0]}`, slug: here[0] }
+  if (here.length === 1) return { dir: `${ACTIVE}/${here[0]}`, slug: here[0] }
   if (here.length > 1) return null
   const found = []
   for (const w of await dirs($, WORKTREES)) {
-    for (const slug of await dirs($, `${WORKTREES}/${w}/${ACTIVE}`)) found.push({ role: 'foreman', dir: `${WORKTREES}/${w}/${ACTIVE}/${slug}`, slug })
+    for (const slug of await dirs($, `${WORKTREES}/${w}/${ACTIVE}`)) found.push({ dir: `${WORKTREES}/${w}/${ACTIVE}/${slug}`, slug })
   }
   return found.length === 1 ? found[0] : null
 }
@@ -34,8 +35,8 @@ async function readState($) {
   if (text === null) return null
   const plan = parsePlan(text)
   const action = nextAction(plan)
-  const primary = where.role === 'worker' ? action.command : plan.mode === 'autonomous' && action.phase ? 'wf:run-workflow' : null
-  return { role: where.role, slug: where.slug, ...action, command: primary, on: [...relevant(plan, action, where.role)] }
+  const primary = plan.mode === 'autonomous' ? (action.phase ? 'wf:run-workflow' : action.command) : action.command
+  return { slug: where.slug, ...action, command: primary, on: [...relevant(plan, action)] }
 }
 
 async function refresh($) {
@@ -90,7 +91,7 @@ export function register(on) {
     const { Box, Text, Button } = $.ui.resolve(e)
     const s = state
     const idle = !e.props.isWorking
-    const head = [Text({ dimColor: true, children: [`wf · ${s.slug} · ${s.done}/${s.total}${s.role === 'foreman' ? ' · foreman' : ''}`] })]
+    const head = [Text({ dimColor: true, children: [`wf · ${s.slug} · ${s.done}/${s.total}`] })]
     if (s.command && idle) head.push(Button({ key: 'wf-next', label: label(s), onPress: () => launch($, s, s.command) }))
     head.push(Button({ key: 'wf-menu', label: open ? '✕ wf' : '☰ wf', onPress: () => { open = !open; $.ui.invalidate('ui.render') } }))
     const rows = [Box({ flexDirection: 'row', columnGap: 2, children: head })]

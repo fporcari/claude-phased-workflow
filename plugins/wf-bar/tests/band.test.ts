@@ -154,7 +154,7 @@ test('a command that needs its argument is drafted in the prompt, not run', asyn
   expect(ran).toEqual([])
 })
 
-test('the foreman chat finds the plan in its worktree and never offers to build the phase', async ($, on) => {
+test('a chat opened on the project finds the plan in its worktree and offers the next phase', async ($, on) => {
   mock.clock(on)
   on('fs.list', ($, e) => {
     const p = String(e.path ?? '')
@@ -168,9 +168,9 @@ test('the foreman chat finds the plan in its worktree and never offers to build 
   on('ui.status', () => ({ value: undefined }))
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'wf · foo · 1/2 · foreman' })).toBeDefined()
-  expect(await ui.find({ key: 'wf-next' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'wf · foo · 1/2' })).toBeDefined()
+  expect((await ui.find({ key: 'wf-next' }))?.props.label).toBe('▶ execute-phase · Phase 2: TH UI for foo · opus / low')
   await ui.press({ key: 'wf-menu' })
-  expect((await ui.find({ key: 'wf-cmd-execute-phase' }))?.props.dimColor).toBe(true)
+  expect((await ui.find({ key: 'wf-cmd-execute-phase' }))?.props.dimColor).toBe(false)
   expect((await ui.find({ key: 'wf-cmd-doctor' }))?.props.dimColor).toBe(false)
 })

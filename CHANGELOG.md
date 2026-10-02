@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.48.1 — 2026-10-02
+
+6.48.0 told the worker from the foreman by where the plan sat: in the chat's own checkout, the worker; in a worktree below it, the foreman, which got no `execute-phase` button. But the worker is usually opened with the project's + too — in the main checkout, like the foreman — and `/execute-phase` has always found the plan's worktree from there, so the button vanished from the very chat that needs it. The mod cannot read a chat's title, so it stops guessing: every chat on the project gets the plan's next step and the full palette. The guard moves to where the title is readable: `/execute-phase` reads its own chat's title with the same `get_session` call its model check makes, and in `wf:<slug>:foreman` it stops before marking anything and says to open a new chat on the project. S67 pins it.
+
 ## 6.48.0 — 2026-10-02
 
 The band becomes a palette. Beside the next-step button `wf-bar` draws `☰ wf`, which opens every user command in three rows — Phase, Plan, Other — with the ones that fit the plan's state highlighted and the others dimmed but pressable: `close-phase` lights up on a `[>]` phase, `repair-phase` on a `[!]`, `quality-check`, `finalize-workflow` and `pull-request` when every phase is `[x]`, `run-workflow` on an autonomous plan; `resume-workflow`, `dashboard` and `help` always. A command whose argument is required (`issue`) is drafted in the prompt instead of run. And the band now shows in the foreman chat too: a chat with no plan in its own checkout looks for one in `.claude/worktrees/*/`, labels itself `foreman`, and never offers `execute-phase` there — the worker builds. Only `execute-phase` clears the chat and pins model and effort; every other command runs as typed. Note for testing: on Claude Code 2.1.287 mods are switched on server-side, and `claude plugin test` reports "the rollout switch served off" where they are not yet; the suite runs on 2.1.285 with `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`.

@@ -52,8 +52,7 @@ export const GROUPS = [
 // Skills whose argument is required: the button drafts the command, the user completes it.
 export const NEEDS_ARGS = new Set(['issue'])
 
-// The worker builds the phase; the foreman — a chat whose plan sits in a worktree below it — never does.
-export function relevant(plan, action, role) {
+export function relevant(plan, action) {
   const on = new Set(['resume-workflow', 'dashboard', 'help'])
   if (!plan) {
     for (const c of ['write-workflow', 'import-workflow', 'issue']) on.add(c)
@@ -70,8 +69,8 @@ export function relevant(plan, action, role) {
     return on
   }
   if (head.marker === '!') on.add('repair-phase')
-  if (role === 'worker' && (head.marker === ' ' || head.marker === '>')) on.add('execute-phase')
-  if (role === 'worker' && head.marker === '>') on.add('close-phase')
-  if (role === 'foreman') on.add('doctor')
+  if (head.marker === ' ' || head.marker === '>') on.add('execute-phase')
+  if (head.marker === '>') on.add('close-phase')
+  on.add('doctor')
   return on
 }

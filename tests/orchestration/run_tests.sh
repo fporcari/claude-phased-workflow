@@ -4033,6 +4033,27 @@ assert "S66: the guard fails when the dashboard server stops detaching" \
   '[ -n "$(s66_guard "$S66_MUT")" ]'
 rm -rf "$S66_MUT"
 
+echo "== S67: /execute-phase never builds in the foreman's chat =="
+# 6.48.1 — a chat opened with the project's + sits in the main checkout, the
+# worker and the foreman alike, so nothing outside the chat can tell them apart;
+# the chat's own title can, and /execute-phase reads it before marking anything.
+s67_guard() {  # $1 = a skills dir; prints one line per violation
+  S67_E="$1/execute-phase/SKILL.md"
+  grep -q '^\*\*Never in the foreman.s chat\.\*\*' "$S67_E" 2>/dev/null \
+    || echo "$S67_E: nothing stops a phase from being built in the foreman's chat"
+  grep -q '`wf:<slug>:foreman` → stop before anything is marked' "$S67_E" 2>/dev/null \
+    || echo "$S67_E: the foreman's title does not stop the build"
+}
+S67_OUT="$(s67_guard "$SKILLS_DIR")"
+[ -z "$S67_OUT" ] || echo "  offending: $S67_OUT"
+assert "S67: /execute-phase refuses the foreman's chat" '[ -z "$S67_OUT" ]'
+S67_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S67_MUT/"
+sed -i.bak 's/`wf:<slug>:foreman` → stop before anything is marked/`wf:<slug>:foreman` → go on/' "$S67_MUT/execute-phase/SKILL.md"
+assert "S67: the guard fails when the foreman's title no longer stops the build" \
+  '[ -n "$(s67_guard "$S67_MUT")" ]'
+rm -rf "$S67_MUT"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"
