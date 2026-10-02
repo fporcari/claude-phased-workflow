@@ -8,7 +8,6 @@ resolution the dashboard still does before it queues a request:
   - the target is the title `foreman.json` names: no foreman, a foreman whose
     chat is not running, and a live one are three distinct answers;
   - the title beats every other chat in the list, whatever its position;
-  - a retired `Mode: assisted` reads as manual, so its foreman is reachable.
 
 No live session is read and none is written to.
 
@@ -18,7 +17,6 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'plugins' / 'wf' / 'scripts' / 'wfdash'))
-import core  # noqa: E402
 import inbox  # noqa: E402
 
 PID = 4242
@@ -28,7 +26,6 @@ live = {'name': TITLE, 'live': True, 'pid': PID, 'session_id': 'stub'}
 dead = {'name': TITLE, 'live': False, 'pid': None, 'session_id': 'stub'}
 
 assert 'error' in inbox.foreman_target({'mode': 'autonomous', 'foreman': None}, [live])
-assert core.plan_mode({'mode': 'assisted'}) == 'manual'
 assert inbox.foreman_target(dict(plan, mode='manual'), [live])['pid'] == PID
 assert inbox.foreman_target(plan, [])['error'].endswith('it is gone')
 assert 'not running' in inbox.foreman_target(plan, [dead])['error']

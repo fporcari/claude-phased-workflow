@@ -117,7 +117,7 @@ judges; `verify.md` says *"here is what you must exercise"* — the user does.
 
 `Mode:` decides two things at once: how the work runs, and the route a decision
 takes from the person who owns it to the phase that needs it. Two values, one
-per way of working, and `assisted` — retired in 6.45.0 — reads as `manual`:
+per way of working:
 
 - `manual` — **foreman + worker, with the user inside the build.** The phase is
   built in the worker, where the user is, so a change of mind, a study or a browser pass

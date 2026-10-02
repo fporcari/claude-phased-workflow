@@ -488,11 +488,11 @@ BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
 MODES = ('autonomous', 'manual')
 # `interactive` (up to 6.39.0) is read as `manual`, the relay it meant until
-# 6.38.0, and told so; `assisted` (6.40.0–6.44.0), retired in 6.45.0, the same.
+# 6.38.0, and told so.
 # `Channel:` (6.30.0–6.37.0) named where decisions travel
 # separately from the mode; since 6.38.0 that follows from Mode: alone. Neither
 # is rejected, neither is rewritten.
-LEGACY_MODES = {'interactive': 'manual', 'assisted': 'manual'}
+LEGACY_MODES = {'interactive': 'manual'}
 CHANNEL_RE = re.compile(r'^Channel:\s*(\S+)\s*$')
 # `> Batches: 1 <label> | 2 <label> | ...` — the planned subdivision, numbered
 # from 1. The commits refer to it as `batch M/K`, so a body that does not parse

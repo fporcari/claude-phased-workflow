@@ -454,9 +454,9 @@ def selection(path=None, text=None):
 
 
 def plan_mode(meta):
-    """The plan's `Mode:` as the plugin reads it: `interactive`, `assisted` and no header are `manual`."""
+    """The plan's `Mode:` as the plugin reads it: `interactive` and no header are `manual`."""
     mode = (meta.get('mode') or 'manual').strip().lower()
-    return 'manual' if mode in ('interactive', 'assisted') else mode
+    return 'manual' if mode == 'interactive' else mode
 
 
 def plan_shape(path, slug, directory, sel, foreman_dir=None):

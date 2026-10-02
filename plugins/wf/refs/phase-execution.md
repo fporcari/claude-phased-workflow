@@ -130,7 +130,7 @@ all three (`contracts.md` → *Where decisions travel*). **This is the single
 source of the fork** — the skills and the sections below cite it, they never
 restate it.
 
-| what travels | `Mode: manual` — and `interactive`, the retired `assisted`, and a plan carrying no `Mode:` | `Mode: autonomous` |
+| what travels | `Mode: manual` — and `interactive`, and a plan carrying no `Mode:` | `Mode: autonomous` |
 |---|---|---|
 | a **question** the plan's author owns | UP first as `clarify?` to the foreman, at the gate and mid-phase alike (`refs/foreman.md` → *Clarify*): its answer cites the plan → the phase proceeds; it proposes a plan edit → the user confirms it in the phase chat; it does not know → the phase chat asks the user, and tells the foreman what was decided | there is no gate: the executor closes `[!]` with a `plan-defect claim` and the launcher holds while the foreman decides (`refs/foreman.md` → *Plan-defect claims*) |
 | an **outcome** — done, FAILED, blocked, closed short, result rejected | one message to the foreman chat, best-effort (*Notify the foreman*) | one message to the foreman chat, best-effort |

@@ -44,10 +44,7 @@ The third command gives `BASE`, the commit that added the plan. Everything after
 ## Step 1b: The foreman
 
 Every plan has a foreman: `Mode: manual` and `Mode: autonomous` — `interactive`
-and a plan carrying no `Mode:` read as manual, and so does the retired `assisted`.
-A retired `assisted` plan never took command: there is no `foreman.json`, which
-is the migration case below, and the *Actualising an older plan* offer writes
-`manual` into its header.
+and a plan carrying no `Mode:` read as manual.
 
 On a manual or autonomous plan, read `.phased/active/<slug>/foreman.json` (protocol, file
 format and take-command mechanics live once in `foreman.md` → *The foreman*):
@@ -119,7 +116,7 @@ Something needs action → propose it via AskUserQuestion: reset a stale `[>]` t
 
 - **After a quality check** — only what `/quality-check` → *The final touch* sends here: a finding that needs a surface the plan never built (a table, a page, a migration). ONE phase for all such findings together, written to the same bar as above; a correction on a decided design never arrives here, the foreman applies it in the final touch. Measured on the field: findings routed one phase each turned a three-phase plan into thirteen, through two rounds of high-effort review.
 
-- **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent (and `Mode: interactive` or `Mode: assisted` rewritten as the `manual` they read as), and on an attended plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
+- **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent (and `Mode: interactive` rewritten as the `manual` it reads as), and on an attended plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
 
   **Fill in defaults, never gaps.** A missing `Run:` is a default made explicit (`opus` / `high`), which is why proposing it is legitimate. A missing `Done:`, `Pattern:` or `Decisions:` is something its author never settled: report it and stop there, exactly as `/import-workflow` Step 3 does. Inventing a plausible `Done:` makes an open question look closed, and nobody checks it twice.
 

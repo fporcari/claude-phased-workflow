@@ -16,7 +16,7 @@ Runs `${CLAUDE_PLUGIN_ROOT}/scripts/run-workflow.sh`, which launches one fresh `
 
 1. **Read** the active plan (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py" --resolve`; from outside the plan's root, `--plans` per `common.md` → *Plan location* — the launcher itself attaches or creates the plan's workspace), and read its `Mode:` header first:
    - **`Mode: autonomous`** → the plan was written for this; proceed with the check below.
-   - **`Mode: manual`** (and `interactive` or `assisted`, read as manual) → say so plainly: this plan was written for `/execute-phase`, a human gate before every phase. Offer the conversion — refine every phase to the autonomous-ready bar, add the `## Suggested execution config` table, flip the header to `Mode: autonomous`, and commit the rewrite as `wf: refine plan for autonomous run` (step 6) — or stop and leave it attended. **Never convert silently.**
+   - **`Mode: manual`** (and `interactive`, read as manual) → say so plainly: this plan was written for `/execute-phase`, a human gate before every phase. Offer the conversion — refine every phase to the autonomous-ready bar, add the `## Suggested execution config` table, flip the header to `Mode: autonomous`, and commit the rewrite as `wf: refine plan for autonomous run` (step 6) — or stop and leave it attended. **Never convert silently.**
    - **No header** → a legacy plan (pre-Mode). Treat it as today, with no accusation, and let the check below decide whether it is ready.
 
 2. For every remaining `[ ]` phase, check it is **autonomous-ready**:

@@ -470,9 +470,8 @@ assert "classifier parses a pre-4.0 MEMORY.md" 'printf "%s" "$LEG_OUT" | grep -q
 assert "classifier reports the [x] that forces adoption" 'printf "%s" "$LEG_OUT" | grep -q "^  1 \[x\]"'
 assert "classifier still finds the next pending phase" 'printf "%s" "$LEG_OUT" | grep -q "recommendation: next: 2"'
 
-# -- the import takes command on every plan (6.45.0 retired assisted, the one
-#    mode without a foreman): Mode: is the one routing field (6.38.0), and a
-#    legacy source carrying Channel:, Mode: interactive or Mode: assisted is
+# -- the import takes command on every plan: Mode: is the one routing field
+#    (6.38.0), and a legacy source carrying Channel: or Mode: interactive is
 #    read by its Mode: with the header reported, never rejected.
 s17_source() {  # $1..$n = header lines; prints the validator's verdict on them
   S17_S="$OT/src-plan.md"
@@ -491,8 +490,8 @@ assert "S17: the autonomous import takes command and launches the run here" \
    grep -qE "autonomous →.*launch /run-workflow here" "$S17_IMP"'
 assert "S17: a legacy Mode: interactive source is read as manual, with a warning" \
   's17_source "Mode: interactive" | grep -q "warning: Mode: interactive is retired and read as manual"'
-assert "S17: a retired Mode: assisted source is read as manual, with a warning" \
-  's17_source "Mode: assisted" | grep -q "warning: Mode: assisted is retired and read as manual"'
+assert "S17: a Mode: assisted source is an unknown mode, an error" \
+  's17_source "Mode: assisted" | grep -q "error: Mode: .assisted. is not one of"'
 assert "S17: the manual import takes command and sends each phase to a chat of its own" \
   'grep -qE "manual →.*foreman.*/execute-phase in a new chat" "$S17_IMP"'
 assert "S17: an imported Channel: header is left untouched, never rewritten" \
@@ -731,9 +730,8 @@ S19_O="$(s19_channel "Mode: manual")"
 assert "S19: a plan with no Channel: validates clean, no warning" \
   '[ -z "$(printf "%s" "$S19_O" | grep -E "error:|warning:")" ]'
 S19_O="$(s19_channel "Mode: assisted")"
-assert "S19: Mode: assisted, retired, is one warning, read as manual" \
-  '[ "$(printf "%s" "$S19_O" | grep -c "warning:")" = 1 ] &&
-   printf "%s" "$S19_O" | grep -q "warning: Mode: assisted is retired and read as manual"'
+assert "S19: Mode: assisted is an unknown mode, an error" \
+  'printf "%s" "$S19_O" | grep -q "error: Mode: .assisted. is not one of: autonomous, manual"'
 S19_O="$(s19_channel "Mode: interactive")"
 assert "S19: Mode: interactive is one warning, read as manual" \
   '[ "$(printf "%s" "$S19_O" | grep -c "warning:")" = 1 ] &&
@@ -1043,7 +1041,7 @@ s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   fi
   S24_R="$1/run-workflow/SKILL.md"
   S24_I="$1/import-workflow/SKILL.md"
-  grep -q "Mode: manual.\*\* (and .interactive. or .assisted., read as manual)" "$S24_R" 2>/dev/null \
+  grep -q "Mode: manual.\*\* (and .interactive., read as manual)" "$S24_R" 2>/dev/null \
     || echo "$S24_R: pre-flight does not read the attended Mode: headers"
   grep -q "Offer the conversion" "$S24_R" 2>/dev/null \
     || echo "$S24_R: missing the interactive-to-autonomous conversion offer"
@@ -3651,12 +3649,12 @@ assert "S59: the guard fails when the brief hands over a Channel: again" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
 
-echo "== S60: every entrance has one attended road — assisted is retired, not half-removed =="
+echo "== S60: every entrance has one attended road — assisted is gone, not half-removed =="
 # A mode half-removed is worse than one left whole: a road that reads as
-# supported while no skill implements it. 6.45.0 retired `assisted`, so this
-# guard asks, per entrance, that the attended road is the manual one —
-# foreman + worker — and that `assisted` survives only as a header read as
-# manual. Each mutation below grows one piece of the retired road back.
+# supported while no skill implements it. 6.45.0 retired `assisted` and 6.46.0
+# removed its last trace, so this guard asks, per entrance, that the attended
+# road is the manual one — foreman + worker — and that no skill or ref names
+# `assisted` at all. Each mutation below grows one piece of the retired road back.
 s60_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S60_IMP="$1/import-workflow/SKILL.md"
   S60_RES="$1/resume-workflow/SKILL.md"
@@ -3709,13 +3707,13 @@ s60_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   if grep -qE 'Launch the executor|partial — gate|read the plan, not the prose' "$S60_EXE" 2>/dev/null; then
     echo "$S60_EXE: the gate still launches an executor"
   fi
-  # (6) `assisted` survives only as a header read as manual.
+  # (6) no skill or ref names `assisted`.
   for S60_F in "$1"/*/SKILL.md "$2"/*.md; do
     while IFS= read -r S60_L; do
       [ -n "$S60_L" ] || continue
-      echo "$S60_F: still speaks of assisted as a mode — \"$(echo "$S60_L" | cut -c1-60)…\""
+      echo "$S60_F: still names assisted — \"$(echo "$S60_L" | cut -c1-60)…\""
     done <<EOF
-$(grep -i 'assisted' "$S60_F" 2>/dev/null | grep -vE 'read as|reads as|retired')
+$(grep -i 'assisted' "$S60_F" 2>/dev/null)
 EOF
     if grep -qE 'Channel: (in-chat|relayed)|`in-chat`|`relayed`|relayed road' "$S60_F" 2>/dev/null; then
       echo "$S60_F: still speaks the retired Channel: vocabulary"

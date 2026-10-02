@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.45.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.46.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -75,7 +75,7 @@ The plan is the same; what changes is **where you are while a phase is built**:
 | Interfaces | a mockup at the gate, then the real page as it takes shape | runs straight through with no visual judgment: the eye check lands on the bill, for you, at the end |
 | Login | always the human | always the human — fixed rule, no exceptions |
 
-On two UI programmes, four out of five mid-build changes of mind came from seeing the page take shape — that is manual work, and 6.45.0 retired `assisted`, the one-conversation mode whose executor could not hear them: with the worker cleared between phases and its model set by the ▶ button, it no longer bought anything manual does not. A plan saying `Mode: assisted` reads as `manual`.
+On two UI programmes, four out of five mid-build changes of mind came from seeing the page take shape — that is manual work.
 
 ## The loop: never a hamster in a wheel
 
@@ -169,7 +169,7 @@ An unattended executor **cannot ask**. Struggle is routed without needing to be 
 
 Everything above the gate — foreman, inspector, messages, receipts — is a **channel, not a control**: it exists because when nobody sits at the gate, disk and messages are the only way a decision can travel. With the same person at every gate it removes nobody from the loop and adds a hop in the middle of one that was already closed. One measured 10-phase attended run paid exactly that: 11 chats, ~35 messages, ~25 apparatus commits against 10 phase commits, nine clarify rounds — almost all of them repairing a plan written before the code was read ([#22](https://github.com/fporcari/claude-phased-workflow/issues/22)).
 
-So the mode says where decisions travel, and there is no second field. **`Mode: manual`** — foreman + worker: the user lives in the worker, which builds every phase and is cleared between them, and the foreman holds the plan's reasons and its analysis, never cleared. **`Mode: autonomous`** — the relay, unchanged, for a run nobody is watching. (6.30.0 introduced a separate `Channel:` header, retired by 6.38.0; 6.38.0 then folded the relayed attended mode into one conversation, and 6.40.0 brought it back as `manual` once two programmes showed where the design actually moves. 6.45.0 retired `assisted`, the one-conversation mode. A plan saying `Mode: interactive` or `Mode: assisted` reads as `manual`, and the validator says so.)
+So the mode says where decisions travel, and there is no second field. **`Mode: manual`** — foreman + worker: the user lives in the worker, which builds every phase and is cleared between them, and the foreman holds the plan's reasons and its analysis, never cleared. **`Mode: autonomous`** — the relay, unchanged, for a run nobody is watching. (6.30.0 introduced a separate `Channel:` header, retired by 6.38.0; 6.38.0 then folded the relayed attended mode into one conversation, and 6.40.0 brought it back as `manual` once two programmes showed where the design actually moves. A plan saying `Mode: interactive` reads as `manual`, and the validator says so.)
 
 What stays in both modes is what paid at every size: the tracked plan, a re-runnable `Done:`, one phase commit per phase, `notes.md` as the record every gate reads. Phases are sized on **decision boundaries**, not file counts — one per point where a result changes what comes next — and a phase too large to read as one diff is committed in planned `> Batches:` and still closes once.
 
@@ -366,6 +366,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.46.0 | The last trace of `assisted` goes: `Mode: assisted` is no longer read as manual but rejected by the validator like any unknown mode, and no skill, ref or page mentions it. |
 | 6.45.0 | `assisted` is retired: two modes, manual (foreman + worker) and autonomous; `/execute-phase` builds only in the worker, the executor runs only unattended, and a plan saying `Mode: assisted` reads as `manual` with a validator warning. |
 | 6.44.0 | Manual is foreman + worker: the worker's ▶ button (`wf-bar`) clears the chat, runs it on the phase's `Run:` model and effort (main loop only, through `turn.step`) and launches `/execute-phase`; `/close-phase` records and no longer clears. |
 | 6.43.0 | A manual phase chat is reused: `/close-phase` clears it on a `done` close (`clear_session`, or `/clear` asked where refused), `/execute-phase` checks the chat's model and effort against the phase's `Run:` line before it starts; and `wf-bar`, a separate Claude Code mod (≥ 2.1.287), puts the next step's button above the prompt. |
