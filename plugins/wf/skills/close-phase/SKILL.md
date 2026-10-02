@@ -8,9 +8,8 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage
 Turn finished work into a closed phase: naming review, Done gate, `[x]`
 record, ONE phase commit. **The happy path only** — a failing phase closes
 `[!]` where it failed, inside the executor; this one never writes `[!]` or `[~]`.
-Attended plans only (`manual`, `assisted`): an autonomous run's executor
-closes inline. A manual plan's foreman is told the outcome from here; an
-assisted plan has no foreman, and nothing is sent.
+Manual plans only: an autonomous run's executor closes inline. The foreman is
+told the outcome from here.
 
 Three ways in, one mechanic:
 
@@ -85,8 +84,7 @@ the **closed short** case (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` →
 *When the phase outgrows its chat or its executor*): say which criteria are
 unreached, propose the `Done:` narrowed to the sub-result that exists, and
 close on the user's ok — the `closed short` outcome, whose re-planning takes
-its road in `refs/phase-execution.md` → *Routing a decision*: the foreman on a
-manual plan, the user at this gate on an assisted one.
+its road in `refs/phase-execution.md` → *Routing a decision*: the foreman.
 
 ## Step 3: Naming review
 
@@ -98,15 +96,14 @@ Renames re-run the narrow signal per the ref before anything commits.
 
 A phase held open for the human's checks carries a `> Testing:` note (`${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` → *Awaiting the human's checks*): drop it here — `[x]` and the note contradict each other, and the checks it was waiting for are recorded as `> Verify:` like every other.
 
-**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the outcome is the `result rejected` one instead of the `done` one (`refs/phase-execution.md` → *Rejected result*), because what follows is a re-planning, not the next phase — the foreman's on a manual plan, the user's here at this gate on an assisted one, per *Routing a decision*.
+**Closing a phase whose result the person rejected** is this same close with a different report: the `> Review:` verdict is recorded like any other note, and the outcome is the `result rejected` one instead of the `done` one (`refs/phase-execution.md` → *Rejected result*), because what follows is a re-planning, not the next phase — the foreman's, per *Routing a decision*.
 
 Exactly as `refs/phase-execution.md` specifies — *Record the outcome*, *The
 phase commit*, *Notify the foreman*: the `[x]` entry with `> Done:`, `> Files:` (ALL touched
 files), the `> Review:`/`> Verify:` notes handed over by the caller; ONE
 phase commit `wf(phase N): <title>` carrying code, naming-review edits and
-plan update together, whatever `partial` commits preceded it — the gate
-commit and the executor's included; then, on a manual plan, the foreman
-message, best-effort — an assisted plan has no foreman and sends nothing. A
+plan update together, whatever `partial` commits preceded it; then the foreman
+message, best-effort. A
 rename worth remembering goes to `notes.md` under `## Phase N`
 before the commit.
 
@@ -121,8 +118,7 @@ plan the next phase runs in this same chat, the worker, which is already in
 the plan's checkout: the ▶ button above the prompt (`wf-bar`) clears it, sets
 the phase's model and effort and launches `/execute-phase`; without it,
 `/clear`, the model menu, `/execute-phase`. This close records, it never
-clears — what is left to say about the phase is said here first; on an assisted plan it is `/execute-phase`
-again, in this same conversation, which is where the gate already is.
+clears — what is left to say about the phase is said here first.
 
 
 ## Rules

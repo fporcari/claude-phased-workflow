@@ -11,7 +11,7 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
 2. **Do not implement.** The user runs `/execute-phase` afterwards.
 
-**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` only at Step 4, only after Step 2 settled `Mode: manual` or `Mode: autonomous` — an assisted plan creates no relay, so it is never read — core conventions, the contract layer planning authors, the take-command protocol. **The board** an attended plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
+**Shared conventions:** read `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md` once at start, and `${CLAUDE_PLUGIN_ROOT}/refs/foreman.md` only at Step 4, once Step 2 has settled the mode — core conventions, the contract layer planning authors, the take-command protocol. **The board** a manual plan closes with is specified once in `${CLAUDE_PLUGIN_ROOT}/refs/board.md` — read it at Step 6, not before.
 
 ## Step 1: Where are we
 
@@ -47,19 +47,18 @@ Before building the plan, settle how it will run. This is one explicit question,
 Derive the recommendation from the work just discussed and state it in one line with its reason (there is no fixed default; the recommendation follows the task):
 
 - **UI, declarative, or visual work — anything whose success is "I'll know it when I see it", and whose design will still move once the real page exists** → recommend **manual**. The field count behind it: on two UI programmes, four out of five mid-build changes of mind came from seeing the page take shape, and none of them could have been settled at a gate.
-- **Work a human wants to approve phase by phase, whose decisions all fit the gate** — logic, data, a UI whose design the mockup already settled → recommend **assisted**.
+- **Work a human wants to approve phase by phase** — logic, data, a UI whose design the mockup already settled → **manual** too: the gate before each phase is the approval, and the worker builds after it whether or not you stay in the build.
 - **Heavy refactor, project startup, mechanical migration — well-specified work with a measurable done** → recommend **autonomous**.
 
-Ask with `AskUserQuestion` (recommended option first, per `common.md`), three options:
+Ask with `AskUserQuestion` (recommended option first, per `common.md`), two options:
 
 - **Manual** — `/execute-phase` in the worker, one chat for every phase, cleared between them (the ▶ button of `wf-bar` clears it and sets the phase's model and effort), built there with you in it: you change your mind, study and try it in the browser while it takes shape. This chat becomes the foreman: plan questions go up to it first, and you answer only what the plan does not.
-- **Assisted** — `/execute-phase` in this same conversation, phase after phase: a human approval gate before each phase, the build in a fresh-context executor, your checks and the close back here. One conversation holds the whole workflow; nothing is relayed.
 - **Autonomous** — `/run-workflow` runs the whole plan unattended, one self-correcting sub-session per phase; decisions travel to the chat that launched it through the foreman relay.
 
 The answer routes the rest of this skill — and it is the only routing question there is: where decisions travel follows from it (`contracts.md` → *Where decisions travel*).
 
 - **Autonomous** → read `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
-- **Manual** or **Assisted** → continue with this file's format; the plan carries `Mode: manual` or `Mode: assisted`.
+- **Manual** → continue with this file's format; the plan carries `Mode: manual`.
 
 ## Step 3: Build the plan
 
@@ -112,7 +111,7 @@ border.
 
 **Sizing.** The boundary depends on the mode chosen in Step 2.
 
-*Attended plans (manual, assisted) — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
+*Manual plans — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
 
 *Autonomous plans — one coherent result, closed by a re-runnable `Done:`* (the stricter rules live in `${CLAUDE_PLUGIN_ROOT}/refs/write-workflow-autonomous.md`).
 
@@ -146,7 +145,7 @@ Only after approval, and before writing anything.
 
 Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a leading issue number kept as prefix (`123-fix-login`).
 
-**On the base branch** → `wf/<slug>`, no question asked — in a worktree on a manual or autonomous plan, in this checkout on an assisted one, below.
+**On the base branch** → `wf/<slug>`, no question asked — in a worktree, below.
 
 **On a feature branch** → the default is to **adopt it** as the workflow branch: `.phased/` goes there, no new branch, and `Parent:` is that branch's own base. You created that branch on purpose; nesting another inside it buys nothing. The alternative, offered in the branch line above, is `wf/<slug>` off it — take it when the workflow is a distinct chunk the user may want to merge or drop on its own; the current branch then becomes the `Parent:`.
 
@@ -158,11 +157,11 @@ mkdir -p .claude/worktrees/<slug>/.claude && cp .claude/settings.local.json .cla
 command -v activate_gnr_context >/dev/null && (cd .claude/worktrees/<slug> && activate_gnr_context)
 ```
 
-From here on every path and every git command of this skill is anchored at the worktree root (`common.md` → *Plan location*): `.phased/` and the plan commit land there, never in this checkout. The third line is the `genropy-worktree` plugin, when installed: it writes the GenroPy env (own `.gnr/`, own ports) into the worktree's `.claude/settings.local.json`, which Claude Code reads at session start — so every chat and sub-session opened there runs `gnr` against the worktree's code, and planning is the one moment early enough for that. The branch line flips it to "in this checkout" (`git switch -c wf/<slug>`); on `Mode: assisted` that is the default instead, since this conversation IS the workspace and the executors it launches work in its checkout. Not offered on the adopt path — a branch already checked out cannot be added as a worktree. `/finalize-workflow` removes the worktree; the user never manages it.
+From here on every path and every git command of this skill is anchored at the worktree root (`common.md` → *Plan location*): `.phased/` and the plan commit land there, never in this checkout. The third line is the `genropy-worktree` plugin, when installed: it writes the GenroPy env (own `.gnr/`, own ports) into the worktree's `.claude/settings.local.json`, which Claude Code reads at session start — so every chat and sub-session opened there runs `gnr` against the worktree's code, and planning is the one moment early enough for that. The branch line flips it to "in this checkout" (`git switch -c wf/<slug>`). Not offered on the adopt path — a branch already checked out cannot be added as a worktree. `/finalize-workflow` removes the worktree; the user never manages it.
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` at the workspace root (the worktree, when one was opened) holding `plan.md`, an empty `notes.md`, and — on `Mode: manual` and `Mode: autonomous` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it). On `Mode: assisted` there is no relay to command: no `foreman.json`, no take-command commit; this chat titles itself `wf:<slug>` (`set_session_title` on `session_id: "self"`, best-effort) and carries the work.
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` at the workspace root (the worktree, when one was opened) holding `plan.md`, an empty `notes.md`, and — on `Mode: manual` and `Mode: autonomous` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
 
 ```
 # Context: <branch-name>
@@ -214,11 +213,11 @@ In a worktree, both commands run there (`git -C .claude/worktrees/<slug>`). Veri
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
 Workspace: .claude/worktrees/<slug> — /run-workflow and /resume-workflow find it from here.   (manual and autonomous plans only)
-autonomous → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; launch /run-workflow here (a successor foreman chat opens on fable / high — foreman.md). manual → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; /execute-phase in a new chat, one per phase, opened in the workspace above. assisted → no relay: /execute-phase runs here, phase after phase, every gate in this conversation, each phase built by a fresh executor.
+autonomous → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; launch /run-workflow here (a successor foreman chat opens on fable / high — foreman.md). manual → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; /execute-phase in a new chat opened in the workspace above, the worker, which then builds every phase.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 
-Where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3 (manual and autonomous plans; on an assisted one the title is legibility only and nothing is asked).
+Where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.
 
 The last line repeats Phase 1's `Run:` hint, because the model goes to the executor at launch and the effort to this chat's own exploration — reading it afterwards is too late.
 

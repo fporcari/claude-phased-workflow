@@ -3,10 +3,7 @@
 The supervision half of the shared conventions, split out so that only its
 consumers pay for it: the skills that take command, depose, message upward or
 report to the decision-maker read this file. **The chat hierarchy belongs to
-the two relayed modes, `manual` and `autonomous`**: an assisted workflow is one
-conversation with no relay (`refs/phase-execution.md` → *Routing a decision*),
-and it reaches this file only for the reporting register and the wf-lessons
-ledger. A headless
+both modes, `manual` and `autonomous`**. A headless
 `-agent` session needs only the *Sending to the foreman* message formats, and
 only when it reaches its notify step — read that section then, not at start.
 Core conventions stay in `refs/common.md`; the contract layer in
@@ -31,9 +28,7 @@ once every phase is `[x]` — the corrections the user's check and the pre-commi
 review turn up, applied and committed by the foreman itself when no decision is
 open (`/quality-check` → *Step 5: One final touch*): the human is at the gate,
 no phase is left to command, a phase's ceremony buys nothing and a phase per
-finding is a loop. An assisted plan has no foreman at all: its one
-conversation decides at the gate and launches an executor subagent for the
-build — a different mode, not a breach of this rule.
+finding is a loop.
 
 **The foreman's own model is advice too, written down for the same reason the
 `Run:` hint is**: a chat's model and effort are chosen when it opens, before any
@@ -108,9 +103,7 @@ absence is migration, not an error):
    ends up attending two chats, the exact thing the protocol exists to avoid.
    Advice, like the rename: nothing breaks if ignored, the fallback absorbs it.
 
-**The other chats of a workflow title themselves too.** An assisted
-workflow's one conversation is `wf:<slug>`, once, when `/write-workflow` or
-`/execute-phase` first runs there; a manual workflow's phase chat — the **worker**, one
+**The other chats of a workflow title themselves too.** A manual workflow's phase chat — the **worker**, one
 chat cleared between phases — is `wf:<slug>:phase-N — <phase title>`, retitled at every phase, which is also how a resuming chat finds it
 (`refs/phase-execution.md` → *Resuming a `[>]` phase*). Only a foreman's title
 is an address, so this is legibility more than protocol: the session list stops
@@ -123,8 +116,7 @@ HERE and nowhere else (a skill cites this section, it never restates a
 number): cross-session `SendMessage` in the CLI needs **≥ 2.1.224**; the
 desktop session-management tools (`list_sessions`/`send_message`) have no
 version floor but exist only in desktop chats; a `claude -p` sub-session
-reaches neither world (field-tested, below); an assisted plan needs none
-of it. The launcher's own floors
+reaches neither world (field-tested, below). The launcher's own floors
 (`/goal` ≥ 2.1.139, `fable` ≥ 2.1.170) are detected at runtime by
 `run-workflow.sh`, which declares its fallback in a NOTE. **Declare the
 channel when reporting state**: a skill that reports where the workflow

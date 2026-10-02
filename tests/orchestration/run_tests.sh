@@ -470,10 +470,10 @@ assert "classifier parses a pre-4.0 MEMORY.md" 'printf "%s" "$LEG_OUT" | grep -q
 assert "classifier reports the [x] that forces adoption" 'printf "%s" "$LEG_OUT" | grep -q "^  1 \[x\]"'
 assert "classifier still finds the next pending phase" 'printf "%s" "$LEG_OUT" | grep -q "recommendation: next: 2"'
 
-# -- the import takes command on the relayed modes only: Mode: is the one
-#    routing field (6.38.0), and a legacy source carrying Channel: or
-#    Mode: interactive is read by its Mode: with the header reported, never
-#    rejected or rewritten.
+# -- the import takes command on every plan (6.45.0 retired assisted, the one
+#    mode without a foreman): Mode: is the one routing field (6.38.0), and a
+#    legacy source carrying Channel:, Mode: interactive or Mode: assisted is
+#    read by its Mode: with the header reported, never rejected.
 s17_source() {  # $1..$n = header lines; prints the validator's verdict on them
   S17_S="$OT/src-plan.md"
   { echo "# Context: imported"; echo "Parent: develop"
@@ -487,25 +487,24 @@ assert "S17: and the obsolete header is reported, not silently dropped" \
   's17_source "Mode: interactive" "Channel: relayed" | grep -q "warning: Channel: header is obsolete"'
 S17_IMP="$SKILLS_DIR/import-workflow/SKILL.md"
 assert "S17: the autonomous import takes command and launches the run here" \
-  'grep -q "and only there, write .foreman.json." "$S17_IMP" &&
+  'grep -q "Importing is taking command" "$S17_IMP" &&
    grep -qE "autonomous →.*launch /run-workflow here" "$S17_IMP"'
 assert "S17: a legacy Mode: interactive source is read as manual, with a warning" \
-  's17_source "Mode: interactive" | grep -q "warning: Mode: interactive is read as manual"'
-assert "S17: the assisted import takes no command and continues here" \
-  'grep -qE "No .foreman.json., no take-command" "$S17_IMP" &&
-   grep -qE "assisted →.*/execute-phase here" "$S17_IMP"'
+  's17_source "Mode: interactive" | grep -q "warning: Mode: interactive is retired and read as manual"'
+assert "S17: a retired Mode: assisted source is read as manual, with a warning" \
+  's17_source "Mode: assisted" | grep -q "warning: Mode: assisted is retired and read as manual"'
 assert "S17: the manual import takes command and sends each phase to a chat of its own" \
   'grep -qE "manual →.*foreman.*/execute-phase in a new chat" "$S17_IMP"'
 assert "S17: an imported Channel: header is left untouched, never rewritten" \
   'grep -q "keeps it untouched" "$S17_IMP"'
-assert "S17: the relay layer is not read on an assisted import" \
-  'grep -q "an assisted import creates no relay and never reads it" "$S17_IMP"'
-# Mutation: the two modes collapse back into one — foreman.json on every plan.
+assert "S17: the import keeps no assisted road" \
+  '! grep -qE "assisted →|On .Mode: assisted. it is not" "$S17_IMP"'
+# Mutation: the import stops taking command.
 S17_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S17_MUT/"
-sed -i.bak 's/and only there, write `foreman.json`/write `foreman.json`/' \
+sed -i.bak 's/\*\*Importing is taking command\.\*\* Write `foreman.json`/Write `foreman.json` when asked/' \
   "$S17_MUT/import-workflow/SKILL.md" && rm -f "$S17_MUT/import-workflow/SKILL.md.bak"
-assert "S17: the guard fails when the import writes foreman.json on every plan" \
-  '! grep -q "and only there, write .foreman.json." "$S17_MUT/import-workflow/SKILL.md"'
+assert "S17: the guard fails when the import stops taking command" \
+  '! grep -q "Importing is taking command" "$S17_MUT/import-workflow/SKILL.md"'
 rm -rf "$S17_MUT"
 
 # -- the mid-run git sequence must not rewrite the commits that were already there
@@ -732,12 +731,13 @@ S19_O="$(s19_channel "Mode: manual")"
 assert "S19: a plan with no Channel: validates clean, no warning" \
   '[ -z "$(printf "%s" "$S19_O" | grep -E "error:|warning:")" ]'
 S19_O="$(s19_channel "Mode: assisted")"
-assert "S19: Mode: assisted validates clean, no warning" \
-  '[ -z "$(printf "%s" "$S19_O" | grep -E "error:|warning:")" ]'
+assert "S19: Mode: assisted, retired, is one warning, read as manual" \
+  '[ "$(printf "%s" "$S19_O" | grep -c "warning:")" = 1 ] &&
+   printf "%s" "$S19_O" | grep -q "warning: Mode: assisted is retired and read as manual"'
 S19_O="$(s19_channel "Mode: interactive")"
 assert "S19: Mode: interactive is one warning, read as manual" \
   '[ "$(printf "%s" "$S19_O" | grep -c "warning:")" = 1 ] &&
-   printf "%s" "$S19_O" | grep -q "warning: Mode: interactive is read as manual since 6.40.0"'
+   printf "%s" "$S19_O" | grep -q "warning: Mode: interactive is retired and read as manual"'
 S19_O="$(s19_channel "Mode: manual" "Channel: in-chat")"
 assert "S19: manual + a leftover Channel: is a warning, not an error" \
   'printf "%s" "$S19_O" | grep -q "warning: Channel: header is obsolete" &&
@@ -1031,8 +1031,10 @@ s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S24_W: missing '## Step 2: The automation fork' heading"
   grep -q "^Mode: manual$" "$S24_W" 2>/dev/null \
     || echo "$S24_W: missing 'Mode: manual' plan header"
-  grep -q "three options" "$S24_W" 2>/dev/null \
-    || echo "$S24_W: the fork no longer offers manual, assisted and autonomous"
+  grep -q "two options" "$S24_W" 2>/dev/null \
+    || echo "$S24_W: the fork no longer offers manual and autonomous"
+  grep -q "recommend \*\*assisted\*\*" "$S24_W" 2>/dev/null \
+    && echo "$S24_W: the fork still recommends the retired assisted mode"
   if grep -q "don't ask" "$S24_W" 2>/dev/null; then
     echo "$S24_W: still carries the retired \"don't ask\" default"
   fi
@@ -1041,11 +1043,11 @@ s24_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   fi
   S24_R="$1/run-workflow/SKILL.md"
   S24_I="$1/import-workflow/SKILL.md"
-  grep -q "Mode: manual. or .Mode: assisted" "$S24_R" 2>/dev/null \
+  grep -q "Mode: manual.\*\* (and .interactive. or .assisted., read as manual)" "$S24_R" 2>/dev/null \
     || echo "$S24_R: pre-flight does not read the attended Mode: headers"
   grep -q "Offer the conversion" "$S24_R" 2>/dev/null \
     || echo "$S24_R: missing the interactive-to-autonomous conversion offer"
-  grep -qE "Mode: (manual|assisted|autonomous)" "$S24_I" 2>/dev/null \
+  grep -qE "Mode: (manual|autonomous)" "$S24_I" 2>/dev/null \
     || echo "$S24_I: does not write a Mode: header into the imported plan"
   return 0
 }
@@ -1587,31 +1589,27 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # title, so a headless child running it becomes a foreman that also executes.
   grep -q 'executes; it does not supervise' "$S30_C" 2>/dev/null \
     || echo "$S30_C: nothing stops an executing session from supervising"
-  # 6.38.0 → 6.40.0 — the hierarchy belongs to the relayed modes, and the
-  # shared fork says so: an assisted workflow is one conversation whose gate
-  # never builds, a manual one is a chat per phase with the foreman between.
-  grep -q 'An assisted workflow is one conversation' "$2/phase-execution.md" 2>/dev/null \
-    || echo "$2/phase-execution.md: the fork does not say an assisted workflow is one conversation"
-  grep -q 'manual workflow is a chat per phase' "$2/phase-execution.md" 2>/dev/null \
-    || echo "$2/phase-execution.md: the fork does not say a manual workflow is a chat per phase"
+  # 6.38.0 → 6.45.0 — the hierarchy belongs to both modes, and the shared
+  # fork says what a manual one is: foreman + worker.
+  grep -q 'manual workflow is foreman + worker' "$2/phase-execution.md" 2>/dev/null \
+    || echo "$2/phase-execution.md: the fork does not say a manual workflow is foreman + worker"
   grep -q 'The chat hierarchy belongs to' "$S30_C" 2>/dev/null \
     || echo "$S30_C: the hierarchy is not scoped to the relayed modes"
-  grep -q '^## Manual — Step 4: Build the phase here' "$1/execute-phase/SKILL.md" 2>/dev/null \
+  grep -q '^## Step 4: Build the phase here' "$1/execute-phase/SKILL.md" 2>/dev/null \
     || echo "$1/execute-phase/SKILL.md: a manual phase is not built in its own chat"
   grep -q 'The stop-loss' "$1/execute-phase/SKILL.md" 2>/dev/null \
     || echo "$1/execute-phase/SKILL.md: a manual phase struggling has no stop-loss"
-  grep -q 'NEVER build the phase here' "$1/execute-phase/SKILL.md" 2>/dev/null \
-    || echo "$1/execute-phase/SKILL.md: the gate may build the phase itself"
-  grep -q '^## Step 4: Launch the executor' "$1/execute-phase/SKILL.md" 2>/dev/null \
-    || echo "$1/execute-phase/SKILL.md: the build is not launched in an executor"
+  grep -q 'This chat builds and does not supervise' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: the worker may supervise the plan"
+  # 6.45.0 — the attended build is the worker's alone: no executor launched
+  # from the gate, and the executor runs unattended only.
+  grep -q 'Launch the executor' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    && echo "$1/execute-phase/SKILL.md: the gate still launches an executor"
   grep -q 'Launched from the workflow chat' "$1/execute-phase-agent/SKILL.md" 2>/dev/null \
-    || echo "$1/execute-phase-agent/SKILL.md: the executor does not know the gate launched it"
-  grep -q 'close nothing' "$1/execute-phase/SKILL.md" 2>/dev/null \
-    || echo "$1/execute-phase/SKILL.md: the executor is not told to hand back unclosed"
-  # 6.4.0 → 6.38.0 — the handover is the disk: nothing to hand over from the
-  # gate, and no live executor to reach.
-  grep -q '^## This conversation does not fill up' "$1/execute-phase/SKILL.md" 2>/dev/null \
-    || echo "$1/execute-phase/SKILL.md: the conversation has no stated way to carry on when full"
+    && echo "$1/execute-phase-agent/SKILL.md: the executor still expects a gate to launch it"
+  # A worker that fills up hands over; an executor's handover is the disk.
+  grep -q '^## Handing over' "$1/execute-phase/SKILL.md" 2>/dev/null \
+    || echo "$1/execute-phase/SKILL.md: the worker has no stated way to carry on when full"
   grep -q 'the disk is the whole handover' "$2/phase-execution.md" 2>/dev/null \
     || echo "$2/phase-execution.md: a live executor is still assumed reachable on resume"
   # 6.1.0 — a message is answered with the delta, not by redrawing the board,
@@ -1685,9 +1683,9 @@ rm -rf "$S30_MUT"
 # The gate builds the phase itself — the whole context saving of 6.38.0 gone.
 S30_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed -i.bak '/NEVER build the phase here/d' "$S30_MUT/execute-phase/SKILL.md" \
+sed -i.bak '/This chat builds and does not supervise/d' "$S30_MUT/execute-phase/SKILL.md" \
   && rm -f "$S30_MUT/execute-phase/SKILL.md.bak"
-assert "S30: the guard fails when the gate may build the phase itself" \
+assert "S30: the guard fails when the worker may supervise the plan" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # The user's answer stops travelling back: the foreman's next reply can
@@ -1701,17 +1699,15 @@ rm -rf "$S30_MUT"
 # A manual phase is no longer built in its own chat.
 S30_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed -i.bak 's/^## Manual — Step 4: Build the phase here/## Manual — Step 4: Launch it/' "$S30_MUT/execute-phase/SKILL.md"
+sed -i.bak 's/^## Step 4: Build the phase here/## Step 4: Launch it/' "$S30_MUT/execute-phase/SKILL.md"
 assert "S30: the guard fails when a manual phase is not built in its chat" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
-# The executor no longer knows it was launched from the gate — it closes [x]
-# on its own and the human's checks never happen.
+# The executor grows the gate-launched mode back.
 S30_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S30_MUT/"
-sed -i.bak 's/Launched from the workflow chat/Notes/g' "$S30_MUT/execute-phase-agent/SKILL.md" \
-  && rm -f "$S30_MUT/execute-phase-agent/SKILL.md.bak"
-assert "S30: the guard fails when the executor forgets who launched it" \
+printf '\n## Launched from the workflow chat\n' >> "$S30_MUT/execute-phase-agent/SKILL.md"
+assert "S30: the guard fails when the executor expects a gate again" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # /execute-phase stops routing plan ambiguities through the shared fork.
@@ -2099,7 +2095,7 @@ s34_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
     || echo "$S34_PE: missing the 'Awaiting the human's checks' mechanic"
   grep -q '> Testing:' "$S34_PE" 2>/dev/null \
     || echo "$S34_PE: the mechanic does not define the > Testing: note"
-  grep -q 'gates the close in the attended modes' "$2/contracts.md" 2>/dev/null \
+  grep -q 'gates the close in the attended mode' "$2/contracts.md" 2>/dev/null \
     || echo "$2/contracts.md: a Verify: now step no longer gates the close"
   for S34_S in execute-phase close-phase; do
     S34_F="$1/$S34_S/SKILL.md"
@@ -3360,31 +3356,15 @@ s56_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   # The silent-skip clause is scoped to the MESSAGE, never to the record.
   grep -q 'the record is written either way' "$2/phase-execution.md" 2>/dev/null \
     || echo "$2/phase-execution.md: the silent notify skip is not scoped to the message"
-  # No routing instruction may name the relay without naming its road: an
-  # unqualified "goes to the foreman" is a relay an assisted workflow cannot
-  # escape, which is how the branch stays half-built while every test passes.
-  # A section whose heading names its mode (`## Manual — …`) is scoped by it.
+  # The routing fork has one source. Since 6.45.0 every plan has a foreman, so
+  # a relay no longer needs qualifying by mode; what must hold is that the
+  # skills which route still reach the fork.
   grep -q '^## Routing a decision' "$2/phase-execution.md" 2>/dev/null \
     || echo "$2/phase-execution.md: the routing fork has no single source"
-  # Swept everywhere the fork has to hold, not only where it was first written.
-  # The two sections that OWN the fork are exempt — they are what the others
-  # cite — and nothing else may name the relay without naming its road.
   for S56_ROUTE in "$1/execute-phase/SKILL.md" "$1/import-workflow/SKILL.md" \
-                   "$1/resume-workflow/SKILL.md" "$2/phase-execution.md" \
-                   "$2/contracts.md"; do
-    case "$S56_ROUTE" in
-      *execute-phase*|*import-workflow*|*resume-workflow*)
-        grep -q 'Routing a decision\|Mode: autonomous' "$S56_ROUTE" 2>/dev/null \
-          || echo "$S56_ROUTE: names no road at all — the fork does not reach it" ;;
-    esac
-    while IFS= read -r S56_L; do
-      [ -n "$S56_L" ] || continue
-      echo "$S56_ROUTE: unconditional relay — \"$(echo "$S56_L" | cut -c1-60)…\""
-    done <<EOF
-$(awk '/^## /{sec=$0} sec !~ /Routing a decision|Notify the foreman|^## Manual — /' "$S56_ROUTE" 2>/dev/null \
-  | grep -E 'clarify\?|to the foreman|the foreman chat is told|write .foreman\.json.|Read .*foreman\.json' \
-  | grep -vE 'manual|assisted|autonomous|Mode:|Routing a decision')
-EOF
+                   "$1/resume-workflow/SKILL.md"; do
+    grep -q 'Routing a decision\|Mode: autonomous' "$S56_ROUTE" 2>/dev/null \
+      || echo "$S56_ROUTE: names no road at all — the fork does not reach it"
   done
   # Nobody anywhere licenses a close without one.
   for S56_F in "$1"/*/SKILL.md "$2"/*.md; do
@@ -3413,12 +3393,11 @@ sed -i.bak 's/A diff with no covering decision/On Mode: autonomous, a diff with 
 assert "S56: the guard fails when the gate becomes mode-conditional" \
   '[ -n "$(s56_guard "$S56_MUT" "$S24_REFS")" ]'
 rm -rf "$S56_MUT"
-# Mutation C — a routing rule loses its road: an unqualified relay, which every
-# other test in the suite would pass.
+# Mutation C — a routing skill stops reaching the fork.
 S56_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S56_MUT/"
-sed -i.bak 's/ask it at this gate per \*Routing a decision\*/send it to the foreman as `clarify?`/' \
+sed -i.bak 's/Routing a decision/the foreman/g; s/Mode: autonomous/an unattended plan/g' \
   "$S56_MUT/execute-phase/SKILL.md" && rm -f "$S56_MUT/execute-phase/SKILL.md.bak"
-assert "S56: the guard fails when a routing rule keeps an unconditional relay" \
+assert "S56: the guard fails when a routing skill stops reaching the fork" \
   '[ -n "$(s56_guard "$S56_MUT" "$S24_REFS")" ]'
 rm -rf "$S56_MUT"
 # Mutation D — the audit stops asking for one, while the close still does:
@@ -3447,8 +3426,8 @@ s57_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
   S57_C="$2/contracts.md"
   grep -q 'a position, not a chat' "$S57_C" 2>/dev/null \
     || echo "$S57_C: authored-check ownership is still bound to a chat"
-  grep -q 'co-located with the gate' "$S57_C" 2>/dev/null \
-    || echo "$S57_C: the interactive mode has no owner for the authored checks"
+  grep -q 'it sits in the foreman chat' "$S57_C" 2>/dev/null \
+    || echo "$S57_C: the authored checks have no owner on a manual plan"
   grep -q 'the executor that builds the phase is never it' "$S57_C" 2>/dev/null \
     || echo "$S57_C: the executor may own the authored checks"
   grep -q 'read-only for the child' "$S57_C" 2>/dev/null \
@@ -3625,7 +3604,7 @@ s59_guard() {  # $1 = a skills dir; prints one line per violation
     || echo "$S59_WRITE: the evidence rule on Files:/Decisions: is gone"
   # The brief hands over the mode, or /write-workflow re-asks what one question
   # at a time should already have settled — and no retired field with it.
-  grep -q '^Mode: <manual|assisted|autonomous>' "$S59_SCOPE" 2>/dev/null \
+  grep -q '^Mode: <manual|autonomous>' "$S59_SCOPE" 2>/dev/null \
     || echo "$S59_SCOPE: the scoping brief hands over no mode"
   if grep -q '^Channel:' "$S59_SCOPE" 2>/dev/null; then
     echo "$S59_SCOPE: the scoping brief still hands over the retired Channel: field"
@@ -3657,10 +3636,10 @@ assert "S59: the guard fails when the recon checklist loses a class" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
 assert "S59: the scoping brief hands the mode over" \
-  'grep -q "^Mode: <manual|assisted|autonomous>" "$SKILLS_DIR/scope-workflow/SKILL.md"'
+  'grep -q "^Mode: <manual|autonomous>" "$SKILLS_DIR/scope-workflow/SKILL.md"'
 # Mutation C — the brief hands over no mode.
 S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
-sed -i.bak '/^Mode: <manual|assisted|autonomous>/d' "$S59_MUT/scope-workflow/SKILL.md" \
+sed -i.bak '/^Mode: <manual|autonomous>/d' "$S59_MUT/scope-workflow/SKILL.md" \
   && rm -f "$S59_MUT/scope-workflow/SKILL.md.bak"
 assert "S59: the guard fails when the brief hands over no mode" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
@@ -3672,138 +3651,81 @@ assert "S59: the guard fails when the brief hands over a Channel: again" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
 
-echo "== S60: every entrance forks on Mode:, and the three roads do different things =="
-# A relay half-removed is worse than one left whole: the interactive road reads
-# as supported while every instruction still routes through a chat that does
-# not exist. Presence of the word "interactive" proves nothing — this guard
-# asks, per entrance, that the autonomous road keeps its relay AND the
-# interactive road states the opposite effect: one conversation, an executor
-# for the build, the verdict at the gate. Twelve entrances, one per
-# operational consequence.
+echo "== S60: every entrance has one attended road — assisted is retired, not half-removed =="
+# A mode half-removed is worse than one left whole: a road that reads as
+# supported while no skill implements it. 6.45.0 retired `assisted`, so this
+# guard asks, per entrance, that the attended road is the manual one —
+# foreman + worker — and that `assisted` survives only as a header read as
+# manual. Each mutation below grows one piece of the retired road back.
 s60_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
   S60_IMP="$1/import-workflow/SKILL.md"
   S60_RES="$1/resume-workflow/SKILL.md"
   S60_CORE="$2/phase-execution.md"
-  # (1) an interactive import writes no foreman.json; an autonomous one does.
-  grep -qE 'No .foreman\.json., no take-command' "$S60_IMP" 2>/dev/null \
-    || echo "$S60_IMP: an interactive import still takes command"
-  grep -q 'and only there, write `foreman.json`' "$S60_IMP" 2>/dev/null \
-    || echo "$S60_IMP: the autonomous import no longer writes foreman.json"
-  # (2) an interactive import continues here; an autonomous one launches the run.
-  grep -q 'assisted → no relay and no foreman' "$S60_IMP" 2>/dev/null \
-    || echo "$S60_IMP: the assisted close does not say where the work continues"
-  grep -qE 'assisted →.*/execute-phase here' "$S60_IMP" 2>/dev/null \
-    || echo "$S60_IMP: an assisted import still sends the user to another chat"
-  grep -qE 'manual →.*/execute-phase in a new chat' "$S60_IMP" 2>/dev/null \
-    || echo "$S60_IMP: a manual import does not send each phase to a chat of its own"
-  grep -qE 'autonomous →.*launch /run-workflow here' "$S60_IMP" 2>/dev/null \
-    || echo "$S60_IMP: the autonomous import lost its launch instruction"
-  # (3) resume names the mode, and does not always name a foreman.
-  grep -q 'One \*\*Mode\*\* line closes the point' "$S60_RES" 2>/dev/null \
-    || echo "$S60_RES: the report still always names a Foreman line"
-  grep -q 'continues in this conversation' "$S60_RES" 2>/dev/null \
-    || echo "$S60_RES: an interactive resume does not say the work continues here"
-  grep -q 'the gate in this same conversation' "$S60_RES" 2>/dev/null \
-    || echo "$S60_RES: the skill map still sends every phase to a new chat"
-  grep -q 'no relay and nothing to take command of' "$S60_RES" 2>/dev/null \
-    || echo "$S60_RES: an interactive resume still runs the take-command protocol"
-  grep -q 'on an assisted plan is inert' "$S60_RES" 2>/dev/null \
-    || echo "$S60_RES: a leftover foreman.json on an assisted plan is still read"
-  # (4) close-short reports in both modes, and re-plans in both.
-  grep -q 'Report that it closed short' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: closing short still reports only to the foreman"
-  grep -q 'at the gate on an assisted one' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: the short close has no assisted road"
-  grep -q 'sized with the user at this same gate' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: the remainder is still always the foreman's to size"
-  # (5) a rejected result routes by the table, not straight to the foreman.
-  grep -q 'the `result rejected` outcome and the' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: a rejected result still messages the foreman unconditionally"
-  # (6) the second failed repair goes out by road, not to the foreman by name.
-  grep -q 'goes out as `blocked`' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: a second failed repair still goes to the foreman by name"
-  grep -q 'user here on an assisted one' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: blocked has no assisted destination"
-  # (7) the fork is keyed on Mode:, and the executor is in the table.
-  grep -q '^| what travels | `Mode: manual`' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: the routing table is not keyed on Mode:"
-  grep -q 'the executor cannot ask, so it stops `blocked`' "$S60_CORE" 2>/dev/null \
-    || echo "$S60_CORE: the fork does not say what a mid-phase question does in an executor"
   S60_REP="$1/repair-phase/SKILL.md"
   S60_DOC="$1/doctor/SKILL.md"
   S60_HLP="$1/help/SKILL.md"
   S60_EXE="$1/execute-phase/SKILL.md"
-  # (8) a failed repair reports blocked by road; a confirmed plan-defect is
-  # fixed by the plan's owner, by road; a [>] phase goes back to its gate.
-  grep -q 'report `blocked` per' "$S60_REP" 2>/dev/null \
-    || echo "$S60_REP: a failed repair still sends the foreman the blocked line unconditionally"
-  grep -q 'said to you here, at this gate, on an assisted plan' "$S60_REP" 2>/dev/null \
-    || echo "$S60_REP: a failed assisted repair has nobody to report to"
-  grep -q 'fixed from there by whoever owns the plan' "$S60_REP" 2>/dev/null \
-    || echo "$S60_REP: a confirmed plan-defect is still always the foreman's to fix"
-  grep -q 'its work resumes here' "$S60_REP" 2>/dev/null \
-    || echo "$S60_REP: a repaired [>] phase has no gate to go back to"
-  if grep -q 'Title this chat' "$S60_REP" 2>/dev/null; then
-    echo "$S60_REP: the repair still titles a chat of its own"
-  fi
-  # (9) doctor re-plans by road, and (10) names an owner, not a chat.
-  grep -q 'this same conversation on `Mode: assisted`' "$S60_DOC" 2>/dev/null \
-    || echo "$S60_DOC: re-planning still always goes to the foreman chat"
-  grep -q 'a position, not a chat' "$S60_DOC" 2>/dev/null \
-    || echo "$S60_DOC: the decision on an edited contract is still a chat's, not a position's"
-  if grep -n 'Close with the next step' -A3 "$S60_DOC" 2>/dev/null \
-      | grep -q 'in the foreman chat for'; then
-    echo "$S60_DOC: the closing next step is still foreman-only"
-  fi
-  # (11) help teaches both roads for a rejected result, and (12) for resume.
-  grep -q 'On `Mode: assisted` that happens with you' "$S60_HLP" 2>/dev/null \
-    || echo "$S60_HLP: a rejected result is still always told to the foreman"
-  grep -q 'that holds the workflow on `Mode: assisted`' "$S60_HLP" 2>/dev/null \
-    || echo "$S60_HLP: the resume route is still always a fresh chat"
-  # help teaches; an unqualified instruction there teaches the relay as if it
-  # were the only road. Three places say where resume runs — the introduction,
-  # the route list, the closing line — and each is checked on its own.
-  S60_HLP_INTRO="$(sed -n '1,20p' "$S60_HLP" 2>/dev/null)"
-  S60_HLP_CLOSE="$(grep -A4 'Close with one line' "$S60_HLP" 2>/dev/null)"
-  printf '%s' "$S60_HLP_INTRO" | grep -q 'Mode: assisted' \
-    || echo "$S60_HLP: the introduction names one road only"
-  printf '%s' "$S60_HLP_CLOSE" | grep -q 'Mode: assisted' \
-    || echo "$S60_HLP: the closing line names one road only"
-  while IFS= read -r S60_L; do
-    [ -n "$S60_L" ] || continue
-    echo "$S60_HLP: unqualified fresh chat — \"$(echo "$S60_L" | cut -c1-52)…\""
-  done <<EOF
-$(grep -nE 'in a fresh chat|open a fresh chat|a fresh chat on `/|one fresh chat' "$S60_HLP" 2>/dev/null \
-  | grep -vE 'manual|assisted|autonomous')
-EOF
-  grep -q 'same conversation, phase after phase' "$S60_HLP" 2>/dev/null \
-    || echo "$S60_HLP: the assisted build is still one fresh chat per phase"
-  grep -q 'Mode: manual' "$S60_HLP" 2>/dev/null \
-    || echo "$S60_HLP: the manual road is not taught"
-  # No skill or ref still speaks the retired vocabulary.
-  for S60_F in "$1"/*/SKILL.md "$2"/*.md; do
-    if grep -qE 'Channel: (in-chat|relayed)|`in-chat`|`relayed`|relayed road' "$S60_F" 2>/dev/null; then
-      echo "$S60_F: still speaks the retired Channel: vocabulary"
-    fi
-  done
-  # The gate commits before it launches, and reads the plan when the executor
-  # returns — the two halves of an executor that is trusted with nothing.
-  grep -q 'wf(phase N): partial — gate' "$S60_EXE" 2>/dev/null \
-    || echo "$S60_EXE: the gate does not commit its decisions before launching"
-  grep -q 'read the plan, not the prose' "$S60_EXE" 2>/dev/null \
-    || echo "$S60_EXE: the gate trusts the executor's summary"
-  # The fork covers outcomes and re-plannings, not questions alone.
+  # (1) every import takes command, and sends the work on by its mode.
+  grep -q 'Importing is taking command' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: an import no longer takes command"
+  grep -qE 'manual →.*/execute-phase in a new chat' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: a manual import does not send the work to the worker"
+  grep -qE 'autonomous →.*launch /run-workflow here' "$S60_IMP" 2>/dev/null \
+    || echo "$S60_IMP: the autonomous import lost its launch instruction"
+  # (2) resume always names a foreman.
+  grep -q 'One \*\*Foreman\*\* line closes the point' "$S60_RES" 2>/dev/null \
+    || echo "$S60_RES: the report does not always name the foreman"
+  grep -q 'Every plan has a foreman' "$S60_RES" 2>/dev/null \
+    || echo "$S60_RES: resume still knows a plan without a foreman"
+  # (3) the shared core routes outcomes and re-plannings by its table.
+  grep -q 'Report that it closed short' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: closing short is not reported"
+  grep -q 'the `result rejected` outcome and the' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: a rejected result does not take its row"
+  grep -q 'goes out as `blocked`' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: a second failed repair has no road"
+  grep -q '^| what travels | `Mode: manual`' "$S60_CORE" 2>/dev/null \
+    || echo "$S60_CORE: the routing table is not keyed on Mode:"
   grep -q 'an \*\*outcome\*\*' "$S60_CORE" 2>/dev/null \
     || echo "$S60_CORE: the fork does not route outcomes"
   grep -q 'a \*\*re-planning\*\*' "$S60_CORE" 2>/dev/null \
     || echo "$S60_CORE: the fork does not route re-plannings"
+  # (4) a failed repair reports blocked by road; a confirmed plan-defect is
+  # fixed by the plan's owner; a [>] phase goes back to its worker.
+  grep -q 'report `blocked` per' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: a failed repair has no road for blocked"
+  grep -q 'fixed from there by whoever owns the plan' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: a confirmed plan-defect has no owner"
+  grep -q 'its work resumes here' "$S60_REP" 2>/dev/null \
+    || echo "$S60_REP: a repaired [>] phase has no worker to go back to"
+  if grep -q 'Title this chat' "$S60_REP" 2>/dev/null; then
+    echo "$S60_REP: the repair still titles a chat of its own"
+  fi
+  grep -q 'a position, not a chat' "$S60_DOC" 2>/dev/null \
+    || echo "$S60_DOC: the decision on an edited contract is a chat's, not a position's"
+  grep -q 'Mode: manual' "$S60_HLP" 2>/dev/null \
+    || echo "$S60_HLP: the manual road is not taught"
+  # (5) the attended build is the worker's: no executor launched from the gate.
+  if grep -qE 'Launch the executor|partial — gate|read the plan, not the prose' "$S60_EXE" 2>/dev/null; then
+    echo "$S60_EXE: the gate still launches an executor"
+  fi
+  # (6) `assisted` survives only as a header read as manual.
+  for S60_F in "$1"/*/SKILL.md "$2"/*.md; do
+    while IFS= read -r S60_L; do
+      [ -n "$S60_L" ] || continue
+      echo "$S60_F: still speaks of assisted as a mode — \"$(echo "$S60_L" | cut -c1-60)…\""
+    done <<EOF
+$(grep -i 'assisted' "$S60_F" 2>/dev/null | grep -vE 'read as|reads as|retired')
+EOF
+    if grep -qE 'Channel: (in-chat|relayed)|`in-chat`|`relayed`|relayed road' "$S60_F" 2>/dev/null; then
+      echo "$S60_F: still speaks the retired Channel: vocabulary"
+    fi
+  done
   return 0
 }
 S60_OUT="$(s60_guard "$SKILLS_DIR" "$S24_REFS")"
 [ -z "$S60_OUT" ] || echo "  offending: $S60_OUT"
-assert "S60: every road is spelled out at every entrance" '[ -z "$S60_OUT" ]'
-# Mutations, one per operational consequence — each leaves the vocabulary in
-# place and changes only what actually happens on one road.
+assert "S60: every entrance has the one attended road" '[ -z "$S60_OUT" ]'
 s60_mutate() {  # $1 = relative file, $2 = sed script; prints the guard's output
   S60_M="$(mktemp -d)"; mkdir -p "$S60_M/refs"
   cp -R "$SKILLS_DIR"/. "$S60_M/"; cp "$S24_REFS"/*.md "$S60_M/refs/"
@@ -3811,39 +3733,33 @@ s60_mutate() {  # $1 = relative file, $2 = sed script; prints the guard's output
   s60_guard "$S60_M" "$S60_M/refs"
   rm -rf "$S60_M"
 }
-assert "S60: fails when an interactive import creates foreman.json" \
-  '[ -n "$(s60_mutate import-workflow/SKILL.md "s/No \`foreman.json\`, no take-command/A \`foreman.json\` all the same/")" ]'
-assert "S60: fails when an interactive import prescribes a new chat" \
-  '[ -n "$(s60_mutate import-workflow/SKILL.md "s|assisted → no relay and no foreman: to carry on, /execute-phase here|assisted → to carry on, launch /execute-phase in a new chat|")" ]'
-assert "S60: fails when closing short always goes to the foreman" \
-  '[ -n "$(s60_mutate refs/phase-execution.md "s/Report that it closed short/Tell the foreman it closed short/")" ]'
-assert "S60: fails when a rejected result always sends the message" \
+assert "S60: fails when an import stops taking command" \
+  '[ -n "$(s60_mutate import-workflow/SKILL.md "s/Importing is taking command/Importing may take command/")" ]'
+assert "S60: fails when an import grows an assisted road back" \
+  '[ -n "$(s60_mutate import-workflow/SKILL.md "\$a\\
+assisted → no relay and no foreman: to carry on, /execute-phase here.")" ]'
+assert "S60: fails when closing short is no longer reported" \
+  '[ -n "$(s60_mutate refs/phase-execution.md "s/Report that it closed short/Note that it closed short/")" ]'
+assert "S60: fails when a rejected result leaves its row" \
   '[ -n "$(s60_mutate refs/phase-execution.md "s/the \`result rejected\` outcome and the/the foreman gets the \`result rejected\` line and the/")" ]'
-assert "S60: fails when a second failed repair always goes to the foreman" \
+assert "S60: fails when a second failed repair loses its road" \
   '[ -n "$(s60_mutate refs/phase-execution.md "s/goes out as \`blocked\`/goes to the foreman as \`blocked\`/")" ]'
 assert "S60: fails when the routing table is keyed on something other than Mode:" \
   '[ -n "$(s60_mutate refs/phase-execution.md "s/^| what travels | \`Mode: manual\`/| what travels | \`Channel: in-chat\`/")" ]'
-assert "S60: fails when an interactive resume prescribes a new chat or a foreman" \
-  '[ -n "$(s60_mutate resume-workflow/SKILL.md "s/One \*\*Mode\*\* line closes the point/One **Foreman** line closes the point/")" ]'
-assert "S60: fails when a leftover foreman.json is read on an interactive plan" \
-  '[ -n "$(s60_mutate resume-workflow/SKILL.md "s/on an assisted plan is inert/on an assisted plan is honoured/")" ]'
-assert "S60: fails when an interactive failed repair sends blocked to the foreman" \
+assert "S60: fails when resume stops naming the foreman" \
+  '[ -n "$(s60_mutate resume-workflow/SKILL.md "s/One \*\*Foreman\*\* line closes the point/One **Mode** line closes the point/")" ]'
+assert "S60: fails when a failed repair sends blocked to the foreman by name" \
   '[ -n "$(s60_mutate repair-phase/SKILL.md "s/report \`blocked\` per/send the foreman the \`blocked\` line per/")" ]'
 assert "S60: fails when a confirmed plan-defect is always the foreman's to fix" \
   '[ -n "$(s60_mutate repair-phase/SKILL.md "s/fixed from there by whoever owns the plan/fixed from there by the foreman/")" ]'
 assert "S60: fails when the repair titles a chat of its own again" \
   '[ -n "$(s60_mutate repair-phase/SKILL.md "s/^## Step 2: Locate the phase, and put it under repair/## Step 2: Title this chat, locate the phase/")" ]'
-assert "S60: fails when doctor re-plans in the foreman chat on every plan" \
-  '[ -n "$(s60_mutate doctor/SKILL.md "s/this same conversation on \`Mode: assisted\`/the foreman chat in every case/")" ]'
-assert "S60: fails when help names one road in the introduction" \
-  '[ -n "$(s60_mutate help/SKILL.md "1,20s/Mode: assisted/the workflow/")" ]'
-assert "S60: fails when help sends the user to a fresh chat with no road" \
-  '[ -n "$(printf "\nLost? Open a fresh chat on \`/wf:resume-workflow\`.\n" > /dev/null; s60_mutate help/SKILL.md "\$a\\
-Lost? Open a fresh chat on \`/wf:resume-workflow\`.")" ]'
-assert "S60: fails when the gate launches before committing its decisions" \
-  '[ -n "$(s60_mutate execute-phase/SKILL.md "s/wf(phase N): partial — gate/wf(phase N): gate/")" ]'
-assert "S60: fails when the gate trusts the executor's summary" \
-  '[ -n "$(s60_mutate execute-phase/SKILL.md "s/read the plan, not the prose/read the executor'"'"'s report/")" ]'
+assert "S60: fails when help teaches the assisted road again" \
+  '[ -n "$(s60_mutate help/SKILL.md "\$a\\
+- **A plan exists, building it by gates (\`Mode: assisted\`).**")" ]'
+assert "S60: fails when the gate launches an executor again" \
+  '[ -n "$(s60_mutate execute-phase/SKILL.md "\$a\\
+## Step 4: Launch the executor")" ]'
 assert "S60: fails when a skill speaks the retired vocabulary again" \
   '[ -n "$(s60_mutate close-phase/SKILL.md "\$a\\
 On Channel: relayed the next phase is a new chat.")" ]'
@@ -4047,17 +3963,16 @@ assert "S64: a near-miss first cell is still rejected as a malformed row" \
   'python3 "$NEXTPHASE" --validate "$S64_DIR/plan.md" 2>&1 | grep -q "is not \"| Phase N | ... |\" or \"| Repair | ... |\""'
 rm -rf "$S64_DIR"
 
-echo "== S65: an interactive plan-defect claim reaches the plan's author before any repair =="
-# 6.39.0 — the executor names the premise its failed attempts leaned on, and the
-# workflow chat, which wrote the plan, judges the claim before /repair-phase
-# sees it; a phase that touches a page is never closed before the browser pass.
+echo "== S65: a failed premise reaches the plan's author before any repair =="
+# 6.39.0 — the executor names the premise its failed attempts leaned on; since
+# 6.45.0 the attended build is the worker's, whose stop-loss sends that premise
+# to the foreman as `clarify?` before any repair. A phase that touches a page is
+# never closed before the browser pass.
 s65_guard() {  # $1 = a skills dir; prints one line per violation
   S65_E="$1/execute-phase/SKILL.md"
   S65_A="$1/execute-phase-agent/SKILL.md"
-  grep -q '^- \*\*`\[!\]` whose `> Issue:` carries `plan-defect claim`\*\*.*BEFORE any repair' "$S65_E" 2>/dev/null \
-    || echo "$S65_E: a plan-defect claim is not routed to the gate before repair"
-  grep -q '^- \*\*`\[!\]`\*\*, no `plan-defect claim`' "$S65_E" 2>/dev/null \
-    || echo "$S65_E: the plain [!] road does not exclude plan-defect claims"
+  grep -q 'send the premise the attempts leaned on as `clarify?`' "$S65_E" 2>/dev/null \
+    || echo "$S65_E: the worker's stop-loss does not send its premise to the plan's author"
   grep -q "never before Step 5's browser pass" "$S65_E" 2>/dev/null \
     || echo "$S65_E: the close does not wait for the browser pass"
   grep -q 'Struggle is a symptom before it is a defect' "$S65_A" 2>/dev/null \
@@ -4073,15 +3988,15 @@ python3 - "$S65_MUT/execute-phase/SKILL.md" <<'PY'
 import sys
 p = sys.argv[1]
 lines = open(p).read().split('\n')
-lines = [l for l in lines if 'carries `plan-defect claim`' not in l]
+lines = [l for l in lines if 'send the premise the attempts leaned on' not in l]
 open(p, 'w').write('\n'.join(lines))
 PY
-assert "S65: the guard fails when the plan-defect road is dropped" \
+assert "S65: the guard fails when the stop-loss stops naming the premise" \
   '[ -n "$(s65_guard "$S65_MUT")" ]'
 rm -rf "$S65_MUT"
 S65_MUT="$(mktemp -d)"
 cp -R "$SKILLS_DIR"/. "$S65_MUT/"
-sed -i.bak "s/never before Step 5's browser pass/after the executor's green/" "$S65_MUT/execute-phase/SKILL.md"
+sed -i.bak "s/never before Step 5's browser pass/once the suite is green/" "$S65_MUT/execute-phase/SKILL.md"
 assert "S65: the guard fails when the close stops waiting for the browser pass" \
   '[ -n "$(s65_guard "$S65_MUT")" ]'
 rm -rf "$S65_MUT"

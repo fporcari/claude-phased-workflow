@@ -1,13 +1,11 @@
 # Phase execution — shared core
 
-Loaded by `/execute-phase` (the phase chat of a `manual` workflow, the gate
-of an `assisted` one) and `/execute-phase-agent` (the executor of `assisted`
-and `autonomous`). **Who builds follows the mode**: on `manual` the phase chat
-builds, with the user in it; on `assisted` `/execute-phase` launches the
-executor as a subagent after its gate; on `autonomous` `/run-workflow`
-launches it as a headless session. The three modes differ by *where decisions
-get made* — live in the phase chat, at the gate, or pre-made in the plan —
-never by these mechanics. A rule that changes here changes for all of them;
+Loaded by `/execute-phase` (the worker of a `manual` workflow) and
+`/execute-phase-agent` (the executor of `autonomous`). **Who builds follows the
+mode**: on `manual` the worker builds, with the user in it; on `autonomous`
+`/run-workflow` launches the executor as a headless session. The two modes
+differ by *where decisions get made* — live in the worker, or pre-made in the
+plan — never by these mechanics. A rule that changes here changes for both;
 that is the point (the `Never commit` leftover of 4.1.0 is what happens when
 siblings carry their own copies).
 
@@ -37,7 +35,7 @@ end-of-line marker on its definition line — `# wf:phase-N:new`, in the
 file's own comment token — per `refs/contracts.md` → *New-method markers and
 minimality*. The name you choose is a proposal: the naming review
 (`refs/naming-review.md`) is where a human accepts or rewords it —
-`/close-phase` in attended runs (`manual`, `assisted`), `/finalize-workflow`
+`/close-phase` in attended runs, `/finalize-workflow`
 in autonomous ones — so never spend a question on a name here.
 
 **The plan is context, not just a queue.** Before the first edit, skim the
@@ -67,9 +65,7 @@ test from an executor, per the single source.
 ## Record the outcome
 
 The `[x]` path has a skill of its own: in attended runs `/close-phase`
-performs this section and the two that follow (naming review included) —
-on `assisted` after the executor hands the phase back `[>]` carrying a
-`> Testing:` note (*Awaiting the human's checks*, below); under
+performs this section and the two that follow (naming review included); under
 `/run-workflow` the executor performs them inline, markers left in place.
 The `[!]` and `[~]` outcomes are always recorded directly by whoever built
 the phase — failure never routes through `/close-phase`.
@@ -125,9 +121,7 @@ the foreman*. Read that section when you reach this step, not at start — it
 is the only part of the foreman layer an executing session needs.
 Best-effort: no `foreman.json`, no messaging tool, delivery refused → skip in
 silence. The notification never fails a phase and is never worth a retry
-loop. The skip is the message's alone — **the record is written either way**,
-in every mode: an assisted plan has no foreman and sends nothing, and its
-record is exactly the same.
+loop. The skip is the message's alone — **the record is written either way**.
 
 ## Routing a decision
 
@@ -136,22 +130,16 @@ all three (`contracts.md` → *Where decisions travel*). **This is the single
 source of the fork** — the skills and the sections below cite it, they never
 restate it.
 
-| what travels | `Mode: manual`, `interactive`, and a plan carrying no `Mode:` | `Mode: assisted` | `Mode: autonomous` |
-|---|---|---|---|
-| a **question** the plan's author owns | UP first as `clarify?` to the foreman, at the gate and mid-phase alike (`refs/foreman.md` → *Clarify*): its answer cites the plan → the phase proceeds; it proposes a plan edit → the user confirms it in the phase chat; it does not know → the phase chat asks the user, and tells the foreman what was decided | answered at the gate, in this conversation, batched with the rest, before the executor is launched — the conversation that wrote the plan proposes the answer with its reasons, the user confirms; mid-phase the executor cannot ask, so it stops `blocked`, or closes `[!]` with a `plan-defect claim` when its attempts ran into a premise, and either comes back to this same gate before any repair (`/execute-phase` Step 4) | there is no gate: the executor closes `[!]` with a `plan-defect claim` and the launcher holds while the foreman decides (`refs/foreman.md` → *Plan-defect claims*) |
-| an **outcome** — done, FAILED, blocked, closed short, result rejected | one message to the foreman chat, best-effort (*Notify the foreman*) | reported at the gate, in this conversation; no message, and nothing waits for one | one message to the foreman chat, best-effort |
-| a **re-planning** — the remainder of a short close, the phases after a rejected result | the foreman sizes it, with the user in its chat; the phase chat never appends phases | sized with the user at that same gate, and the plan edit committed as usual | the foreman sizes it; the executor never appends phases |
+| what travels | `Mode: manual` — and `interactive`, the retired `assisted`, and a plan carrying no `Mode:` | `Mode: autonomous` |
+|---|---|---|
+| a **question** the plan's author owns | UP first as `clarify?` to the foreman, at the gate and mid-phase alike (`refs/foreman.md` → *Clarify*): its answer cites the plan → the phase proceeds; it proposes a plan edit → the user confirms it in the phase chat; it does not know → the phase chat asks the user, and tells the foreman what was decided | there is no gate: the executor closes `[!]` with a `plan-defect claim` and the launcher holds while the foreman decides (`refs/foreman.md` → *Plan-defect claims*) |
+| an **outcome** — done, FAILED, blocked, closed short, result rejected | one message to the foreman chat, best-effort (*Notify the foreman*) | one message to the foreman chat, best-effort |
+| a **re-planning** — the remainder of a short close, the phases after a rejected result | the foreman sizes it, with the user in its chat; the phase chat never appends phases | the foreman sizes it; the executor never appends phases |
 
 In every row the **record is owed in every mode**: `notes.md` under the phase's
-`## Phase N`, and the plan. The message belongs to the two relayed modes, and a
-rule naming the foreman without naming its road is a relay an assisted
-workflow cannot escape. **An assisted workflow is one conversation**: the gate,
-the verdict and the re-planning all happen where the user is, and the work
-between them happens in an executor that returns there — no second chat to
-command, nothing to relay, and `refs/foreman.md` is never loaded for it. **A
-manual workflow is a chat per phase with the foreman between them**: the phase
-chat executes and does not supervise, because two chats must not both command,
-and the user lives in the phase chat — the foreman never addresses them there.
+`## Phase N`, and the plan. **A manual workflow is foreman + worker**: the
+worker executes and does not supervise, because two chats must not both command,
+and the user lives in the worker — the foreman never addresses them there.
 A plan carrying an old `Channel:` header is read as its `Mode:` says; the field
 is ignored, and `next-phase.py --validate` says so.
 
@@ -227,8 +215,8 @@ stopped after. The note marks the interruption, never the boundary.
 ## Handing a defect to repair
 
 A defect found in a phase — the human exercised it and something is
-demonstrably wrong — is not the chat holding the phase to chase: the phase
-chat on `manual`, the workflow chat on `assisted`. Debugging is the most
+demonstrably wrong — is not the chat holding the phase to chase — the worker, or a
+repair's own chat. Debugging is the most
 context-hungry thing a phase does, and that chat is the one place where the
 context is expensive: it is carrying the plan, the gate and everything decided
 so far. So the defect goes to a **repair agent** that exists only for it and is
@@ -238,9 +226,7 @@ nothing.
 That chat's part is two moves and no diagnosis:
 
 1. **Record** — the repair works on committed code, never on top of edits
-   nobody recorded. On `assisted` the tree is clean by construction (the
-   executor committed before it returned); on `manual` checkpoint first,
-   `partial` commit and `> WIP:` note (*WIP checkpoints*). What the human saw
+   nobody recorded: checkpoint first, `partial` commit and `> WIP:` note (*WIP checkpoints*). What the human saw
    is the specification and goes on the phase as `> Issue:`.
 2. **Launch `/repair-phase`**, here, in this same chat: it asks the human what
    is wrong — their account, not the builder's diagnosis — records it, marks
@@ -251,8 +237,7 @@ That chat's part is two moves and no diagnosis:
 
 **One agent is one attempt**: a repair that eats a whole context without a
 green signal is not a bug but a plan problem, and it goes out as `blocked` —
-per *Routing a decision*: to the foreman on a manual or autonomous plan, to the
-user here on an assisted one — rather than to a second repair.
+per *Routing a decision*: to the foreman — rather than to a second repair.
 
 ## When the phase outgrows its chat or its executor
 
@@ -267,9 +252,9 @@ mechanics:
   markers are reviewed, and the plan grows a phase for the remainder.
 - **The work is mid-air** — a refactor half applied, a schema with nothing
   using it yet — → **carry it over**. There is no honest `Done:` to write, so
-  the `> WIP:` checkpoint is the only truthful record. On `manual` the phase
-  chat hands over to a new chat (`/execute-phase` → *Handing over*); on
-  `assisted` a fresh executor resumes from the note (*Resuming a `[>]`
+  the `> WIP:` checkpoint is the only truthful record. On `manual` the worker
+  hands over to a new chat (`/execute-phase` → *Handing over*); under
+  `/run-workflow` a fresh executor resumes from the note (*Resuming a `[>]`
   phase*, below) — once: a second overrun on the same phase is the sizing
   speaking, and the answer is the short close or a re-planning, never a
   third executor.
@@ -286,15 +271,12 @@ mechanics:
    `Done:` gate re-run — it passes now, honestly — `[x]`, ONE phase commit.
 3. **Report that it closed short**, naming what remains in one line, so the
    plan grows the phases that carry it — the outcome row of *Routing a
-   decision*: a message to the foreman on a manual or autonomous plan, said
-   at the gate on an assisted one. What remains also goes to `notes.md` under
-   the phase's `## Phase N` in every mode: a remainder that lives only in a
+   decision*: a message to the foreman. What remains also goes to `notes.md` under
+   the phase's `## Phase N`: a remainder that lives only in a
    message dies with the message.
 
 The remainder is a **re-planning**, and it takes that row's road: the foreman
-sizes it on a manual or autonomous plan, and the phase never appends phases
-itself; on an assisted plan it is sized with the user at this same gate, and
-the plan edit committed as usual. Either way sizing belongs to whoever owns the plan, not to the
+sizes it, and the phase never appends phases itself. Sizing belongs to whoever owns the plan, not to the
 phase that just overran — which is evidence about the sizing, not only about
 itself.
 
@@ -317,9 +299,9 @@ it had never existed. That message is what makes an uncommitted tree safe: two
 chats on one working tree are two writers, and the arriving one must be able to
 say *stop* rather than discover the traces afterwards.
 
-**On `assisted` the disk is the whole handover.** An executor is a subagent: it
-dies with the turn that launched it, so there is never a live one to reach, and
-the `> WIP:` note and the diff are the authority by construction.
+**Under `/run-workflow` the disk is the whole handover.** An executor is a
+headless session that ends with its phase, so there is never a live one to
+reach, and the `> WIP:` note and the diff are the authority by construction.
 
 Either way, a `[>]` phase with no `> WIP:` note, no `partial` commit and no
 live chat carries no evidence — reset it to `[ ]` with `> Execution
@@ -341,14 +323,11 @@ everything else, and red-baseline attribution keeps matching against the
 
 ## Awaiting the human's checks
 
-Attended modes only — an unattended phase has nobody to hand a check to.
+Manual only — an unattended phase has nobody to hand a check to.
 **The code is finished, the `Done:` is green, and the phase is not closed.**
 It is committed and left `[>]`, so nothing closes on a result nobody has
-looked at yet. On `manual` this happens when verification leaves the human at
-least one `Verify: now` step; on `assisted` it is how every phase comes back
-from its executor — the human's `Verify: now` checks, the browser pass and the
-judge on a `ui` phase, and the naming review all happen at the gate, where
-somebody can answer.
+looked at yet. It happens when verification leaves the human at least one
+`Verify: now` step.
 
 The mechanic is the checkpoint above — a `partial` commit — plus the note
 that says what it waits for. **This is the single source of its format** —
@@ -366,8 +345,7 @@ chat holding the phase applies itself, a defect that reproduces goes to
 result is wrong at the root → the `Done:` passed, so the phase closes `[x]`
 carrying the verdict as `> Review:`, the `result rejected` outcome and the
 re-planning of the phases that have not run both take their rows in *Routing
-a decision* — the foreman and `/resume-workflow` on a manual or autonomous
-plan, the user at this gate on an assisted one.
+a decision* — the foreman and `/resume-workflow`.
 **Never `[!]` on a person's judgment** — `common.md` → *Failure and repair
 notes* has both reasons: it aims an automatic repair at green code, and the
 work itself is usually sound.

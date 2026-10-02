@@ -1089,9 +1089,8 @@ function launchRow(n){
       <button id="lcopy">copy</button></div>`:''}
     <p class="note">The unattended request waits for the chat that opened this
       dashboard, which runs <code>/wf:run-workflow</code> from phase ${n} on.
-      The other button hands back <code>/wf:execute-phase</code>: on an assisted
-      plan it runs in the conversation that holds the workflow, on a manual one
-      in a chat of its own — never this one.</p>
+      The other button hands back <code>/wf:execute-phase</code>, which runs in the
+      worker — never this one.</p>
   </div>`;
 }
 
@@ -1108,8 +1107,7 @@ async function launchPhase(road){
   if(j.error){launchMsg=j.error;launchCls='err';launchCmd=j.command||'';}
   else if(j.queued){launchMsg='queued · the chat that opened this dashboard runs it';
     launchCls='ok';}
-  else{launchMsg=j.mode==='assisted'?`phase ${j.phase} — run this in the workflow's conversation`
-    :`phase ${j.phase} — copy this into a chat of its own`;
+  else{launchMsg=`phase ${j.phase} — run this in the worker`;
     launchCls='';launchCmd=j.command||'';}
   render();
 }

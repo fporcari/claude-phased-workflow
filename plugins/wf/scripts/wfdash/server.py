@@ -57,9 +57,8 @@ one it pressed. The unattended road queues `/wf:run-workflow`, which owns the
 pre-flight, the Monitor, the push policy, the foreman relay and the
 plan-defect return leg — a spawn from here would skip all of them. The phase
 road queues nothing at all: an attended phase starts at a gate a page cannot
-stand in for — in the conversation that holds an assisted workflow, in a chat
-of its own on a manual one — so the command comes back as TEXT, with the mode
-that says where it goes.
+stand in for — in the worker of a manual workflow — so the command comes back
+as TEXT.
 
 Neither road takes a recipient, a phase number or a command from the request:
 the phase is the plan's own next one, and the foreman is the title

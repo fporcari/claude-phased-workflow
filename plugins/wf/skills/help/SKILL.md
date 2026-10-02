@@ -9,8 +9,7 @@ allowed-tools: Read
 A router, not a manual: from where the user says they are, name the command
 that takes the work forward. This skill reads no state and runs nothing — the
 state of a real workflow is `/wf:resume-workflow`'s to report — in the
-conversation that holds the workflow on `Mode: assisted`, in the foreman
-chat or a fresh one on `Mode: manual` and `Mode: autonomous`. Answer in the user's language,
+foreman chat or a fresh one. Answer in the user's language,
 adapted to what they asked; the routes and the table below are the canon of
 what to say, not a page to paste.
 
@@ -31,36 +30,21 @@ what to say, not a page to paste.
   plan questions go to the foreman first, and you answer only what it does not
   know. The phase closes through `/wf:close-phase` on your ok, and the foreman
   is told.
-- **A plan exists, building it by gates (`Mode: assisted`).**
-  `/wf:execute-phase`, in this same conversation, phase after phase: one
-  approval gate up front, then the build in an executor with a fresh context,
-  then your checks back here. One conversation holds the whole workflow — the
-  code of a phase never enters it; a design that moves mid-build is the
-  manual mode's.
 - **A plan exists, run it unattended.** `/wf:run-workflow` from the foreman
   chat: one sub-session per phase, one automatic repair on failure, stop
   conditions. The `-agent` variants (`/wf:execute-phase-agent`,
-  `/wf:repair-phase-agent`, `/wf:quality-check-agent`) are its workers —
-  the first is also the executor `/wf:execute-phase` launches on an assisted plan.
+  `/wf:repair-phase-agent`, `/wf:quality-check-agent`) are its workers.
 - **Something is demonstrably broken** — a red `Done:`, a defect that
   reproduces → `/wf:repair-phase`, here: you say what is wrong, a repair
   agent diagnoses and fixes it in a context of its own, you decide when it
   is fixed.
 - **The work is done but it was the wrong thing** — everything green, result
   rejected: the phase closes `[x]` carrying the verdict, and the phases that
-  have not run are re-planned. On `Mode: assisted` that happens with you,
-  at the gate, `/wf:resume-workflow` included; on `Mode: manual` and
-  `Mode: autonomous` the foreman chat is told and `/wf:resume-workflow` runs
-  there or in a fresh one.
-- **The executor came back `blocked` on a question** — the gate missed a
-  decision the plan should have settled: answer it at the gate, it is
-  recorded and the executor relaunched. Twice on one phase is the sizing
-  speaking, not the executor.
+  have not run are re-planned: the foreman chat is told and
+  `/wf:resume-workflow` runs there or in a fresh one.
 - **Lost, or resuming after days** — `/wf:resume-workflow`: it needs the
-  branch, nothing else, and it names the next command. In the conversation
-  that holds the workflow on `Mode: assisted`, or any fresh chat — the
-  disk holds the whole state; the foreman chat or a fresh one on
-  `Mode: manual` and `Mode: autonomous`.
+  branch, nothing else, and it names the next command — in the foreman chat
+  or a fresh one: the disk holds the whole state.
 - **The phases feel incompatible with each other** — or the plan predates
   contract tests and you want the verdict instead of the suspicion →
   `/wf:doctor`: coherence audit, contract-test integrity, and a blind
@@ -94,6 +78,4 @@ what to say, not a page to paste.
 | `/wf:help` | this map |
 
 Close with one line: the full narrative is the plugin's README; for the state
-of an actual workflow, `/wf:resume-workflow` — in the conversation that holds
-the workflow on `Mode: assisted`, the foreman chat or a fresh one on
-`Mode: manual` and `Mode: autonomous`.
+of an actual workflow, `/wf:resume-workflow` — in the foreman chat or a fresh one.

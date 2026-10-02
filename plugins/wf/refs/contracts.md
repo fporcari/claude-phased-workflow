@@ -27,7 +27,7 @@ contract** — the skills cite it, they never restate it.
 - `deferred: needs Phase M` — it only makes sense in a wider context, so it is
   **dated, not skipped**.
 
-A `now` step also **gates the close in the attended modes** (`manual`, `assisted`): the phase commits
+A `now` step also **gates the close in the attended mode** (`manual`): the phase commits
 its work and stays `[>]` until the human has run those checks — the mechanic
 is in `refs/phase-execution.md` → *Awaiting the human's checks*. Autonomous
 mode has nobody to wait for and closes as before.
@@ -95,9 +95,7 @@ fields — `Done:`, the authored `Verify:` steps, the contract tests where the
 plan carries them — belong to the plan's author, never to the phase executing
 them. Ownership is **a position, not a chat**:
 on `Mode: autonomous` and `Mode: manual` it sits in the foreman chat — on
-`manual` the user confirms at the phase's gate what the foreman proposes — and
-on `Mode: assisted` it is co-located with the gate and the authority is the
-user at the gate —
+`manual` the user confirms at the phase's gate what the foreman proposes —
 the executor that builds the phase is never it. No mode leaves the checks
 unowned or hands them to the phase running them. On a `ui` phase the authored `Verify:` list is written COMPLETE at
 planning time: the checks the human will run at that phase are pre-established
@@ -106,8 +104,7 @@ never the checklist. The executing chat may ADD surfaced steps — an addition
 strengthens the contract — but never drops or rewords an authored one on its
 own: a check that no longer fits is a plan ambiguity, routed per
 `refs/phase-execution.md` → *Routing a decision* — `clarify?` to the foreman
-on a manual plan, the user at the gate on an assisted one, the foreman's
-consult on an autonomous one — and the answer
+on a manual plan, the foreman's consult on an autonomous one — and the answer
 carries the edit. The sanctioned protocols that already reshape the contract —
 closed short, a rejected result — keep working as written: both report their
 outcome and re-plan by the rows of that same table, in either mode.
@@ -119,17 +116,14 @@ judges; `verify.md` says *"here is what you must exercise"* — the user does.
 ## Where decisions travel
 
 `Mode:` decides two things at once: how the work runs, and the route a decision
-takes from the person who owns it to the phase that needs it. Three values, one
-per way of working:
+takes from the person who owns it to the phase that needs it. Two values, one
+per way of working, and `assisted` — retired in 6.45.0 — reads as `manual`:
 
-- `manual` — **a chat per phase, with the user inside the build.** The phase is
-  built where the user is, so a change of mind, a study or a browser pass
+- `manual` — **foreman + worker, with the user inside the build.** The phase is
+  built in the worker, where the user is, so a change of mind, a study or a browser pass
   mid-build is ordinary work, not a failed gate. The foreman is the chat that
   wrote the plan: a manual phase's plan question goes up to it as `clarify?` first, and
   outcomes go to it as messages (`refs/foreman.md`).
-- `assisted` — **one conversation holds the workflow**; every decision is taken
-  at its gate, by the user, and the phase is built by an executor subagent that
-  returns there. No relay, no foreman, no message.
 - `autonomous` — nobody is at a gate, so a decision travels as a message between
   chats, through the foreman.
 
@@ -219,14 +213,13 @@ The rules, in both execution modes:
   `refs/phase-execution.md` → *Routing a decision*, and the answer carries the
   exact test edit as before-text → after-text, applied verbatim by the phase
   chat and committed as `wf: clarify phase N — <one line>`. An executor has
-  nobody to ask mid-phase, on `assisted` and `autonomous` alike: the phase
+  nobody to ask mid-phase: the phase
   closes `[!]` with `> Issue: plan-defect claim — <the
   test, the premise it believes wrong, and the exact edit it thinks the plan
   needs, as before-text → after-text>` — the words `plan-defect claim`
-  verbatim, they are what the consult greps for — the workflow chat's gate
-  on an assisted plan (`/execute-phase` Step 4), the launcher's on an
-  autonomous one (`refs/foreman.md` → *Plan-defect claims*) — and the
-  before→after form is what licenses the apply road in both. A **claim, never a
+  verbatim, they are what the launcher's consult greps for (`refs/foreman.md`
+  → *Plan-defect claims*) — and the before→after form is what licenses the
+  apply road. A **claim, never a
   verdict**: the field count is two claims wrong — the contract was
   implementable in-dialect and the repair found the better design — and one
   right, "dissolved" by a repair bending the code to the wrong premise. The
@@ -335,7 +328,7 @@ the review as fixed names, where only the free part, if any, can change.
 The marker is scaffolding, like the `wf(phase N)` commits — it never
 reaches the parent branch:
 
-- **attended runs** (`manual`, `assisted`) — `/close-phase` runs the naming review at the end
+- **attended runs** (`manual`) — `/close-phase` runs the naming review at the end
   of each phase; accepted or renamed, the markers die with the phase commit.
 - **autonomous runs** — nobody can answer a naming question mid-run, so
   markers accumulate in the phase commits and `/quality-check` runs ONE

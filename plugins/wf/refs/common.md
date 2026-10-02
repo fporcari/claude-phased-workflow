@@ -98,10 +98,8 @@ Every plan gets a branch, so that everything belonging to the run is
 identifiable without heuristics.
 
 - `/write-workflow` either creates `wf/<slug>` — in its own worktree under
-  `.claude/worktrees/<slug>` on a manual or autonomous plan, so the checkout
-  it was run from stays on the parent while the phase chats or the run work;
-  in this checkout on an assisted one, since the conversation that planned it
-  is where the work happens — or adopts the branch you are already on (its own rules decide);
+  `.claude/worktrees/<slug>`, so the checkout it was run from stays on the
+  parent while the worker or the run works — or adopts the branch you are already on (its own rules decide);
   either way `Parent:` in the plan records where the work goes back to.
 - The plan is committed first, as `wf: plan for <slug>`.
 - Each completed phase produces exactly ONE **phase commit**,
@@ -190,10 +188,7 @@ the sub-result it reached, and the remainder needs a phase the executor does
 not write — sizing belongs to the plan's author, not to the phase running, and
 a phase that overran is evidence about the sizing.
 
-**On an assisted plan the re-planning is a conversation, here**: the person
-who rejected the result is at the gate, and the plan's reasons are in this
-same chat's `notes.md`. **On a manual or autonomous plan the foreman is told,
-in one line** — `phase N closed, result rejected`, above. It is the one report that
+**The foreman is told, in one line** — `phase N closed, result rejected`, above. It is the one report that
 is not routine: the plan it authored is about to change, and it holds the
 reasons the plan was shaped that way. It answers as it answers any message,
 with the delta (`refs/board.md` → *When it is drawn*): a rejection is the

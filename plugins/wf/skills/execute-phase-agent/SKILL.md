@@ -7,9 +7,9 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, SendMessage, ListAgen
 
 Execute ONE phase of the active plan unattended: implement, test, record the outcome, commit, exit.
 
-**Base skill: execute-phase** — the gate; this is the executor of both modes. `/execute-phase` launches it as a subagent once its gate is passed — fresh context, the plan and `notes.md` as its whole memory — and `/run-workflow` launches it as a headless session; the work is the same, and nobody can answer a question in either. This file states only the unattended constraints; the mechanics (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` and are not restated here.
+**Base skill: execute-phase** — the attended build; this is the unattended executor. `/run-workflow` launches it as a headless session — fresh context, the plan and `notes.md` as its whole memory — and nobody can answer a question there. This file states only the unattended constraints; the mechanics (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `${CLAUDE_PLUGIN_ROOT}/refs/phase-execution.md` and are not restated here.
 
-**Usage:** as the Agent-tool subagent `/execute-phase` launches (*Launched from the workflow chat*, below); `claude -p '/execute-phase-agent'` by hand; or `/run-workflow` for the whole plan.
+**Usage:** `claude -p '/execute-phase-agent'` by hand, or `/run-workflow` for the whole plan.
 
 **Non-negotiables:**
 - **No questions.** Never AskUserQuestion — there is nobody here who can answer. Decide, and document the decision in the plan.
@@ -18,16 +18,6 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 - One phase, one commit at the end, everything written in English — per the shared core.
 
 **Shared conventions:** `${CLAUDE_PLUGIN_ROOT}/refs/common.md` and `${CLAUDE_PLUGIN_ROOT}/refs/contracts.md`. The foreman layer is NOT read at start: only its message formats matter here, at the notify step, per the shared core — and only under `/run-workflow`.
-
-## Launched from the workflow chat
-
-When the brief says you were launched from `/execute-phase`, three things change and nothing else:
-
-- **The gate is passed.** The decisions it took are in `notes.md` under `## Phase N`, the mockup of a `ui` phase under `mockups/phase-N.html`; read them with the plan, and treat them as `Decisions:`. A question the gate did not settle is not yours to answer: stop with a `> WIP:` checkpoint (`refs/phase-execution.md` → *WIP checkpoints*) and report `blocked — <the question, one line>`; the gate asks it and relaunches you. Never a guess, never a default: a wrong default here costs the human a repair.
-- **You do not close.** Step 6 ends with the `Done:` green and the phase still `[>]`: write the `> Testing:` note and its `partial` commit exactly as `refs/phase-execution.md` → *Awaiting the human's checks* specifies — `wf(phase N): partial — built, awaiting the gate` — markers left in place, `[x]` never written. The naming review, the browser pass on a `ui` phase, the human's own checks and the phase commit belong to the gate, where somebody can answer. `[!]` and `[~]` are recorded and committed here as always.
-- **Nothing is notified.** An assisted plan has no foreman: skip Step 6's message without looking for one.
-
-Everything else — the baseline check, the restore point, the convergence loop, the Done gate, the verifier rule — is unchanged: the gate trusts none of it to have happened because a summary says so, it re-reads the plan and `git log` when you return.
 
 ## Step 0: Read the plan
 
@@ -97,4 +87,4 @@ Record the outcome and make the phase commit exactly as the shared core specifie
 
 Then, under `/run-workflow` only, the shared core's *Notify the foreman* — one outcome message, best-effort, no retry: in a `-p` sub-session the messaging tool may simply not exist, and that is the silent-skip case, not a failure.
 
-Print `✓ Phase N completed: <title>` — `✓ Phase N built: <title> — awaiting the gate` when launched from the workflow chat — or `⚠ Phase N has issues: <reason>`, and stop.
+Print `✓ Phase N completed: <title>` or `⚠ Phase N has issues: <reason>`, and stop.

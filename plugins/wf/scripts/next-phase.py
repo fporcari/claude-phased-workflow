@@ -486,12 +486,13 @@ CONFIG_HEADING = 'Suggested execution config'
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
-MODES = ('autonomous', 'assisted', 'manual')
+MODES = ('autonomous', 'manual')
 # `interactive` (up to 6.39.0) is read as `manual`, the relay it meant until
-# 6.38.0, and told so. `Channel:` (6.30.0–6.37.0) named where decisions travel
+# 6.38.0, and told so; `assisted` (6.40.0–6.44.0), retired in 6.45.0, the same.
+# `Channel:` (6.30.0–6.37.0) named where decisions travel
 # separately from the mode; since 6.38.0 that follows from Mode: alone. Neither
 # is rejected, neither is rewritten.
-LEGACY_MODES = {'interactive': 'manual'}
+LEGACY_MODES = {'interactive': 'manual', 'assisted': 'manual'}
 CHANNEL_RE = re.compile(r'^Channel:\s*(\S+)\s*$')
 # `> Batches: 1 <label> | 2 <label> | ...` — the planned subdivision, numbered
 # from 1. The commits refer to it as `batch M/K`, so a body that does not parse
@@ -667,13 +668,12 @@ def validate(path, phases, text):
 
     if mode_value in LEGACY_MODES:
         add(mode_lineno, 'warning',
-            "Mode: %s is read as %s since 6.40.0 — write manual (a chat per "
-            "phase, the foreman between them) or assisted (one conversation, "
-            "each phase built by an executor)"
+            "Mode: %s is retired and read as %s — write manual (foreman + "
+            "worker) or autonomous"
             % (mode_value, LEGACY_MODES[mode_value]))
         mode_value = LEGACY_MODES[mode_value]
     mode_autonomous = mode_value == 'autonomous'
-    mode_attended = mode_value in ('assisted', 'manual')
+    mode_attended = mode_value == 'manual'
     if mode_value is not None and mode_value not in MODES:
         add(mode_lineno, 'error',
             "Mode: '%s' is not one of: %s"

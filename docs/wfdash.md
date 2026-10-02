@@ -124,7 +124,7 @@ command, which is queued nowhere and comes back as text.
 | Button | Queued as | Served by |
 |---|---|---|
 | *Ask for an unattended run* | `run-workflow` | `/wf:run-workflow` — it owns the pre-flight, the monitor, the push policy and the foreman relay |
-| *Command for phase N* | nothing at all — the command comes back as text | `/wf:execute-phase`: in the conversation that holds the workflow on `Mode: assisted`, in a chat of its own on `Mode: manual` — its gate is a question a page cannot stand in for |
+| *Command for phase N* | nothing at all — the command comes back as text | `/wf:execute-phase`, in the worker — its gate is a question a page cannot stand in for |
 | *queue*, in the *Foreman* pane | `foreman` | `refs/foreman.md`, the plugin's only channel to the supervision chat |
 | *Create*, in the *Phase* pane with no plan | `write-workflow` | `/wf:write-workflow`, run by the chat that drains the queue |
 

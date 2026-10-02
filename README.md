@@ -5,16 +5,15 @@
 
 # Working in phases with Claude Code
 
-**Version 6.44.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.45.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
 ## Quickstart
 
 ```bash
-> /write-workflow      # asks: manual, assisted or autonomous? then branch + plan
-> /execute-phase       # manual: a chat per phase, built with you in it
->                      # assisted: the gate here, the build in a fresh executor
+> /write-workflow      # asks: manual or autonomous? then branch + plan
+> /execute-phase       # manual: in the worker, built with you in it (▶ with wf-bar)
 > /run-workflow        # autonomous: the whole plan, unattended
 > /quality-check       # QA page, whole-diff review — stamps the plan
 > /finalize-workflow   # lessons, archive, one clean commit
@@ -59,25 +58,24 @@ Instead of one endless chat, you first write a **plan** that splits the work int
 
 Then every phase is built in a **context of its own** — a chat of its own with you inside it, a subagent when you are at the gate, a headless session when the run is unattended — that reads the plan and nothing else. No 400-message chats: the memory of the work lives in the plan, not in the conversation. Like a construction site — today's crew reads the drawings pinned in the site office, not the memories of yesterday's crew.
 
-## Manual, assisted or autonomous
+## Manual or autonomous
 
 *The choice underneath everything: how much leash?*
 
 The plan is the same; what changes is **where you are while a phase is built**:
 
 - **Manual** — two chats: **foreman + worker**. The chat that wrote the plan is the **foreman**: a plan question goes to it first, and you answer only what the plan does not. The **worker** builds every phase, one after the other, with you inside the build: you change your mind, study, try the real page in the browser while it takes shape — ordinary work, not a failed gate. Its ▶ button (`wf-bar`, below) starts the next phase: it clears the chat, sets the phase's model and effort and launches `/execute-phase`; `/close-phase` records the phase and its history, and never clears.
-- **Assisted** — one conversation holds the whole workflow. Before each phase you approve the plan and settle every open question; the build then runs in an executor with a fresh context and comes back to you; you look at the result and say go, and the phase does not close until you have. The code of a phase never enters the conversation you are in.
 - **Autonomous** — you launch it and go grocery shopping. "Done" is not declared by whoever wrote the code: a separate checker says it (the loop below). You get a notification when it finishes or when it stops.
 
-|  | Manual | Assisted | Autonomous |
-|---|---|---|---|
-| Who verifies | you, inside the build | you, at the gate before and after | tests, lint, and an independent reviewer |
-| A change of mind mid-build | ordinary work, recorded in `notes.md` | a diff to reject at the end | not possible |
-| When something fails | you say what is wrong, a repair agent with fresh eyes fixes it, you decide when it is fixed | the same | one fresh-eyes repair, then it stops |
-| Interfaces | a mockup at the gate, then the real page as it takes shape | a mockup is approved before any code is written | runs straight through with no visual judgment: the eye check lands on the bill, for you, at the end |
-| Login | always the human | always the human | always the human — fixed rule, no exceptions |
+|  | Manual | Autonomous |
+|---|---|---|
+| Who verifies | you, inside the build | tests, lint, and an independent reviewer |
+| A change of mind mid-build | ordinary work, recorded in `notes.md` | not possible |
+| When something fails | you say what is wrong, a repair agent with fresh eyes fixes it, you decide when it is fixed | one fresh-eyes repair, then it stops |
+| Interfaces | a mockup at the gate, then the real page as it takes shape | runs straight through with no visual judgment: the eye check lands on the bill, for you, at the end |
+| Login | always the human | always the human — fixed rule, no exceptions |
 
-Pick by the phases more than by the plan: on two UI programmes, four out of five mid-build changes of mind came from seeing the page take shape — that is manual work. A phase whose decisions all fit the gate is built as well by an executor.
+On two UI programmes, four out of five mid-build changes of mind came from seeing the page take shape — that is manual work, and 6.45.0 retired `assisted`, the one-conversation mode whose executor could not hear them: with the worker cleared between phases and its model set by the ▶ button, it no longer bought anything manual does not. A plan saying `Mode: assisted` reads as `manual`.
 
 ## The loop: never a hamster in a wheel
 
@@ -141,18 +139,17 @@ Messages between chats are best-effort by design — any of them can be lost and
 
 | Role | Runs where | Writes what | Dies when |
 |---|---|---|---|
-| Workflow chat | desktop chat — assisted plans | the plan, the gate decisions, the phase commit at close; never the code | when you close it — the disk holds the state, `/resume-workflow` reopens it anywhere |
 | Worker | desktop chat — manual plans, one chat for every phase, cleared between them | the phase's code and its commit, with you in it | never between phases: the ▶ button clears it for the next one; a phase that outgrows it hands over to a new chat |
 | Foreman | desktop chat — manual and autonomous plans | nothing on the code: decisions only | replaceable — its identity lives in `foreman.json`, not in the chat |
 | Inspector | desktop chat | inspection notes | with the chat that launched the run |
-| Executor | subagent of the workflow chat (assisted) or headless `claude -p` (autonomous) | code + its commits — a `partial` handed back to the gate, or the phase commit itself unattended | every phase — born with fresh context, gone when it returns |
+| Executor | headless `claude -p` (autonomous) | code + its commits, the phase commit itself, unattended | every phase — born with fresh context, gone when it returns |
 | Verifier | headless | nothing: read-only, emits findings | after the verdict |
 | UI judge | headless | nothing: compares screenshots to the approved mockup — attended `ui` phases only | after the verdict |
 | Repair | subagent (`/repair-phase`) or headless (`-agent`) | the fix, one attempt | after the attempt — one agent is one attempt |
 
 ## Succession
 
-On manual and autonomous plans `foreman.json` says who commands: if the foreman chat dies, the first `/resume-workflow` takes command by reading the file. Succession never depends on the old chat answering — it works on the plan and the notes alone. The same holds one level down: an executor that runs out of context hands over through a `partial` commit, a `> WIP:` note and its rationale in `notes.md`, and the executor that picks the phase up reads the disk, because the old one is already gone. A manual phase chat that fills up hands over the same way, and the arriving chat asks the old one to stop before it touches the tree. And an assisted workflow's own conversation needs no successor at all: every gate is committed before its executor starts, so a fresh chat and `/resume-workflow` find the work exactly where it was left.
+On every plan `foreman.json` says who commands: if the foreman chat dies, the first `/resume-workflow` takes command by reading the file. Succession never depends on the old chat answering — it works on the plan and the notes alone. The same holds one level down: an executor that runs out of context hands over through a `partial` commit, a `> WIP:` note and its rationale in `notes.md`, and the executor that picks the phase up reads the disk, because the old one is already gone. A manual phase chat that fills up hands over the same way, and the arriving chat asks the old one to stop before it touches the tree.
 
 If a phase dies midway (a `[>]` marker left hanging), the committed evidence of the work in progress lets the next session resume from there: the phase is reopened, not the story reconstructed.
 
@@ -166,15 +163,13 @@ The foreman **does not decide alone**: it turns the question to you (*Stop workf
 
 On a manual plan the phase chat is not the plan's author, so a question about the plan goes to the foreman first — `clarify?`, at the gate or mid-build — and the answer's form says who decides: **cited** from the plan or `notes.md`, the phase just proceeds; **proposed**, a plan edit the foreman decides now, you confirm it in the phase chat; **ask-user**, the foreman does not know, you answer in the phase chat and it goes back to the foreman as `clarify: noted`, so its next answer cites yours instead of contradicting it. You never go to the foreman chat to answer a phase's question. Struggle takes the same road: two failed attempts at one obstacle send the premise they leaned on — *assuming X, does it hold?* — before any third attempt.
 
-On an assisted plan the plan's author and the person at the gate are the same conversation: every open question about the plan — what the objective means, what `Done:` covers, a `Files:` that does not match the code — is answered **before the executor is launched**, proposed with the plan's reasons and confirmed by you, batched into the one approval gate, and written to `notes.md` and committed. The executor reads the plan and that record, and nothing else.
+An unattended executor **cannot ask**. Struggle is routed without needing to be recognised: two failed attempts at one obstacle close the phase `[!]` — as a `plan-defect claim` naming the premise when the obstacle is the plan, which the foreman judges before any repair — and the repair starts from your account of the symptom rather than from the executor's diagnosis. Every question that had to come back leaves a trace beyond this workflow: it is appended, with a proposed skill patch, to `~/.phased/wf-lessons.md` — a ledger a human reviews in the plugin's own repository; nothing patches itself.
 
-That is also why the executor **cannot ask**. A doubt the gate did not settle comes back as `blocked`, to the same gate, where it is answered, recorded and the executor relaunched — a miss counted against the gate, not the executor. Struggle is routed the same way, without needing to be recognised: two failed attempts at one obstacle close the phase `[!]` — as a `plan-defect claim` naming the premise when the obstacle is the plan, which comes back to the gate before any repair — and the repair starts from your account of the symptom rather than from the executor's diagnosis. Every question that had to come back leaves a trace beyond this workflow: it is appended, with a proposed skill patch, to `~/.phased/wf-lessons.md` — a ledger a human reviews in the plugin's own repository; nothing patches itself.
-
-## A relay, one conversation, or both
+## Why the relay
 
 Everything above the gate — foreman, inspector, messages, receipts — is a **channel, not a control**: it exists because when nobody sits at the gate, disk and messages are the only way a decision can travel. With the same person at every gate it removes nobody from the loop and adds a hop in the middle of one that was already closed. One measured 10-phase attended run paid exactly that: 11 chats, ~35 messages, ~25 apparatus commits against 10 phase commits, nine clarify rounds — almost all of them repairing a plan written before the code was read ([#22](https://github.com/fporcari/claude-phased-workflow/issues/22)).
 
-So the mode says where decisions travel, and there is no second field. **`Mode: assisted`** — one conversation plans and executes, phase after phase, every gate here: no `foreman.json`, no message, and `refs/foreman.md` is never loaded; the phase is built by a subagent, so the conversation keeps only gates and verdicts. **`Mode: manual`** — the relay kept for the one case it pays for: a design that moves while it is built, where the user lives in the phase chat and the foreman holds the plan's reasons. **`Mode: autonomous`** — the relay, unchanged, for a run nobody is watching. (6.30.0 introduced a separate `Channel:` header, retired by 6.38.0; 6.38.0 then folded the relayed attended mode into one conversation, and 6.40.0 brought it back as `manual` once two programmes showed where the design actually moves. A plan saying `Mode: interactive` reads as `manual`, and the validator says so.)
+So the mode says where decisions travel, and there is no second field. **`Mode: manual`** — foreman + worker: the user lives in the worker, which builds every phase and is cleared between them, and the foreman holds the plan's reasons and its analysis, never cleared. **`Mode: autonomous`** — the relay, unchanged, for a run nobody is watching. (6.30.0 introduced a separate `Channel:` header, retired by 6.38.0; 6.38.0 then folded the relayed attended mode into one conversation, and 6.40.0 brought it back as `manual` once two programmes showed where the design actually moves. 6.45.0 retired `assisted`, the one-conversation mode. A plan saying `Mode: interactive` or `Mode: assisted` reads as `manual`, and the validator says so.)
 
 What stays in both modes is what paid at every size: the tracked plan, a re-runnable `Done:`, one phase commit per phase, `notes.md` as the record every gate reads. Phases are sized on **decision boundaries**, not file counts — one per point where a result changes what comes next — and a phase too large to read as one diff is committed in planned `> Batches:` and still closes once.
 
@@ -212,9 +207,9 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 | Command | When | What it does |
 |---------|------|--------------|
 | `/scope-workflow <what>` | the work is still vague | interrogates you one question at a time until every decision the plan needs is settled — facts looked up, never asked |
-| `/write-workflow` | after discussing the work | asks the one automation question (manual, assisted or autonomous?), opens the `wf/` branch, writes and commits the plan |
+| `/write-workflow` | after discussing the work | asks the one automation question (manual or autonomous?), opens the `wf/` branch, writes and commits the plan |
 | `/import-workflow` | you already have a plan or a handoff | adapts it to the format, preserving phase states verbatim and reporting gaps instead of inventing them |
-| `/execute-phase` | attended execution | one approval gate up front (with a rendered mockup on `ui` phases), then the build — on manual right there, in a chat per phase, with you in it; on assisted in a fresh-context executor, your checks and the close back in one conversation |
+| `/execute-phase` | attended execution | one approval gate up front (with a rendered mockup on `ui` phases), then the build right there in the worker, with you in it — the ▶ button of `wf-bar` clears the worker and sets the phase's model and effort first |
 | `/close-phase` | the phase's work is finished | naming review of the new methods (accept-all is one keypress), Done gate, `[x]` record, one phase commit — invoked by `/execute-phase`, by the model when the work is done, or manually on a `[>]` phase a dead session left complete |
 | `/resume-workflow` | "where were we?" | read-only audit of plan vs git: drift, stale phases, next step — and the board strip, on attended plans |
 | `/quality-check` | all phases done | QA page from `verify.md` (a checklist you tick as you exercise), naming review of what autonomous phases created, whole-diff review at the depth you choose — then it stamps the plan |
@@ -302,9 +297,9 @@ First use:
 ```bash
 claude
 # discuss the work, then:
-> /write-workflow      # it asks: manual, assisted or autonomous?
-# manual: foreman + worker, ▶ in the worker   assisted: here, phase after phase   autonomous: one command
-> /execute-phase                 > /execute-phase                    > /run-workflow
+> /write-workflow      # it asks: manual or autonomous?
+# manual: foreman + worker, ▶ in the worker   autonomous: one command
+> /execute-phase                              > /run-workflow
 # when every phase is done:
 > /quality-check
 > /finalize-workflow
@@ -317,7 +312,7 @@ bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the button
 ```
 
-**456 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**452 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -340,10 +335,10 @@ claude plugin install wf-bar@claude-phased-workflow
 | You want to | Type | Where it belongs |
 |---|---|---|
 | turn a vague idea into settled decisions | `/scope-workflow <what>` | before the plan exists |
-| turn the discussion into a plan on a branch | `/write-workflow` | it asks: manual, assisted or autonomous? |
+| turn the discussion into a plan on a branch | `/write-workflow` | it asks: manual or autonomous? |
 | bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
 | start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
-| do the next phase | `/execute-phase` | manual — in the worker, ▶ (or `/clear` + the model menu), built there with you; assisted — in this conversation: the gate here, the build in a fresh executor |
+| do the next phase | `/execute-phase` | manual — in the worker, ▶ (or `/clear` + the model menu), built there with you |
 | close a phase whose work is finished | `/close-phase` | attended — usually called for you |
 | run the whole plan unattended | `/run-workflow` | autonomous |
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
@@ -351,7 +346,7 @@ claude plugin install wf-bar@claude-phased-workflow
 | chase a defect without burning this conversation | `/repair-phase` | a repair agent diagnoses and fixes; you decide when it is fixed |
 | carry on in a fresh chat | `/resume-workflow` there | the disk already holds the whole state — nothing to hand over |
 | close a phase on what it reached | `/close-phase` | when the rest deserves a phase of its own |
-| ask where the work stands | `/resume-workflow` | the conversation itself on assisted plans; the foreman chat on manual and autonomous ones |
+| ask where the work stands | `/resume-workflow` | the foreman chat, or a fresh one |
 | check the job: QA page, whole-diff review, the stamp | `/quality-check` | when every phase is `[x]` |
 | close the job: lessons, archive, one commit | `/finalize-workflow` | when the quality check is stamped |
 | deliver by pull request | `/pull-request` | after finalize, if you chose to leave it |
@@ -361,7 +356,7 @@ claude plugin install wf-bar@claude-phased-workflow
 
 **On disk**, committed on the `wf/` branch, under `.phased/active/<slug>/` — `plan.md` the work · `notes.md` the why · `verify.md` the human bill · `foreman.json` who commands (manual and autonomous) · `mockups/` the visual contract of `ui` phases · `log/` the sub-session transcripts.
 
-**Who says "done"** — manual and assisted: you do, phase by phase, and nothing closes or is reported before you have. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
+**Who says "done"** — manual: you do, phase by phase, and nothing closes or is reported before you have. Autonomous: tests, lint and a read-only verifier that did not write the code. Login is the human's in both, with no exception.
 
 **Lost?** `/resume-workflow`. It needs the branch, nothing else — not the chat that started it, not the machine it ran on.
 
@@ -371,6 +366,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.45.0 | `assisted` is retired: two modes, manual (foreman + worker) and autonomous; `/execute-phase` builds only in the worker, the executor runs only unattended, and a plan saying `Mode: assisted` reads as `manual` with a validator warning. |
 | 6.44.0 | Manual is foreman + worker: the worker's ▶ button (`wf-bar`) clears the chat, runs it on the phase's `Run:` model and effort (main loop only, through `turn.step`) and launches `/execute-phase`; `/close-phase` records and no longer clears. |
 | 6.43.0 | A manual phase chat is reused: `/close-phase` clears it on a `done` close (`clear_session`, or `/clear` asked where refused), `/execute-phase` checks the chat's model and effort against the phase's `Run:` line before it starts; and `wf-bar`, a separate Claude Code mod (≥ 2.1.287), puts the next step's button above the prompt. |
 | 6.42.0 | The run and the dashboard start detached, from a foreground call, since Claude Code 2.1.285 stops a background command at its time limit: `runtime.py detach` for the launcher (own session, `$T-run.pid`), `server.py --detach` for the dashboard; the watch ends on `run-end` or on a launcher gone without it, the Monitor is re-armed on its deadline, and `/resume-workflow` resets a stale `[>]` only when the launcher is gone. |
