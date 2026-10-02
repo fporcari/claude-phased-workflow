@@ -33,6 +33,13 @@ most: a literal asserted unique and never grepped for duplicates, a behaviour tr
 var, CLI option) unchecked against the tool's real interface, arithmetic stated without being computed — cheap here, expensive at a phase gate, and
 what Step 2 sizes on.
 
+**A vague start is interrogated before it is planned.** When there is no discussion to read the decisions from — a one-line idea, an issue title — settle
+them here, after that look: **a fact is looked up, never asked**; what only the user can decide is asked, **one question per turn** — several at once
+cannot be branched on — each with your recommended answer and its reason in one line and, when the answer reshapes what follows, what it unlocks.
+Ask first what changes the shape of the rest; a decision is the user's only when either answer leads to materially different work, everything else is
+yours, made and said. Done when every field the plan needs (`Decisions:`, `Pattern:`, `Files:`, `Done:`) is settled or deferred in the plan's own
+vocabulary (`Verify: deferred: needs Phase M`) — never a "decide later".
+
 This same fork decides the branch in Step 4 — remember which side you are on.
 
 Before the automation fork, apply `${CLAUDE_PLUGIN_ROOT}/refs/execution-policy.md` to choose

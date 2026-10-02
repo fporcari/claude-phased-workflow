@@ -3573,57 +3573,47 @@ rm -rf "$S58_MUT"
 
 echo "== S59: reconnaissance precedes the questions =="
 # Nine clarify rounds on one run, and almost every one repaired a plan written
-# before the code was read (issue #22). Two skills ask the user things: the
-# scoping interrogation and the planning fork. Both must look first, and both
-# must name the four defect classes the field actually produced, so the pass is
-# a checklist rather than a good intention.
+# before the code was read (issue #22). Since 6.47.0 one skill asks the user
+# things: /write-workflow, which interrogates a vague start itself. It must look
+# first, name the four defect classes the field actually produced — a checklist,
+# not a good intention — and ask one question per turn.
 s59_guard() {  # $1 = a skills dir; prints one line per violation
-  S59_SCOPE="$1/scope-workflow/SKILL.md"
   S59_WRITE="$1/write-workflow/SKILL.md"
-  # Ordering: the ground is established before the decision tree is mapped.
-  S59_GROUND=$(grep -n '^## Step 2: Establish the ground' "$S59_SCOPE" 2>/dev/null | cut -d: -f1)
-  S59_TREE=$(grep -n '^## Step 3: Map the decision tree' "$S59_SCOPE" 2>/dev/null | cut -d: -f1)
-  if [ -z "$S59_GROUND" ] || [ -z "$S59_TREE" ] || [ "$S59_GROUND" -ge "$S59_TREE" ]; then
-    echo "$S59_SCOPE: the interrogation no longer follows the ground pass"
+  S59_LOOK=$(grep -n 'look, before deciding anything' "$S59_WRITE" 2>/dev/null | head -1 | cut -d: -f1)
+  S59_ASK=$(grep -n 'A vague start is interrogated' "$S59_WRITE" 2>/dev/null | head -1 | cut -d: -f1)
+  if [ -z "$S59_LOOK" ] || [ -z "$S59_ASK" ] || [ "$S59_LOOK" -ge "$S59_ASK" ]; then
+    echo "$S59_WRITE: the interrogation no longer follows the look at the code"
   fi
-  grep -q 'looked up, never asked' "$S59_SCOPE" 2>/dev/null \
-    || echo "$S59_SCOPE: a fact may be asked instead of looked up"
-  # The four classes, in both skills that write or shape a plan.
-  for S59_F in "$S59_SCOPE" "$S59_WRITE"; do
-    for S59_K in literal behaviour remedy arithmetic; do
-      grep -qi "$S59_K" "$S59_F" 2>/dev/null \
-        || echo "$S59_F: the recon checklist lost the '$S59_K' class"
-    done
+  grep -q 'a fact is looked up, never asked' "$S59_WRITE" 2>/dev/null \
+    || echo "$S59_WRITE: a fact may be asked instead of looked up"
+  grep -q 'one question per turn' "$S59_WRITE" 2>/dev/null \
+    || echo "$S59_WRITE: the interrogation may batch its questions"
+  for S59_K in literal behaviour remedy arithmetic; do
+    grep -qi "$S59_K" "$S59_WRITE" 2>/dev/null \
+      || echo "$S59_WRITE: the recon checklist lost the '$S59_K' class"
   done
-  # Planning looks before it sizes.
-  grep -q 'look, before deciding anything' "$S59_WRITE" 2>/dev/null \
-    || echo "$S59_WRITE: the plan is built without a look at the code first"
   grep -q 'you have not seen' "$S59_WRITE" 2>/dev/null \
     || echo "$S59_WRITE: the evidence rule on Files:/Decisions: is gone"
-  # The brief hands over the mode, or /write-workflow re-asks what one question
-  # at a time should already have settled — and no retired field with it.
-  grep -q '^Mode: <manual|autonomous>' "$S59_SCOPE" 2>/dev/null \
-    || echo "$S59_SCOPE: the scoping brief hands over no mode"
-  if grep -q '^Channel:' "$S59_SCOPE" 2>/dev/null; then
-    echo "$S59_SCOPE: the scoping brief still hands over the retired Channel: field"
-  fi
+  [ -e "$1/scope-workflow" ] && echo "$1/scope-workflow: the retired scoping skill is back"
   return 0
 }
 S59_OUT="$(s59_guard "$SKILLS_DIR")"
 [ -z "$S59_OUT" ] || echo "  offending: $S59_OUT"
-assert "S59: both asking skills look before they ask" '[ -z "$S59_OUT" ]'
-# Mutation A — the ground pass moves after the decision tree.
+assert "S59: the planning skill looks before it asks" '[ -z "$S59_OUT" ]'
+# Mutation A — the interrogation moves before the look.
 S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
-python3 - "$S59_MUT/scope-workflow/SKILL.md" <<'PYEOF'
-import re, sys
+python3 - "$S59_MUT/write-workflow/SKILL.md" <<'PYEOF'
+import sys
 p = sys.argv[1]
 t = open(p).read()
-t = t.replace('## Step 2: Establish the ground', '## Step 4: Establish the ground')
-t = t.replace('## Step 3: Map the decision tree', '## Step 2: Map the decision tree')
-t = t.replace('## Step 4: Establish the ground', '## Step 3: Establish the ground')
+i = t.index('**A vague start is interrogated'); j = t.index('\n\n', i)
+para = t[i:j]
+t = t[:i] + t[j + 2:]
+k = t.index('**Then look, before deciding anything.**')
+t = t[:k] + para + '\n\n' + t[k:]
 open(p, 'w').write(t)
 PYEOF
-assert "S59: the guard fails when the questions come before the ground" \
+assert "S59: the guard fails when the questions come before the look" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
 # Mutation B — the checklist loses a class, the cheapest way for it to rot.
@@ -3633,19 +3623,17 @@ sed -i.bak 's/arithmetic/counting/g' "$S59_MUT/write-workflow/SKILL.md" \
 assert "S59: the guard fails when the recon checklist loses a class" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
-assert "S59: the scoping brief hands the mode over" \
-  'grep -q "^Mode: <manual|autonomous>" "$SKILLS_DIR/scope-workflow/SKILL.md"'
-# Mutation C — the brief hands over no mode.
+# Mutation C — the questions are batched again.
 S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
-sed -i.bak '/^Mode: <manual|autonomous>/d' "$S59_MUT/scope-workflow/SKILL.md" \
-  && rm -f "$S59_MUT/scope-workflow/SKILL.md.bak"
-assert "S59: the guard fails when the brief hands over no mode" \
+sed -i.bak 's/one question per turn/the questions together/' "$S59_MUT/write-workflow/SKILL.md" \
+  && rm -f "$S59_MUT/write-workflow/SKILL.md.bak"
+assert "S59: the guard fails when the questions are batched" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
-# Mutation D — the retired field creeps back into the brief.
+# Mutation D — the scoping skill comes back beside it.
 S59_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR"/. "$S59_MUT/"
-printf '\nChannel: <in-chat|relayed>\n' >> "$S59_MUT/scope-workflow/SKILL.md"
-assert "S59: the guard fails when the brief hands over a Channel: again" \
+mkdir -p "$S59_MUT/scope-workflow" && printf -- '---\ndescription: x\n---\n' > "$S59_MUT/scope-workflow/SKILL.md"
+assert "S59: the guard fails when the scoping skill comes back" \
   '[ -n "$(s59_guard "$S59_MUT")" ]'
 rm -rf "$S59_MUT"
 

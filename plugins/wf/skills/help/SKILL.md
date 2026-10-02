@@ -17,8 +17,7 @@ what to say, not a page to paste.
 
 - **No workflow yet — an idea, an issue, a discussion.** Talk the work
   through in a chat, then `/wf:write-workflow` turns the conversation into a
-  branch, a plan and its first commit. Decisions still open →
-  `/wf:scope-workflow` first, one question at a time. Starting from a GitHub
+  branch, a plan and its first commit. Decisions still open → it asks them first, one question at a time. Starting from a GitHub
   issue → `/wf:issue` for the analysis. A plan or handoff that already
   exists → `/wf:import-workflow`.
 - **A plan exists, building it with you inside (`Mode: manual`).**
@@ -59,7 +58,6 @@ what to say, not a page to paste.
 
 | Command | What it does |
 |---|---|
-| `/wf:scope-workflow` | settle the open decisions before the plan exists, one question at a time |
 | `/wf:issue` | load and analyze a GitHub issue — analysis only |
 | `/wf:write-workflow` | turn the conversation into branch + plan + first commit |
 | `/wf:import-workflow` | adopt an existing plan or handoff document into `.phased/` |

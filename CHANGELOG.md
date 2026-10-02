@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.47.0 — 2026-10-02
+
+`/scope-workflow` is gone. It interrogated a vague idea one question at a time and handed `/write-workflow` a brief of settled decisions, for the case where there was no discussion to read them from — and in practice the discussion always came first, in the chat, so the skill went unused while `/write-workflow` already carried the reconnaissance half of it (the look at the code, the four premise classes). The interrogation half moves there: when there is no discussion to read the decisions from, `/write-workflow` settles them itself, after the look — a fact is looked up, never asked; one question per turn, with the recommended answer and what it unlocks; the shape-changing decision first; a decision is the user's only when either answer leads to materially different work — until every field the plan needs is settled or deferred in the plan's own vocabulary. `/help`, `/resume-workflow`, `execution-policy.md`, the README and the eval graders stop naming it; S59 now pins the interrogation in `/write-workflow` and fails if the scoping skill comes back.
+
 ## 6.46.0 — 2026-10-02
 
 The last trace of `assisted` goes. 6.45.0 retired the mode but kept it as a header read as `manual`, with a validator warning, a dashboard normalisation and a migration note in `/resume-workflow`; nobody runs one, so the shim is a cost with no user. `Mode: assisted` is now an unknown mode — `next-phase.py --validate` rejects it like any other — and no skill, ref or page names it; S60 now fails on any mention of it in a skill or a ref.

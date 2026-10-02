@@ -1,6 +1,6 @@
 # Execution policy — shape, roles, budget
 
-The one place that says how much machinery a job deserves. Skills cite it (`/scope-workflow`, `/write-workflow`, `/import-workflow`, `/quality-check`); none restates it. Everything here is advice the human can overrule — the launcher enforces only what it names (`run-workflow/SKILL.md` → *Bounds*).
+The one place that says how much machinery a job deserves. Skills cite it (`/write-workflow`, `/import-workflow`, `/quality-check`); none restates it. Everything here is advice the human can overrule — the launcher enforces only what it names (`run-workflow/SKILL.md` → *Bounds*).
 
 ## The delivery shape comes before mode and channel
 

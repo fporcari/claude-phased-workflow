@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.46.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.47.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -206,8 +206,7 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 
 | Command | When | What it does |
 |---------|------|--------------|
-| `/scope-workflow <what>` | the work is still vague | interrogates you one question at a time until every decision the plan needs is settled — facts looked up, never asked |
-| `/write-workflow` | after discussing the work | asks the one automation question (manual or autonomous?), opens the `wf/` branch, writes and commits the plan |
+| `/write-workflow` | after discussing the work — or with a vague idea, which it interrogates one question at a time first | asks the one automation question (manual or autonomous?), opens the `wf/` branch, writes and commits the plan |
 | `/import-workflow` | you already have a plan or a handoff | adapts it to the format, preserving phase states verbatim and reporting gaps instead of inventing them |
 | `/execute-phase` | attended execution | one approval gate up front (with a rendered mockup on `ui` phases), then the build right there in the worker, with you in it — the ▶ button of `wf-bar` clears the worker and sets the phase's model and effort first |
 | `/close-phase` | the phase's work is finished | naming review of the new methods (accept-all is one keypress), Done gate, `[x]` record, one phase commit — invoked by `/execute-phase`, by the model when the work is done, or manually on a `[>]` phase a dead session left complete |
@@ -312,7 +311,7 @@ bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the button
 ```
 
-**452 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**451 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -334,7 +333,6 @@ claude plugin install wf-bar@claude-phased-workflow
 
 | You want to | Type | Where it belongs |
 |---|---|---|
-| turn a vague idea into settled decisions | `/scope-workflow <what>` | before the plan exists |
 | turn the discussion into a plan on a branch | `/write-workflow` | it asks: manual or autonomous? |
 | bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
 | start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
@@ -366,6 +364,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.47.0 | `/scope-workflow` is gone: `/write-workflow` interrogates a vague start itself — after the look at the code, a fact looked up and never asked, one question per turn with its recommended answer — until every field the plan needs is settled. |
 | 6.46.0 | The last trace of `assisted` goes: `Mode: assisted` is no longer read as manual but rejected by the validator like any unknown mode, and no skill, ref or page mentions it. |
 | 6.45.0 | `assisted` is retired: two modes, manual (foreman + worker) and autonomous; `/execute-phase` builds only in the worker, the executor runs only unattended, and a plan saying `Mode: assisted` reads as `manual` with a validator warning. |
 | 6.44.0 | Manual is foreman + worker: the worker's ▶ button (`wf-bar`) clears the chat, runs it on the phase's `Run:` model and effort (main loop only, through `turn.step`) and launches `/execute-phase`; `/close-phase` records and no longer clears. |
