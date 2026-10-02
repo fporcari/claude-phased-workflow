@@ -93,13 +93,9 @@ code changing. Every new changelog entry is judged against this list.
     them are no longer touched; a change leaves the page unable to name the chat
     that will drain the queue.
 
-15. **Desktop session tools on `self`** — `clear_session` (`/close-phase` clears a
-    manual phase chat on a `done` close) and `get_session` (`/execute-phase` reads the
-    chat's `model` and `effort` against the `Run:` line). Both best-effort with a
-    declared fallback (`/clear` asked; the check skipped). A change in what
-    `clear_session` refuses — today a pinned chat, one on Remote Control, a queued
-    message — moves the fallback from rare to routine; a renamed `model`/`effort`
-    field silently skips the check.
+15. **`get_session` on `self`** — `/execute-phase` reads the chat's `model` and
+    `effort` against the `Run:` line when `wf-bar` did not launch it. Best-effort: no
+    tool, no check. A renamed `model`/`effort` field silently skips it.
 
 Surfaces 11–14 belong to the dashboard, which is an OPTIONAL surface: a break in
 any of them costs the page, never a workflow — `refs/board.md` → *The dashboard,
@@ -109,8 +105,12 @@ where it exists*.
 
 A Claude Code mod (`hooks/hooks.json` → `register.js`). Exposed to the mods API:
 the `AbovePrompt` render site and its `isWorking`/`hasSurvey` props, `Button`,
-`$.fs.list`/`$.fs.read`, `$.clock.every`, `turn.complete`, and `$.command.run`
-running a plugin skill as if typed. It reads the plan format `next-phase.py` reads
+`$.fs.list`/`$.fs.read`, `$.clock.every`, `turn.complete`, `$.ui.status`,
+`$.command.run` running `/clear` and then a plugin skill as if typed, `turn.step`
+rewriting `model` (an alias: `opus`, `fable`) and `effort` on main-loop requests
+only (`agentId` absent), and `skill.prompt` on `wf:execute-phase`. A model alias
+the engine stops resolving at `turn.step` runs the worker on a wrong model — the
+line under the prompt is where that shows. It reads the plan format `next-phase.py` reads
 (`hooks/plan.js`), so a change of the plan's phase or `Run:` line breaks it too.
 Optional by construction: a break costs the button, never a workflow.
 

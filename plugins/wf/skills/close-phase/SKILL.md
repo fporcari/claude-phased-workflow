@@ -1,6 +1,6 @@
 ---
 description: Close the phase whose work is finished — naming review of the new methods, Done gate, plan update to [x], ONE phase commit, and on a manual plan the foreman notification. Invoke at the end of an attended phase, when the user says the phase is done, or manually on a [>] phase whose work a dead executor left complete but unclosed.
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, ToolSearch, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_session_mgmt__clear_session
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, ToolSearch, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
 ---
 
 # Close Phase
@@ -117,22 +117,13 @@ osascript -e 'display notification "Phase N closed: <title>" with title "Claude 
 Close with the next step, always: the next phase with its `Run:` hint quoted,
 or `/quality-check` (then `/finalize-workflow`) when this was the last — the
 user must never need to know the flow by heart to keep moving. On a manual
-plan the next phase is `/execute-phase` in this same chat, cleared — it is
-already in the plan's checkout; on an assisted plan it is `/execute-phase`
+plan the next phase runs in this same chat, the worker, which is already in
+the plan's checkout: the ▶ button above the prompt (`wf-bar`) clears it, sets
+the phase's model and effort and launches `/execute-phase`; without it,
+`/clear`, the model menu, `/execute-phase`. This close records, it never
+clears — what is left to say about the phase is said here first; on an assisted plan it is `/execute-phase`
 again, in this same conversation, which is where the gate already is.
 
-**Clear this chat — manual plans, `done` outcome only**, as the very last
-act: `clear_session` on `session_id: "self"`. Everything the next phase
-needs is on disk by now — the commit, `notes.md`, the plan, `mockups/`,
-`verify.md` — so the next phase starts on an empty context in the right
-folder. The clear lands when this turn ends: the closing message goes
-first, and says that the chat is about to be cleared and that "Resume
-previous session" brings it back. Refused (the chat is pinned, on Remote
-Control, or holds a queued message) or no tool → the closing line asks for
-`/clear` instead. Never on `closed short` or `result rejected` — what
-follows is a re-planning, and its discussion may still need this chat —
-never in a foreman chat, never on an assisted plan, whose conversation
-carries the workflow.
 
 ## Rules
 

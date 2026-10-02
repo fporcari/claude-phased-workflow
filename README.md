@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.43.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.44.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -65,7 +65,7 @@ Then every phase is built in a **context of its own** — a chat of its own with
 
 The plan is the same; what changes is **where you are while a phase is built**:
 
-- **Manual** — a chat per phase, and you are inside the build. You change your mind, study, try the real page in the browser while it takes shape — ordinary work, not a failed gate. The chat that wrote the plan is the **foreman**: a plan question goes to it first, and you answer only what the plan does not.
+- **Manual** — two chats: **foreman + worker**. The chat that wrote the plan is the **foreman**: a plan question goes to it first, and you answer only what the plan does not. The **worker** builds every phase, one after the other, with you inside the build: you change your mind, study, try the real page in the browser while it takes shape — ordinary work, not a failed gate. Its ▶ button (`wf-bar`, below) starts the next phase: it clears the chat, sets the phase's model and effort and launches `/execute-phase`; `/close-phase` records the phase and its history, and never clears.
 - **Assisted** — one conversation holds the whole workflow. Before each phase you approve the plan and settle every open question; the build then runs in an executor with a fresh context and comes back to you; you look at the result and say go, and the phase does not close until you have. The code of a phase never enters the conversation you are in.
 - **Autonomous** — you launch it and go grocery shopping. "Done" is not declared by whoever wrote the code: a separate checker says it (the loop below). You get a notification when it finishes or when it stops.
 
@@ -142,7 +142,7 @@ Messages between chats are best-effort by design — any of them can be lost and
 | Role | Runs where | Writes what | Dies when |
 |---|---|---|---|
 | Workflow chat | desktop chat — assisted plans | the plan, the gate decisions, the phase commit at close; never the code | when you close it — the disk holds the state, `/resume-workflow` reopens it anywhere |
-| Phase chat | desktop chat — manual plans, one conversation per phase, the same chat reused | the phase's code and its commit, with you in it | cleared by `/close-phase` for the next phase, or hands over to a new chat |
+| Worker | desktop chat — manual plans, one chat for every phase, cleared between them | the phase's code and its commit, with you in it | never between phases: the ▶ button clears it for the next one; a phase that outgrows it hands over to a new chat |
 | Foreman | desktop chat — manual and autonomous plans | nothing on the code: decisions only | replaceable — its identity lives in `foreman.json`, not in the chat |
 | Inspector | desktop chat | inspection notes | with the chat that launched the run |
 | Executor | subagent of the workflow chat (assisted) or headless `claude -p` (autonomous) | code + its commits — a `partial` handed back to the gate, or the phase commit itself unattended | every phase — born with fresh context, gone when it returns |
@@ -303,7 +303,7 @@ First use:
 claude
 # discuss the work, then:
 > /write-workflow      # it asks: manual, assisted or autonomous?
-# manual: one phase chat, cleared between phases   assisted: here, phase after phase   autonomous: one command
+# manual: foreman + worker, ▶ in the worker   assisted: here, phase after phase   autonomous: one command
 > /execute-phase                 > /execute-phase                    > /run-workflow
 # when every phase is done:
 > /quality-check
@@ -327,7 +327,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 
 ## The button above the prompt
 
-`wf-bar` is a separate plugin of this marketplace, a [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) (Claude Code 2.1.287 or later). In a chat whose folder holds `.phased/active/<slug>/plan.md` it draws one line above the prompt: the workflow, the phases done, and a button for the next step — `/wf:execute-phase` with the phase number, title and `Run:` model and effort, `/wf:repair-phase` on a `[!]`, `/wf:quality-check` when every phase is `[x]`. Nothing on an autonomous plan, nothing while Claude works. It only reads the plan; the skill it launches keeps its own gate. Without it, or on an older Claude Code, everything works as before.
+`wf-bar` is a separate plugin of this marketplace, a [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) (Claude Code 2.1.287 or later). In a chat whose folder holds `.phased/active/<slug>/plan.md` it draws one line above the prompt: the workflow, the phases done, and the next step as a button. In the worker that is `▶ execute-phase · Phase N: <title> · <model> / <effort>`, from the phase's `Run:` line: pressed, it clears the chat, runs every request of the chat on that model and effort — subagents keep their own — and launches `/wf:execute-phase`, which is told so and skips its model check. A line under the prompt names the model actually running, which the model menu does not show. On a `[!]` the button is `/wf:repair-phase`, with every phase `[x]` `/wf:quality-check`; nothing on an autonomous plan, nothing while Claude works. The skill it launches keeps its own gate. Without it, or on an older Claude Code: `/clear`, the model menu, `/execute-phase` — and `/execute-phase` asks when the chat's model or effort is not the phase's.
 
 ```bash
 claude plugin install wf-bar@claude-phased-workflow
@@ -343,7 +343,7 @@ claude plugin install wf-bar@claude-phased-workflow
 | turn the discussion into a plan on a branch | `/write-workflow` | it asks: manual, assisted or autonomous? |
 | bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
 | start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
-| do the next phase | `/execute-phase` | manual — in the phase chat, cleared by the last close (or a new one), built there with you; assisted — in this conversation: the gate here, the build in a fresh executor |
+| do the next phase | `/execute-phase` | manual — in the worker, ▶ (or `/clear` + the model menu), built there with you; assisted — in this conversation: the gate here, the build in a fresh executor |
 | close a phase whose work is finished | `/close-phase` | attended — usually called for you |
 | run the whole plan unattended | `/run-workflow` | autonomous |
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
@@ -371,6 +371,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.44.0 | Manual is foreman + worker: the worker's ▶ button (`wf-bar`) clears the chat, runs it on the phase's `Run:` model and effort (main loop only, through `turn.step`) and launches `/execute-phase`; `/close-phase` records and no longer clears. |
 | 6.43.0 | A manual phase chat is reused: `/close-phase` clears it on a `done` close (`clear_session`, or `/clear` asked where refused), `/execute-phase` checks the chat's model and effort against the phase's `Run:` line before it starts; and `wf-bar`, a separate Claude Code mod (≥ 2.1.287), puts the next step's button above the prompt. |
 | 6.42.0 | The run and the dashboard start detached, from a foreground call, since Claude Code 2.1.285 stops a background command at its time limit: `runtime.py detach` for the launcher (own session, `$T-run.pid`), `server.py --detach` for the dashboard; the watch ends on `run-end` or on a launcher gone without it, the Monitor is re-armed on its deadline, and `/resume-workflow` resets a stale `[>]` only when the launcher is gone. |
 | 6.41.0 | `sonnet` is back in the autonomous palette, narrowly: at `medium`, for a phase that is mechanical and fully specified (nothing to invent, a few files, no design decision, no shared contract); `opus` everywhere else and in doubt, and never on the `Repair` row. The 6.13.0 exclusion was measured on Sonnet 5; the reopening rests on Sonnet 5.5's docs and a partial benchmark (same outcome as opus in half the wall time, about opus/`medium` cost), archived under `tests/benchmark/results/run-2026-09-29-sonnet55-partial/`. |

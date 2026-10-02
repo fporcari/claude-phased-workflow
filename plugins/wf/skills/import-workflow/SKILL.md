@@ -97,7 +97,7 @@ Verify the commit is not empty (`git show --stat HEAD`).
 ```
 Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), committed on <branch>.
 autonomous → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; to carry on, launch /run-workflow here.
-manual → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; to carry on, /execute-phase in a new chat, then phase after phase in that same chat — /close-phase clears it.
+manual → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; to carry on, /execute-phase in a new chat, the worker, which then builds every phase — the ▶ button of wf-bar clears it between phases.
 assisted → no relay and no foreman: to carry on, /execute-phase here, in this same conversation.
 Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>

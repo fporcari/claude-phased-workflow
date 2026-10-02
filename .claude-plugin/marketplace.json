@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "A phased workflow system for Claude Code: converse, plan, execute, finalize. One branch per plan, on a branch or inside a git worktree.",
-    "version": "6.43.0"
+    "version": "6.44.0"
   },
   "plugins": [
     {
       "name": "wf",
       "source": "./plugins/wf",
       "description": "Phased development workflow with natural conversation planning, one phase per session, one branch and one commit per phase, and a self-correcting autonomous chain (convergence loops + fresh-eyes repair)",
-      "version": "6.43.0",
+      "version": "6.44.0",
       "author": {
         "name": "Francesco Porcari"
       },
@@ -31,8 +31,8 @@
     {
       "name": "wf-bar",
       "source": "./plugins/wf-bar",
-      "description": "A button above the prompt that launches the phased workflow's next step — /wf:execute-phase with the phase, its model and effort — read from the plan on disk. A Claude Code mod: needs Claude Code 2.1.287 or later, and the wf plugin.",
-      "version": "6.43.0",
+      "description": "The worker's button above the prompt for the phased workflow's next step: it clears the chat, runs it on the phase's model and effort and launches /wf:execute-phase, read from the plan on disk. A Claude Code mod: needs Claude Code 2.1.287 or later, and the wf plugin.",
+      "version": "6.44.0",
       "author": {
         "name": "Francesco Porcari"
       },

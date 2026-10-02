@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { nextAction, parsePlan } from '../hooks/plan.js'
+import { nextAction, parsePlan, parseRun, phaseRun } from '../hooks/plan.js'
 
 const PLAN = `# Context: wf/foo
 Mode: manual
@@ -19,7 +19,7 @@ test('the first phase not [x] is the one the button launches', () => {
   expect(a.command).toBe('wf:execute-phase')
   expect(a.phase.number).toBe(2)
   expect(a.phase.title).toBe('TH UI for foo')
-  expect(a.phase.run).toBe('opus / low')
+  expect(a.phase.run).toEqual({ model: 'opus', effort: 'low' })
   expect([a.done, a.total]).toEqual([1, 3])
 })
 
@@ -32,4 +32,10 @@ test('a [>] phase is resumed through execute-phase, a [!] one goes to repair', (
 test('every phase [x] offers the quality check; an autonomous plan offers nothing', () => {
   expect(nextAction(parsePlan(PLAN.replaceAll('- [ ]', '- [x]'))).command).toBe('wf:quality-check')
   expect(nextAction(parsePlan(PLAN.replace('Mode: manual', 'Mode: autonomous'))).command).toBe(null)
+})
+
+test('a Run: line splits into model and effort, its comment dropped; none reads as opus / high', () => {
+  expect(parseRun('fable / high — meant for /execute-phase-agent')).toEqual({ model: 'fable', effort: 'high' })
+  expect(parseRun('whatever the session has')).toBe(null)
+  expect(phaseRun({ run: null })).toEqual({ model: 'opus', effort: 'high' })
 })

@@ -110,8 +110,8 @@ absence is migration, not an error):
 
 **The other chats of a workflow title themselves too.** An assisted
 workflow's one conversation is `wf:<slug>`, once, when `/write-workflow` or
-`/execute-phase` first runs there; a manual workflow's phase chat is
-`wf:<slug>:phase-N — <phase title>`, which is also how a resuming chat finds it
+`/execute-phase` first runs there; a manual workflow's phase chat — the **worker**, one
+chat cleared between phases — is `wf:<slug>:phase-N — <phase title>`, retitled at every phase, which is also how a resuming chat finds it
 (`refs/phase-execution.md` → *Resuming a `[>]` phase*). Only a foreman's title
 is an address, so this is legibility more than protocol: the session list stops
 being a wall of auto-generated summaries and one prefix groups the workflows. Unattended sessions carry no title — a

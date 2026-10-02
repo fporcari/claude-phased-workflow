@@ -2,6 +2,18 @@ const PHASE_RE = /^\s*-\s*\[(.)\]\s*\*\*Phase\s+(\d+)\*\*:\s*(.+?)\s*$/
 const RUN_RE = /^\s*[-*]?\s*Run:\s*(.+?)\s*$/i
 const MODE_RE = /^Mode:\s*(\S+)/m
 const TAG_RE = /\s+`[a-z-]+`(\s+`[a-z-]+`)*$/
+const RUN_VALUE_RE = /^([a-z][a-z0-9.-]*)\s*\/\s*(low|medium|high|xhigh|max)\b/i
+// execute-phase reads a phase with no Run: line as opus / high.
+const DEFAULT_RUN = { model: 'opus', effort: 'high' }
+
+export function parseRun(value) {
+  const m = value.match(RUN_VALUE_RE)
+  return m ? { model: m[1].toLowerCase(), effort: m[2].toLowerCase() } : null
+}
+
+export function phaseRun(phase) {
+  return phase.run || DEFAULT_RUN
+}
 
 export function parsePlan(text) {
   const mode = (text.match(MODE_RE) || [, 'manual'])[1].toLowerCase()
@@ -13,7 +25,7 @@ export function parsePlan(text) {
       continue
     }
     const r = line.match(RUN_RE)
-    if (r && phases.length && !phases[phases.length - 1].run) phases[phases.length - 1].run = r[1]
+    if (r && phases.length && !phases[phases.length - 1].run) phases[phases.length - 1].run = parseRun(r[1])
   }
   return { mode, phases }
 }
