@@ -4,6 +4,10 @@ One entry per release, newest first — a paragraph by design. The fuller
 narrative notes that accompanied 4.1.0–6.7.0 (`docs/release-*.md`) were
 consolidated here and remain readable in the git history.
 
+## 6.48.2 — 2026-10-02
+
+A plan already on its parent is a leftover, not work. The field case: a workflow merged into `develop` and `master` without `/finalize-workflow`, so `.phased/active/<slug>/` rode along, and every branch cut from them since carries a finished plan that is not its own — a fresh worktree opened on the project would have had `/execute-phase` pick it up. `next-phase.py` now checks whether the plan it reads also exists on `origin/<Parent>` (or the local `<Parent>`), prints `warning: this plan is also on <ref> — its workflow reached <ref> without /finalize-workflow; .phased/ must leave it` before the recommendation, and carries `leaked_on` in `--json`. `/execute-phase` stops before marking anything and names the fix (a commit removing `.phased/` from that ref, its owner's call); `/resume-workflow` reports it ahead of the plan's state and never takes command of it. S68 drives the check on a scratch repo.
+
 ## 6.48.1 — 2026-10-02
 
 6.48.0 told the worker from the foreman by where the plan sat: in the chat's own checkout, the worker; in a worktree below it, the foreman, which got no `execute-phase` button. But the worker is usually opened with the project's + too — in the main checkout, like the foreman — and `/execute-phase` has always found the plan's worktree from there, so the button vanished from the very chat that needs it. The mod cannot read a chat's title, so it stops guessing: every chat on the project gets the plan's next step and the full palette. The guard moves to where the title is readable: `/execute-phase` reads its own chat's title with the same `get_session` call its model check makes, and in `wf:<slug>:foreman` it stops before marking anything and says to open a new chat on the project. S67 pins it.

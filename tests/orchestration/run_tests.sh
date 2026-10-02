@@ -4054,6 +4054,33 @@ assert "S67: the guard fails when the foreman's title no longer stops the build"
   '[ -n "$(s67_guard "$S67_MUT")" ]'
 rm -rf "$S67_MUT"
 
+echo "== S68: a plan already on its parent is reported as a leftover =="
+# 6.48.2 — a workflow merged without /finalize-workflow leaves .phased/ on its
+# parent, and every branch cut from it since carries a plan that is not its
+# own: the field case is a chip's fresh worktree that would have built a phase
+# of somebody else's finished workflow.
+setup S68
+git checkout -q -b develop
+mkdir -p .phased/active/old
+printf '# Context: wf/old\nParent: develop\nMode: manual\n\n## Work Plan\n- [x] **Phase 1**: done\n' > .phased/active/old/plan.md
+git add .phased && git commit -qm "merge without finalize"
+git update-ref refs/remotes/origin/develop HEAD
+S68_OUT="$(python3 "$NEXTPHASE" .phased/active/old/plan.md 2>&1)"
+assert "S68: a plan on origin/<Parent> is warned about" \
+  'printf "%s" "$S68_OUT" | grep -q "^warning: this plan is also on origin/develop"'
+assert "S68: the JSON names the ref" \
+  '[ "$(python3 "$NEXTPHASE" --json .phased/active/old/plan.md | python3 -c "import json,sys; print(json.load(sys.stdin)[\"leaked_on\"])")" = origin/develop ]'
+git checkout -q -b wf/new
+mkdir -p .phased/active/new
+printf '# Context: wf/new\nParent: develop\nMode: manual\n\n## Work Plan\n- [ ] **Phase 1**: todo\n' > .phased/active/new/plan.md
+git add .phased && git commit -qm "wf: plan for new"
+assert "S68: a plan only on its own branch is not" \
+  '! python3 "$NEXTPHASE" .phased/active/new/plan.md 2>&1 | grep -q "^warning: this plan is also on"'
+assert "S68: execute-phase and resume-workflow stop on the warning" \
+  'grep -q "A plan already on its parent is a leftover, not work" "$SKILLS_DIR/execute-phase/SKILL.md" &&
+   grep -q "A plan already on its parent is a leftover, not work" "$SKILLS_DIR/resume-workflow/SKILL.md"'
+cd "$TESTDIR"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

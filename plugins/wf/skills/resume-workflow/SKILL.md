@@ -36,6 +36,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 git log -1 --diff-filter=A --format=%H -- <plan path>
 ```
 
+**A plan already on its parent is a leftover, not work.** A `warning: this plan is also on <ref>` line means its workflow reached `<ref>` without `/finalize-workflow`, so every branch cut from it since carries this plan: report it first, ahead of the plan's state, never take command of it, and make the fix the *Next step* — a commit removing `.phased/` from `<ref>`, its owner's call; the workflow the user means is found via `--plans`.
+
 No active plan → stop: `/write-workflow` creates one, `/import-workflow` adapts an older one. Since the plan lives on the workflow branch, check `git branch --show-current` before concluding there is no work — and check `--plans` first: the workflow may live in another checkout or on a branch with no checkout at all (`common.md` → *Plan location*); anchor every command to the plan's root with `git -C`.
 
 The third command gives `BASE`, the commit that added the plan. Everything after it is this workflow; everything before it is not — on an adopted branch that distinction is the whole point.

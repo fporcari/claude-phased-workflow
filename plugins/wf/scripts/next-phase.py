@@ -279,6 +279,26 @@ def _git(args, cwd=None):
         return ''
 
 
+def leaked_on(path, meta):
+    """The parent ref that already carries this plan, or None.
+
+    A plan on its own parent means its workflow reached the parent without
+    /finalize-workflow, which removes .phased/ before the merge: every branch
+    cut from that parent since carries a plan that is not its own.
+    """
+    parent = (meta.get('parent') or '').split('|')[0].strip()
+    plan = pathlib.Path(path).resolve()
+    root = _git(['rev-parse', '--show-toplevel'], cwd=plan.parent).strip()
+    if not parent or not root:
+        return None
+    rel = plan.relative_to(pathlib.Path(root).resolve()).as_posix()
+    for ref in (f'origin/{parent}', parent):
+        if _git(['rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}'], cwd=root) \
+                and _git(['cat-file', '-t', f'{ref}:{rel}'], cwd=root).strip() == 'blob':
+            return ref
+    return None
+
+
 def worktree_map():
     """branch -> checkout path, from `git worktree list --porcelain`."""
     result, path = {}, None
@@ -407,6 +427,7 @@ def payload(path, phases, meta, bounds):
         'path': str(path), 'phases': out, 'next': nxt, 'blocked_by': blocker,
         'recommendation': recommend(phases), 'meta': meta,
         'header_span': [1, head_end - 1],
+        'leaked_on': None if path == '-' else leaked_on(path, meta),
     }
 
 
@@ -841,6 +862,10 @@ def main():
     print('phases:')
     for i in range(len(phases)):
         print(describe(phases, i))
+    leak = leaked_on(path, meta)
+    if leak:
+        print(f'warning: this plan is also on {leak} — its workflow reached '
+              f'{leak} without /finalize-workflow; .phased/ must leave it')
     print(f'recommendation: {recommend(phases)}')
     return 0
 

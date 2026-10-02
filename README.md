@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.48.1** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.48.2** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -311,7 +311,7 @@ bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the palette (needs mods turned on)
 ```
 
-**453 assertions over 66 scenarios** (S1–S67, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**457 assertions over 67 scenarios** (S1–S68, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -364,6 +364,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.48.2 | A plan already on its own `Parent:` branch is reported as a leftover of a workflow merged without `/finalize-workflow`: `next-phase.py` warns (and `--json` carries `leaked_on`), `/execute-phase` stops before marking anything, `/resume-workflow` reports it first and never takes command of it. |
 | 6.48.1 | `wf-bar` stops guessing who the foreman is: a chat opened with the project's + finds the plan in its worktree and gets the next step's button like any other; `/execute-phase` reads its own chat's title and refuses to build in `wf:<slug>:foreman`. |
 | 6.48.0 | `wf-bar` grows `☰ wf`, a palette of every user command grouped as Phase / Plan / Other, the ones that fit the plan's state highlighted, `close-phase` among them on a `[>]` phase; and the band shows in the foreman chat too, which finds the plan in its worktree and never offers to build the phase. |
 | 6.47.0 | `/scope-workflow` is gone: `/write-workflow` interrogates a vague start itself — after the look at the code, a fact looked up and never asked, one question per turn with its recommended answer — until every field the plan needs is settled. |

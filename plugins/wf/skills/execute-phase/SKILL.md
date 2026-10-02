@@ -24,6 +24,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/next-phase.py"
 
 No active plan → stop and say so: `/write-workflow` creates one, `/import-workflow` adapts an older one. The plan lives on the workflow branch, so being on the wrong branch is the usual reason it is missing — check `git branch --show-current` before concluding there is no work. If the plan lives in another checkout (or the user means a different workflow), resolve via `--plans` and anchor every command to that plan's root — `common.md` → *Plan location*.
 
+**A plan already on its parent is a leftover, not work.** A `warning: this plan is also on <ref>` line means its workflow reached `<ref>` without `/finalize-workflow`, so every branch cut from it since carries this plan: stop before anything is marked, say so, and name the fix — a commit removing `.phased/` from `<ref>`, its owner's call. When the workflow the user means is another one, resolve it via `--plans`.
+
 **Title this chat** before acting on the recommendation, with `set_session_title` on `session_id: "self"` — every road out of it runs in this chat, the awaiting-checks gate included. `wf:<slug>:phase-N — <phase title>`: a resuming chat finds the phase's chat by it (`refs/phase-execution.md` → *Resuming a `[>]` phase*). Best-effort: no tool, no title, no consequence.
 
 **Never in the foreman's chat.** `get_session` on `session_id: "self"` also gives this chat's title: `wf:<slug>:foreman` → stop before anything is marked — this chat supervises, the worker builds — and say to open a new chat on the project and run `/wf:execute-phase` there. A launch from the `wf-bar` button is no exception.
