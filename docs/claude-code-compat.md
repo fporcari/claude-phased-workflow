@@ -23,6 +23,7 @@ breaking change by definition.
 | 2.1.139 | `/goal` guard for phase sessions | `run-workflow.sh` runtime check, declared NOTE fallback |
 | 2.1.170 | `fable` model alias | `run-workflow.sh` — opt-in only: a phase or the config table's `Repair` row may pin it |
 | 2.1.224 | cross-session `SendMessage` in the CLI | `refs/foreman.md` → *Channel floors* (single source for messaging floors) — conditional on `Channel: relayed`: an in-chat workflow sends nothing and needs no floor |
+| 2.1.287 | Claude Code mods | `plugins/wf-bar` — a separate, optional plugin: `wf` never depends on it, so this floor binds only the button |
 
 ## Plugin surfaces
 
@@ -92,9 +93,26 @@ code changing. Every new changelog entry is judged against this list.
     them are no longer touched; a change leaves the page unable to name the chat
     that will drain the queue.
 
+15. **Desktop session tools on `self`** — `clear_session` (`/close-phase` clears a
+    manual phase chat on a `done` close) and `get_session` (`/execute-phase` reads the
+    chat's `model` and `effort` against the `Run:` line). Both best-effort with a
+    declared fallback (`/clear` asked; the check skipped). A change in what
+    `clear_session` refuses — today a pinned chat, one on Remote Control, a queued
+    message — moves the fallback from rare to routine; a renamed `model`/`effort`
+    field silently skips the check.
+
 Surfaces 11–14 belong to the dashboard, which is an OPTIONAL surface: a break in
 any of them costs the page, never a workflow — `refs/board.md` → *The dashboard,
 where it exists*.
+
+### wf-bar
+
+A Claude Code mod (`hooks/hooks.json` → `register.js`). Exposed to the mods API:
+the `AbovePrompt` render site and its `isWorking`/`hasSurvey` props, `Button`,
+`$.fs.list`/`$.fs.read`, `$.clock.every`, `turn.complete`, and `$.command.run`
+running a plugin skill as if typed. It reads the plan format `next-phase.py` reads
+(`hooks/plan.js`), so a change of the plan's phase or `Run:` line breaks it too.
+Optional by construction: a break costs the button, never a workflow.
 
 ### genropy-worktree
 

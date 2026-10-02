@@ -23,7 +23,8 @@ what to say, not a page to paste.
   issue → `/wf:issue` for the analysis. A plan or handoff that already
   exists → `/wf:import-workflow`.
 - **A plan exists, building it with you inside (`Mode: manual`).**
-  `/wf:execute-phase` in a new chat for each phase: one approval gate up front
+  `/wf:execute-phase` in a fresh conversation for each phase — the previous
+  phase's chat, which `/wf:close-phase` clears, or a new one: one approval gate up front
   (a rendered mockup on `ui` phases), then the build right there, with you
   changing your mind, studying and trying it in the browser as it takes shape;
   plan questions go to the foreman first, and you answer only what it does not

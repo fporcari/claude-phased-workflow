@@ -52,7 +52,7 @@ Derive the recommendation from the work just discussed and state it in one line 
 
 Ask with `AskUserQuestion` (recommended option first, per `common.md`), three options:
 
-- **Manual** — `/execute-phase` in a new chat for each phase, built there with you in it: you change your mind, study and try it in the browser while it takes shape. This chat becomes the foreman: plan questions go up to it first, and you answer only what the plan does not.
+- **Manual** — `/execute-phase` in a fresh conversation for each phase (a new chat, or the previous phase's chat, which `/close-phase` clears), built there with you in it: you change your mind, study and try it in the browser while it takes shape. This chat becomes the foreman: plan questions go up to it first, and you answer only what the plan does not.
 - **Assisted** — `/execute-phase` in this same conversation, phase after phase: a human approval gate before each phase, the build in a fresh-context executor, your checks and the close back here. One conversation holds the whole workflow; nothing is relayed.
 - **Autonomous** — `/run-workflow` runs the whole plan unattended, one self-correcting sub-session per phase; decisions travel to the chat that launched it through the foreman relay.
 

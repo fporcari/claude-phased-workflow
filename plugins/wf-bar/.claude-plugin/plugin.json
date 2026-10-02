@@ -1,0 +1,8 @@
+{
+  "name": "wf-bar",
+  "description": "A button above the prompt that launches the phased workflow's next step — /wf:execute-phase with the phase, its model and effort — read from the plan on disk. A Claude Code mod: needs Claude Code 2.1.287 or later, and the wf plugin.",
+  "version": "6.43.0",
+  "author": {
+    "name": "Francesco Porcari"
+  }
+}

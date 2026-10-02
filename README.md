@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.42.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.43.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -142,7 +142,7 @@ Messages between chats are best-effort by design — any of them can be lost and
 | Role | Runs where | Writes what | Dies when |
 |---|---|---|---|
 | Workflow chat | desktop chat — assisted plans | the plan, the gate decisions, the phase commit at close; never the code | when you close it — the disk holds the state, `/resume-workflow` reopens it anywhere |
-| Phase chat | desktop chat — manual plans, one per phase | the phase's code and its commit, with you in it | when the phase closes, or hands over to a new chat |
+| Phase chat | desktop chat — manual plans, one conversation per phase, the same chat reused | the phase's code and its commit, with you in it | cleared by `/close-phase` for the next phase, or hands over to a new chat |
 | Foreman | desktop chat — manual and autonomous plans | nothing on the code: decisions only | replaceable — its identity lives in `foreman.json`, not in the chat |
 | Inspector | desktop chat | inspection notes | with the chat that launched the run |
 | Executor | subagent of the workflow chat (assisted) or headless `claude -p` (autonomous) | code + its commits — a `partial` handed back to the gate, or the phase commit itself unattended | every phase — born with fresh context, gone when it returns |
@@ -303,7 +303,7 @@ First use:
 claude
 # discuss the work, then:
 > /write-workflow      # it asks: manual, assisted or autonomous?
-# manual: a new chat per phase   assisted: here, phase after phase   autonomous: one command
+# manual: one phase chat, cleared between phases   assisted: here, phase after phase   autonomous: one command
 > /execute-phase                 > /execute-phase                    > /run-workflow
 # when every phase is done:
 > /quality-check
@@ -314,6 +314,7 @@ claude
 
 ```bash
 bash tests/orchestration/run_tests.sh     # free: no sessions, no model
+claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the button
 ```
 
 **456 assertions over 65 scenarios** (S1–S66, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
@@ -323,6 +324,14 @@ There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real se
 ## GenroPy worktree support
 
 If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` plugin makes `gnr` CLI commands work from workflow worktrees, and once its scripts are installed `/write-workflow` and the `/run-workflow` launcher activate the worktree's GenroPy environment themselves, before any session opens there — see [plugins/genropy-worktree/README.md](plugins/genropy-worktree/README.md).
+
+## The button above the prompt
+
+`wf-bar` is a separate plugin of this marketplace, a [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) (Claude Code 2.1.287 or later). In a chat whose folder holds `.phased/active/<slug>/plan.md` it draws one line above the prompt: the workflow, the phases done, and a button for the next step — `/wf:execute-phase` with the phase number, title and `Run:` model and effort, `/wf:repair-phase` on a `[!]`, `/wf:quality-check` when every phase is `[x]`. Nothing on an autonomous plan, nothing while Claude works. It only reads the plan; the skill it launches keeps its own gate. Without it, or on an older Claude Code, everything works as before.
+
+```bash
+claude plugin install wf-bar@claude-phased-workflow
+```
 
 ## Cheatsheet
 
@@ -334,7 +343,7 @@ If you develop with [GenroPy](https://www.genropy.org/), the `genropy-worktree` 
 | turn the discussion into a plan on a branch | `/write-workflow` | it asks: manual, assisted or autonomous? |
 | bring in a plan you already have | `/import-workflow [path]` | instead of `/write-workflow` |
 | start from a GitHub issue | `/issue <number>` | analysis only — no plan, no code |
-| do the next phase | `/execute-phase` | manual — in a new chat, built there with you; assisted — in this conversation: the gate here, the build in a fresh executor |
+| do the next phase | `/execute-phase` | manual — in the phase chat, cleared by the last close (or a new one), built there with you; assisted — in this conversation: the gate here, the build in a fresh executor |
 | close a phase whose work is finished | `/close-phase` | attended — usually called for you |
 | run the whole plan unattended | `/run-workflow` | autonomous |
 | run exactly one phase unattended | `/execute-phase-agent` | autonomous |
@@ -362,6 +371,7 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.43.0 | A manual phase chat is reused: `/close-phase` clears it on a `done` close (`clear_session`, or `/clear` asked where refused), `/execute-phase` checks the chat's model and effort against the phase's `Run:` line before it starts; and `wf-bar`, a separate Claude Code mod (≥ 2.1.287), puts the next step's button above the prompt. |
 | 6.42.0 | The run and the dashboard start detached, from a foreground call, since Claude Code 2.1.285 stops a background command at its time limit: `runtime.py detach` for the launcher (own session, `$T-run.pid`), `server.py --detach` for the dashboard; the watch ends on `run-end` or on a launcher gone without it, the Monitor is re-armed on its deadline, and `/resume-workflow` resets a stale `[>]` only when the launcher is gone. |
 | 6.41.0 | `sonnet` is back in the autonomous palette, narrowly: at `medium`, for a phase that is mechanical and fully specified (nothing to invent, a few files, no design decision, no shared contract); `opus` everywhere else and in doubt, and never on the `Repair` row. The 6.13.0 exclusion was measured on Sonnet 5; the reopening rests on Sonnet 5.5's docs and a partial benchmark (same outcome as opus in half the wall time, about opus/`medium` cost), archived under `tests/benchmark/results/run-2026-09-29-sonnet55-partial/`. |
 | 6.40.1 | A benchmark to re-measure Sonnet for mechanical phases: `tests/benchmark/sonnet55.sh` runs opus 5.5 at `low`/`medium` against sonnet 5.5 at `medium`/`high` on the shipped `/goal` contract, over `fixture` and `fixture-seeded` (whose plan is restored in the current `.phased/` layout; its hidden edge case is the `REGISTRY` test), with the decision rule fixed in the script before the numbers; `bench.sh` archives a run under `results/` when `BENCH_OUT` is set. |
