@@ -49,6 +49,21 @@ export const GROUPS = [
   ['Other', ['dashboard', 'write-workflow', 'import-workflow', 'issue', 'pull-request', 'help']],
 ]
 
+// The worker builds the phases and nothing else; the foreman supervises and never builds.
+// A chat with no role yet is offered everything.
+const WORKER = new Set(['execute-phase', 'close-phase', 'repair-phase', 'resume-workflow', 'dashboard', 'help'])
+const FOREMAN_NEVER = new Set(['execute-phase', 'close-phase', 'repair-phase'])
+
+export function allowed(name, role) {
+  if (role === 'worker') return WORKER.has(name)
+  if (role === 'foreman') return !FOREMAN_NEVER.has(name)
+  return true
+}
+
+export function palette(role) {
+  return GROUPS.map(([group, names]) => [group, names.filter((n) => allowed(n, role))]).filter(([, names]) => names.length)
+}
+
 // Skills whose argument is required: the button drafts the command, the user completes it.
 export const NEEDS_ARGS = new Set(['issue'])
 

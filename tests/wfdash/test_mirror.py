@@ -89,24 +89,24 @@ assert [(x['role'], x['text']) for x in inbox.transcript_tail(busy)] == [
     ('sent', 'chiedo'), ('foreman', 'rispondo')], inbox.transcript_tail(busy)
 
 # --- the mirror, with no foreman and with one that is not running -------------
-no_foreman = inbox.mirror(root, {'slug': 'fixture', 'mode': 'autonomous'}, [])
+no_foreman = inbox.mirror([root], {'slug': 'fixture', 'mode': 'autonomous'}, [])
 assert 'error' in no_foreman and 'foreman.json' in no_foreman['error'], no_foreman
 assert 'exchange' not in no_foreman, no_foreman
 
 plan = {'slug': 'fixture', 'mode': 'autonomous', 'foreman': {'foreman': FOREMAN}}
-gone = inbox.mirror(root, plan, [])
+gone = inbox.mirror([root], plan, [])
 assert gone['live'] is False and gone['exchange'] == [], gone
 assert 'never opened' in gone['state'], gone
 
-asleep = inbox.mirror(root, plan, [{'name': FOREMAN, 'session_id': 'sess-1',
-                                    'live': False, 'pid': None}])
+asleep = inbox.mirror([root], plan, [{'name': FOREMAN, 'session_id': 'sess-1',
+                                     'live': False, 'pid': None}])
 assert asleep['live'] is False, asleep
 assert asleep['state'] == f'the foreman chat "{FOREMAN}" is not running', asleep
 # The channel is gone; the record is not.
 assert [x['role'] for x in asleep['exchange']] == ['sent', 'foreman', 'sent']
 
-awake = inbox.mirror(root, plan, [{'name': FOREMAN, 'session_id': 'sess-1',
-                                   'live': True, 'pid': 4242}])
+awake = inbox.mirror([root], plan, [{'name': FOREMAN, 'session_id': 'sess-1',
+                                    'live': True, 'pid': 4242}])
 assert awake['live'] is True and awake['pid'] == 4242, awake
 assert 'state' not in awake, awake
 

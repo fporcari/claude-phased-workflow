@@ -18,7 +18,6 @@ Nothing here writes to disk.
 """
 import html
 import json
-import os
 import pathlib
 import re
 
@@ -81,18 +80,17 @@ def foreman_target(plan, chats):
 
 
 def repo_sessions(repo, titles=None):
-    """The live sessions whose cwd IS this repo — the only recipients the page may offer.
+    """The live sessions whose cwd is this repo (or the main checkout a worktree hangs
+    from) — the only recipients the page may offer.
 
     A repo with no plan has no `foreman.json` and therefore no address of its
     own, so the recipient of the first command cannot be resolved the way the
     foreman is. It is still not taken from the request: the server publishes
     THIS list, and the page can only name something that is in it.
     """
-    here = os.path.realpath(os.path.expanduser(repo))
     out = []
     for sid, rec in core.live_sessions().items():
-        cwd = rec.get('cwd')
-        if not cwd or os.path.realpath(cwd) != here:
+        if not core.same_checkout(rec.get('cwd'), repo):
             continue
         out.append({'session_id': sid, 'pid': rec.get('pid'),
                     'name': (titles or {}).get(sid) or rec.get('name') or sid[:8],
@@ -111,7 +109,8 @@ def owner_target(pid, repo, titles=None):
 
     Nothing about it is cached. The server outlives chats, and a pid the system
     has recycled would otherwise receive a stranger's command, so the record is
-    read again here and the cwd checked against this repo every time.
+    read again here and the cwd checked against this repo every time — this
+    checkout, or the main one a worktree hangs from (`core.checkouts`).
     """
     if not pid:
         return None
@@ -119,7 +118,7 @@ def owner_target(pid, repo, titles=None):
     if record is None:
         return None
     cwd = record.get('cwd')
-    if not cwd or os.path.realpath(cwd) != os.path.realpath(os.path.expanduser(repo)):
+    if not core.same_checkout(cwd, repo):
         return None
     sid = record.get('sessionId')
     return {'session_id': sid, 'pid': pid,
@@ -190,7 +189,7 @@ def transcript_tail(path, limit=MIRROR_TURNS):
     return out[-limit:]
 
 
-def mirror(project_dir, plan, chats, limit=MIRROR_TURNS):
+def mirror(project_dirs, plan, chats, limit=MIRROR_TURNS):
     """The foreman's side of the channel: whether it can be written to, and the exchange.
 
     The state and the exchange are independent: a foreman that is not running
@@ -206,7 +205,9 @@ def mirror(project_dir, plan, chats, limit=MIRROR_TURNS):
         return out
     if not live:
         out['state'] = f'the foreman chat "{title}" is not running'
-    if project_dir and chat.get('session_id'):
-        out['exchange'] = transcript_tail(
-            pathlib.Path(project_dir) / f"{chat['session_id']}.jsonl", limit)
+    for d in project_dirs if chat.get('session_id') else ():
+        f = pathlib.Path(d) / f"{chat['session_id']}.jsonl" if d else None
+        if f and f.is_file():
+            out['exchange'] = transcript_tail(f, limit)
+            break
     return out

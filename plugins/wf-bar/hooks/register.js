@@ -1,22 +1,24 @@
-import { GROUPS, NEEDS_ARGS, nextAction, parsePlan, phaseRun, relevant } from './plan.js'
+import { NEEDS_ARGS, allowed, nextAction, palette, parsePlan, phaseRun, relevant } from './plan.js'
 
 const ACTIVE = '.phased/active'
 const WORKTREES = '.claude/worktrees'
 const REFRESH_MS = 15_000
 const EXECUTE = 'wf:execute-phase'
+const TYPED_EXECUTE = /(^|<command-name>)\/wf:execute-phase\b/
 
 let state = null
+let role = 'unknown'
 let open = false
-// The phase this worker chat was started on: its model and effort hold on every
-// main-loop request until the next press. Module-level, so it survives /clear.
-let pin = null
+// An unknown chat may hold work of its own: the first press asks, the second clears.
+let armed = false
+// execute-phase ran here, typed or pressed. Module-level, so it survives /clear.
+let built = false
 
 async function dirs($, path) {
   return (await $.fs.list(path).catch(() => [])).filter((d) => d.kind === 'dir').map((d) => d.name)
 }
 
-// The plan's own checkout first, then the worktrees below a project chat. Which chat is the
-// foreman cannot be read from here — /execute-phase refuses to build in it.
+// The plan's own checkout first, then the worktrees below a project chat.
 async function locate($) {
   const here = await dirs($, ACTIVE)
   if (here.length === 1) return { dir: `${ACTIVE}/${here[0]}`, slug: here[0] }
@@ -26,6 +28,23 @@ async function locate($) {
     for (const slug of await dirs($, `${WORKTREES}/${w}/${ACTIVE}`)) found.push({ dir: `${WORKTREES}/${w}/${ACTIVE}/${slug}`, slug })
   }
   return found.length === 1 ? found[0] : null
+}
+
+// Both chats sit in the same checkout, so the role is read from what the chat did:
+// the foreman titled itself wf:<slug>:foreman, the worker ran execute-phase.
+async function chatRole($, slug) {
+  let worker = built
+  const rows = await $.session.messages()
+  for (const m of Array.isArray(rows) ? rows : []) {
+    for (const u of m.toolUses) {
+      const title = u.tool.endsWith('set_session_title') ? String(u.input.title ?? '') : ''
+      if (title === `wf:${slug}:foreman`) return 'foreman'
+      if (title.startsWith(`wf:${slug}:phase-`) || (u.tool === 'Skill' && u.input.skill === EXECUTE)) worker = true
+    }
+    if (m.role === 'user' && TYPED_EXECUTE.test(m.text)) worker = true
+  }
+  if (worker) return 'worker'
+  return (await $.session.turns()) === 0 ? 'fresh' : 'unknown'
 }
 
 async function readState($) {
@@ -39,51 +58,69 @@ async function readState($) {
   return { slug: where.slug, ...action, command: primary, on: [...relevant(plan, action)] }
 }
 
-async function refresh($) {
+async function refresh($, rereadRole) {
   const fresh = await readState($)
-  if (JSON.stringify(fresh) === JSON.stringify(state)) return
+  const r = fresh && rereadRole ? await chatRole($, fresh.slug).catch(() => 'unknown') : role
+  if (r === role && JSON.stringify(fresh) === JSON.stringify(state)) return
   state = fresh
+  role = r
+  armed = false
   $.ui.invalidate('ui.render')
 }
 
 function label(s) {
-  if (s.command !== EXECUTE) return `▶ ${s.command.slice(3)}`
+  if (s.command !== EXECUTE || !s.phase) return `▶ ${s.command.slice(3)}`
   const run = phaseRun(s.phase)
-  return `▶ execute-phase · Phase ${s.phase.number}: ${s.phase.title} · ${run.model} / ${run.effort}`
+  return `▶ Phase ${s.phase.number} · ${run.model} / ${run.effort}`
+}
+
+// Whose step it is when this chat may not take it.
+function elsewhere(s) {
+  if (!s.command || allowed(s.command.slice(3), role)) return null
+  return allowed(s.command.slice(3), 'worker') ? `worker, in a new chat: ${label(s).slice(2)}` : `foreman: ${s.command.slice(3)}`
 }
 
 async function launch($, s, command) {
-  if (NEEDS_ARGS.has(command.slice(3))) {
+  const name = command.slice(3)
+  open = false
+  $.ui.invalidate('ui.render')
+  if (!allowed(name, role)) return
+  if (NEEDS_ARGS.has(name)) {
     await $.prompt.fill({ text: `/${command} ` })
     return
   }
-  pin = command === EXECUTE && s.phase ? { phase: s.phase.number, ...phaseRun(s.phase) } : null
-  $.ui.status(pin ? `worker on ${pin.model} / ${pin.effort} — Phase ${pin.phase}` : '')
-  if (pin) await $.command.run({ command: 'clear', args: '' })
+  if (command !== EXECUTE || !s.phase) {
+    await $.command.run({ command, args: '' })
+    return
+  }
+  if (role === 'unknown' && !armed) {
+    armed = true
+    $.ui.invalidate('ui.render')
+    return
+  }
+  armed = false
+  const run = phaseRun(s.phase)
+  if ((await $.session.turns()) > 0) await $.command.run({ command: 'clear', args: '' })
+  await $.command.run({ command: 'model', args: run.model })
+  await $.command.run({ command: 'effort', args: run.effort })
   await $.command.run({ command, args: '' })
 }
 
 export function register(on) {
   on('session.start', async ($, e, next) => {
-    await refresh($)
-    $.clock.every(REFRESH_MS, () => refresh($))
+    await refresh($, true)
+    $.clock.every(REFRESH_MS, () => refresh($, false))
     return next(e)
   })
 
   on('turn.complete', async ($, e, next) => {
-    await refresh($)
+    if (!e.agentId) await refresh($, true)
     return next(e)
   })
 
-  on('turn.step', async function* ($, e, next) {
-    if (!pin || e.agentId) return yield* next(e)
-    return yield* next({ ...e, model: pin.model, effort: pin.effort })
-  })
-
   on('skill.prompt', { skill: EXECUTE }, async ($, e, next) => {
-    if (!pin) return next(e)
-    const r = await next(e)
-    return { text: `${r.text}\n\nwf-bar: this chat runs Phase ${pin.phase} on ${pin.model} / ${pin.effort}, set by the button.` }
+    built = true
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -91,12 +128,19 @@ export function register(on) {
     const { Box, Text, Button } = $.ui.resolve(e)
     const s = state
     const idle = !e.props.isWorking
-    const head = [Text({ dimColor: true, children: [`wf · ${s.slug} · ${s.done}/${s.total}`] })]
-    if (s.command && idle) head.push(Button({ key: 'wf-next', label: label(s), onPress: () => launch($, s, s.command) }))
+    const tag = role === 'foreman' || role === 'worker' ? ` · ${role}` : ''
+    const head = [Text({ dimColor: true, children: [`wf ${s.done}/${s.total}${tag}`] })]
+    if (idle && armed && s.phase) {
+      head.push(Button({ key: 'wf-next', label: `▶ clear this chat for Phase ${s.phase.number}? press again`, onPress: () => launch($, s, EXECUTE) }))
+    } else if (idle && s.command && !elsewhere(s)) {
+      head.push(Button({ key: 'wf-next', label: label(s), onPress: () => launch($, s, s.command) }))
+    }
+    const about = [elsewhere(s), s.phase?.title, s.slug].filter(Boolean).join(' · ')
+    head.push(Box({ flexGrow: 1, flexShrink: 1, minWidth: 0, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [about] })] }))
     head.push(Button({ key: 'wf-menu', label: open ? '✕ wf' : '☰ wf', onPress: () => { open = !open; $.ui.invalidate('ui.render') } }))
     const rows = [Box({ flexDirection: 'row', columnGap: 2, children: head })]
     if (open) {
-      for (const [group, names] of GROUPS) {
+      for (const [group, names] of palette(role)) {
         rows.push(Box({
           flexDirection: 'row',
           columnGap: 1,

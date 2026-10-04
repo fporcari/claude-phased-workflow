@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { nextAction, parsePlan, parseRun, phaseRun } from '../hooks/plan.js'
+import { nextAction, palette, parsePlan, parseRun, phaseRun } from '../hooks/plan.js'
 
 const PLAN = `# Context: wf/foo
 Mode: manual
@@ -38,4 +38,13 @@ test('a Run: line splits into model and effort, its comment dropped; none reads 
   expect(parseRun('fable / high — meant for /execute-phase-agent')).toEqual({ model: 'fable', effort: 'high' })
   expect(parseRun('whatever the session has')).toBe(null)
   expect(phaseRun({ run: null })).toEqual({ model: 'opus', effort: 'high' })
+})
+
+test('the palette follows the chat: the worker builds, the foreman never does, a chat with no role sees all', () => {
+  const names = (role) => palette(role).flatMap(([, n]) => n)
+  expect(names('worker')).toEqual(['execute-phase', 'close-phase', 'repair-phase', 'resume-workflow', 'dashboard', 'help'])
+  expect(names('foreman')).not.toContain('execute-phase')
+  expect(names('foreman')).not.toContain('close-phase')
+  expect(names('foreman')).toContain('quality-check')
+  expect(names('fresh').length).toBe(14)
 })

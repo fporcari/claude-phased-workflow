@@ -30,6 +30,7 @@ where it stopped — because the dashboard polls and the files reach a few MB.
 """
 
 import datetime
+import functools
 import glob
 import importlib.util
 import json
@@ -609,6 +610,26 @@ GIT_TIMEOUT = 15
 BRANCH_PLAN_RE = re.compile(r'^\.phased/(done|active)/([^/]+)/plan\.md$')
 
 
+@functools.lru_cache(maxsize=None)
+def checkouts(repo):
+    """This checkout, then the one its worktree hangs from, if it is a worktree.
+
+    A worktree plan's foreman and worker are usually opened in the main
+    checkout — the project's + opens there — and read the plan below it, so
+    their sessions and transcripts belong to that checkout, not to this one.
+    """
+    here = os.path.abspath(os.path.expanduser(repo))
+    common = git(here, 'rev-parse', '--path-format=absolute', '--git-common-dir').strip()
+    main = os.path.dirname(common) if os.path.basename(common) == '.git' else ''
+    same = main and os.path.realpath(main) == os.path.realpath(here)
+    return (here, main) if main and not same else (here,)
+
+
+def same_checkout(cwd, repo):
+    """Whether a session's cwd is this repo, or the main checkout it hangs from."""
+    return bool(cwd) and os.path.realpath(cwd) in {os.path.realpath(c) for c in checkouts(repo)}
+
+
 def git(repo, *args):
     """A git command that never raises: a mute repo is zero results."""
     try:
@@ -834,12 +855,16 @@ class Board:
         inference. `phase_from` says which of the two answered, so the page can
         show an inferred attribution as inferred.
         """
-        d = project_dir(self.repo)
-        if d is None:
-            return []
+        # From the main checkout only the chats titled for this plan: the rest
+        # of that project's chats are not this workflow's.
+        transcripts = []
+        for i, c in enumerate(checkouts(self.repo)):
+            d = project_dir(c)
+            if d is not None and (i == 0 or slug):
+                transcripts += [(f, i == 0) for f in glob.glob(str(d / '*.jsonl'))]
         live = live_sessions()
         panels = []
-        for f in glob.glob(str(d / '*.jsonl')):
+        for f, own in transcripts:
             sid = pathlib.Path(f).stem
             s = self._scan(f)
             if not s.turns:
@@ -848,6 +873,8 @@ class Board:
             title = s.title or (rec or {}).get('name') or ''
             m = TITLE_PHASE_RE.match(title or '')
             mine = bool(m) and (slug is None or m.group('slug') == slug)
+            if not own and not mine:
+                continue
             phase = int(m.group('n')) if mine and m.group('n') else None
             phase_from = 'title' if phase else None
             if m is None and windows:

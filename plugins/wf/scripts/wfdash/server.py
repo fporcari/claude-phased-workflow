@@ -408,7 +408,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         plan = core.read_plan(self.board.repo)
         if plan is None:
             return {'error': 'no plan'}
-        return inbox.mirror(core.project_dir(self.board.repo), plan,
+        return inbox.mirror([core.project_dir(c) for c in core.checkouts(self.board.repo)], plan,
                             self.board.agents(plan['slug']))
 
     def newflow(self, body):
@@ -691,7 +691,7 @@ def main():
         else:
             owner_note = (f'NOTE: -O {args.owner} is not a live session on this '
                           f'repository — the page has no owner to send to.')
-    srv = serve(args.port or DEFAULT_PORT, args.port is None)
+    srv = serve(DEFAULT_PORT if args.port is None else args.port, args.port is None)
     Handler.cookie_port = srv.server_address[1]
     ready = None
     if args.detach:

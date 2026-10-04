@@ -27,6 +27,12 @@ says how.
 git rev-parse --show-toplevel
 ```
 
+A worktree plan is watched in its worktree, even from the main checkout its
+chats are opened in: no `.phased/active/` here → `next-phase.py --plans`
+(`common.md` → *Plan location*), and the one plan with a checkout path names
+the root to watch; several → ask which. Its foreman and worker, in the main
+checkout, still count as this repository's chats and recipients.
+
 Not a git repository → stop and say so: the dashboard reads `.phased/` and the
 transcripts of the sessions that worked in that root, and both are anchored to
 it.
