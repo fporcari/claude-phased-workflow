@@ -13,6 +13,8 @@ let open = false
 let armed = false
 // execute-phase ran here, typed or pressed. Module-level, so it survives /clear.
 let built = false
+// The phase's model and effort the button set, held against every main-loop request.
+let pin = null
 
 async function dirs($, path) {
   return (await $.fs.list(path).catch(() => [])).filter((d) => d.kind === 'dir').map((d) => d.name)
@@ -74,6 +76,12 @@ function label(s) {
   return `▶ Phase ${s.phase.number} · ${run.model} / ${run.effort}`
 }
 
+// Foreman and worker sit in the same checkout and look alike: the role is drawn, not hinted.
+const LOOK = {
+  foreman: { color: 'magenta', tag: () => ' FOREMAN ', note: 'supervises — the worker builds in another chat' },
+  worker: { color: 'cyan', tag: (s) => ` WORKER${s.phase ? ` · Phase ${s.phase.number}` : ''} ` },
+}
+
 // Whose step it is when this chat may not take it.
 function elsewhere(s) {
   if (!s.command || allowed(s.command.slice(3), role)) return null
@@ -83,6 +91,7 @@ function elsewhere(s) {
 async function launch($, s, command) {
   const name = command.slice(3)
   open = false
+  role = await chatRole($, s.slug).catch(() => 'unknown')
   $.ui.invalidate('ui.render')
   if (!allowed(name, role)) return
   if (NEEDS_ARGS.has(name)) {
@@ -103,7 +112,10 @@ async function launch($, s, command) {
   if ((await $.session.turns()) > 0) await $.command.run({ command: 'clear', args: '' })
   await $.command.run({ command: 'model', args: run.model })
   await $.command.run({ command: 'effort', args: run.effort })
-  await $.command.run({ command, args: '' })
+  pin = { phase: s.phase.number, ...run }
+  $.ui.status(undefined)
+  // The arguments reach the model whatever the hooks do: execute-phase reads them.
+  await $.command.run({ command, args: `wf-bar ${run.model} / ${run.effort}` })
 }
 
 export function register(on) {
@@ -123,19 +135,29 @@ export function register(on) {
     return next(e)
   })
 
+  // The desktop's own picker does not follow /effort: what each request carries is the truth.
+  on('turn.step', async function* ($, e, next) {
+    if (pin && !e.agentId) {
+      const off = String(e.effort) !== pin.effort || !e.model.toLowerCase().includes(pin.model)
+      $.ui.status(off ? `⚠ running ${e.model} / ${e.effort} — Phase ${pin.phase} wants ${pin.model} / ${pin.effort}` : undefined)
+    }
+    return yield* next(e)
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (!state || e.props.hasSurvey) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     const s = state
     const idle = !e.props.isWorking
-    const tag = role === 'foreman' || role === 'worker' ? ` · ${role}` : ''
-    const head = [Text({ dimColor: true, children: [`wf ${s.done}/${s.total}${tag}`] })]
+    const look = LOOK[role]
+    const head = [Text({ dimColor: true, children: [`wf ${s.done}/${s.total}`] })]
+    if (look) head.unshift(Text({ bold: true, inverse: true, color: look.color, children: [look.tag(s)] }))
     if (idle && armed && s.phase) {
       head.push(Button({ key: 'wf-next', label: `▶ clear this chat for Phase ${s.phase.number}? press again`, onPress: () => launch($, s, EXECUTE) }))
     } else if (idle && s.command && !elsewhere(s)) {
       head.push(Button({ key: 'wf-next', label: label(s), onPress: () => launch($, s, s.command) }))
     }
-    const about = [elsewhere(s), s.phase?.title, s.slug].filter(Boolean).join(' · ')
+    const about = [elsewhere(s) ?? look?.note, s.phase?.title, s.slug].filter(Boolean).join(' · ')
     head.push(Box({ flexGrow: 1, flexShrink: 1, minWidth: 0, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [about] })] }))
     head.push(Button({ key: 'wf-menu', label: open ? '✕ wf' : '☰ wf', onPress: () => { open = !open; $.ui.invalidate('ui.render') } }))
     const rows = [Box({ flexDirection: 'row', columnGap: 2, children: head })]
@@ -157,6 +179,9 @@ export function register(on) {
       }
     }
     const theirs = await next(e)
-    return Box({ flexDirection: 'column', children: [...rows, theirs] })
+    const band = look
+      ? Box({ flexDirection: 'column', borderStyle: 'round', borderColor: look.color, paddingX: 1, children: rows })
+      : Box({ flexDirection: 'column', children: rows })
+    return Box({ flexDirection: 'column', children: [band, theirs] })
   })
 }

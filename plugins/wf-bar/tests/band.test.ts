@@ -38,9 +38,31 @@ function recordCommands(on) {
   const ran: string[] = []
   on('command.run', ($, e) => {
     ran.push(e.args ? `${e.command} ${e.args}` : e.command)
-    return { value: { text: '' } }
+    return { text: '' }
   })
   return ran
+}
+
+function recordStatus(on) {
+  const shown: (string | undefined)[] = []
+  on('ui.status', ($, e) => {
+    shown.push(e.text)
+    return { value: undefined }
+  })
+  return shown
+}
+
+function answerSteps(on) {
+  on('turn.step', async function* ($, e) {
+    return { turnId: e.turnId, index: e.index, answer: 'ok', toolUses: [], stopReason: 'end_turn', usage: null }
+  })
+}
+
+async function step($, extra = {}) {
+  const stream = $.turn.step({ turnId: 't', index: 0, model: 'claude-opus-5-5', effort: 'low', messageCount: 1, ...extra })
+  let r = await stream.next()
+  while (r.done !== true) r = await stream.next()
+  return r.value
 }
 
 async function pressNext($) {
@@ -49,7 +71,8 @@ async function pressNext($) {
   await ui.unmount()
 }
 
-const LAUNCH = ['model opus', 'effort low', 'wf:execute-phase']
+// The arguments tell execute-phase the button set the model and effort.
+const LAUNCH = ['model opus', 'effort low', 'wf:execute-phase wf-bar opus / low']
 
 test('a new chat: the button sets the phase model and effort, then launches execute-phase, nothing to clear', async ($, on) => {
   stubPlan(on, PLAN)
@@ -59,6 +82,8 @@ test('a new chat: the button sets the phase model and effort, then launches exec
     const ui = await $.ui.mount({ ...BAND, surface })
     expect(await ui.find({ type: 'Text', text: 'wf 1/2' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'TH UI for foo · foo' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: ' FOREMAN ' })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: ' WORKER · Phase 2 ' })).toBeUndefined()
     const button = await ui.find({ key: 'wf-next' })
     expect(button?.props.label).toBe('▶ Phase 2 · opus / low')
     await ui.press({ key: 'wf-next' })
@@ -72,7 +97,7 @@ test('the worker — it ran execute-phase — is cleared before the next phase',
   const ran = recordCommands(on)
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'wf 1/2 · worker' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: ' WORKER · Phase 2 ' })).toBeDefined()
   await ui.press({ key: 'wf-next' })
   expect(ran).toEqual(['clear', ...LAUNCH])
 })
@@ -82,7 +107,8 @@ test('the foreman is never cleared and never builds: no button, the worker named
   const ran = recordCommands(on)
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'wf 1/2 · foreman' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: ' FOREMAN ' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'wf 1/2' })).toBeDefined()
   expect(await ui.find({ key: 'wf-next' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'worker, in a new chat: Phase 2 · opus / low · TH UI for foo · foo' })).toBeDefined()
   await ui.press({ key: 'wf-menu' })
@@ -101,6 +127,34 @@ test('a chat with history and no role asks before clearing: the first press arms
   expect((await ui.find({ key: 'wf-next' }))?.props.label).toBe('▶ clear this chat for Phase 2? press again')
   await ui.press({ key: 'wf-next' })
   expect(ran).toEqual(['clear', ...LAUNCH])
+})
+
+test('a chat that took the foreman title after it opened is read again at the press: nothing runs', async ($, on) => {
+  const chat: Chat = { turns: 0, messages: [] }
+  stubPlan(on, PLAN, chat)
+  const ran = recordCommands(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  chat.turns = 30
+  chat.messages = [FOREMAN_TITLE]
+  await ui.press({ key: 'wf-next' })
+  expect(ran).toEqual([])
+})
+
+
+
+test('a main-loop request on another effort than the phase is flagged; subagents are not watched', async ($, on) => {
+  stubPlan(on, PLAN)
+  recordCommands(on)
+  answerSteps(on)
+  const shown = recordStatus(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  await pressNext($)
+  shown.length = 0
+  await step($)
+  await step($, { effort: 'high', agentId: 'verifier' })
+  await step($, { effort: 'high' })
+  expect(shown).toEqual([undefined, '⚠ running claude-opus-5-5 / high — Phase 2 wants opus / low'])
 })
 
 test('no button while Claude works', async ($, on) => {
