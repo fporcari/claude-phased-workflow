@@ -314,7 +314,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         plan = core.read_plan(self.board.repo)
         if plan is None:
             return {'error': 'no plan'}
-        target = inbox.foreman_target(plan, self.board.agents(plan['slug']))
+        target = inbox.foreman_target(plan, self.board.agents(plan['slug'], theme=plan['theme']))
         if 'error' in target:
             return target
         event = outbox.append(self.board.repo, 'foreman', text=text,
@@ -409,7 +409,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if plan is None:
             return {'error': 'no plan'}
         return inbox.mirror([core.project_dir(c) for c in core.checkouts(self.board.repo)], plan,
-                            self.board.agents(plan['slug']))
+                            self.board.agents(plan['slug'], theme=plan['theme']))
 
     def newflow(self, body):
         """Queue the command that creates a workflow, for the chat to run."""

@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { nextAction, palette, parsePlan, parseRun, phaseRun } from '../hooks/plan.js'
+import { chatTitle, nextAction, palette, parsePlan, parseRun, phaseRun } from '../hooks/plan.js'
 
 const PLAN = `# Context: wf/foo
 Mode: manual
@@ -47,4 +47,14 @@ test('the palette follows the chat: the worker builds, the foreman never does, a
   expect(names('foreman')).not.toContain('close-phase')
   expect(names('foreman')).toContain('quality-check')
   expect(names('fresh').length).toBe(14)
+})
+
+test('a chat title reads in both shapes: role first since 6.49.0, the wf: prefix before', () => {
+  expect(chatTitle('Foreman · Convegno menu')).toEqual({ key: 'Convegno menu', role: 'foreman' })
+  expect(chatTitle('Worker P10 · Convegno menu')).toEqual({ key: 'Convegno menu', role: 'worker' })
+  expect(chatTitle('Deposed · Convegno menu')).toEqual({ key: 'Convegno menu', role: 'deposed' })
+  expect(chatTitle('wf:454-convegno:foreman')).toEqual({ key: '454-convegno', role: 'foreman' })
+  expect(chatTitle('wf:454-convegno:phase-10 — Programma')).toEqual({ key: '454-convegno', role: 'worker' })
+  expect(chatTitle('Fix the login page')).toBe(null)
+  expect(parsePlan('Mode: manual\nTheme: Convegno menu\n').theme).toBe('Convegno menu')
 })

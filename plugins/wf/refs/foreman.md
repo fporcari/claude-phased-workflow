@@ -62,11 +62,21 @@ also one a session can set for itself: `set_session_title` takes the literal
 the current session is superseded), and it returns the title it replaced. The
 chat titles itself; the protocol has no manual step left.
 
+**A title leads with the role and ends on the theme**, because the session list
+cuts a long title at its end and the role is what tells two chats of one
+workflow apart: `Foreman · <theme>`, `Worker P<N> · <theme>`, `Deposed · <theme>`.
+`<theme>` is the plan's `Theme:` header — two or three words, at most 24
+characters, unique among the repo's active plans — and the slug where a plan
+has none. Titles written before 6.49.0 (`wf:<slug>:foreman`,
+`wf:<slug>:phase-N — <title>`) still read as the same roles: the dashboard and
+`wf-bar` accept both shapes, and a `foreman.json` naming an old title keeps
+addressing it.
+
 `.phased/active/<slug>/foreman.json`:
 
 ```json
 {
-  "foreman": "wf:<slug>:foreman",
+  "foreman": "Foreman · <theme>",
   "since": "<ISO timestamp>",
   "history": [
     {"foreman": "<previous title>", "deposed": "<ISO timestamp>"}
@@ -87,10 +97,10 @@ absence is migration, not an error):
 2. Commit it (`wf: foreman — takes command`), or fold it into the commit the
    skill is already making (plan, import). Tracked like the plan: left
    uncommitted it breaks the clean-tree invariant.
-3. Title this chat `wf:<slug>:foreman` — `set_session_title` with
+3. Title this chat `Foreman · <theme>` — `set_session_title` with
    `session_id: "self"`. Best-effort like the rest of this channel: where
    the tool is absent (CLI sessions, unattended runs) ask the user instead,
-   one line — *"Rename this chat to `wf:<slug>:foreman` — it is the
+   one line — *"Rename this chat to `Foreman · <theme>` — it is the
    address the workflow's other chats report to."* Until the chat bears the title,
    notifications skip silently; nothing breaks.
 4. In the same breath, one more line: *"Allow this chat to send
@@ -104,10 +114,10 @@ absence is migration, not an error):
    Advice, like the rename: nothing breaks if ignored, the fallback absorbs it.
 
 **The other chats of a workflow title themselves too.** A manual workflow's phase chat — the **worker**, one
-chat cleared between phases — is `wf:<slug>:phase-N — <phase title>`, retitled at every phase, which is also how a resuming chat finds it
+chat cleared between phases — is `Worker P<N> · <theme>`, retitled at every phase, which is also how a resuming chat finds it
 (`refs/phase-execution.md` → *Resuming a `[>]` phase*). Only a foreman's title
 is an address, so this is legibility more than protocol: the session list stops
-being a wall of auto-generated summaries and one prefix groups the workflows. Unattended sessions carry no title — a
+being a wall of auto-generated summaries and one theme groups each workflow. Unattended sessions carry no title — a
 `claude -p` session has neither the tools nor a reader for it.
 
 **Channel floors — single source.** The messaging layer rides the most
@@ -310,7 +320,7 @@ in tokens on every message (`refs/board.md` → *When it is drawn*).
 
 **Deposing a foreman** (`/resume-workflow`, when another session holds the
 title and the user wants this chat in charge): best-effort farewell message to
-the old session, retitle it to `wf:<slug>:deposed` (`set_session_title` takes
+the old session, retitle it to `Deposed · <theme>` (`set_session_title` takes
 the other session's id, read from `list_sessions`), then take command as above.
 The old chat may be dead; nothing here is allowed to block on it.
 

@@ -174,6 +174,7 @@ From here on every path and every git command of this skill is anchored at the w
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: manual
+Theme: <two or three words, at most 24 characters — the workflow's chats are titled `Foreman · <theme>`, `Worker P<N> · <theme>`>
 Must not break: <one line per contract owned by later work — contracts.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
@@ -220,7 +221,7 @@ In a worktree, both commands run there (`git -C .claude/worktrees/<slug>`). Veri
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
 Workspace: .claude/worktrees/<slug> — /run-workflow and /resume-workflow find it from here.   (manual and autonomous plans only)
-autonomous → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; launch /run-workflow here (a successor foreman chat opens on fable / high — foreman.md). manual → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; /execute-phase in a new chat opened in the workspace above, the worker, which then builds every phase.
+autonomous → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; launch /run-workflow here (a successor foreman chat opens on fable / high — foreman.md). manual → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; /execute-phase in a new chat opened in the workspace above, the worker, which then builds every phase.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 

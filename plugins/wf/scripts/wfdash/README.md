@@ -100,7 +100,7 @@ every closed phase would show its checks twice.
 
 ## Attribution to phases
 
-Chats title themselves `wf:<slug>:phase-N`. The slug is part of the key:
+Chats title themselves `Worker P<N> · <theme>` (before 6.49.0, `wf:<slug>:phase-N`). The theme — or the slug, on a plan with no `Theme:` — is part of the key:
 without comparing it, the phases of another workflow in the same repo end up
 attributed by number. The dense test repo has four plans
 (`macro2-replica-convergence`, `macro1-legacy-data-collection`,

@@ -68,7 +68,7 @@ RUN_RE = re.compile(r'^\s*[-*]?\s*Run:\s*(.+)$', re.I)
 # `- Verify:` is the step the plan AUTHORED; `> Verify:` is the one execution
 # recorded — the latter is a note like any other.
 VERIFY_RE = re.compile(r'^\s{2,}[-*]\s*Verify:\s*(.*)$', re.I)
-META_RE = re.compile(r'^\s*[-*]?\s*(Mode|Channel|Parent|Branch):\s*(.+)$', re.I)
+META_RE = re.compile(r'^\s*[-*]?\s*(Mode|Channel|Parent|Branch|Theme):\s*(.+)$', re.I)
 # Any other field of a phase — it ends the field before it, nothing more.
 FIELD_RE = re.compile(r'^\s*[-*>]')
 # The quality check leaves one line per run under its own heading, and the last
@@ -515,6 +515,7 @@ MODES = ('autonomous', 'manual')
 # is rejected, neither is rewritten.
 LEGACY_MODES = {'interactive': 'manual'}
 CHANNEL_RE = re.compile(r'^Channel:\s*(\S+)\s*$')
+THEME_MAX = 24
 # `> Batches: 1 <label> | 2 <label> | ...` — the planned subdivision, numbered
 # from 1. The commits refer to it as `batch M/K`, so a body that does not parse
 # leaves the plan's list and the log unable to line up.
@@ -582,6 +583,10 @@ def validate(path, phases, text):
                 add(idx, 'error',
                     'malformed Mode: line "%s" — expected exactly '
                     '"Mode: <value>"' % line.strip())
+        if line.startswith('Theme:') and len(line[6:].strip()) > THEME_MAX:
+            add(idx, 'warning',
+                'Theme: is %d characters, over %d — the chat titles carry it '
+                'and the session list cuts them' % (len(line[6:].strip()), THEME_MAX))
         if line.startswith('Channel:'):
             cm = CHANNEL_RE.match(line)
             add(idx, 'warning',

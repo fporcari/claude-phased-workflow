@@ -58,7 +58,7 @@ Phase 5 — no Pattern:, and the code is not trivial
 
 Inventing a plausible `Done:` for a phase whose author never wrote one is worse than leaving the gap visible: it looks settled and nobody checks it again. Offer to refine them now, one at a time, or to import as-is and leave `/write-workflow` to it.
 
-**Then settle how it will run** — the same automation fork `/write-workflow` asks. If the source already carries a `Mode:` header, keep it (it is a decision the author already made). Otherwise ask the fork question and the derivation rule from `/write-workflow`'s *Step 2: The automation fork* — do not restate them here, that skill is the one source — and write the resulting header (`Mode: manual` or `Mode: autonomous`) into the imported plan; a source saying `Mode: interactive` keeps it, read as manual. A source carrying an old `Channel:` header keeps it untouched — the validator reports it as ignored, and the import never rewrites somebody else's plan beyond the fields it adds. The autonomous answer is what the gap report above feeds: an imported plan still below the autonomous-ready bar gets its gaps flagged, not hidden by the header.
+**Then settle how it will run** — the same automation fork `/write-workflow` asks. If the source already carries a `Mode:` header, keep it (it is a decision the author already made). Otherwise ask the fork question and the derivation rule from `/write-workflow`'s *Step 2: The automation fork* — do not restate them here, that skill is the one source — and write the resulting header (`Mode: manual` or `Mode: autonomous`) into the imported plan; a source saying `Mode: interactive` keeps it, read as manual. A source carrying an old `Channel:` header keeps it untouched — the validator reports it as ignored, and the import never rewrites somebody else's plan beyond the fields it adds. The autonomous answer is what the gap report above feeds: an imported plan still below the autonomous-ready bar gets its gaps flagged, not hidden by the header. A source with no `Theme:` gets one beside `Mode:` — two or three words from its objective, at most 24 characters, the name its chats will carry (`foreman.md` → *The foreman*).
 
 ## Step 4: Land it
 
@@ -91,8 +91,8 @@ Verify the commit is not empty (`git show --stat HEAD`).
 
 ```
 Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), committed on <branch>.
-autonomous → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; to carry on, launch /run-workflow here.
-manual → this chat is the foreman, now titled `wf:<slug>:foreman`, the address the workflow's other chats report to; to carry on, /execute-phase in a new chat, the worker, which then builds every phase — the ▶ button of wf-bar clears it between phases.
+autonomous → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; to carry on, launch /run-workflow here.
+manual → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; to carry on, /execute-phase in a new chat, the worker, which then builds every phase — the ▶ button of wf-bar clears it between phases.
 Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>
 ```

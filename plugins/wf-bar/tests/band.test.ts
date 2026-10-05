@@ -21,6 +21,8 @@ const BAND = {
 type Chat = { turns?: number; messages?: unknown[] }
 
 const FOREMAN_TITLE = { role: 'assistant', text: '', toolUses: [{ id: 't1', tool: 'mcp__ccd_session_mgmt__set_session_title', input: { session_id: 'self', title: 'wf:foo:foreman' } }] }
+const THEMED = PLAN.replace('Mode: manual', 'Mode: manual\nTheme: Foo UI')
+const titled = (title: string) => ({ role: 'assistant', text: '', toolUses: [{ id: 't2', tool: 'mcp__ccd_session_mgmt__set_session_title', input: { session_id: 'self', title } }] })
 const TYPED_EXECUTE = { role: 'user', text: '<command-name>/wf:execute-phase</command-name>', toolUses: [] }
 const CHATTER = { role: 'user', text: 'what does execute-phase do?', toolUses: [] }
 
@@ -155,6 +157,34 @@ test('a main-loop request on another effort than the phase is flagged; subagents
   await step($, { effort: 'high', agentId: 'verifier' })
   await step($, { effort: 'high' })
   expect(shown).toEqual([undefined, '⚠ running claude-opus-5-5 / high — Phase 2 wants opus / low'])
+})
+
+test('since 6.49.0 the role leads the title and the theme ends it: the foreman', async ($, on) => {
+  stubPlan(on, THEMED, { turns: 9, messages: [titled('Foreman · Foo UI')] })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: ' FOREMAN ' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'worker, in a new chat: Phase 2 · opus / low · TH UI for foo · Foo UI' })).toBeDefined()
+})
+
+test('since 6.49.0: the worker, cleared before the next phase', async ($, on) => {
+  stubPlan(on, THEMED, { turns: 9, messages: [titled('Worker P1 · Foo UI')] })
+  const ran = recordCommands(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: ' WORKER · Phase 2 ' })).toBeDefined()
+  await ui.press({ key: 'wf-next' })
+  expect(ran).toEqual(['clear', ...LAUNCH])
+})
+
+test('another plan\'s foreman is not this plan\'s: no role, and the press asks first', async ($, on) => {
+  stubPlan(on, THEMED, { turns: 9, messages: [titled('Foreman · Other plan')] })
+  const ran = recordCommands(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: ' FOREMAN ' })).toBeUndefined()
+  await ui.press({ key: 'wf-next' })
+  expect(ran).toEqual([])
 })
 
 test('no button while Claude works', async ($, on) => {

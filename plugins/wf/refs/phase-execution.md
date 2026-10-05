@@ -288,7 +288,7 @@ own `Done:`. What `done:` claims and the diff confirms is not redone.
 
 **Look for the chat that had it, before reading the tree as an orphan** — on
 `manual`, where a phase is built in a chat of its own. A phase chat titles
-itself `wf:<slug>:phase-N — <title>`, so it is findable in `list_sessions` like
+itself `Worker P<N> · <theme>` (`foreman.md` → *The foreman*), so it is findable in `list_sessions` like
 the foreman is (`foreman.md` → *The foreman*, including the rule that a tool
 you have not loaded is not a tool that is absent). Alive → one message: *hand
 over — commit anything uncommitted, tell me what is not on disk, and stop

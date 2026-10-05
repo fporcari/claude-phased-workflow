@@ -1,6 +1,7 @@
 const PHASE_RE = /^\s*-\s*\[(.)\]\s*\*\*Phase\s+(\d+)\*\*:\s*(.+?)\s*$/
 const RUN_RE = /^\s*[-*]?\s*Run:\s*(.+?)\s*$/i
 const MODE_RE = /^Mode:\s*(\S+)/m
+const THEME_RE = /^Theme:\s*(.+?)\s*$/m
 const TAG_RE = /\s+`[a-z-]+`(\s+`[a-z-]+`)*$/
 const RUN_VALUE_RE = /^([a-z][a-z0-9.-]*)\s*\/\s*(low|medium|high|xhigh|max)\b/i
 // execute-phase reads a phase with no Run: line as opus / high.
@@ -17,6 +18,7 @@ export function phaseRun(phase) {
 
 export function parsePlan(text) {
   const mode = (text.match(MODE_RE) || [, 'manual'])[1].toLowerCase()
+  const theme = (text.match(THEME_RE) || [])[1] || null
   const phases = []
   for (const line of text.split('\n')) {
     const p = line.match(PHASE_RE)
@@ -27,7 +29,7 @@ export function parsePlan(text) {
     const r = line.match(RUN_RE)
     if (r && phases.length && !phases[phases.length - 1].run) phases[phases.length - 1].run = parseRun(r[1])
   }
-  return { mode, phases }
+  return { mode, theme, phases }
 }
 
 // The first phase not [x] is the only one that can run: phases run strictly in order.
@@ -41,6 +43,19 @@ export function nextAction(plan) {
   if (head.marker === ' ' || head.marker === '>') return { ...base, command: 'wf:execute-phase' }
   if (head.marker === '!') return { ...base, command: 'wf:repair-phase' }
   return { ...base, command: null }
+}
+
+// A workflow chat's title: `Foreman · <theme>`, `Worker P<N> · <theme>` since 6.49.0,
+// `wf:<slug>:foreman` and `wf:<slug>:phase-N` before. Null for any other chat.
+const TITLE_RE = /^(Foreman|Deposed|Worker P(\d+)) · (.+)$/
+const LEGACY_TITLE_RE = /^wf:([^:]+):(foreman|phase|repair)/
+
+export function chatTitle(title) {
+  const m = title.match(TITLE_RE)
+  if (m) return { key: m[3].trim(), role: m[2] ? 'worker' : m[1].toLowerCase() }
+  const l = title.match(LEGACY_TITLE_RE)
+  if (l) return { key: l[1], role: l[2] === 'foreman' ? 'foreman' : 'worker' }
+  return null
 }
 
 export const GROUPS = [

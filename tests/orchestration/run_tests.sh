@@ -4081,6 +4081,29 @@ assert "S68: execute-phase and resume-workflow stop on the warning" \
    grep -q "A plan already on its parent is a leftover, not work" "$SKILLS_DIR/resume-workflow/SKILL.md"'
 cd "$TESTDIR"
 
+echo "== S69: chat titles lead with the role and end on the plan's theme =="
+# 6.49.0 — `wf:<slug>:phase-N — <title>` was cut by the session list exactly
+# where the role sat. The format is defined once (foreman.md), every skill that
+# titles a chat writes it, and a Theme: too long for a title is warned about.
+setup S69
+mkdir -p .phased/active/t
+printf '# Context: wf/t\nMode: manual\nTheme: A theme far too long for any chat title\n\n## Work Plan\n- [ ] **Phase 1**: x\n  - Run: opus / low\n  - Done: y\n' > .phased/active/t/plan.md
+assert "S69: an over-long Theme: is warned about" \
+  'python3 "$NEXTPHASE" --validate .phased/active/t/plan.md 2>&1 | grep -q "Theme: is 39 characters, over 24"'
+sed -i.bak 's/^Theme: .*/Theme: Short one/' .phased/active/t/plan.md
+assert "S69: a short one is not" \
+  '! python3 "$NEXTPHASE" --validate .phased/active/t/plan.md 2>&1 | grep -q "Theme: is"'
+S69_REFS="$SKILLS_DIR/../refs"
+assert "S69: foreman.md defines the role-first titles" \
+  'grep -q "\`Foreman · <theme>\`, \`Worker P<N> · <theme>\`, \`Deposed · <theme>\`" "$S69_REFS/foreman.md"'
+assert "S69: every skill that titles a chat writes the new shape" \
+  'grep -q "Worker P<N> · <theme>" "$SKILLS_DIR/execute-phase/SKILL.md" &&
+   grep -q "now titled \`Foreman · <theme>\`" "$SKILLS_DIR/write-workflow/SKILL.md" &&
+   grep -q "now titled \`Foreman · <theme>\`" "$SKILLS_DIR/import-workflow/SKILL.md" &&
+   grep -q "^Theme: <" "$SKILLS_DIR/write-workflow/SKILL.md" &&
+   ! grep -rq "Title this chat \`wf:<slug>" "$SKILLS_DIR" "$S69_REFS"'
+cd "$TESTDIR"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

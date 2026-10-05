@@ -92,3 +92,15 @@ with tempfile.TemporaryDirectory() as td:
     dirs = [core.project_dir(c) for c in core.checkouts(str(wt))]
     m = inbox.mirror(dirs, plan, board.agents('foo'))
     assert m['title'] == 'wf:foo:foreman' and m['live'] is True, m
+
+    # Since 6.49.0 the role leads and the plan's theme ends the title; the
+    # pre-6.49.0 titles of the same plan still count.
+    chat(main_project, 'fore', 'Foreman · Foo UI')
+    chat(main_project, 'next', 'Worker P3 · Foo UI')
+    chat(main_project, 'them', 'Worker P3 · Bar UI')
+    board = core.Board(str(wt))
+    seen = {c['session_id']: c for c in board.agents('foo', theme='Foo UI')}
+    assert sorted(seen) == ['fore', 'next', 'work'], sorted(seen)
+    assert seen['next']['phase'] == 3 and seen['fore']['role'] == 'foreman', seen
+    assert core.chat_title('Deposed · Foo UI') == {'key': 'Foo UI', 'role': 'deposed', 'n': None}
+    assert core.chat_title('an unrelated chat') is None

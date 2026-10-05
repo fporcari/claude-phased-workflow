@@ -476,6 +476,7 @@ def plan_shape(path, slug, directory, sel, foreman_dir=None):
         'next': sel['next'], 'blocked_by': sel['blocked_by'],
         'recommendation': sel['recommendation'],
         'mode': plan_mode(meta), 'parent': meta.get('parent'),
+        'theme': meta.get('theme') or slug,
         'quality': meta.get('quality_check'),
         'foreman': read_foreman(foreman_dir) if foreman_dir else None,
     }
@@ -822,6 +823,21 @@ def phase_logs(plan_dir):
 # --- the whole ----------------------------------------------------------------
 
 TITLE_PHASE_RE = re.compile(r'wf:(?P<slug>[^:]+):(?P<role>phase|repair|foreman)-?(?P<n>\d+)?')
+# Since 6.49.0 the role leads and the plan's theme ends the title (`foreman.md`).
+TITLE_RE = re.compile(r'^(?:(?P<foreman>Foreman)|(?P<deposed>Deposed)|Worker P(?P<n>\d+)) · (?P<key>.+)$')
+
+
+def chat_title(title):
+    """A workflow chat's title read as `{key, role, n}` — key the theme, or the
+    slug of a pre-6.49.0 `wf:` title — or None for any other chat."""
+    m = TITLE_RE.match(title or '')
+    if m:
+        role = 'foreman' if m['foreman'] else 'deposed' if m['deposed'] else 'phase'
+        return {'key': m['key'].strip(), 'role': role, 'n': int(m['n']) if m['n'] else None}
+    m = TITLE_PHASE_RE.match(title or '')
+    if m:
+        return {'key': m['slug'], 'role': m['role'], 'n': int(m['n']) if m['n'] else None}
+    return None
 
 
 class Board:
@@ -842,7 +858,7 @@ class Board:
             s = self.scans[str(path)] = Scan(path)
         return s.update()
 
-    def agents(self, slug=None, windows=None):
+    def agents(self, slug=None, windows=None, theme=None):
         """One panel per chat, its subagents nested under it.
 
         A subagent inherits the phase of the chat that spawned it. A chat
@@ -871,11 +887,11 @@ class Board:
                 continue
             rec = live.get(sid)
             title = s.title or (rec or {}).get('name') or ''
-            m = TITLE_PHASE_RE.match(title or '')
-            mine = bool(m) and (slug is None or m.group('slug') == slug)
+            m = chat_title(title)
+            mine = bool(m) and (slug is None or m['key'] in (slug, theme))
             if not own and not mine:
                 continue
-            phase = int(m.group('n')) if mine and m.group('n') else None
+            phase = m['n'] if mine and m['n'] else None
             phase_from = 'title' if phase else None
             if m is None and windows:
                 phase = window_phase(windows, s, self.repo)
@@ -884,12 +900,12 @@ class Board:
                 'chat', sid[:8], title or sid[:8], s.first_prompt,
                 {'session_id': sid, 'live': rec is not None,
                  'pid': (rec or {}).get('pid'),
-                 'role': m.group('role') if m else None,
-                 'plan_slug': m.group('slug') if m else None,
+                 'role': m['role'] if m else None,
+                 'plan_slug': m['key'] if m else None,
                  'phase': phase, 'phase_from': phase_from,
                  'todos': read_todos(sid), 'subagents': []})
             panels.append(chat)
-            for meta_path in glob.glob(str(d / sid / 'subagents' / '*.meta.json')):
+            for meta_path in glob.glob(str(pathlib.Path(f).parent / sid / 'subagents' / '*.meta.json')):
                 jl = meta_path.replace('.meta.json', '.jsonl')
                 if not os.path.exists(jl):
                     continue
@@ -906,7 +922,7 @@ class Board:
                     meta.get('description') or sa.first_prompt,
                     {'parent': sid[:8], 'parent_live': sid in live,
                      'depth': meta.get('spawnDepth'),
-                     'plan_slug': m.group('slug') if m else None,
+                     'plan_slug': m['key'] if m else None,
                      'phase': phase, 'phase_from': phase_from}))
             chat['subagents'].sort(key=lambda p: (not p['active'], -(p['mtime'] or 0)))
         panels.sort(key=lambda p: (not p['active'], -(p['mtime'] or 0)))
@@ -915,7 +931,7 @@ class Board:
     def state(self):
         plan = read_plan(self.repo)
         windows = phase_windows(self.repo, plan) if plan else {}
-        chats = self.agents(plan['slug'] if plan else None, windows)
+        chats = self.agents(plan['slug'] if plan else None, windows, plan['theme'] if plan else None)
         flat = flatten(chats)
         alerts = build_alerts(plan, flat)
         totals = {
@@ -957,7 +973,7 @@ class Board:
         """The tree, with the plans of the other macro-phases read from disk.
 
         The per-phase figures stay those of the active plan: a chat carries its
-        plan's slug in its title, and attributing another plan's chats is not
+        plan's theme (or slug) in its title, and attributing another plan's chats is not
         this phase's work.
         """
         by_phase = {}

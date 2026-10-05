@@ -1,4 +1,4 @@
-import { NEEDS_ARGS, allowed, nextAction, palette, parsePlan, phaseRun, relevant } from './plan.js'
+import { NEEDS_ARGS, allowed, chatTitle, nextAction, palette, parsePlan, phaseRun, relevant } from './plan.js'
 
 const ACTIVE = '.phased/active'
 const WORKTREES = '.claude/worktrees'
@@ -33,15 +33,16 @@ async function locate($) {
 }
 
 // Both chats sit in the same checkout, so the role is read from what the chat did:
-// the foreman titled itself wf:<slug>:foreman, the worker ran execute-phase.
-async function chatRole($, slug) {
+// the foreman titled itself for this plan's foreman, the worker ran execute-phase.
+async function chatRole($, s) {
   let worker = built
   const rows = await $.session.messages()
   for (const m of Array.isArray(rows) ? rows : []) {
     for (const u of m.toolUses) {
-      const title = u.tool.endsWith('set_session_title') ? String(u.input.title ?? '') : ''
-      if (title === `wf:${slug}:foreman`) return 'foreman'
-      if (title.startsWith(`wf:${slug}:phase-`) || (u.tool === 'Skill' && u.input.skill === EXECUTE)) worker = true
+      const t = u.tool.endsWith('set_session_title') ? chatTitle(String(u.input.title ?? '')) : null
+      const ours = t && (t.key === s.slug || t.key === s.theme)
+      if (ours && t.role === 'foreman') return 'foreman'
+      if ((ours && t.role === 'worker') || (u.tool === 'Skill' && u.input.skill === EXECUTE)) worker = true
     }
     if (m.role === 'user' && TYPED_EXECUTE.test(m.text)) worker = true
   }
@@ -57,12 +58,12 @@ async function readState($) {
   const plan = parsePlan(text)
   const action = nextAction(plan)
   const primary = plan.mode === 'autonomous' ? (action.phase ? 'wf:run-workflow' : action.command) : action.command
-  return { slug: where.slug, ...action, command: primary, on: [...relevant(plan, action)] }
+  return { slug: where.slug, theme: plan.theme || where.slug, ...action, command: primary, on: [...relevant(plan, action)] }
 }
 
 async function refresh($, rereadRole) {
   const fresh = await readState($)
-  const r = fresh && rereadRole ? await chatRole($, fresh.slug).catch(() => 'unknown') : role
+  const r = fresh && rereadRole ? await chatRole($, fresh).catch(() => 'unknown') : role
   if (r === role && JSON.stringify(fresh) === JSON.stringify(state)) return
   state = fresh
   role = r
@@ -91,7 +92,7 @@ function elsewhere(s) {
 async function launch($, s, command) {
   const name = command.slice(3)
   open = false
-  role = await chatRole($, s.slug).catch(() => 'unknown')
+  role = await chatRole($, s).catch(() => 'unknown')
   $.ui.invalidate('ui.render')
   if (!allowed(name, role)) return
   if (NEEDS_ARGS.has(name)) {
@@ -157,7 +158,7 @@ export function register(on) {
     } else if (idle && s.command && !elsewhere(s)) {
       head.push(Button({ key: 'wf-next', label: label(s), onPress: () => launch($, s, s.command) }))
     }
-    const about = [elsewhere(s) ?? look?.note, s.phase?.title, s.slug].filter(Boolean).join(' · ')
+    const about = [elsewhere(s) ?? look?.note, s.phase?.title, s.theme].filter(Boolean).join(' · ')
     head.push(Box({ flexGrow: 1, flexShrink: 1, minWidth: 0, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [about] })] }))
     head.push(Button({ key: 'wf-menu', label: open ? '✕ wf' : '☰ wf', onPress: () => { open = !open; $.ui.invalidate('ui.render') } }))
     const rows = [Box({ flexDirection: 'row', columnGap: 2, children: head })]
