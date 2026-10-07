@@ -1,14 +1,14 @@
-import { NEEDS_ARGS, allowed, chatTitle, nextAction, palette, parsePlan, phaseRun, relevant } from './plan.js'
+import { EXECUTE, NEEDS_ARGS, STAGES, TYPED_EXECUTE, allowed, chatStage, chatTitle, nextAction, palette, parsePlan, phaseRun, phaseStage, relevant } from './plan.js'
 
 const ACTIVE = '.phased/active'
 const WORKTREES = '.claude/worktrees'
 const REFRESH_MS = 15_000
-const EXECUTE = 'wf:execute-phase'
-const TYPED_EXECUTE = /(^|<command-name>)\/wf:execute-phase\b/
 
 let state = null
 let role = 'unknown'
+let seen = -1
 let open = false
+let goal = false
 // An unknown chat may hold work of its own: the first press asks, the second clears.
 let armed = false
 // execute-phase ran here, typed or pressed. Module-level, so it survives /clear.
@@ -34,10 +34,9 @@ async function locate($) {
 
 // Both chats sit in the same checkout, so the role is read from what the chat did:
 // the foreman titled itself for this plan's foreman, the worker ran execute-phase.
-async function chatRole($, s) {
+async function chatRole($, s, rows) {
   let worker = built
-  const rows = await $.session.messages()
-  for (const m of Array.isArray(rows) ? rows : []) {
+  for (const m of rows) {
     for (const u of m.toolUses) {
       const t = u.tool.endsWith('set_session_title') ? chatTitle(String(u.input.title ?? '')) : null
       const ours = t && (t.key === s.slug || t.key === s.theme)
@@ -58,15 +57,23 @@ async function readState($) {
   const plan = parsePlan(text)
   const action = nextAction(plan)
   const primary = plan.mode === 'autonomous' ? (action.phase ? 'wf:run-workflow' : action.command) : action.command
-  return { slug: where.slug, theme: plan.theme || where.slug, ...action, command: primary, on: [...relevant(plan, action)] }
+  return { slug: where.slug, theme: plan.theme || where.slug, objective: plan.objective, ...action, command: primary, on: [...relevant(plan, action)] }
 }
 
-async function refresh($, rereadRole) {
+async function messages($) {
+  const rows = await $.session.messages().catch(() => [])
+  return Array.isArray(rows) ? rows : []
+}
+
+async function refresh($, rereadChat) {
   const fresh = await readState($)
-  const r = fresh && rereadRole ? await chatRole($, fresh).catch(() => 'unknown') : role
-  if (r === role && JSON.stringify(fresh) === JSON.stringify(state)) return
+  const rows = fresh && rereadChat ? await messages($) : null
+  const r = rows ? await chatRole($, fresh, rows).catch(() => 'unknown') : role
+  const at = rows ? chatStage(rows) : seen
+  if (r === role && at === seen && JSON.stringify(fresh) === JSON.stringify(state)) return
   state = fresh
   role = r
+  seen = at
   armed = false
   $.ui.invalidate('ui.render')
 }
@@ -89,10 +96,29 @@ function elsewhere(s) {
   return allowed(s.command.slice(3), 'worker') ? `worker, in a new chat: ${label(s).slice(2)}` : `foreman: ${s.command.slice(3)}`
 }
 
+// The phase's target and how far this chat took it.
+function goalRows({ Box, Text }, s) {
+  const at = phaseStage(s.phase, seen)
+  const steps = STAGES.map((name, i) => Text({
+    bold: i === at,
+    inverse: i === at,
+    color: i <= at ? 'cyan' : undefined,
+    dimColor: i > at,
+    children: [i === at ? ` ${name} ` : name],
+  }))
+  const rows = [
+    Text({ bold: true, children: [`Phase ${s.phase.number} · ${s.phase.title}`] }),
+    Box({ flexDirection: 'row', columnGap: 1, children: [Text({ children: ['■'.repeat(at + 1) + '□'.repeat(STAGES.length - at - 1)] }), ...steps] }),
+  ]
+  if (s.phase.fields.Done) rows.push(Text({ children: [`Done: ${s.phase.fields.Done}`] }))
+  if (s.objective) rows.push(Text({ dimColor: true, children: [`Plan: ${s.objective}`] }))
+  return rows
+}
+
 async function launch($, s, command) {
   const name = command.slice(3)
   open = false
-  role = await chatRole($, s).catch(() => 'unknown')
+  role = await chatRole($, s, await messages($)).catch(() => 'unknown')
   $.ui.invalidate('ui.render')
   if (!allowed(name, role)) return
   if (NEEDS_ARGS.has(name)) {
@@ -160,8 +186,12 @@ export function register(on) {
     }
     const about = [elsewhere(s) ?? look?.note, s.phase?.title, s.theme].filter(Boolean).join(' · ')
     head.push(Box({ flexGrow: 1, flexShrink: 1, minWidth: 0, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [about] })] }))
+    if (role === 'worker' && s.phase) {
+      head.push(Button({ key: 'wf-goal', label: goal ? '✕ goal' : '◎ goal', onPress: () => { goal = !goal; $.ui.invalidate('ui.render') } }))
+    }
     head.push(Button({ key: 'wf-menu', label: open ? '✕ wf' : '☰ wf', onPress: () => { open = !open; $.ui.invalidate('ui.render') } }))
     const rows = [Box({ flexDirection: 'row', columnGap: 2, children: head })]
+    if (goal && role === 'worker' && s.phase) rows.push(...goalRows($.ui.resolve(e), s))
     if (open) {
       for (const [group, names] of palette(role)) {
         rows.push(Box({

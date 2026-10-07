@@ -266,3 +266,29 @@ test('a chat opened on the project finds the plan in its worktree and offers the
   expect((await ui.find({ key: 'wf-cmd-execute-phase' }))?.props.dimColor).toBe(false)
   expect((await ui.find({ key: 'wf-cmd-doctor' }))?.props.dimColor).toBe(false)
 })
+
+test('◎ goal, in the worker only: the phase, its Done:, the plan\'s objective and how far the chat took it', async ($, on) => {
+  const plan = PLAN.replace('## Work Plan', '## Objective\nFoo, end to end.\n\n## Work Plan')
+    .replace('[ ] **Phase 2', '[>] **Phase 2').replace('  - Run: opus / low', '  - Run: opus / low\n  - Done: the grid reloads')
+  const edit = { role: 'assistant', text: '', toolUses: [{ id: 'e', tool: 'Edit', input: { file_path: 'foo.py' } }] }
+  stubPlan(on, plan, { turns: 9, messages: [TYPED_EXECUTE, edit] })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'Done: the grid reloads' })).toBeUndefined()
+  await ui.press({ key: 'wf-goal' })
+  expect((await ui.find({ key: 'wf-goal' }))?.props.label).toBe('✕ goal')
+  expect(await ui.find({ type: 'Text', text: 'Phase 2 · TH UI for foo' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '■■□□□' })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: ' build ' }))?.props.inverse).toBe(true)
+  expect((await ui.find({ type: 'Text', text: 'verify' }))?.props.dimColor).toBe(true)
+  expect(await ui.find({ type: 'Text', text: 'Done: the grid reloads' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Plan: Foo, end to end.' })).toBeDefined()
+})
+
+test('no ◎ goal in the foreman', async ($, on) => {
+  stubPlan(on, PLAN, { turns: 40, messages: [FOREMAN_TITLE] })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ key: 'wf-goal' })).toBeUndefined()
+  await ui.unmount()
+})

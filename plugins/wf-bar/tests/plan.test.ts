@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { chatTitle, nextAction, palette, parsePlan, parseRun, phaseRun } from '../hooks/plan.js'
+import { chatStage, chatTitle, nextAction, palette, parsePlan, parseRun, phaseRun, phaseStage } from '../hooks/plan.js'
 
 const PLAN = `# Context: wf/foo
 Mode: manual
@@ -57,4 +57,43 @@ test('a chat title reads in both shapes: role first since 6.49.0, the wf: prefix
   expect(chatTitle('wf:454-convegno:phase-10 — Programma')).toEqual({ key: '454-convegno', role: 'worker' })
   expect(chatTitle('Fix the login page')).toBe(null)
   expect(parsePlan('Mode: manual\nTheme: Convegno menu\n').theme).toBe('Convegno menu')
+})
+
+test('a phase keeps its fields and notes, the plan its objective; a section after the phases owns nothing', () => {
+  const plan = parsePlan(`## Objective
+Add foo, the way bar does it.
+
+## Work Plan
+- [>] **Phase 1**: table foo
+  - Done: \`pytest\` green
+  - Done: ignored, the first one counts
+  > Testing: awaiting the human's \`Verify: now\` checks | commit: abc123
+
+## Notes
+  - Done: not a phase field
+`)
+  expect(plan.objective).toBe('Add foo, the way bar does it.')
+  expect(plan.phases[0].fields).toEqual({ Done: '`pytest` green' })
+  expect(plan.phases[0].notes).toEqual(['Testing'])
+  expect(parsePlan(PLAN).objective).toBe(null)
+})
+
+const use = (tool: string, input: object) => ({ role: 'assistant', text: '', toolUses: [{ id: 'u', tool, input }] })
+const LAUNCHED = { role: 'user', text: '<command-name>/wf:execute-phase</command-name>', toolUses: [] }
+
+test('the chat\'s stage: gate at the launch, build at the first edit outside .phased/, then verify, then close', () => {
+  expect(chatStage([use('Edit', { file_path: 'a.py' })])).toBe(-1)
+  expect(chatStage([LAUNCHED, use('Write', { file_path: '/w/.phased/active/foo/mockups/phase-2.html' })])).toBe(0)
+  expect(chatStage([LAUNCHED, use('Edit', { file_path: 'a.py' })])).toBe(1)
+  expect(chatStage([LAUNCHED, use('Edit', { file_path: 'a.py' }), use('Agent', { subagent_type: 'wf:phase-verifier' }), use('Edit', { file_path: 'a.py' })])).toBe(2)
+  expect(chatStage([use('Skill', { skill: 'wf:execute-phase' }), use('Skill', { skill: 'wf:close-phase' })])).toBe(4)
+})
+
+test('the plan bounds the stage: unmarked at most gate, [>] at least gate, a Testing note at least test', () => {
+  const phase = (marker: string, notes: string[] = []) => ({ marker, notes })
+  expect(phaseStage(phase(' '), 4)).toBe(0)
+  expect(phaseStage(phase(' '), -1)).toBe(-1)
+  expect(phaseStage(phase('>'), -1)).toBe(0)
+  expect(phaseStage(phase('>', ['Testing']), 1)).toBe(3)
+  expect(phaseStage(phase('!'), 2)).toBe(-1)
 })

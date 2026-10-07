@@ -1,7 +1,7 @@
 {
   "name": "wf-bar",
   "description": "The phased workflow's buttons above the prompt: the next step — in the worker, /wf:execute-phase on the phase's model and effort after clearing it; never in the foreman, which is never cleared — and ☰ wf, a palette of the commands the chat's role may run, the ones that fit now highlighted. A Claude Code mod: needs Claude Code 2.1.287 or later with mods turned on, and the wf plugin.",
-  "version": "6.49.0",
+  "version": "6.50.0",
   "author": {
     "name": "Francesco Porcari"
   }
