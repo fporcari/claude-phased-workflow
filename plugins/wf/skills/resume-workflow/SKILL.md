@@ -1,6 +1,6 @@
 ---
 description: Locate the active phased workflow and report where it stands, then name the skill that takes it forward. The entry point of the phased-workflow plugin, and the only skill in it the agent may reach on its own. Use when the user asks where the work stands, what the next phase is, whether a workflow is running, why a phase is stuck or failed, how to resume after an interrupted session, or mentions `.phased/` or a `wf/` branch.
-allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, mcp__visualize__read_me, mcp__visualize__show_widget, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Write, Grep, Glob, AskUserQuestion, SendMessage, ListAgents, mcp__visualize__read_me, mcp__visualize__show_widget, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_sidebar__list_groups, mcp__ccd_sidebar__create_group, mcp__ccd_sidebar__move_sessions
 ---
 
 # Resume Workflow

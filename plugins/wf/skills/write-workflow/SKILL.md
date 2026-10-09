@@ -1,7 +1,7 @@
 ---
 description: Write a phased work plan from the current conversation — branch, plan directory, first commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(cd:*), Bash(command:*), Bash(activate_gnr_context:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__ccd_session_mgmt__set_session_title, mcp__visualize__read_me, mcp__visualize__show_widget
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cat:*), Bash(mkdir:*), Bash(cp:*), Bash(cd:*), Bash(command:*), Bash(activate_gnr_context:*), Bash(python3:*), Read, Grep, Glob, Write, AskUserQuestion, Agent, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_sidebar__list_groups, mcp__ccd_sidebar__create_group, mcp__ccd_sidebar__move_sessions, mcp__visualize__read_me, mcp__visualize__show_widget
 ---
 
 # Write Workflow

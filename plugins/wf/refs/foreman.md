@@ -72,6 +72,16 @@ has none. Titles written before 6.49.0 (`wf:<slug>:foreman`,
 `wf-bar` accept both shapes, and a `foreman.json` naming an old title keeps
 addressing it.
 
+**The workflow's chats are filed together**, under the sidebar group
+`<project> · <theme>` — the repo root's folder name, less a trailing
+`_projects` or `_app`. The session list groups by working directory, which the
+hidden worktree never shows, so ungrouped a workflow scatters through the
+folder's other chats. A chat that titles itself files itself with the
+`ccd_sidebar` tools: `list_groups`, `create_group` when the name is new,
+`move_sessions` on `["self"]`, which asks nobody where moving another chat
+asks the user. `/finalize-workflow` deletes it and the chats stay, regrouped
+by the list's own rule. Best-effort like the title: no group, nothing breaks.
+
 `.phased/active/<slug>/foreman.json`:
 
 ```json
@@ -102,7 +112,8 @@ absence is migration, not an error):
    the tool is absent (CLI sessions, unattended runs) ask the user instead,
    one line — *"Rename this chat to `Foreman · <theme>` — it is the
    address the workflow's other chats report to."* Until the chat bears the title,
-   notifications skip silently; nothing breaks.
+   notifications skip silently; nothing breaks. File it under the group too
+   (above): the foreman opens the one its phase chats then join.
 4. In the same breath, one more line: *"Allow this chat to send
    cross-session messages and commit under `.phased/` without asking —
    answering a phase chat's `clarify?`, or a run's `stop-work?` or

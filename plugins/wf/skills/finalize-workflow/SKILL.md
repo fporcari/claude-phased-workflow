@@ -1,7 +1,7 @@
 ---
 description: Close the workflow — quality-check gate, durable lessons, plan archive, consolidation into one clean commit
 disable-model-invocation: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(grep:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, Edit, AskUserQuestion, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(head:*), Bash(sed:*), Bash(grep:*), Bash(python3:*), Bash(bash:*), Read, Grep, Glob, Write, Edit, AskUserQuestion, SendMessage, ListAgents, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_sidebar__list_groups, mcp__ccd_sidebar__delete_group
 ---
 
 # Finalize Workflow
@@ -126,6 +126,8 @@ Then: *"Branch pushed. Launch `/pull-request` to open the PR to `<parent>`."*
 Whichever path ran, send the foreman the closing `workflow finalized` message per `foreman.md` → *The foreman* — best-effort, phrased per the reporting register. `list_sessions` excludes the current session, so when this chat IS the foreman the title lookup finds nothing and the skip is automatic. A close that ran without a quality stamp says so here too, in one line.
 
 After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"The roadmap has further macro-phases. Next step: a new chat and `/write-workflow` to detail the next one — with the hindsight of the one just committed."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
+
+Delete the workflow's sidebar group on the same breath as the branch — `list_groups` for `<project> · <theme>`, then `delete_group` (`foreman.md` → *The foreman*). Deleting a group keeps its chats: they fall back to the session list's own grouping, where the finished workflow belongs with the rest of the folder's work. Best-effort, and skipped whenever the branch is kept for a roadmap's further macro-phases — the group still has chats to gather.
 
 ## Rules
 

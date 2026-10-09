@@ -1630,6 +1630,22 @@ s30_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violati
       echo "$S30_F: still specifies a board control (the strip has none)"
     fi
   done
+  # 6.51.0 — the title tells two chats of one workflow apart, the sidebar
+  # group tells the workflow apart from everything else in the folder: the
+  # session list groups by working directory, which every chat on a checkout
+  # shares, and the worktree they build in is hidden under .claude/. So the
+  # group is opened where the chat is titled, and dies at finalize.
+  grep -q 'sidebar group' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the foreman section does not define the workflow's sidebar group"
+  grep -q 'move_sessions' "$S30_C" 2>/dev/null \
+    || echo "$S30_C: the section names no way for a chat to file itself"
+  for S30_S in write-workflow import-workflow resume-workflow execute-phase; do
+    S30_F="$1/$S30_S/SKILL.md"
+    grep -q 'mcp__ccd_sidebar__move_sessions' "$S30_F" 2>/dev/null \
+      || echo "$S30_F: titles its chat without declaring the tool that files it"
+  done
+  grep -q 'delete_group' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: the workflow's group outlives the workflow"
   return 0
 }
 S30_OUT="$(s30_guard "$SKILLS_DIR" "$S24_REFS")"
@@ -1740,6 +1756,23 @@ cp -R "$SKILLS_DIR"/. "$S30_MUT/"
 sed -i.bak 's/^## The repair body/## Notes/' "$S30_MUT/repair-phase/SKILL.md" \
   && rm -f "$S30_MUT/repair-phase/SKILL.md.bak"
 assert "S30: the guard fails when the repair body loses its single source" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
+rm -rf "$S30_MUT"
+# 6.51.0 — the chats scatter again: the section stops defining the group.
+S30_MUT="$(mktemp -d)"; mkdir -p "$S30_MUT/refs"; cp "$S24_REFS"/*.md "$S30_MUT/refs/"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed 's/sidebar group/title/g' "$S24_REFS/foreman.md" > "$S30_MUT/refs/foreman.md"
+cp "$S24_REFS/phase-execution.md" "$S30_MUT/refs/phase-execution.md"
+cp "$S24_REFS/board.md" "$S30_MUT/refs/board.md"
+assert "S30: the guard fails when the workflow's chats stop being filed together" \
+  '[ -n "$(s30_guard "$S30_MUT" "$S30_MUT/refs")" ]'
+rm -rf "$S30_MUT"
+# A workflow that lands leaves its group behind, one per workflow ever run.
+S30_MUT="$(mktemp -d)"
+cp -R "$SKILLS_DIR"/. "$S30_MUT/"
+sed -i.bak '/delete_group/d' "$S30_MUT/finalize-workflow/SKILL.md" \
+  && rm -f "$S30_MUT/finalize-workflow/SKILL.md.bak"
+assert "S30: the guard fails when the workflow's group outlives it" \
   '[ -n "$(s30_guard "$S30_MUT" "$S24_REFS")" ]'
 rm -rf "$S30_MUT"
 # The unattended repair variant is gone, so the launcher would reach the
