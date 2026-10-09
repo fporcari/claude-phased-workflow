@@ -1,7 +1,7 @@
 ---
 description: Execute the next phase from the active work plan, built here in the worker chat with you in it, after one approval gate
 disable-model-invocation: true
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, SendUserFile, ToolSearch, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_session_mgmt__get_session
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion, Skill, SendMessage, ListAgents, SendUserFile, ToolSearch, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__send_message, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_session_mgmt__get_session, mcp__ccd_sidebar__list_groups, mcp__ccd_sidebar__create_group, mcp__ccd_sidebar__move_sessions
 ---
 
 # Execute Phase
@@ -26,7 +26,7 @@ No active plan → stop and say so: `/write-workflow` creates one, `/import-work
 
 **A plan already on its parent is a leftover, not work.** A `warning: this plan is also on <ref>` line means its workflow reached `<ref>` without `/finalize-workflow`, so every branch cut from it since carries this plan: stop before anything is marked, say so, and name the fix — a commit removing `.phased/` from `<ref>`, its owner's call. When the workflow the user means is another one, resolve it via `--plans`.
 
-**Title this chat** before acting on the recommendation, with `set_session_title` on `session_id: "self"` — every road out of it runs in this chat, the awaiting-checks gate included. `Worker P<N> · <theme>`, the theme being the plan's `Theme:` (its slug when it has none): a resuming chat finds the phase's chat by it (`refs/phase-execution.md` → *Resuming a `[>]` phase*). Best-effort: no tool, no title, no consequence.
+**Title this chat** before acting on the recommendation, with `set_session_title` on `session_id: "self"` — every road out of it runs in this chat, the awaiting-checks gate included. `Worker P<N> · <theme>`, the theme being the plan's `Theme:` (its slug when it has none): a resuming chat finds the phase's chat by it (`refs/phase-execution.md` → *Resuming a `[>]` phase*). **File it under the workflow's sidebar group** in the same breath — `<project> · <theme>`, the one the foreman opened, per the foreman protocol — so the phase chats sit with it instead of scattering through the folder's other work. Best-effort, both: no tool, no title, no group, no consequence.
 
 **Never in the foreman's chat.** `get_session` on `session_id: "self"` also gives this chat's title: `Foreman · <theme>`, or the pre-6.49.0 `wf:<slug>:foreman` → stop before anything is marked — this chat supervises, the worker builds — and say to open a new chat on the project and run `/wf:execute-phase` there. A launch from the `wf-bar` button is no exception.
 
