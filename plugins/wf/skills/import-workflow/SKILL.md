@@ -92,9 +92,11 @@ Verify the commit is not empty (`git show --stat HEAD`).
 ```
 Imported into .phased/active/<slug>/plan.md (<N> phases: <x> done, <y> to do), committed on <branch>.
 autonomous → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; to carry on, launch /run-workflow here.
-manual → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; to carry on, /execute-phase in a new chat, the worker, which then builds every phase — the ▶ button of wf-bar clears it between phases.
+manual → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; it opens the worker, the chat that then builds every phase, as its child — press ▶ there to start, and between phases the same button clears it.
 Source left at <path> — superseded, delete it whenever you like.
 <gaps, if any>
 ```
 
 On a manual or autonomous plan, where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.
+
+On a manual plan the message ends on the offer to open the worker, per `foreman.md` → *Opening the worker*; without `start_session`, or on a no, the line says to run `/execute-phase` in a new chat instead.

@@ -221,11 +221,13 @@ In a worktree, both commands run there (`git -C .claude/worktrees/<slug>`). Veri
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
 Workspace: .claude/worktrees/<slug> — /run-workflow and /resume-workflow find it from here.   (manual and autonomous plans only)
-autonomous → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; launch /run-workflow here (a successor foreman chat opens on fable / high — foreman.md). manual → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; /execute-phase in a new chat opened in the workspace above, the worker, which then builds every phase.
+autonomous → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; launch /run-workflow here (a successor foreman chat opens on fable / high — foreman.md). manual → this chat is the foreman, now titled `Foreman · <theme>`, the address the workflow's other chats report to; it opens the worker, the chat that then builds every phase, as its child in the workspace above — press ▶ there to start Phase 1.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 
 Where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.
+
+On a manual plan the message ends on the offer to open the worker, per `foreman.md` → *Opening the worker*; without `start_session`, or on a no, the manual line reads as before: `/execute-phase` in a new chat opened in the workspace.
 
 The last line repeats Phase 1's `Run:` hint, because the model goes to the executor at launch and the effort to this chat's own exploration — reading it afterwards is too late.
 

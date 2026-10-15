@@ -120,6 +120,31 @@ is an address, so this is legibility more than protocol: the session list stops
 being a wall of auto-generated summaries and one theme groups each workflow. Unattended sessions carry no title — a
 `claude -p` session has neither the tools nor a reader for it.
 
+**Opening the worker — the foreman opens it, the human launches it.** On a
+manual plan in a desktop chat, the foreman offers to open the worker itself,
+as a session linked under it: at plan creation (`/write-workflow`,
+`/import-workflow`), and whenever `/execute-phase` is started in the foreman's
+own chat. One worker at a time: a linked session already titled
+`Worker P<N> · <theme>` and not archived is the worker — say to press ▶ there,
+never open a second (field-tested: two chats on one checkout built the same
+phase). On the user's yes, `start_session` with `initiation: "user_asked"`,
+`context: "fresh"`, `cwd` the plan's workspace (its worktree when it has one),
+`use_worktree: false`, no model and no effort — the ▶ button sets the phase's —
+and a brief that only titles the chat:
+
+```
+Title this chat `Worker P<N> · <theme>` with set_session_title on session_id "self", then stop: the user starts the phase with the wf-bar ▶ button.
+```
+
+The title is what makes `wf-bar` read the new chat as the worker, so the first
+press clears it, sets the phase's model and effort and launches
+`/execute-phase` (field-tested on 6.50.0). **Never `/wf:execute-phase` in the
+brief**: a brief and a cross-session message reach the child as text, never
+expanded as a slash command, and the skill is user-invocable only — the launch
+is the human's, and it is the gate. No `start_session` (CLI, or the user said
+no) → the line it replaces: open a new chat in the workspace and run
+`/wf:execute-phase` there.
+
 **Channel floors — single source.** The messaging layer rides the most
 unstable platform surface this plugin touches, so its version floors live
 HERE and nowhere else (a skill cites this section, it never restates a
