@@ -693,8 +693,10 @@ def lifecycle(repo, plan):
 
 
 def branch_tips(repo):
+    # wf-archive/<slug> tags hold the archive of a workflow whose branch
+    # /wf:finalize-workflow deleted: the same kind of fact as the branch.
     return git(repo, 'for-each-ref', '--format=%(objectname) %(refname:short)',
-               'refs/heads')
+               'refs/heads', 'refs/tags/wf-archive')
 
 
 def branch_plan_dirs(repo):

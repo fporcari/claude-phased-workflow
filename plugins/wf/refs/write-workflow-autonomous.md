@@ -29,7 +29,10 @@ The user picks autonomous when the task suits it, so friction usually means a mi
 
 Use macro-phases when outcomes must inform later planning or integration needs
 an accepted checkpoint. Detail only the next ready macro; keep later scopes in
-`.phased/roadmap.md`, which survives archival of the current plan.
+`.phased/roadmap.md`, which survives archival of the current plan and reaches
+the parent at each close. This section holds the format and the seam review,
+for manual and autonomous plans alike; the roadmap's lifecycle — where it
+lives, its heading states, the cycle, parallel macros — is `refs/programme.md`.
 
 **Scope every macro.** Verify factual premises in the code; batch unresolved
 product decisions once. Each mini-scope records the itinerary and contracts below.
@@ -61,7 +64,7 @@ turn this into another implementation phase or a repeated whole-plan review.
 
 Keeping the roadmap out of `plan.md` also means the launcher cannot mistake its blocks for phase lines: the separation is structural (no `[ ]` markers here), not a matter of formatting.
 
-The cycle: `/run-workflow` → `/quality-check` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → new chat, `/write-workflow` details the next macro with hindsight — **starting from its mini-scope**: the `Open decisions` are its scoping agenda, the later macros' `Requires` become its `Must not break:`, and its `Ends at:` is a planning constraint — the last phases must land the system there. Deliberately manual: that boundary is where human judgment pays most. Independent macros can run in separate worktrees with separate PRs.
+The cycle — `/run-workflow` → `/quality-check` → `/finalize-workflow` (bounded, review-sized diff) → **human checkpoint** → a new chat on the parent, `/write-workflow` for the next macro, starting from its mini-scope — is `refs/programme.md`, parallel macros included. Deliberately manual: that boundary is where human judgment pays most.
 
 ## Plan format
 

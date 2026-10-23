@@ -30,6 +30,18 @@ open (`/quality-check` → *Step 5: One final touch*): the human is at the gate,
 no phase is left to command, a phase's ceremony buys nothing and a phase per
 finding is a loop.
 
+**A foreman commands one plan — on a programme, one macro-phase.** It takes
+command when `/write-workflow` or `/import-workflow` creates the plan, and
+retires at `/finalize-workflow`: `foreman.json` lives inside the plan
+directory and is archived with it, so after the close its title addresses
+nothing. The next macro starts in a **fresh chat** on the parent, whose
+`/write-workflow` makes it the new foreman — for the reason each phase gets
+a fresh worker: the old foreman's context is full of the plan just closed,
+and the hindsight that matters has already been written where a new chat
+reads it. Only the roadmap (on the parent, `refs/programme.md`), the consolidated commit and the wf-lessons
+ledger cross the boundary; the retired chat stays readable, never in
+command.
+
 **The foreman's own model is advice too, written down for the same reason the
 `Run:` hint is**: a chat's model and effort are chosen when it opens, before any
 skill has read the plan. Suggested `fable` / `high` — the foreman's output is

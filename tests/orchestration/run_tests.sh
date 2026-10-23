@@ -4104,6 +4104,83 @@ assert "S69: every skill that titles a chat writes the new shape" \
    ! grep -rq "Title this chat \`wf:<slug>" "$SKILLS_DIR" "$S69_REFS"'
 cd "$TESTDIR"
 
+echo "== S70: the roadmap crosses to the parent at each macro's close =="
+# 6.52.0 — finalize dropped `.phased/` whole from the squash, so the roadmap,
+# the one document meant to cross macros, stayed on a closed branch 150
+# commits away from `main`, and the next macro's chat never saw it. The
+# consolidation now keeps `.phased/roadmap.md`: the test runs finalize's OWN
+# line, so the text and the behaviour cannot drift apart.
+s70_guard() {  # $1 = a skills dir, $2 = a refs dir; prints one line per violation
+  grep -q "^# The roadmap across macro-phases" "$2/programme.md" 2>/dev/null \
+    || echo "$2/programme.md: no single source for the roadmap's lifecycle"
+  grep -q "Each finalize" "$2/programme.md" 2>/dev/null \
+    || echo "$2/programme.md: parallel macros lost the own-heading rule"
+  [ "$(grep -c "^git rm -r -q -f -- .phased ':(exclude).phased/roadmap.md'" "$1/finalize-workflow/SKILL.md" 2>/dev/null)" = 3 ] \
+    || echo "$1/finalize-workflow/SKILL.md: a consolidation path drops the roadmap"
+  grep -q 'mkdir -p .phased/done' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: the first archive has no done/ to move into"
+  grep -q 'Tag the archive and delete the branch' "$1/finalize-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/finalize-workflow/SKILL.md: the branch is kept for a roadmap that no longer lives there"
+  grep -q 'A foreman commands one plan' "$2/foreman.md" 2>/dev/null \
+    || echo "$2/foreman.md: the foreman's lifetime per macro is unstated"
+  grep -q 'a programme between macros' "$1/resume-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/resume-workflow/SKILL.md: a parent with a roadmap reads as no workflow"
+  grep -q 'A macro-phase closed, the roadmap has more' "$1/help/SKILL.md" 2>/dev/null \
+    || echo "$1/help/SKILL.md: the map has no route to the next macro"
+  grep -q '(current): <title> — detailed in active/<slug>/plan.md' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: planning no longer marks its macro current"
+  grep -q 'read that section on a' "$1/write-workflow/SKILL.md" 2>/dev/null \
+    || echo "$1/write-workflow/SKILL.md: a manual programme has no roadmap format"
+  return 0
+}
+S70_REFS="$SKILLS_DIR/../refs"
+S70_OUT="$(s70_guard "$SKILLS_DIR" "$S70_REFS")"
+[ -z "$S70_OUT" ] || echo "$S70_OUT"
+assert "S70: the roadmap lifecycle holds in every skill that touches it" '[ -z "$S70_OUT" ]'
+S70_MUT="$(mktemp -d)"; cp -R "$SKILLS_DIR" "$S70_MUT/skills"; cp -R "$S70_REFS" "$S70_MUT/refs"
+sed -i.bak "s/ ':(exclude).phased\/roadmap.md'//" "$S70_MUT/skills/finalize-workflow/SKILL.md"
+assert "S70: the guard fails when a consolidation drops the roadmap again" \
+  '[ -n "$(s70_guard "$S70_MUT/skills" "$S70_MUT/refs")" ]'
+rm -rf "$S70_MUT"
+
+S70_RM="$(grep -m1 "^git rm -r -q -f -- .phased" "$SKILLS_DIR/finalize-workflow/SKILL.md")"
+setup S70
+echo x > base.txt; git add base.txt; git commit -qm init
+S70_MAIN="$(git branch --show-current)"
+s70_macro() {  # $1 = slug, $2 = the sed flip of its own heading at the close
+  git switch -q "wf/$1" 2>/dev/null || git switch -q -c "wf/$1" "$S70_MAIN"
+  mkdir -p ".phased/active/$1"; echo plan > ".phased/active/$1/plan.md"
+  echo "$1" > "$1.py"; git add -A; git commit -qm "wf(phase 1): $1"
+  mkdir -p .phased/done; git mv ".phased/active/$1" ".phased/done/$1"
+  sed -i.bak "$2" .phased/roadmap.md && rm -f .phased/roadmap.md.bak
+  git add -A; git commit -qm "wf: archive plan for $1"
+  git switch -q "$S70_MAIN"
+}
+s70_close() {  # $1 = slug: finalize's merge path, its own git rm line
+  git merge -q --squash "wf/$1" >/dev/null 2>&1 && eval "$S70_RM" && git commit -qm "feat: $1"
+}
+git switch -q -c wf/m1
+printf '# Roadmap\n## Macro 1 (current): base\n- Objective: a\n## Macro 2: api\n- Objective: b\n## Macro 3: ui\n- Objective: c\n' > .phased/roadmap.md
+git add .phased/roadmap.md; git commit -qm "wf: plan for m1"; git switch -q "$S70_MAIN"
+s70_macro m1 's/^## Macro 1 (current): base/## Macro 1 (done): base — closed by wf\/m1/'
+s70_close m1
+assert "S70: the first close adds the roadmap to the parent" \
+  'git show --name-status --format= HEAD | grep -q "^A	.phased/roadmap.md"'
+assert "S70: nothing else of .phased/ reaches the parent" \
+  '[ "$(git ls-files .phased)" = ".phased/roadmap.md" ]'
+assert "S70: the closed macro reads (done) on the parent" \
+  'grep -q "^## Macro 1 (done): base" .phased/roadmap.md'
+# Macros 2 and 3 in parallel, each cut from the parent after Macro 1.
+s70_macro m2 's/^## Macro 2: api/## Macro 2 (done): api — closed by wf\/m2/'
+s70_macro m3 's/^## Macro 3: ui/## Macro 3 (done): ui — closed by wf\/m3/'
+s70_close m2
+assert "S70: a later close updates the roadmap, never deletes it" \
+  'git show --name-status --format= HEAD | grep -q "^M	.phased/roadmap.md"'
+s70_close m3
+assert "S70: two parallel macros' flips merge without a conflict" \
+  '[ "$(grep -c "(done)" .phased/roadmap.md)" = 3 ] && [ -z "$(git status --porcelain)" ]'
+cd "$TESTDIR"
+
 echo ""
 if [ "$SKIP" -gt 0 ]; then
   echo "RESULT: $PASS passed, $FAIL failed, $SKIP skipped"

@@ -154,8 +154,65 @@ def check_branch_plans():
     print('test_roadmap: branch plans ok')
 
 
+CARRIED = """# Roadmap — the bench
+
+## Macro 1 (done): Data collection — closed by wf/legacy-collection
+- Objective: the two recorders
+
+## Macro 2 (done): The replica — brought forward into Macro 1
+- Objective: the replica
+
+## Macro 3: Performance
+- Objective: the memory sampler
+"""
+
+
+def check_carried_roadmap():
+    """The shape 6.52.0's finalize leaves: the roadmap on the parent, the
+    branch deleted, the archive only under its wf-archive/ tag.
+
+    The headings carry the state where no plan directory is left, and the
+    heading's own `closed by wf/<slug>` links a plan whose slug names no macro.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        repo = pathlib.Path(td) / 'carried'
+        (repo / '.phased').mkdir(parents=True)
+        git(repo.parent, 'init', '-q', '-b', 'main', str(repo))
+        git(repo, 'config', 'user.email', 'test@example.invalid')
+        git(repo, 'config', 'user.name', 'test')
+        (repo / 'README').write_text('x\n')
+        git(repo, 'add', '-A')
+        git(repo, 'commit', '-qm', 'init')
+        git(repo, 'switch', '-qc', 'wf/legacy-collection')
+        done = repo / '.phased' / 'done' / 'legacy-collection'
+        done.mkdir(parents=True)
+        (done / 'plan.md').write_text(MACRO1)
+        git(repo, 'add', '-A')
+        git(repo, 'commit', '-qm', 'wf: archive plan for legacy-collection')
+        git(repo, 'tag', 'wf-archive/legacy-collection')
+        git(repo, 'switch', '-q', 'main')
+        git(repo, 'branch', '-qD', 'wf/legacy-collection')
+        (repo / '.phased').mkdir(exist_ok=True)
+        (repo / '.phased' / 'roadmap.md').write_text(CARRIED)
+
+        rm = roadmap.read_roadmap(repo)
+        assert [(m['n'], m['marker'], m['slug']) for m in rm['macros']] == [
+            (1, 'done', 'legacy-collection'), (2, 'done', None), (3, None, None)], rm
+        found = core.branch_plan_dirs(repo)
+        assert [(f['slug'], f['branch']) for f in found] == [
+            ('legacy-collection', 'wf-archive/legacy-collection')], found
+
+        tree = core.Board(str(repo)).tree(None, [])
+        nodes = [(n['n'], n['state'], n['slug']) for n in tree['nodes']]
+        assert nodes == [(1, 'done', 'legacy-collection'), (2, 'done', None),
+                         (3, 'none', None)], nodes
+        assert [p['n'] for p in tree['nodes'][0]['phases']] == [1]
+    print('test_roadmap: carried roadmap ok')
+
+
 def main():
     check_branch_plans()
+    check_carried_roadmap()
     with tempfile.TemporaryDirectory() as td:
         tmp = pathlib.Path(td)
         repo = build(tmp)

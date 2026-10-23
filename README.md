@@ -5,7 +5,7 @@
 
 # Working in phases with Claude Code
 
-**Version 6.50.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
+**Version 6.52.0** — see the [Changelog](#changelog). For people who already use Claude Code freestyle, with good results, and want to know what a method adds — no leap of faith required.
 
 > **Rather try it than read about it?** [Workflow tutorial game](https://fporcari.github.io/workflow-tutorial-game/) — the method as an interactive tutorial, in the browser, nothing to install.
 
@@ -188,8 +188,8 @@ Every transition leaves structured notes on the phase (`> Done:`, `> Files:`, `>
 ## Where the plan lives
 
 ```
-.phased/                        # committed on the workflow branch, never reaches the parent
-  roadmap.md                    # megaplans only — macro-phases still to detail
+.phased/                        # committed on the workflow branch, never reaches the parent…
+  roadmap.md                    # …but this: megaplans only, carried to the parent at each macro's close
   active/<slug>/                # exactly one at a time
     plan.md                     # the work plan
     notes.md                    # per-phase rationale + run inspection notes
@@ -311,7 +311,7 @@ bash tests/orchestration/run_tests.sh     # free: no sessions, no model
 claude plugin test plugins/wf-bar         # the mod: plan reading, the band, the palette (needs mods turned on)
 ```
 
-**461 assertions over 68 scenarios** (S1–S69, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
+**468 assertions over 69 scenarios** (S1–S70, S16 retired). The launcher scenarios drive the shipped `/run-workflow` script against a mock `claude` binary — call shape, model/effort/cap selection, repair resuming or stopping the loop, red-baseline attribution, the no-progress guard. The rest guard invariants that live in prose, each proven by mutation: break the clause and the assert must fail. The suite runs under **both bash and zsh**, because the production shell is zsh and a bash-only harness cannot see zsh-specific breakage. The per-scenario detail is the comment above each scenario in [run_tests.sh](tests/orchestration/run_tests.sh); CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs flake8, both suites and the plan validator on every push and PR.
 
 There is also a benchmark harness (`tests/benchmark/bench.sh`) that runs real sessions on a fixture project and judges success externally — pytest, flake8 and plan state, never the session's self-report. [tests/benchmark/results/README.md](tests/benchmark/results/README.md) records what each archived run actually measured and which conclusions survive it — including the ones that did not.
 
@@ -364,6 +364,8 @@ One entry per release in [CHANGELOG.md](CHANGELOG.md) — the most recent:
 
 | Version | In one line |
 |---|---|
+| 6.52.0 | A programme's roadmap crosses to the parent at each macro's close: `/finalize-workflow` keeps `.phased/roadmap.md` in the consolidated commit with its macro flipped `(done)`, tags the archive and deletes the old branch instead of keeping it alive; a foreman commands one macro, the next starts in a fresh chat, and `/resume-workflow` on a parent between macros names it. |
+| 6.51.0 | On a manual plan the foreman opens the worker as a linked child titled `Worker P<N> · <theme>`, so the first `wf-bar` ▶ launches the phase; the launch stays the human's, and a live worker is pointed at, never doubled. |
 | 6.50.0 | `wf-bar`'s worker band gets `◎ goal`: the phase's title, its `Done:`, the plan's objective and a gauge over gate ▸ build ▸ verify ▸ test ▸ close, the stage read from what the chat did and bounded by the plan's marker and `> Testing:` note. |
 | 6.49.0 | A workflow's chats are titled role first and theme last — `Foreman · <theme>`, `Worker P<N> · <theme>` — where the session list used to cut `wf:<slug>:phase-N — <title>` exactly at the role; `<theme>` is the plan's new `Theme:` header (at most 24 characters, warned past it), its slug when it has none; the dashboard and `wf-bar` read both shapes, so workflows already open keep working. |
 | 6.48.4 | `wf-bar` launches `/wf:execute-phase wf-bar <model> / <effort>`, and the skill skips its model check on those arguments — `get_session` reports the desktop's picker, which `/effort` does not move; every main-loop request is then watched, and a model or effort other than the phase's is flagged in the status line; the chat's role is read again at every press; the mockup gate writes its drafts in the plan's `mockups/`, since the cleared worker's scratchpad is one the desktop's side pane will not render; the foreman's band is framed magenta and tagged ` FOREMAN `, the worker's cyan and tagged ` WORKER · Phase N `. |

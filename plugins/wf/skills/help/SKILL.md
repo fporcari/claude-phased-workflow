@@ -52,7 +52,16 @@ what to say, not a page to paste.
   deferred human checks, the naming review, the whole-diff review at the
   depth you choose — it stamps the plan. Then `/wf:finalize-workflow`:
   lessons, archive, one consolidated commit on the parent — then PR, merge,
-  or leave it.
+  or leave it. On a programme the roadmap rides that commit, its macro
+  marked `(done)`.
+- **A macro-phase closed, the roadmap has more** — a new chat on the
+  parent, `/wf:write-workflow`: it reads `.phased/roadmap.md` and details
+  the next macro, and that chat becomes its foreman — the previous one
+  retired at the close, just as each phase gets a fresh worker. The cycle
+  is the same in manual and autonomous: build, `/wf:quality-check`,
+  `/wf:finalize-workflow`, your checkpoint, the next macro. Independent
+  macros can run side by side, each in its own worktree and PR.
+  `/wf:resume-workflow` on the parent names the next one.
 
 ## The commands, one line each
 

@@ -9,6 +9,8 @@ Single source of truth for the core blocks every phased-workflow skill needs. Sk
   new-method markers. Planning, execution, close, doctor, quality check, finalize.
 - `refs/foreman.md` — chat hierarchy and messaging, the wf-lessons ledger,
   the reporting register, notifications. The skills that supervise or report.
+- `refs/programme.md` — the roadmap's lifecycle across macro-phases. The
+  skills that open, close or report a macro, and only on a programme.
 
 ## Language
 
@@ -42,7 +44,8 @@ git repository root:
 
 ```
 .phased/
-  roadmap.md              # megaplans only — spans macro-phases
+  roadmap.md              # megaplans only — spans macro-phases, lives on
+                          #   the parent (refs/contracts.md)
   active/<slug>/          # exactly one at a time
     plan.md               # the work plan
     notes.md              # free-form annotations + per-phase rationale
@@ -70,7 +73,9 @@ discovery. No match means there is no workflow in this repository: run
 are an anomaly to report to the user, never to guess at.
 
 `.phased/` is committed on the workflow branch and never reaches the parent:
-`/finalize-workflow` drops it from the squashed commit.
+`/finalize-workflow` drops it from the squashed commit — all of it but
+`roadmap.md`, which crosses to the parent so the next macro-phase finds it
+(`refs/programme.md`).
 
 ## Plan location — operating from anywhere
 

@@ -24,7 +24,7 @@ gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null \
 
 **On a feature branch** — read what is already there (`git log origin/<base>..HEAD --oneline`, `git diff --stat origin/<base>...HEAD`, the full diff, and `gh issue view <number>` if the branch starts with one), summarise it, then ask: *"What do you want to plan on this branch?"*
 
-**On the base branch** — no exploration. Ask straight away: *"You are on `<branch>`. What do you want to do?"*
+**On the base branch** — no exploration. Ask straight away: *"You are on `<branch>`. What do you want to do?"* — unless `.phased/roadmap.md` is there with macros not yet `(done)`: then the programme already says what comes next, so propose it instead — *"The roadmap's next macro is Macro N — <title>. Detail it?"* — naming the others startable in parallel when the seam graph says so (`refs/programme.md`). This chat becomes that macro's foreman; one that commanded the previous macro is retired (`foreman.md` → *The foreman*) — say so, and suggest a fresh chat.
 
 The user's answer is the primary input. Read code only in service of the plan.
 
@@ -44,7 +44,9 @@ This same fork decides the branch in Step 4 — remember which side you are on.
 
 Before the automation fork, apply `${CLAUDE_PLUGIN_ROOT}/refs/execution-policy.md` to choose
 one engineer task, one durable phase, several phases or macro-phases. Present the
-shape and reason once. If one task wins, present the self-contained brief from
+shape and reason once. Macro-phases are a shape of both modes: the roadmap's format and
+seam review are `write-workflow-autonomous.md` → *Macro-phases* — read that section on a
+manual plan too — and its lifecycle is `refs/programme.md`. If one task wins, present the self-contained brief from
 Step 3 and stop at its handoff gate; skip the workflow mode question.
 
 ## Step 2: The automation fork
@@ -168,7 +170,7 @@ From here on every path and every git command of this skill is anchored at the w
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` at the workspace root (the worktree, when one was opened) holding `plan.md`, an empty `notes.md`, and — on `Mode: manual` and `Mode: autonomous` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
+`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` at the workspace root (the worktree, when one was opened) holding `plan.md`, an empty `notes.md`, and — on `Mode: manual` and `Mode: autonomous` — `foreman.json`: **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it). On a programme, mark the macro this plan details in `.phased/roadmap.md` — `## Macro N (current): <title> — detailed in active/<slug>/plan.md` — and write the roadmap itself on a first split; both ride the same commit (`refs/programme.md`).
 
 ```
 # Context: <branch-name>

@@ -5,7 +5,7 @@ allowed-tools: Bash(git:*), Bash(python3:*), Read, Edit, Write, Grep, Glob, AskU
 
 # Resume Workflow
 
-Supervision and resume view of the work plan. **Read-only on source code** — the only files this command may modify are the plan, `notes.md` and `foreman.json`; plan and notes only on an approved edit; each edit gets its own `wf:` commit.
+Supervision and resume view of the work plan. **Read-only on source code** — the only files this command may modify are the plan, `notes.md`, `foreman.json` and, for the roadmap carry-over alone, `.phased/roadmap.md`; all but `foreman.json` only on an approved edit; each edit gets its own `wf:` commit.
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
@@ -17,7 +17,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 
 | Skill | Reach for it when |
 |---|---|
-| `/write-workflow` | there is no plan yet, and the work was just discussed |
+| `/write-workflow` | there is no plan yet, and the work was just discussed — or a roadmap names the next macro (in a new chat on the parent) |
 | `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
 | `/issue` | the work starts from a GitHub issue (analysis only) |
 | `/execute-phase` | run the next phase — on `Mode: manual` in the worker, the one chat that builds every phase, cleared between them, built there with you in it |
@@ -38,7 +38,11 @@ git log -1 --diff-filter=A --format=%H -- <plan path>
 
 **A plan already on its parent is a leftover, not work.** A `warning: this plan is also on <ref>` line means its workflow reached `<ref>` without `/finalize-workflow`, so every branch cut from it since carries this plan: report it first, ahead of the plan's state, never take command of it, and make the fix the *Next step* — a commit removing `.phased/` from `<ref>`, its owner's call; the workflow the user means is found via `--plans`.
 
-No active plan → stop: `/write-workflow` creates one, `/import-workflow` adapts an older one. Since the plan lives on the workflow branch, check `git branch --show-current` before concluding there is no work — and check `--plans` first: the workflow may live in another checkout or on a branch with no checkout at all (`common.md` → *Plan location*); anchor every command to the plan's root with `git -C`.
+No active plan → since the plan lives on the workflow branch, check `git branch --show-current` before concluding there is no work — and check `--plans` first: the workflow may live in another checkout or on a branch with no checkout at all (`common.md` → *Plan location*); anchor every command to the plan's root with `git -C`. Nothing there either:
+
+- **`.phased/roadmap.md` is here, with macros not yet `(done)`** → this is a programme between macros, not "no workflow". Read `${CLAUDE_PLUGIN_ROOT}/refs/programme.md` and report, in place of Steps 1b–3: the macros closed, those in flight (a `--plans` row, or a `(current)` heading on a `wf/*` branch), and the *Next step* — *"new chat on `<this branch>`, `/write-workflow` for Macro N — <title>"*, N the lowest-numbered macro neither `(done)` nor in flight, plus any other the seam graph makes startable in parallel. Take no command: there is no plan to command, and the next macro's foreman is the chat that writes it.
+- **No roadmap here, but a closed workflow left one behind** — `git for-each-ref --format='%(refname:short)' refs/heads/wf/ refs/tags/wf-archive/`, then `git cat-file -e <ref>:.phased/roadmap.md` on each, and the roadmap found lists macros not `(done)` → report it: the programme's only cross-macro document is stranded where the next macro's chat will never look. The *Next step* is the carry-over in the same section, offered through AskUserQuestion; on yes, run it — one `wf:` commit on this branch touching `.phased/roadmap.md` alone, never pushed without asking.
+- **Neither** → stop: `/write-workflow` creates a plan, `/import-workflow` adapts an older one.
 
 The third command gives `BASE`, the commit that added the plan. Everything after it is this workflow; everything before it is not — on an adopted branch that distinction is the whole point.
 

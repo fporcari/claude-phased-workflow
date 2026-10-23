@@ -7,7 +7,9 @@ repo with no roadmap.md has the active plan as its root.
 
 The state of a macro-phase comes from WHERE its plan directory sits — `done/`
 closed, `active/` in progress, neither one not started — never from a
-judgment this tool makes. Same rule for the phase icons: they are derived
+judgment this tool makes. With no plan directory left anywhere, a `(done)`
+heading is the same kind of fact: /wf:finalize-workflow writes it on the
+roadmap it carries to the parent. Same rule for the phase icons: they are derived
 from the phase marker and its notes, which the plugin has already written.
 
 This module does not read plans: it receives them already read. That way
@@ -17,12 +19,15 @@ This module does not read plans: it receives them already read. That way
 import pathlib
 import re
 
-MACRO_RE = re.compile(r'^##\s+Macro(?:-?phase)?\s+(\d+)(?:\s+\(current\))?\s*[—–:-]\s*(.*)$', re.I)
+MACRO_RE = re.compile(r'^##\s+Macro(?:-?phase)?\s+(\d+)(?:\s+\((current|done)\))?\s*[—–:-]\s*(.*)$', re.I)
 MACRO_FIELD_RE = re.compile(r'^\s*[-*]\s*\**(Mini-scope|Objective|Ends at)\**\s*:\s*(.*)$', re.I)
 TITLE_RE = re.compile(r'^#\s+(.*)$')
-# `macro2-replica-convergence` -> macro-phase 2. It is the only link between a
-# macro-phase and its plan: no field of a plan names its macro-phase.
+# `macro2-replica-convergence` -> macro-phase 2. No field of a plan names its
+# macro-phase; the roadmap heading names the plan instead, once one exists
+# (`— detailed in active/<slug>/plan.md`, `— closed by wf/<slug>`), and that
+# link wins over the slug's own number.
 SLUG_MACRO_RE = re.compile(r'^macro-?(\d+)\b', re.I)
+HEADING_SLUG_RE = re.compile(r'(?:detailed in active/|closed by wf/)([^/\s]+)')
 
 # The phase marker icons. `✓!` and the person are the two cases where the
 # marker alone does not say enough: a closed phase carrying a `> Review:`, and
@@ -47,7 +52,9 @@ def read_roadmap(repo):
     for line in f.read_text(errors='replace').splitlines():
         m = MACRO_RE.match(line)
         if m:
-            current = {'n': int(m.group(1)), 'title': m.group(2).strip(),
+            current = {'n': int(m.group(1)), 'title': m.group(3).strip(),
+                       'marker': (m.group(2) or '').lower() or None,
+                       'slug': _heading_slug(m.group(3)),
                        'mini_scope': None, 'ends_at': None}
             macros.append(current)
             continue
@@ -78,6 +85,11 @@ def phase_icon(phase, agents=()):
     return {'icon': icon, 'cls': cls, 'warn': warn}
 
 
+def _heading_slug(title):
+    m = HEADING_SLUG_RE.search(title)
+    return m.group(1) if m else None
+
+
 def macro_of(slug):
     m = SLUG_MACRO_RE.match(slug or '')
     return int(m.group(1)) if m else None
@@ -95,8 +107,12 @@ def build_tree(roadmap, plans, active_slug):
     nodes = []
     if roadmap:
         for macro in roadmap['macros']:
-            match = next((p for p in plans if macro_of(p['slug']) == macro['n']), None)
-            state = match['state'] if match else 'none'
+            match = next((p for p in plans if macro.get('slug')
+                          and p['slug'] == macro['slug']), None) \
+                or next((p for p in plans if p['slug'] not in used
+                         and macro_of(p['slug']) == macro['n']), None)
+            state = match['state'] if match else (
+                'done' if macro.get('marker') == 'done' else 'none')
             if match:
                 used.add(match['slug'])
             icon, cls = MACRO_ICONS[state]
