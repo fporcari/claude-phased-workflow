@@ -24,16 +24,18 @@ const FOREMAN_TITLE = { role: 'assistant', text: '', toolUses: [{ id: 't1', tool
 const THEMED = PLAN.replace('Mode: manual', 'Mode: manual\nTheme: Foo UI')
 const titled = (title: string) => ({ role: 'assistant', text: '', toolUses: [{ id: 't2', tool: 'mcp__ccd_session_mgmt__set_session_title', input: { session_id: 'self', title } }] })
 const TYPED_EXECUTE = { role: 'user', text: '<command-name>/wf:execute-phase</command-name>', toolUses: [] }
+const TURN = { answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
 const CHATTER = { role: 'user', text: 'what does execute-phase do?', toolUses: [] }
 
 function stubPlan(on, plan: string | null, chat: Chat = {}) {
-  mock.clock(on)
+  const clock = mock.clock(on)
   on('fs.list', () => ({ value: plan === null ? [] : [{ name: 'foo', kind: 'dir', size: 0, isLink: false }] }))
   on('fs.read', () => ({ value: plan ?? '' }))
   on('session.start', () => ({ cwd: '/work' }))
   on('session.turns', () => ({ value: chat.turns ?? 0 }))
   on('session.messages', () => ({ value: chat.messages ?? [] }))
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  return clock
 }
 
 function recordCommands(on) {
@@ -86,12 +88,112 @@ test('a new chat: the button sets the phase model and effort, then launches exec
     expect(await ui.find({ type: 'Text', text: 'TH UI for foo · foo' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: ' FOREMAN ' })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: ' WORKER · Phase 2 ' })).toBeUndefined()
-    const button = await ui.find({ key: 'wf-next' })
-    expect(button?.props.label).toBe('▶ Phase 2 · opus / low')
-    await ui.press({ key: 'wf-next' })
+    expect((await ui.find({ key: 'wf-next' }))?.props.label).toBe('▶ Phase 2 · opus / low')
     await ui.unmount()
   }
-  expect(ran).toEqual([...LAUNCH, ...LAUNCH])
+  await pressNext($)
+  expect(ran).toEqual(LAUNCH)
+})
+
+test('a pressed step stays down: no second ▶ until the plan moves on', async ($, on) => {
+  const chat: Chat = { turns: 0, messages: [] }
+  const THREE = `${PLAN}- [ ] **Phase 3**: grid totals\n  - Run: opus / medium\n`
+  let plan = THREE
+  mock.clock(on)
+  on('fs.list', () => ({ value: [{ name: 'foo', kind: 'dir', size: 0, isLink: false }] }))
+  on('fs.read', () => ({ value: plan }))
+  on('session.start', () => ({ cwd: '/work' }))
+  on('session.turns', () => ({ value: chat.turns }))
+  on('session.messages', () => ({ value: chat.messages }))
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  on('turn.complete', () => ({ text: '' }))
+  recordCommands(on)
+  recordStatus(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  await pressNext($)
+  const gate = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await gate.find({ key: 'wf-next' })).toBeUndefined()
+  expect(await gate.find({ type: 'Text', text: '● Phase 2 · opus / low · launched' })).toBeDefined()
+  await gate.unmount()
+  plan = THREE.replace('[ ] **Phase 2', '[>] **Phase 2')
+  chat.turns = 3
+  chat.messages = [TYPED_EXECUTE]
+  await $.turn.complete({ ...TURN, turnId: 't' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ key: 'wf-next' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '● Phase 2 · opus / low · launched' })).toBeDefined()
+  await ui.unmount()
+  plan = THREE.replace('[ ] **Phase 2', '[x] **Phase 2')
+  await $.turn.complete({ ...TURN, turnId: 't2' })
+  const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await after.find({ key: 'wf-next' }))?.props.label).toBe('▶ Phase 3 · opus / medium')
+})
+
+test('a worker that typed execute-phase for its [>] phase gets no ▶: it would clear the phase', async ($, on) => {
+  stubPlan(on, PLAN.replace('[ ] **Phase 2', '[>] **Phase 2'), { turns: 9, messages: [TYPED_EXECUTE] })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: ' WORKER · Phase 2 ' })).toBeDefined()
+  expect(await ui.find({ key: 'wf-next' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '● Phase 2 · opus / low · launched' })).toBeDefined()
+})
+
+function recordSuggestions(on) {
+  const shown: string[] = []
+  on('prompt.suggest', ($, e) => {
+    shown.push(e.text)
+    return { isShown: true }
+  })
+  return shown
+}
+
+test('the step is offered in the prompt box, and replaces the engine\'s own guess', async ($, on) => {
+  stubPlan(on, PLAN.replaceAll('- [ ]', '- [x]'), { turns: 30, messages: [FOREMAN_TITLE] })
+  const shown = recordSuggestions(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  expect(shown).toEqual(['/wf:quality-check'])
+  await $.prompt.suggest({ text: 'thanks!' })
+  expect(shown.at(-1)).toBe('thanks!')
+})
+
+test('the offered execute-phase, sent, does what the ▶ does', async ($, on) => {
+  const clock = stubPlan(on, PLAN, { turns: 12, messages: [titled('Worker P1 · foo')] })
+  const ran = recordCommands(on)
+  recordStatus(on)
+  const shown = recordSuggestions(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  expect(shown).toEqual(['/wf:execute-phase'])
+  const r = await $.prompt.submit({ text: '/wf:execute-phase', command: { name: 'wf:execute-phase', args: '' } })
+  expect(r.drop).toBe('wf-bar launches Phase 2 · opus / low')
+  await clock.advance(1)
+  await clock.settle()
+  expect(ran).toEqual(['clear', ...LAUNCH])
+})
+
+test('no offer of execute-phase in a chat with history and no role: it would clear it unasked', async ($, on) => {
+  stubPlan(on, PLAN, { turns: 5, messages: [CHATTER] })
+  const shown = recordSuggestions(on)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  expect(shown).toEqual([])
+})
+
+test('a palette press while Claude works closes the palette and says so', async ($, on) => {
+  stubPlan(on, PLAN)
+  const ran = recordCommands(on)
+  const toasts: string[] = []
+  on('ui.toast', ($, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'wf-menu' })
+  await ui.unmount()
+  const busy = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, isWorking: true } })
+  await busy.press({ key: 'wf-cmd-dashboard' })
+  expect(ran).toEqual([])
+  expect(toasts).toEqual(['wf: Claude is working — press again when the turn ends'])
+  expect(await busy.find({ key: 'wf-cmd-dashboard' })).toBeUndefined()
 })
 
 test('the worker — it ran execute-phase — is cleared before the next phase', async ($, on) => {

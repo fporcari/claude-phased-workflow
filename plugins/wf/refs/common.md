@@ -37,6 +37,24 @@ one-word question, then what the ok unlocks. Multi-way choices go through
 `AskUserQuestion` instead (style above); the gate line is for the binary
 "go" that unblocks the skill.
 
+## The next command
+
+A command whose skill carries `disable-model-invocation: true` — every one
+the user types, `/execute-phase` and `/quality-check` among them — cannot be
+run by the model, so *"Shall I launch `/quality-check`?"* promises what the
+ok cannot deliver: the yes comes back as text, and the user is sent off to
+type the command after all. When a skill ends on one of them, it closes
+flat, with no question, the command named as its last line:
+
+> Next: `/wf:quality-check`.
+
+No gate line, no `AskUserQuestion`, and no reply button or next-step
+question of the host's (the desktop's closing box included) that offers to
+launch it. `wf-bar`, where installed, proposes the same command in the
+empty prompt box — → or Tab takes it, Enter sends it. A real choice
+between two roads (*quality check now, or fix X first?*) is still asked;
+its options name the commands, never launch them.
+
 ## Plan directory
 
 Every workflow keeps its plan and its working notes in `.phased/`, at the

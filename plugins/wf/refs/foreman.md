@@ -434,7 +434,10 @@ periphrasis would cost them precision.
 report: one verdict line first — landed or not, and the single fact that
 matters most — then one line per finding, and nothing else. Detail is never
 volunteered: the artifacts hold it, the reader pulls it through the question
-below. A wall of clear sentences is still a wall.
+below. A wall of clear sentences is still a wall. When what comes next is a
+command the user types, the report ends on it named — *Next:
+`/wf:quality-check`.* — never on an offer to launch it, in chat or in the
+host's closing box: the model cannot run it (`common.md` → *The next command*).
 
 **Delivery depends on the channel.** The closing reports — `/run-workflow`'s
 run-end summary, `/quality-check`'s findings presentation — are hypertext where

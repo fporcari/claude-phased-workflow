@@ -15,6 +15,10 @@ let armed = false
 let built = false
 // The phase's model and effort the button set, held against every main-loop request.
 let pin = null
+// The step launched from this chat, pressed or typed: its ▶ stays down until the step in front changes.
+let fired = null
+// What the prompt box was last offered.
+let offered = null
 
 async function dirs($, path) {
   return (await $.fs.list(path).catch(() => [])).filter((d) => d.kind === 'dir').map((d) => d.name)
@@ -65,17 +69,39 @@ async function messages($) {
   return Array.isArray(rows) ? rows : []
 }
 
+const stepKey = (s) => `${s.command}:${s.phase?.number ?? ''}`
+
+// A worker whose transcript holds its [>] phase's launch is building it, whatever launched it.
+function launched(s) {
+  if (fired === stepKey(s)) return true
+  return role === 'worker' && s.command === EXECUTE && s.phase?.marker === '>' && seen >= 0 && seen < 4
+}
+
 async function refresh($, rereadChat) {
   const fresh = await readState($)
   const rows = fresh && rereadChat ? await messages($) : null
   const r = rows ? await chatRole($, fresh, rows).catch(() => 'unknown') : role
   const at = rows ? chatStage(rows) : seen
+  if (fired && (!fresh || fired !== stepKey(fresh))) fired = null
   if (r === role && at === seen && JSON.stringify(fresh) === JSON.stringify(state)) return
   state = fresh
   role = r
   seen = at
   armed = false
   $.ui.invalidate('ui.render')
+  if (suggestion(state) !== offered) await offer($)
+}
+
+// The band's own step, never one that would clear a chat with no role unasked.
+function suggestion(s) {
+  if (!s?.command || elsewhere(s) || launched(s) || NEEDS_ARGS.has(s.command.slice(3))) return null
+  if (s.command === EXECUTE && role === 'unknown') return null
+  return `/${s.command}`
+}
+
+async function offer($) {
+  offered = suggestion(state)
+  if (offered) await $.prompt.suggest({ text: offered }).catch(() => null)
 }
 
 function label(s) {
@@ -115,6 +141,12 @@ function goalRows({ Box, Text }, s) {
   return rows
 }
 
+function busy($) {
+  open = false
+  $.ui.toast('wf: Claude is working — press again when the turn ends')
+  $.ui.invalidate('ui.render')
+}
+
 async function launch($, s, command) {
   const name = command.slice(3)
   open = false
@@ -125,13 +157,14 @@ async function launch($, s, command) {
     await $.prompt.fill({ text: `/${command} ` })
     return
   }
-  if (command !== EXECUTE || !s.phase) {
-    await $.command.run({ command, args: '' })
-    return
-  }
-  if (role === 'unknown' && !armed) {
+  if (command === EXECUTE && s.phase && role === 'unknown' && !armed) {
     armed = true
     $.ui.invalidate('ui.render')
+    return
+  }
+  if (command === s.command) fired = stepKey(s)
+  if (command !== EXECUTE || !s.phase) {
+    await $.command.run({ command, args: '' })
     return
   }
   armed = false
@@ -153,7 +186,33 @@ export function register(on) {
   })
 
   on('turn.complete', async ($, e, next) => {
-    if (!e.agentId) await refresh($, true)
+    if (e.agentId) return next(e)
+    await refresh($, true)
+    const done = await next(e)
+    await offer($)
+    return done
+  })
+
+  // The engine's own guess after a turn would cover the step: while one is due, the guess is the step.
+  on('prompt.suggest', async ($, e, next) => {
+    const text = e.origin.kind === 'suggestion' ? suggestion(state) : null
+    return next(text ? { ...e, text } : e)
+  })
+
+  // The offered execute-phase, taken with → or Tab and sent, is the ▶: clear, model, effort, then the launch.
+  on('prompt.submit', async ($, e, next) => {
+    const s = state
+    if (!s?.command || !e.command || e.command.name.replace(/^wf:/, '') !== s.command.slice(3)) return next(e)
+    if (s.command === EXECUTE && s.phase && !e.command.args && e.text.trim() === offered) {
+      role = await chatRole($, s, await messages($)).catch(() => 'unknown')
+      if (role === 'worker' || role === 'fresh') {
+        // After the submission has settled: a /clear inside it would clear under it.
+        $.clock.after(0, () => { void launch($, s, EXECUTE) })
+        return { drop: `wf-bar launches ${label(s).slice(2)}` }
+      }
+    }
+    fired = stepKey(s)
+    $.ui.invalidate('ui.render')
     return next(e)
   })
 
@@ -177,9 +236,12 @@ export function register(on) {
     const s = state
     const idle = !e.props.isWorking
     const look = LOOK[role]
-    const head = [Text({ dimColor: true, children: [`wf ${s.done}/${s.total}`] })]
-    if (look) head.unshift(Text({ bold: true, inverse: true, color: look.color, children: [look.tag(s)] }))
-    if (idle && armed && s.phase) {
+    // A desktop shrinks a row's texts to make room: the tag and the count would wrap.
+    const head = [Box({ flexShrink: 0, children: [Text({ dimColor: true, children: [`wf ${s.done}/${s.total}`] })] })]
+    if (look) head.unshift(Box({ flexShrink: 0, children: [Text({ bold: true, inverse: true, color: look.color, children: [look.tag(s)] })] }))
+    if (s.command && !elsewhere(s) && launched(s)) {
+      head.push(Text({ dimColor: true, children: [`● ${label(s).slice(2)} · launched`] }))
+    } else if (idle && armed && s.phase) {
       head.push(Button({ key: 'wf-next', label: `▶ clear this chat for Phase ${s.phase.number}? press again`, onPress: () => launch($, s, EXECUTE) }))
     } else if (idle && s.command && !elsewhere(s)) {
       head.push(Button({ key: 'wf-next', label: label(s), onPress: () => launch($, s, s.command) }))
@@ -190,29 +252,31 @@ export function register(on) {
       head.push(Button({ key: 'wf-goal', label: goal ? '✕ goal' : '◎ goal', onPress: () => { goal = !goal; $.ui.invalidate('ui.render') } }))
     }
     head.push(Button({ key: 'wf-menu', label: open ? '✕ wf' : '☰ wf', onPress: () => { open = !open; $.ui.invalidate('ui.render') } }))
-    const rows = [Box({ flexDirection: 'row', columnGap: 2, children: head })]
+    const rows = [Box({ flexDirection: 'row', columnGap: 2, alignItems: 'center', children: head })]
     if (goal && role === 'worker' && s.phase) rows.push(...goalRows($.ui.resolve(e), s))
     if (open) {
       for (const [group, names] of palette(role)) {
         rows.push(Box({
           flexDirection: 'row',
           columnGap: 1,
+          alignItems: 'center',
           children: [
             Text({ dimColor: true, children: [group.padEnd(6)] }),
             ...names.map((name) => Button({
               key: `wf-cmd-${name}`,
               label: name,
               dimColor: !s.on.includes(name),
-              onPress: () => { if (idle) launch($, s, `wf:${name}`) },
+              onPress: () => (idle ? launch($, s, `wf:${name}`) : busy($)),
             })),
           ],
         }))
       }
     }
     const theirs = await next(e)
+    // Down, `sm` is no cell on the terminal and room on a desktop, whose buttons are taller than a line.
     const band = look
-      ? Box({ flexDirection: 'column', borderStyle: 'round', borderColor: look.color, paddingX: 1, children: rows })
-      : Box({ flexDirection: 'column', children: rows })
+      ? Box({ flexDirection: 'column', rowGap: 'sm', borderStyle: 'round', borderColor: look.color, paddingX: 1, children: rows })
+      : Box({ flexDirection: 'column', rowGap: 'sm', children: rows })
     return Box({ flexDirection: 'column', children: [band, theirs] })
   })
 }
